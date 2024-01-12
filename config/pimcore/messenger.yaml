@@ -1,0 +1,11 @@
+framework:
+    messenger:
+        enabled: true
+        transports:
+            pimcore_index_queues: 'doctrine://default?queue_name=pimcore_index_queues'
+        routing:
+            Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage: pimcore_index_queues
+        buses:
+            messenger.bus.pimcore-generic-data-index:
+                middleware:
+                    - 'Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\Middleware\CollectGarbageMiddleware'

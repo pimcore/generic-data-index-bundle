@@ -1,0 +1,104 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\DefaultAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "wysiwyg" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\TextAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "input" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "textarea" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "calculatedValue" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\NumericAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "numeric" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "slider" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\DateAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "date" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\DateTimeAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "datetime" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\LocalizedFieldsAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "localizedfields" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\QuantityValueAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "quantityValue" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "inputQuantityValue" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\BooleanAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "checkbox" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\SelectAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "select" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\MultiSelectAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "multiselect" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\CountryAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "country" }
+
+    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\LanguageAdapter:
+    #    shared: false
+    #    tags:
+    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "language" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\CountryMultiSelectAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "countrymultiselect" }
+
+    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\LanguageMultiSelectAdapter:
+    #    shared: false
+    #    tags:
+    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "languagemultiselect" }
+
+    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\ManyToOneRelationAdapter:
+    #    shared: false
+    #    tags:
+    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "manyToOneRelation" }
+
+    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\ManyToManyObjectRelationAdapter:
+    #    shared: false
+    #    tags:
+    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "manyToManyObjectRelation" }
+
+    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\AdvancedManyToManyRelationAdapter:
+    #    shared: false
+    #    tags:
+    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "advancedManyToManyRelation" }
+
+    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\AdvancedManyToManyObjectRelationAdapter:
+    #    shared: false
+    #    tags:
+    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "advancedManyToManyObjectRelation" }
+
+    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\ManyToManyRelationAdapter:
+    #    shared: false
+    #    tags:
+    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "manyToManyRelation" }

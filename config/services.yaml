@@ -1,5 +1,27 @@
+imports:
+    - { resource: 'services/search/index.yaml' }
+    - { resource: 'services/search/data-object/*' }
+    - { resource: 'services/*' }
 services:
     _defaults:
         autowire: true
         autoconfigure: true
         public: false
+
+    # controllers are imported separately to make sure they're public
+    # and have a tag that allows actions to type-hint services
+    Pimcore\Bundle\GenericDataIndexBundle\Controller\:
+        resource: '../src/Controller'
+        public: true
+        tags: ['controller.service_arguments']
+
+    Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\:
+        resource: '../src/MessageHandler'
+        tags: [ { name: messenger.message_handler, bus: messenger.bus.pimcore-generic-data-index } ]
+
+# add more services, or override services that need manual wiring
+#    Pimcore\_generic-data-index-bundle\ExampleClass:
+#        arguments:
+#            - "@service_id"
+#            - "plain_value"
+#            - "%parameter%"

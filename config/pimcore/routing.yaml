@@ -1,0 +1,3 @@
+pimcore_generic_data_index_homepage:
+    path:     /pimcore_generic_data_index
+    defaults: { _controller: Pimcore\Bundle\GenericDataIndexBundle\Controller\DefaultController:indexAction }

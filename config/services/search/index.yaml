@@ -1,0 +1,24 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService: ~
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService:
+        arguments:
+            - '@pimcore.generic_data_index.object.search_index_field_definition_locator'
+
+    pimcore.generic_data_index.object.search_index_field_definition_locator:
+        class: Symfony\Component\DependencyInjection\ServiceLocator
+        tags: [ 'container.service_locator' ]
+        arguments:
+            - [ ]

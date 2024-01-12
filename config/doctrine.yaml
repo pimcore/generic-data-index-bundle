@@ -1,0 +1,12 @@
+doctrine:
+    orm:
+        entity_managers:
+            pimcore_generic_data_index:
+                connection: default
+                mappings:
+                    PimcoreGenericDataIndexBundle:
+                        type: attribute
+                        is_bundle: true
+                        dir: "src/Entity"
+                        prefix: Pimcore\Bundle\GenericDataIndexBundle\Entity
+                        alias: PimcoreGenericDataIndex
