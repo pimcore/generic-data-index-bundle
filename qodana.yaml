@@ -32,10 +32,10 @@ exclude:
       - LICENSE.md
       - .env
       - .gitatributes
-      - .github
       - .docker
       - .gitignore
       - src/DependencyInjection/Configuration.php
+      - placeholderReplace.sh
 include:
   - name: PhpTaintFunctionInspection
   - name: PhpVulnerablePathsInspection
