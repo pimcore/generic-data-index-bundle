@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 use Carbon\Carbon;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\TableNotFoundException;
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
@@ -116,7 +117,7 @@ class IndexQueueService
             if ($element instanceof Asset\Folder && !empty($oldFullPath) && $oldFullPath !== $element->getRealFullPath()) {
                 $this->rewriteChildrenIndexPaths($element, $oldFullPath);
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->logger->warning('Update indexQueue in database-table' . IndexQueue::TABLE . ' failed! Error: ' . $e->getMessage());
         }
 
@@ -145,7 +146,7 @@ class IndexQueueService
             } else {
                 $unhandledIndexQueueEntries = $this->connection->executeQuery('SELECT elementId, elementType, elementIndexName, operation, operationTime FROM ' . IndexQueue::TABLE . ' ORDER BY operationTime LIMIT ' . intval($limit))->fetchAllAssociative();
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->logger->info('getUnhandledIndexQueueEntries failed! Error: ' . $e->getMessage());
         }
 
@@ -176,7 +177,7 @@ class IndexQueueService
             $this->bulkOperationService->commit();
             $this->deleteQueueEntries($entries);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->logger->info('handleIndexQueueEntry failed! Error: ' . $e->getMessage());
         }
 
@@ -282,29 +283,29 @@ class IndexQueueService
         return $this;
     }
 
+    /**
+     * @throws Exception
+     */
     protected function getCurrentIndexFullPath(ElementInterface $element): ?string
     {
-        if ($indexService = $this->getIndexServiceByElement($element)) {
-            $indexName = $this->searchIndexConfigService->getIndexName($this->getElementIndexName($element));
-
-            return $indexService->getCurrentIndexFullPath($element, $indexName);
-        }
-
-        return null;
+        $indexService = $this->getIndexServiceByElement($element);
+        $indexName = $this->searchIndexConfigService->getIndexName($this->getElementIndexName($element));
+        return $indexService->getCurrentIndexFullPath($element, $indexName);
     }
 
     /**
-     * Directly update children paths in elasticsearch for assets as otherwise you might get strange results if you rename a folder in the portal engine frontend.
+     * Directly update children paths in OpenSearch for assets as otherwise you might get strange results if you rename a folder in the portal engine frontend.
      *
      * @param ElementInterface $element
      * @param string $oldFullPath
      *
-     * @throws \Exception
+     * @throws Exception
      */
     protected function rewriteChildrenIndexPaths(ElementInterface $element, string $oldFullPath)
     {
-        if ($element instanceof Asset && $indexService = $this->getIndexServiceByElement($element)) {
-            $indexName = $this->elasticSearchConfigService->getIndexName($this->getElementIndexName($element));
+        if ($element instanceof Asset) {
+            $indexService = $this->getIndexServiceByElement($element);
+            $indexName = $this->searchIndexConfigService->getIndexName($this->getElementIndexName($element));
             $indexService->rewriteChildrenIndexPaths($element, $indexName, $oldFullPath);
         }
     }
@@ -335,7 +336,7 @@ class IndexQueueService
 
             $this->openSearchService->refreshIndex($indexName);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->logger->debug($e->getMessage());
         }
 
@@ -374,7 +375,7 @@ class IndexQueueService
      *
      * @return $this
      *
-     * @throws \Exception
+     * @throws Exception
      */
     protected function doHandleIndexData(ElementInterface $element, string $operation)
     {
@@ -403,7 +404,7 @@ class IndexQueueService
     /**
      * @return AbstractIndexService|AssetIndexService|DataObjectIndexService
      *
-     * @throws \Exception
+     * @throws Exception
      */
     protected function getIndexServiceByElement(ElementInterface $element)
     {
@@ -413,7 +414,7 @@ class IndexQueueService
     /**
      * @return AbstractIndexService|AssetIndexService|DataObjectIndexService
      *
-     * @throws \Exception
+     * @throws Exception
      */
     protected function getIndexServiceByElementType(string $elementType)
     {
@@ -424,7 +425,7 @@ class IndexQueueService
                 return $this->assetIndexService;
         }
 
-        throw new \Exception('Index service for element type ' . $elementType . ' does not exist.');
+        throw new Exception('Index service for element type ' . $elementType . ' does not exist.');
     }
 
     /**
@@ -446,7 +447,7 @@ class IndexQueueService
      *
      * @return $this
      *
-     * @throws \Exception
+     * @throws Exception
      */
     protected function doDeleteFromIndex(ElementInterface $element)
     {
@@ -491,7 +492,7 @@ class IndexQueueService
      *
      * @return Asset|AbstractObject|null
      *
-     * @throws \Exception
+     * @throws Exception
      */
     protected function getElement($id, $type)
     {
@@ -501,7 +502,7 @@ class IndexQueueService
             case ElementType::DATA_OBJECT->value:
                 return AbstractObject::getById($id);
             default:
-                throw new \Exception('elementType ' . $type . ' not supported');
+                throw new Exception('elementType ' . $type . ' not supported');
         }
     }
 
@@ -521,7 +522,7 @@ class IndexQueueService
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     protected function getElementIndexName(ElementInterface $element): string
     {
@@ -531,7 +532,7 @@ class IndexQueueService
             case $element instanceof Asset:
                 return 'asset';
             default:
-                throw new \Exception('element ' . get_class($element) . ' not supported');
+                throw new Exception('element ' . get_class($element) . ' not supported');
         }
     }
 

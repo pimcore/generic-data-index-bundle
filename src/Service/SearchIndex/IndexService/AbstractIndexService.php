@@ -12,7 +12,7 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService;
 
-use Opensearch\Client;
+use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService;
