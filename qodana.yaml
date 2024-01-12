@@ -32,6 +32,9 @@ exclude:
       - LICENSE.md
       - .env
       - .gitatributes
+      - .github
+      - .docker
+      - .gitignore
       - src/DependencyInjection/Configuration.php
 include:
   - name: PhpTaintFunctionInspection
