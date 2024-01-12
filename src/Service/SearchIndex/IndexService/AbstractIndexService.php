@@ -21,7 +21,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSea
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
-use Pimcore\Bundle\PortalEngineBundle\Enum\ElasticSearchFields;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
 use Pimcore\Model\Element\Tag;
@@ -79,7 +78,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
             'body' => [
                 'query' => [
                     'term' => [
-                        ElasticSearchFields::SYSTEM_FIELDS . '.' . ElasticSearchFields::SYSTEM_FIELDS_FULL_PATH
+                        FieldCategory::SYSTEM_FIELDS->value . '.' . FieldCategory\SystemField::FULL_PATH->value
                         => $oldFullPath,
                     ],
                 ],
@@ -144,7 +143,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
 
                 'query' => [
                     'term' => [
-                        ElasticSearchFields::SYSTEM_FIELDS . '.' . ElasticSearchFields::SYSTEM_FIELDS_FULL_PATH
+                        FieldCategory::SYSTEM_FIELDS->value . '.' . FieldCategory\SystemField::FULL_PATH->value
                         => $oldFullPath,
                     ],
                 ],

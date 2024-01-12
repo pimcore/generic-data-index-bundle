@@ -19,12 +19,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AbstractIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
-use Pimcore\Bundle\PortalEngineBundle\Service\SearchIndex\AbstractIndexService;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -461,11 +461,9 @@ class IndexQueueService
     }
 
     /**
-     * @param string $operation
-     *
-     * @return bool
+     * @throws \InvalidArgumentException
      */
-    protected function checkOperationValid($operation)
+    protected function checkOperationValid(string $operation)
     {
         if(!in_array($operation, [
             IndexQueueOperation::UPDATE->value,
@@ -545,12 +543,8 @@ class IndexQueueService
         return $this->performIndexRefresh;
     }
 
-    /**
-     * @param bool $performIndexRefresh
-     *
-     * @return \Pimcore\Bundle\PortalEngineBundle\Service\SearchIndex\IndexQueueService
-     */
-    public function setPerformIndexRefresh(bool $performIndexRefresh): self
+
+    public function setPerformIndexRefresh(bool $performIndexRefresh): IndexQueueService
     {
         $this->performIndexRefresh = $performIndexRefresh;
 
