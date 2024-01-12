@@ -12,10 +12,6 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
-use Pimcore\Bundle\PortalEngineBundle\Model\Configuration\DataPool\Field\ExportableField;
-use Pimcore\Bundle\PortalEngineBundle\Model\Configuration\DataPool\Field\FilterableField;
-use Pimcore\Bundle\PortalEngineBundle\Model\Configuration\DataPool\Field\ListableField;
-use Pimcore\Bundle\PortalEngineBundle\Model\Configuration\DataPool\Field\SortableField;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\Concrete;
 

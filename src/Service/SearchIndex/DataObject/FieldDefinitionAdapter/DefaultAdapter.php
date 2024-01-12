@@ -25,8 +25,7 @@ class DefaultAdapter implements FieldDefinitionAdapterInterface
 
     public function __construct(
         protected SearchIndexConfigService $searchIndexConfigService,
-    )
-    {
+    ) {
     }
 
     public function setFieldDefinition(Data $fieldDefinition): self
@@ -48,8 +47,8 @@ class DefaultAdapter implements FieldDefinitionAdapterInterface
     {
         $fields = [
             'raw' => [
-                'type' => AttributeType::KEYWORD->value
-            ]
+                'type' => AttributeType::KEYWORD->value,
+            ],
         ];
 
         $searchAttributes = $this->searchIndexConfigService->getSearchSettings()['search_analyzer_attributes'][AttributeType::KEYWORD->value]['fields'] ?? [];
@@ -61,8 +60,8 @@ class DefaultAdapter implements FieldDefinitionAdapterInterface
             $this->fieldDefinition->getName(),
             [
                 'type' => AttributeType::KEYWORD->value,
-                'fields' => $fields
-            ]
+                'fields' => $fields,
+            ],
         ];
     }
 
@@ -81,14 +80,13 @@ class DefaultAdapter implements FieldDefinitionAdapterInterface
             $value = $this->fieldDefinition->normalize($value);
         }
 
-        /* @phpstan-ignore-next-line */
+        // @phpstan-ignore-next-line
         if (is_array($value)) {
             return json_encode($value);
         }
 
         return (string)$value;
     }
-
 
     protected function doGetRawIndexDataValue(Concrete $object): mixed
     {

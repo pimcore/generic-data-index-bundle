@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 
 enum SystemField: string
@@ -16,11 +26,13 @@ enum SystemField: string
     case TAGS = 'tags';
     case MIME_TYPE = 'mimetype';
     case CLASS_NAME = 'className';
-    #case NAME = 'name';
-    #case THUMBNAIL = 'thumbnail';
+
+    //case NAME = 'name';
+    //case THUMBNAIL = 'thumbnail';
     case CHECKSUM = 'checksum';
-    #case COLLECTIONS = 'collections';
-    #case PUBLIC_SHARES = 'publicShares';
+
+    //case COLLECTIONS = 'collections';
+    //case PUBLIC_SHARES = 'publicShares';
     case USER_OWNER = 'userOwner';
     case HAS_WORKFLOW_WITH_PERMISSIONS = 'hasWorkflowWithPermissions';
     case FILE_SIZE = 'fileSize';

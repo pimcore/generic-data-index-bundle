@@ -13,7 +13,6 @@
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 use Pimcore\Model\DataObject\Concrete;
-use Pimcore\Model\DataObject\Data\ObjectMetadata;
 
 class AdvancedManyToManyObjectRelationAdapter extends ManyToManyObjectRelationAdapter
 {

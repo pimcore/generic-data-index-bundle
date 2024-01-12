@@ -24,7 +24,6 @@ class MultiSelectAdapter extends DefaultAdapter
     /** @var Data\Multiselect */
     protected Data $fieldDefinition;
 
-
     protected function doGetIndexDataValue(Concrete $object): mixed
     {
         $values = [];

@@ -14,11 +14,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 
 use Carbon\Carbon;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
-use Pimcore\Bundle\PortalEngineBundle\Enum\DataPool\FilterSort;
-use Pimcore\Bundle\PortalEngineBundle\Enum\ElasticSearchFields;
-use Pimcore\Localization\IntlFormatter;
 use Pimcore\Model\DataObject\Concrete;
-
 
 class DateAdapter extends DefaultAdapter
 {
@@ -28,7 +24,7 @@ class DateAdapter extends DefaultAdapter
             $this->fieldDefinition->getName(),
             [
                 'type' => AttributeType::DATE->value,
-            ]
+            ],
         ];
     }
 

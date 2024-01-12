@@ -24,7 +24,7 @@ class ManyToManyObjectRelationAdapter extends ManyToManyRelationAdapter
 
         if ($dataObjects) {
             foreach ($dataObjects as $dataObject) {
-                /* @phpstan-ignore-next-line */
+                // @phpstan-ignore-next-line
                 if ($dataObject) {
                     $value[] = $this->getArrayValuesByElement($dataObject);
                 }

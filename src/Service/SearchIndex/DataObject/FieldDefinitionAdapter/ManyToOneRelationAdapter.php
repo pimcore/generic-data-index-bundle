@@ -13,7 +13,6 @@
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
-use Pimcore\Bundle\PortalEngineBundle\Enum\ElasticSearchFields;
 use Pimcore\Bundle\PortalEngineBundle\Service\Element\NameExtractorService;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\Concrete;
@@ -27,6 +26,7 @@ class ManyToOneRelationAdapter extends DefaultAdapter
 
     /**
      * @param NameExtractorService $nameExtractorService
+     *
      * @required
      */
     public function setNameExtractorService(NameExtractorService $nameExtractorService): void
@@ -41,8 +41,8 @@ class ManyToOneRelationAdapter extends DefaultAdapter
     {
         $nameFields = [
             'raw' => [
-                'type' => AttributeType::KEYWORD->value
-            ]
+                'type' => AttributeType::KEYWORD->value,
+            ],
         ];
 
         $searchAttributes = $this->searchIndexConfigService->getSearchSettings()['search_analyzer_attributes'][AttributeType::KEYWORD->value]['fields'] ?? [];
@@ -55,17 +55,17 @@ class ManyToOneRelationAdapter extends DefaultAdapter
             [
                 'properties' => [
                     'id' => [
-                        'type' => AttributeType::LONG->value
+                        'type' => AttributeType::LONG->value,
                     ],
                     'type' => [
-                        'type' => AttributeType::TEXT->value
+                        'type' => AttributeType::TEXT->value,
                     ],
                     'name' => [
                         'type' => AttributeType::TEXT->value,
-                        'fields' => $nameFields
+                        'fields' => $nameFields,
                     ],
-                ]
-            ]
+                ],
+            ],
         ];
     }
 
@@ -93,7 +93,7 @@ class ManyToOneRelationAdapter extends DefaultAdapter
         return [
             'id' => $element->getId(),
             'name' => $this->nameExtractorService->extractName($element),
-            'type' => Service::getElementType($element)
+            'type' => Service::getElementType($element),
         ];
     }
 }

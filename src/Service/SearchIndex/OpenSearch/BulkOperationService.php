@@ -1,8 +1,17 @@
 <?php
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 
 class BulkOperationService
@@ -18,6 +27,7 @@ class BulkOperationService
     public function add(array $data): BulkOperationService
     {
         $this->bulkOperationData[] = $data;
+
         return $this;
     }
 
@@ -33,7 +43,7 @@ class BulkOperationService
         $this->logger->info('Commit bulk to index.');
 
         $response = $this->openSearchService->getOpenSearchClient()->bulk([
-            'body' => $this->bulkOperationData
+            'body' => $this->bulkOperationData,
         ]);
 
         $this->bulkOperationData = [];

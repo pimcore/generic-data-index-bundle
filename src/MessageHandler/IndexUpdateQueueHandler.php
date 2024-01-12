@@ -14,7 +14,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\MessageHandler;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
-use Pimcore\Model\Tool\TmpStore;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -22,6 +21,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 class IndexUpdateQueueHandler
 {
     protected IndexQueueService $indexQueueService;
+
     protected MessageBusInterface $messageBus;
 
     public function __construct(IndexQueueService $indexQueueService, MessageBusInterface $messageBus)

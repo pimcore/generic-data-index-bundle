@@ -17,7 +17,6 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
 
-
 class SearchIndexFieldDefinitionPass implements CompilerPassInterface
 {
     /**
@@ -27,7 +26,7 @@ class SearchIndexFieldDefinitionPass implements CompilerPassInterface
     {
         $definitionList = [
             'pimcore.generic_data_index.object.search_index_field_definition_locator' => CompilerPassTag::DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION->value,
-            #'pimcore.generic_data_index.asset.search_index_field_definition_locator' => CompilerPassTag::DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION->value
+            //'pimcore.generic_data_index.asset.search_index_field_definition_locator' => CompilerPassTag::DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION->value
         ];
 
         foreach ($definitionList as $definitionId => $serviceTagName) {

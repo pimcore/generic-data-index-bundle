@@ -15,7 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Data\ElementMetadata;
-use Pimcore\Model\Element\ElementInterface;
 
 class AdvancedManyToManyRelationAdapter extends ManyToManyObjectRelationAdapter
 {

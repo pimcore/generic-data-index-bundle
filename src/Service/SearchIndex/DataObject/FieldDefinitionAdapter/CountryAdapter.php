@@ -18,19 +18,20 @@ use Pimcore\Model\DataObject\Concrete;
 class CountryAdapter extends SelectAdapter
 {
     /** @var CountryNameService */
-    #protected $countryNameService;
+    //protected $countryNameService;
 
     /**
      * @param CountryNameService $countryNameService
+     *
      * @required
      */
-    #public function setCountryNameService(CountryNameService $countryNameService): void
-    #{
-    #    $this->countryNameService = $countryNameService;
-    #}
+    //public function setCountryNameService(CountryNameService $countryNameService): void
+    //{
+    //    $this->countryNameService = $countryNameService;
+    //}
 
-    #protected function doGetIndexDataValue(Concrete $object): mixed
-    #{
-    #    return $this->countryNameService->getCountryName($this->doGetRawIndexDataValue($object));
-    #}
+    //protected function doGetIndexDataValue(Concrete $object): mixed
+    //{
+    //    return $this->countryNameService->getCountryName($this->doGetRawIndexDataValue($object));
+    //}
 }

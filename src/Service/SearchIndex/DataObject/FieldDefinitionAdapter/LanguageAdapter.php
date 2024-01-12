@@ -18,19 +18,20 @@ use Pimcore\Model\DataObject\Concrete;
 class LanguageAdapter extends SelectAdapter
 {
     /** @var LanguageNameService */
-    #protected $languageNameService;
+    //protected $languageNameService;
 
     /**
      * @param LanguageNameService $languageNameService
+     *
      * @required
      */
-    #public function setLanguageNameService(LanguageNameService $languageNameService): void
-    #{
-    #    $this->languageNameService = $languageNameService;
-    #}
+    //public function setLanguageNameService(LanguageNameService $languageNameService): void
+    //{
+    //    $this->languageNameService = $languageNameService;
+    //}
 
-    #protected function doGetIndexDataValue(Concrete $object): mixed
-    #{
-    #    return $this->languageNameService->getLanguageName($this->doGetRawIndexDataValue($object));
-    #}
+    //protected function doGetIndexDataValue(Concrete $object): mixed
+    //{
+    //    return $this->languageNameService->getLanguageName($this->doGetRawIndexDataValue($object));
+    //}
 }

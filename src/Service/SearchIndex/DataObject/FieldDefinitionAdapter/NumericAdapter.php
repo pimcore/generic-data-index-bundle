@@ -13,7 +13,6 @@
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
-use Pimcore\Bundle\PortalEngineBundle\Enum\ElasticSearchFields;
 use Pimcore\Model\DataObject\Concrete;
 
 class NumericAdapter extends DefaultAdapter
@@ -24,7 +23,7 @@ class NumericAdapter extends DefaultAdapter
             $this->fieldDefinition->getName(),
             [
                 'type' => AttributeType::FLOAT->value,
-            ]
+            ],
         ];
     }
 
@@ -37,5 +36,4 @@ class NumericAdapter extends DefaultAdapter
     {
         return (float)$this->doGetRawIndexDataValue($object);
     }
-
 }

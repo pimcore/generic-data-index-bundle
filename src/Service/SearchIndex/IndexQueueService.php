@@ -1,7 +1,16 @@
 <?php
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
 
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Carbon\Carbon;
 use Doctrine\DBAL\Connection;
@@ -26,30 +35,24 @@ use Pimcore\Model\Element\Tag;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Serializer\Encoder\JsonEncoder;
-use Symfony\Component\Serializer\Normalizer\ObjectNormalizer;
-use Symfony\Component\Serializer\Serializer;
 use Symfony\Component\Serializer\SerializerInterface;
 
 class IndexQueueService
 {
     use LoggerAwareTrait;
 
-
     protected bool $performIndexRefresh = false;
 
-
     public function __construct(
-        private Connection               $connection,
-        private AssetIndexService        $assetIndexService,
-        private DataObjectIndexService   $dataObjectIndexService,
+        private Connection $connection,
+        private AssetIndexService $assetIndexService,
+        private DataObjectIndexService $dataObjectIndexService,
         private SearchIndexConfigService $searchIndexConfigService,
-        private OpenSearchService        $openSearchService,
-        private BulkOperationService     $bulkOperationService,
-        private MessageBusInterface      $messageBus,
-        private SerializerInterface      $serializer,
-    )
-    {
+        private OpenSearchService $openSearchService,
+        private BulkOperationService $bulkOperationService,
+        private MessageBusInterface $messageBus,
+        private SerializerInterface $serializer,
+    ) {
     }
 
     public function updateIndexQueue(ElementInterface $element, string $operation, bool $doIndexElement = false): self
@@ -279,7 +282,6 @@ class IndexQueueService
         return $this;
     }
 
-
     protected function getCurrentIndexFullPath(ElementInterface $element): ?string
     {
         if ($indexService = $this->getIndexServiceByElement($element)) {
@@ -385,9 +387,11 @@ class IndexQueueService
         switch ($operation) {
             case IndexQueueOperation::UPDATE->value:
                 $this->doUpdateIndexData($element);
+
                 break;
             case IndexQueueOperation::DELETE->value:
                 $this->doDeleteFromIndex($element);
+
                 break;
         }
 
@@ -398,6 +402,7 @@ class IndexQueueService
 
     /**
      * @return AbstractIndexService|AssetIndexService|DataObjectIndexService
+     *
      * @throws \Exception
      */
     protected function getIndexServiceByElement(ElementInterface $element)
@@ -407,6 +412,7 @@ class IndexQueueService
 
     /**
      * @return AbstractIndexService|AssetIndexService|DataObjectIndexService
+     *
      * @throws \Exception
      */
     protected function getIndexServiceByElementType(string $elementType)
@@ -463,7 +469,7 @@ class IndexQueueService
     {
         if(!in_array($operation, [
             IndexQueueOperation::UPDATE->value,
-            IndexQueueOperation::DELETE->value
+            IndexQueueOperation::DELETE->value,
         ])) {
             throw new \InvalidArgumentException(sprintf('Operation %s not valid', $operation));
         }

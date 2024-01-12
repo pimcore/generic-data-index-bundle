@@ -27,12 +27,14 @@ class IndexUpdateCommand extends AbstractCommand
     use LockableTrait;
 
     const OPTION_CLASS_DEFINITION_ID = 'class-definition-id';
+
     const OPTION_UPDATE_ASSET_INDEX = 'update-asset-index';
+
     const OPTION_RECREATE_INDEX = 'recreate_index';
 
     protected IndexUpdateService $indexUpdateService;
-    protected IndexQueueService $indexQueueService;
 
+    protected IndexQueueService $indexQueueService;
 
     protected function configure()
     {
@@ -126,5 +128,4 @@ class IndexUpdateCommand extends AbstractCommand
     {
         $this->indexQueueService = $indexQueueService;
     }
-
 }

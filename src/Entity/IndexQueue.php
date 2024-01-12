@@ -1,9 +1,18 @@
 <?php
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-
 
 #[ORM\Entity]
 #[ORM\Table(name: self::TABLE)]
@@ -13,20 +22,20 @@ class IndexQueue
     const TABLE = 'generic_data_index_queue';
 
     #[ORM\Id()]
-    #[ORM\Column(type: "integer")]
+    #[ORM\Column(type: 'integer')]
     private int $elementId;
 
     #[ORM\Id()]
-    #[ORM\Column(type: "string", length: 20)]
+    #[ORM\Column(type: 'string', length: 20)]
     private string $elementType;
 
-    #[ORM\Column(type: "string", length: 10)]
+    #[ORM\Column(type: 'string', length: 10)]
     private string $elementIndexName;
 
-    #[ORM\Column(type: "string", length: 20)]
+    #[ORM\Column(type: 'string', length: 20)]
     private string $operation;
 
-    #[ORM\Column(type: "integer")]
+    #[ORM\Column(type: 'integer')]
     private int $operationTime;
 
     public function getElementId(): int
@@ -37,6 +46,7 @@ class IndexQueue
     public function setElementId(int $elementId): IndexQueue
     {
         $this->elementId = $elementId;
+
         return $this;
     }
 
@@ -48,6 +58,7 @@ class IndexQueue
     public function setElementType(string $elementType): IndexQueue
     {
         $this->elementType = $elementType;
+
         return $this;
     }
 
@@ -59,6 +70,7 @@ class IndexQueue
     public function setElementIndexName(string $elementIndexName): IndexQueue
     {
         $this->elementIndexName = $elementIndexName;
+
         return $this;
     }
 
@@ -70,6 +82,7 @@ class IndexQueue
     public function setOperation(string $operation): IndexQueue
     {
         $this->operation = $operation;
+
         return $this;
     }
 
@@ -81,7 +94,7 @@ class IndexQueue
     public function setOperationTime(int $operationTime): IndexQueue
     {
         $this->operationTime = $operationTime;
+
         return $this;
     }
-
 }

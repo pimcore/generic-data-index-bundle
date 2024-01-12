@@ -14,11 +14,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService;
-use Pimcore\Bundle\PortalEngineBundle\Model\Configuration\DataPool\Field\ExportableField;
-use Pimcore\Bundle\PortalEngineBundle\Model\Configuration\DataPool\Field\FilterableField;
-use Pimcore\Bundle\PortalEngineBundle\Model\Configuration\DataPool\Field\ListableField;
-use Pimcore\Bundle\PortalEngineBundle\Model\Configuration\DataPool\Field\SortableField;
-use Pimcore\Bundle\PortalEngineBundle\Service\DataObject\SearchIndexFieldDefinitionService;
 use Pimcore\Localization\LocaleServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\Concrete;
@@ -26,8 +21,8 @@ use Symfony\Contracts\Service\Attribute\Required;
 
 class LocalizedFieldsAdapter extends DefaultAdapter
 {
-
     protected LocaleServiceInterface $localeService;
+
     /** @var Data\Localizedfields */
     protected Data $fieldDefinition;
 
@@ -37,6 +32,7 @@ class LocalizedFieldsAdapter extends DefaultAdapter
 
     /**
      * @param LocaleServiceInterface $localeService
+     *
      * @required
      *
      * @throws \Exception
@@ -62,7 +58,7 @@ class LocalizedFieldsAdapter extends DefaultAdapter
                 list($mappingKey, $mappingStructure) = $fieldDefinitionAdapter->getOpenSearchMapping();
 
                 $mapping[$mappingKey] = [
-                    'properties' => []
+                    'properties' => [],
                 ];
 
                 foreach ($languages as $language) {

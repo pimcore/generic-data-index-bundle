@@ -12,9 +12,9 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService;
 use Pimcore\Bundle\PortalEngineBundle\Enum\Index\Statistics\ElasticSearchAlias;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\ClassDefinition\Listing;
 
@@ -26,8 +26,7 @@ class IndexUpdateService
         protected AssetIndexService $assetIndexService,
         protected DataObjectIndexService $dataObjectIndexService,
         protected IndexQueueService $indexQueueService,
-    )
-    {
+    ) {
 
     }
 
@@ -78,9 +77,9 @@ class IndexUpdateService
             ->indexQueueService
             ->updateDataObjects($classDefinition);
 
-        #@todo $this
-        #    ->dataObjectIndexService
-        #    ->addClassDefinitionToAlias($classDefinition, ElasticSearchAlias::CLASS_DEFINITIONS);
+        //@todo $this
+        //    ->dataObjectIndexService
+        //    ->addClassDefinitionToAlias($classDefinition, ElasticSearchAlias::CLASS_DEFINITIONS);
 
         return $this;
     }
@@ -97,7 +96,6 @@ class IndexUpdateService
         $this
             ->assetIndexService
             ->updateMapping($this->reCreateIndex);
-
 
         //add assets to update queue
         $this

@@ -12,10 +12,6 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
-use Carbon\Carbon;
-use Pimcore\Localization\IntlFormatter;
-
 class DateTimeAdapter extends DateAdapter
 {
-
 }

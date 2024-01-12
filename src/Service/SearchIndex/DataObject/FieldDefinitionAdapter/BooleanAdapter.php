@@ -23,7 +23,7 @@ class BooleanAdapter extends DefaultAdapter
             $this->fieldDefinition->getName(),
             [
                 'type' => AttributeType::BOOLEAN->value,
-            ]
+            ],
         ];
     }
 

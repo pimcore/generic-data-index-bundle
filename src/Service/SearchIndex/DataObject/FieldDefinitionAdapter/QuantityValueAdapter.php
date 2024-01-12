@@ -13,7 +13,6 @@
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
-use Pimcore\Bundle\PortalEngineBundle\Enum\ElasticSearchFields;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Data\InputQuantityValue;
 use Pimcore\Model\DataObject\Data\QuantityValue;
@@ -31,10 +30,10 @@ class QuantityValueAdapter extends NumericAdapter
                     ],
                     'unitAbbrevation' => [
                         'type' => AttributeType::TEXT->value,
-                    ]
-                ]
+                    ],
+                ],
 
-            ]
+            ],
         ];
     }
 
@@ -45,7 +44,7 @@ class QuantityValueAdapter extends NumericAdapter
         if ($data instanceof InputQuantityValue || $data instanceof QuantityValue) {
             return [
                 'value' => (float)$data->getValue(),
-                'unitAbbreviation' => $data->getUnit() ? trim($data->getUnit()->getAbbreviation()) : ''
+                'unitAbbreviation' => $data->getUnit() ? trim($data->getUnit()->getAbbreviation()) : '',
             ];
         }
 

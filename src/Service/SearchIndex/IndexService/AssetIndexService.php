@@ -14,7 +14,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\PortalEngineBundle\Event\Asset\ExtractMappingEvent;
-use Pimcore\Bundle\PortalEngineBundle\Service\Asset\SearchIndexFieldDefinitionService;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
@@ -75,18 +74,18 @@ class AssetIndexService extends AbstractIndexService
         $mappingProperties = $this->extractSystemFieldsMapping();
         $mappingProperties[FieldCategory::CUSTOM_FIELDS->value] = [];
 
-        #$extractMappingEvent = new ExtractMappingEvent($mappingProperties[FieldCategory::CUSTOM_FIELDS->value]);
-        #$this->eventDispatcher->dispatch($extractMappingEvent);
-        #$mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] = $extractMappingEvent->getCustomFieldsMapping();
+        //$extractMappingEvent = new ExtractMappingEvent($mappingProperties[FieldCategory::CUSTOM_FIELDS->value]);
+        //$this->eventDispatcher->dispatch($extractMappingEvent);
+        //$mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] = $extractMappingEvent->getCustomFieldsMapping();
 
         $mappingParams = [
             'index' => $this->getAssetIndexName(),
             'body' => [
                 '_source' => [
-                    'enabled' => true
+                    'enabled' => true,
                 ],
-                'properties' => $mappingProperties
-            ]
+                'properties' => $mappingProperties,
+            ],
         ];
 
         return $mappingParams;
@@ -128,6 +127,7 @@ class AssetIndexService extends AbstractIndexService
 
     /**
      * @param Asset $element
+     *
      * @return array
      */
     protected function getIndexData(ElementInterface $element): array
@@ -137,9 +137,9 @@ class AssetIndexService extends AbstractIndexService
         $customFields = [];
 
         //dispatch event before building checksum
-        #$updateIndexDataEvent = new UpdateIndexDataEvent($asset, $customFields);
-        #$this->eventDispatcher->dispatch($updateIndexDataEvent);
-        #$customFields = $updateIndexDataEvent->getCustomFields();
+        //$updateIndexDataEvent = new UpdateIndexDataEvent($asset, $customFields);
+        //$this->eventDispatcher->dispatch($updateIndexDataEvent);
+        //$customFields = $updateIndexDataEvent->getCustomFields();
 
         $checksum = crc32(json_encode([$systemFields, $standardFields, $customFields]));
         $systemFields[FieldCategory\SystemField::CHECKSUM->value] = $checksum;
@@ -147,7 +147,7 @@ class AssetIndexService extends AbstractIndexService
         return [
             FieldCategory::SYSTEM_FIELDS->value => $systemFields,
             FieldCategory::STANDARD_FIELDS->value => $standardFields,
-            FieldCategory::CUSTOM_FIELDS->value => $customFields
+            FieldCategory::CUSTOM_FIELDS->value => $customFields,
         ];
     }
 
@@ -169,12 +169,12 @@ class AssetIndexService extends AbstractIndexService
             FieldCategory\SystemField::PATH_LEVELS->value => $this->extractPathLevels($asset),
             FieldCategory\SystemField::TAGS->value => $this->extractTagIds($asset),
             FieldCategory\SystemField::MIME_TYPE->value => $asset->getMimetype(),
-            #FieldCategory\SystemField::THUMBNAIL->value => $this->thumbnailService->getThumbnailPath($asset, ImageThumbnails::ELEMENT_TEASER),
-            #FieldCategory\SystemField::COLLECTIONS->value => $this->getCollectionIdsByElement($asset),
-            #FieldCategory\SystemField::PUBLIC_SHARES->value => $this->getPublicShareIdsByElement($asset),
+            //FieldCategory\SystemField::THUMBNAIL->value => $this->thumbnailService->getThumbnailPath($asset, ImageThumbnails::ELEMENT_TEASER),
+            //FieldCategory\SystemField::COLLECTIONS->value => $this->getCollectionIdsByElement($asset),
+            //FieldCategory\SystemField::PUBLIC_SHARES->value => $this->getPublicShareIdsByElement($asset),
             FieldCategory\SystemField::USER_OWNER->value => $asset->getUserOwner(),
             FieldCategory\SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value => $this->workflowService->hasWorkflowWithPermissions($asset),
-            FieldCategory\SystemField::FILE_SIZE->value => $asset->getFileSize()
+            FieldCategory\SystemField::FILE_SIZE->value => $asset->getFileSize(),
         ];
     }
 
@@ -199,8 +199,8 @@ class AssetIndexService extends AbstractIndexService
     {
         if($data instanceof ElementInterface) {
             return [
-                "type" => Service::getElementType($data),
-                "id" => $data->getId(),
+                'type' => Service::getElementType($data),
+                'id' => $data->getId(),
             ];
         }
 

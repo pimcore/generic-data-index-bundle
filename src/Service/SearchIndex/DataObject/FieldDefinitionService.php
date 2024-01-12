@@ -16,7 +16,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDe
 use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
-
 class FieldDefinitionService
 {
     public function __construct(protected ServiceLocator $adapterLocator)

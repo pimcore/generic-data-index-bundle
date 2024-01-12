@@ -23,8 +23,7 @@ class SearchIndexConfigService
         protected string $indexPrefix,
         protected array $indexSettings,
         protected array $searchSettings,
-    )
-    {
+    ) {
     }
 
     /**

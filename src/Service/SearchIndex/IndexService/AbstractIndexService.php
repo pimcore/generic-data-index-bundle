@@ -14,9 +14,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Opensearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowService;
@@ -35,18 +35,16 @@ abstract class AbstractIndexService implements IndexServiceInterface
 
     protected bool $performIndexRefresh = false;
 
-
     protected Client $openSearchClient;
 
     public function __construct(
         protected EventDispatcherInterface $eventDispatcher,
         protected SearchIndexConfigService $searchIndexConfigService,
-        protected LanguageService          $languageService,
-        protected WorkflowService          $workflowService,
-        protected OpenSearchService        $openSearchService,
-        protected BulkOperationService     $bulkOperationService,
-    )
-    {
+        protected LanguageService $languageService,
+        protected WorkflowService $workflowService,
+        protected OpenSearchService $openSearchService,
+        protected BulkOperationService $bulkOperationService,
+    ) {
         $this->openSearchClient = $this->openSearchService->getOpenSearchClient();
     }
 
@@ -82,11 +80,11 @@ abstract class AbstractIndexService implements IndexServiceInterface
                 'query' => [
                     'term' => [
                         ElasticSearchFields::SYSTEM_FIELDS . '.' . ElasticSearchFields::SYSTEM_FIELDS_FULL_PATH
-                        => $oldFullPath
+                        => $oldFullPath,
                     ],
                 ],
                 'size' => 0,
-            ]
+            ],
         ]);
 
         $countResult = $countResult['hits']['total'] ?? 0;
@@ -141,16 +139,16 @@ abstract class AbstractIndexService implements IndexServiceInterface
                         'newPath' => $element->getRealFullPath() . '/',
                         'changePathLevel' => count($pathLevels) - 1,
                         'newPathLevelName' => end($pathLevels),
-                    ]
+                    ],
                 ],
 
                 'query' => [
                     'term' => [
                         ElasticSearchFields::SYSTEM_FIELDS . '.' . ElasticSearchFields::SYSTEM_FIELDS_FULL_PATH
-                        => $oldFullPath
+                        => $oldFullPath,
                     ],
-                ]
-            ]
+                ],
+            ],
         ];
 
         $this->openSearchClient->updateByQuery($query);
@@ -258,6 +256,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
     }
 
     abstract protected function getIndexName(ElementInterface $element): string;
+
     abstract protected function getIndexData(ElementInterface $element): array;
 
     public function doUpdateIndexData(ElementInterface $element): self
@@ -267,7 +266,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
 
         $params = [
             'index' => $index,
-            'id' => $element->getId()
+            'id' => $element->getId(),
         ];
 
         try {
@@ -299,7 +298,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
             'delete' => [
                 '_index' => $this->searchIndexConfigService->getIndexName($elementIndexName),
                 '_id' => $elementId,
-            ]
+            ],
         ]);
 
         $this->logger->info('Add deletion of item ID ' . $elementId . ' from ' . $elementIndexName . ' index to bulk.');

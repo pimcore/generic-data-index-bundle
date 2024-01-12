@@ -22,13 +22,13 @@ class LanguageMultiSelectAdapter extends MultiSelectAdapter
 
     /**
      * @param LanguageNameService $languageNameService
+     *
      * @required
      */
     public function setLanguageNameService(LanguageNameService $languageNameService): void
     {
         $this->languageNameService = $languageNameService;
     }
-
 
     protected function doGetIndexDataValue(Concrete $object): mixed
     {

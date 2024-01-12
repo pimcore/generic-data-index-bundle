@@ -18,30 +18,31 @@ use Pimcore\Model\DataObject\Concrete;
 class CountryMultiSelectAdapter extends MultiSelectAdapter
 {
     /** @var CountryNameService */
-   # protected $countryNameService;
+    // protected $countryNameService;
 
     /**
      * @param CountryNameService $countryNameService
+     *
      * @required
      */
-    #public function setCountryNameService(CountryNameService $countryNameService): void
-    #{
-    #    $this->countryNameService = $countryNameService;
-    #}
+    //public function setCountryNameService(CountryNameService $countryNameService): void
+    //{
+    //    $this->countryNameService = $countryNameService;
+    //}
 
-    #protected function doGetIndexDataValue(Concrete $object): mixed
-    #{
-    #    /** @var array $values */
-    #    $values = [];
-    #    /** @var array $countryCodes */
-    #    $countryCodes = $this->doGetRawIndexDataValue($object);
+    //protected function doGetIndexDataValue(Concrete $object): mixed
+    //{
+    //    /** @var array $values */
+    //    $values = [];
+    //    /** @var array $countryCodes */
+    //    $countryCodes = $this->doGetRawIndexDataValue($object);
 
-        #if (is_array($countryCodes)) {
-        #    foreach ($countryCodes as $countryCode) {
-        #        $values[] = $this->countryNameService->getCountryName($countryCode);
-        #    }
-        #}
+    //if (is_array($countryCodes)) {
+    //    foreach ($countryCodes as $countryCode) {
+    //        $values[] = $this->countryNameService->getCountryName($countryCode);
+    //    }
+    //}
 
-        #return $values;
-    #}
+    //return $values;
+    //}
 }

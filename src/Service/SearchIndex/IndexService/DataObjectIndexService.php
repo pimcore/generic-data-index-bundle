@@ -36,6 +36,7 @@ class DataObjectIndexService extends AbstractIndexService
     protected function getIndexName(ElementInterface $element): string
     {
         $classDefinitionName = $element->getClassName();
+
         return $this->searchIndexConfigService->getIndexName($classDefinitionName);
     }
 
@@ -52,7 +53,6 @@ class DataObjectIndexService extends AbstractIndexService
         return $indexName . '-' . ($currentIndexVersion === 'even' ? 'even' : 'odd');
     }
 
-
     public function createIndex(ClassDefinition $classDefinition): DataObjectIndexService
     {
         $fullIndexName = $this->getCurrentFullIndexName($classDefinition);
@@ -65,7 +65,6 @@ class DataObjectIndexService extends AbstractIndexService
         return $this;
     }
 
-
     public function deleteIndex(ClassDefinition $classDefinition): DataObjectIndexService
     {
         $this->openSearchService
@@ -74,7 +73,6 @@ class DataObjectIndexService extends AbstractIndexService
 
         return $this;
     }
-
 
     public function extractMapping(ClassDefinition $classDefinition)
     {
@@ -101,18 +99,18 @@ class DataObjectIndexService extends AbstractIndexService
 
         $mappingProperties[FieldCategory::CUSTOM_FIELDS->value] = [];
 
-        #$extractMappingEvent = new ExtractMappingEvent($classDefinition, $mappingProperties[FieldCategory::CUSTOM_FIELDS->value]);
-        #$this->eventDispatcher->dispatch($extractMappingEvent);
-        #$mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] = $extractMappingEvent->getCustomFieldsMapping();
+        //$extractMappingEvent = new ExtractMappingEvent($classDefinition, $mappingProperties[FieldCategory::CUSTOM_FIELDS->value]);
+        //$this->eventDispatcher->dispatch($extractMappingEvent);
+        //$mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] = $extractMappingEvent->getCustomFieldsMapping();
 
         $mappingParams = [
             'index' => $this->searchIndexConfigService->getIndexName($classDefinition->getName()),
             'body' => [
                 '_source' => [
-                    'enabled' => true
+                    'enabled' => true,
                 ],
-                'properties' => $mappingProperties
-            ]
+                'properties' => $mappingProperties,
+            ],
         ];
 
         return $mappingParams;
@@ -188,9 +186,9 @@ class DataObjectIndexService extends AbstractIndexService
         }
 
         //dispatch event before building checksum
-        #$updateIndexDataEvent = new UpdateIndexDataEvent($dataObject, $customFields);
-        #$this->eventDispatcher->dispatch($updateIndexDataEvent);
-        #$customFields = $updateIndexDataEvent->getCustomFields();
+        //$updateIndexDataEvent = new UpdateIndexDataEvent($dataObject, $customFields);
+        //$this->eventDispatcher->dispatch($updateIndexDataEvent);
+        //$customFields = $updateIndexDataEvent->getCustomFields();
 
         $checksum = crc32(json_encode([$systemFields, $standardFields, $customFields]));
         $systemFields[FieldCategory\SystemField::CHECKSUM->value] = $checksum;
@@ -198,7 +196,7 @@ class DataObjectIndexService extends AbstractIndexService
         return [
             FieldCategory::SYSTEM_FIELDS->value => $systemFields,
             FieldCategory::STANDARD_FIELDS->value => $standardFields,
-            FieldCategory::CUSTOM_FIELDS->value => $customFields
+            FieldCategory::CUSTOM_FIELDS->value => $customFields,
         ];
     }
 
@@ -213,7 +211,7 @@ class DataObjectIndexService extends AbstractIndexService
         if (!$this->existsAliasForClassDefinition($classDefinition, $aliasName)) {
             $response = $this->openSearchClient->indices()->putAlias([
                 'name' => $this->prefixAliasName($aliasName),
-                'index' => $this->getCurrentFullIndexName($classDefinition)
+                'index' => $this->getCurrentFullIndexName($classDefinition),
             ]);
             $this->logger->debug(json_encode($response));
         }
@@ -232,7 +230,7 @@ class DataObjectIndexService extends AbstractIndexService
         if ($this->existsAliasForClassDefinition($classDefinition, $aliasName)) {
             $response = $this->openSearchClient->indices()->deleteAlias([
                 'name' => $this->prefixAliasName($aliasName),
-                'index' => $this->getCurrentFullIndexName($classDefinition)
+                'index' => $this->getCurrentFullIndexName($classDefinition),
             ]);
             $this->logger->debug(json_encode($response));
         }
@@ -250,7 +248,7 @@ class DataObjectIndexService extends AbstractIndexService
     {
         return $this->openSearchClient->indices()->existsAlias([
             'name' => $this->prefixAliasName($aliasName),
-            'index' => $this->getCurrentFullIndexName($classDefinition)
+            'index' => $this->getCurrentFullIndexName($classDefinition),
         ]);
     }
 
@@ -278,11 +276,11 @@ class DataObjectIndexService extends AbstractIndexService
             FieldCategory\SystemField::PATH_LEVELS->value => $this->extractPathLevels($dataObject),
             FieldCategory\SystemField::TAGS->value => $this->extractTagIds($dataObject),
             FieldCategory\SystemField::CLASS_NAME->value => $dataObject->getClassName(),
-            #FieldCategory\SystemField::NAME => $this->nameExtractorService->extractAllLanguageNames($dataObject),
-            #FieldCategory\SystemField::THUMBNAIL => $this->mainImageExtractorService->extractThumbnail($dataObject),
-            #FieldCategory\SystemField::COLLECTIONS => $this->getCollectionIdsByElement($dataObject),
-            #FieldCategory\SystemField::PUBLIC_SHARES => $this->getPublicShareIdsByElement($dataObject),
-            FieldCategory\SystemField::USER_OWNER->value => $dataObject->getUserOwner()
+            //FieldCategory\SystemField::NAME => $this->nameExtractorService->extractAllLanguageNames($dataObject),
+            //FieldCategory\SystemField::THUMBNAIL => $this->mainImageExtractorService->extractThumbnail($dataObject),
+            //FieldCategory\SystemField::COLLECTIONS => $this->getCollectionIdsByElement($dataObject),
+            //FieldCategory\SystemField::PUBLIC_SHARES => $this->getPublicShareIdsByElement($dataObject),
+            FieldCategory\SystemField::USER_OWNER->value => $dataObject->getUserOwner(),
         ];
     }
 

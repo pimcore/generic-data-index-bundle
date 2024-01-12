@@ -1,18 +1,27 @@
 <?php
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch;
 
 use OpenSearch\Client;
 use OpenSearch\Common\Exceptions\Missing404Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
-use Pimcore\Model\Tool\Email\Log;
-use Psr\Log\LoggerInterface;
 use Psr\Log\LogLevel;
 
 class OpenSearchService
 {
     const INDEX_VERION_ODD = 'odd';
+
     const INDEX_VERION_EVEN = 'even';
 
     use LoggerAwareTrait;
@@ -21,11 +30,10 @@ class OpenSearchService
 
     public function __construct(
         private SearchIndexConfigService $searchIndexConfigService,
-    )
-    {
+    ) {
         $this->openSearchClient = (new \OpenSearch\ClientBuilder())
             ->setHosts(['https://opensearch:9200'])
-            ->setBasicAuthentication('admin','admin')
+            ->setBasicAuthentication('admin', 'admin')
             ->setSSLVerification(false)
             ->build();
     }
@@ -51,7 +59,6 @@ class OpenSearchService
 
         return $this;
     }
-
 
     public function getCurrentIndexVersion(string $indexName): string
     {
@@ -101,7 +108,6 @@ class OpenSearchService
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
     }
 
-
     /**
      * @throws \Exception
      */
@@ -128,7 +134,6 @@ class OpenSearchService
             throw new \Exception('Switching Alias failed for ' . $newIndexName);
         }
 
-
         $this->deleteIndex($oldIndexName);
     }
 
@@ -152,7 +157,7 @@ class OpenSearchService
             $response = $this->openSearchClient->indices()->create(
                 [
                     'index' => $indexName,
-                    'body' => $body
+                    'body' => $body,
                 ]
             );
 
