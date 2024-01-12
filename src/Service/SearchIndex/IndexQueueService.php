@@ -290,6 +290,7 @@ class IndexQueueService
     {
         $indexService = $this->getIndexServiceByElement($element);
         $indexName = $this->searchIndexConfigService->getIndexName($this->getElementIndexName($element));
+
         return $indexService->getCurrentIndexFullPath($element, $indexName);
     }
 
