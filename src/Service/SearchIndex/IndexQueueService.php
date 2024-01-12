@@ -543,7 +543,6 @@ class IndexQueueService
         return $this->performIndexRefresh;
     }
 
-
     public function setPerformIndexRefresh(bool $performIndexRefresh): IndexQueueService
     {
         $this->performIndexRefresh = $performIndexRefresh;
