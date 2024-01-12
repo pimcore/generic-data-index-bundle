@@ -58,20 +58,20 @@ services:
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "multiselect" }
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\CountryAdapter:
-        shared: false
-        tags:
-            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "country" }
+    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\CountryAdapter:
+    #    shared: false
+    #    tags:
+    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "country" }
 
     #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\LanguageAdapter:
     #    shared: false
     #    tags:
     #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "language" }
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\CountryMultiSelectAdapter:
-        shared: false
-        tags:
-            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "countrymultiselect" }
+    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\CountryMultiSelectAdapter:
+    #    shared: false
+    #    tags:
+    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "countrymultiselect" }
 
     #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\LanguageMultiSelectAdapter:
     #    shared: false
