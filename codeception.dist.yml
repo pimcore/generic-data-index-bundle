@@ -1,4 +1,4 @@
-namespace: Pimcore\Bundle\xTemplateBundlex\Tests
+namespace: Pimcore\Bundle\GenericDataIndexBundle\Tests
 bootstrap: _bootstrap.php
 
 settings:

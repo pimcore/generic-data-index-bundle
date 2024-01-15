@@ -33,7 +33,7 @@ class FieldDefinitionService
         if ($this->adapterLocator->has($fieldDefinition->getFieldType())) {
             try {
                 $adapter = $this->adapterLocator->get($fieldDefinition->getFieldType());
-            } catch (NotFoundExceptionInterface|ContainerExceptionInterface) {
+            } catch (ContainerExceptionInterface) {
                 return null;
             }
             $adapter->setFieldDefinition($fieldDefinition);

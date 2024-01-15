@@ -15,7 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\DataObject;
 
 class SelectOptionsService
 {
-    public function getKeyByValue(?string $value, array $options): ?string
+    public static function getKeyByValue(?string $value, array $options): ?string
     {
         if($value === null) {
             return null;
