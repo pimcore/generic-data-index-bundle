@@ -213,6 +213,7 @@ class IndexQueueService
         //bigint field potentially exceed max php int values on 32 bit systems, therefore this is handled as string
         $entry['operationTime'] = (string)$entry['operationTime'];
         $entry['dispatched'] = (string)$entry['dispatched'];
+
         return $this->denormalizer->denormalize($entry, IndexQueue::class);
     }
 
