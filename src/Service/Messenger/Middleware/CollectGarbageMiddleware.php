@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\Middleware;
 
+use Pimcore;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Middleware\MiddlewareInterface;
@@ -25,7 +26,7 @@ class CollectGarbageMiddleware implements MiddlewareInterface
     public function handle(Envelope $envelope, StackInterface $stack): Envelope
     {
         $this->logger->debug('Execute collect garbage middleware');
-        \Pimcore::collectGarbage();
+        Pimcore::collectGarbage();
 
         return $stack->next()->handle($envelope, $stack);
     }

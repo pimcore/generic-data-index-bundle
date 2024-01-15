@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService;
 
+use Exception;
 use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexServiceInterface;
@@ -251,7 +252,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
         try {
             $indexDocument = $this->openSearchClient->get($params);
             $originalChecksum = $indexDocument['_source'][FieldCategory::SYSTEM_FIELDS->value][FieldCategory\SystemField::CHECKSUM->value] ?? -1;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->logger->debug($e->getMessage());
             $originalChecksum = -1;
         }

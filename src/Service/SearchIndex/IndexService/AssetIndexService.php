@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService;
 
+use DateTimeInterface;
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
@@ -100,7 +102,7 @@ class AssetIndexService extends AbstractIndexService
 
         try {
             $this->doUpdateMapping();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->logger->error($e->getMessage());
             $this->openSearchService->reindex($this->getAssetIndexName(), $this->extractMapping());
         }
@@ -150,8 +152,8 @@ class AssetIndexService extends AbstractIndexService
 
         return [
             FieldCategory\SystemField::ID->value => $asset->getId(),
-            FieldCategory\SystemField::CREATION_DATE->value => $date->setTimestamp($asset->getCreationDate())->format(\DateTimeInterface::ATOM),
-            FieldCategory\SystemField::MODIFICATION_DATE->value => $date->setTimestamp($asset->getModificationDate())->format(\DateTimeInterface::ATOM),
+            FieldCategory\SystemField::CREATION_DATE->value => $date->setTimestamp($asset->getCreationDate())->format(DateTimeInterface::ATOM),
+            FieldCategory\SystemField::MODIFICATION_DATE->value => $date->setTimestamp($asset->getModificationDate())->format(DateTimeInterface::ATOM),
             FieldCategory\SystemField::TYPE->value => $asset->getType(),
             FieldCategory\SystemField::KEY->value => $asset->getKey(),
             FieldCategory\SystemField::PATH->value => $asset->getPath(),

@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService;
 
+use DateTimeInterface;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService;
@@ -242,8 +243,8 @@ class DataObjectIndexService extends AbstractIndexService
 
         return [
             FieldCategory\SystemField::ID->value => $dataObject->getId(),
-            FieldCategory\SystemField::CREATION_DATE->value => $date->setTimestamp($dataObject->getCreationDate())->format(\DateTimeInterface::ATOM),
-            FieldCategory\SystemField::MODIFICATION_DATE->value => $date->setTimestamp($dataObject->getModificationDate())->format(\DateTimeInterface::ATOM),
+            FieldCategory\SystemField::CREATION_DATE->value => $date->setTimestamp($dataObject->getCreationDate())->format(DateTimeInterface::ATOM),
+            FieldCategory\SystemField::MODIFICATION_DATE->value => $date->setTimestamp($dataObject->getModificationDate())->format(DateTimeInterface::ATOM),
             FieldCategory\SystemField::PUBLISHED->value => $dataObject->getPublished(),
             FieldCategory\SystemField::TYPE->value => $dataObject->getType(),
             FieldCategory\SystemField::KEY->value => $dataObject->getKey(),

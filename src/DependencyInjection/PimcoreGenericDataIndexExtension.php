@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection;
 
+use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -52,7 +53,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         try {
             $config = $yamlParser->parseFile($filename);
         } catch (ParseException $e) {
-            throw new \InvalidArgumentException(sprintf('The file "%s" does not contain valid YAML.', $filename), 0, $e);
+            throw new InvalidArgumentException(sprintf('The file "%s" does not contain valid YAML.', $filename), 0, $e);
         }
 
         $container->prependExtensionConfig('doctrine', $config['doctrine']);

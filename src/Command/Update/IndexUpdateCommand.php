@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Command\Update;
 
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService;
 use Pimcore\Console\AbstractCommand;
@@ -51,14 +52,14 @@ class IndexUpdateCommand extends AbstractCommand
      * @param InputInterface $input
      * @param OutputInterface $output
      *
-     * @throws \Exception
+     * @throws Exception
      *
      * @return int
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         if (!$this->lock()) {
-            throw new \Exception('The command is already running in another process.');
+            throw new Exception('The command is already running in another process.');
         }
 
         $this->indexUpdateService->setReCreateIndex($input->getOption(self::OPTION_RECREATE_INDEX));
@@ -74,7 +75,7 @@ class IndexUpdateCommand extends AbstractCommand
             try {
                 $classDefinition = ClassDefinition::getById($classDefinitionId);
                 if (!$classDefinition) {
-                    throw new \Exception(sprintf('ClassDefinition with id %s not found', $classDefinitionId));
+                    throw new Exception(sprintf('ClassDefinition with id %s not found', $classDefinitionId));
                 }
 
                 $this->output->writeln(sprintf('<info>Update index and indices for ClassDefinition with id %s</info>', $classDefinitionId), OutputInterface::VERBOSITY_VERBOSE);
@@ -82,7 +83,7 @@ class IndexUpdateCommand extends AbstractCommand
                 $this
                     ->indexUpdateService
                     ->updateClassDefinition($classDefinition);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $this->output->writeln('<error>' . $e->getMessage() . '</error>');
             }
         }
@@ -96,7 +97,7 @@ class IndexUpdateCommand extends AbstractCommand
                 $this
                     ->indexUpdateService
                     ->updateAssets();
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $this->output->writeln($e->getMessage());
             }
         }

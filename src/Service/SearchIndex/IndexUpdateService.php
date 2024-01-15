@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
+use Doctrine\DBAL\Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -33,7 +34,7 @@ class IndexUpdateService
     /**
      * @return $this
      *
-     * @throws \Doctrine\DBAL\Exception
+     * @throws Exception
      */
     public function updateAll(): IndexUpdateService
     {
@@ -78,7 +79,7 @@ class IndexUpdateService
     }
 
     /**
-     * @throws \Doctrine\DBAL\Exception
+     * @throws Exception
      */
     public function updateAssets(): IndexUpdateService
     {

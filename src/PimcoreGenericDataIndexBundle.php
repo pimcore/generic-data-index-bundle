@@ -25,7 +25,7 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements Pim
 
     public function getPath(): string
     {
-        return \dirname(__DIR__);
+        return dirname(__DIR__);
     }
 
     public function build(ContainerBuilder $container)
