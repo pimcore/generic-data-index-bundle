@@ -84,10 +84,14 @@ class OpenSearchService
     public function reindex(string $indexName, array $mapping): void
     {
         $currentIndexVersion = $this->getCurrentIndexVersion($indexName);
+        $newIndexVersion = $currentIndexVersion === self::INDEX_VERION_EVEN
+            ? self::INDEX_VERION_ODD
+            : self::INDEX_VERION_EVEN;
 
         $oldIndexName = $indexName . '-' . $currentIndexVersion;
-        $newIndexName = $indexName . '-' . ($currentIndexVersion === self::INDEX_VERION_EVEN ? self::INDEX_VERION_ODD : self::INDEX_VERION_EVEN);
-        $this->createIndex($indexName . '-' . ($currentIndexVersion === self::INDEX_VERION_EVEN ? self::INDEX_VERION_EVEN : self::INDEX_VERION_EVEN), $mapping);
+        $newIndexName = $indexName . '-' . $newIndexVersion;
+
+        $this->createIndex($newIndexName, $mapping);
 
         $body = [
             'source' => [
