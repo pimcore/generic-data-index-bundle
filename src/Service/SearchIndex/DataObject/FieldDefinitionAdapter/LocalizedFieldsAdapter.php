@@ -54,7 +54,9 @@ class LocalizedFieldsAdapter extends AbstractAdapter
             $languageProperties = [];
 
             foreach ($childFieldDefinitions as $childFieldDefinition) {
-                $fieldDefinitionAdapter = $this->fieldDefinitionService->getFieldDefinitionAdapter($childFieldDefinition);
+                $fieldDefinitionAdapter = $this->fieldDefinitionService->getFieldDefinitionAdapter(
+                    $childFieldDefinition
+                );
                 if ($fieldDefinitionAdapter) {
                     $mappingKey = $fieldDefinitionAdapter->getOpenSearchAttributeName();
 

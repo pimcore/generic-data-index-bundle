@@ -26,8 +26,10 @@ class SearchIndexFieldDefinitionPass implements CompilerPassInterface
     public function process(ContainerBuilder $container): void
     {
         $definitionList = [
-            'pimcore.generic_data_index.object.search_index_field_definition_locator' => CompilerPassTag::DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION->value,
-            //'pimcore.generic_data_index.asset.search_index_field_definition_locator' => CompilerPassTag::DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION->value
+            'pimcore.generic_data_index.object.search_index_field_definition_locator' =>
+                CompilerPassTag::DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION->value,
+            //'pimcore.generic_data_index.asset.search_index_field_definition_locator' =>
+            //  CompilerPassTag::DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION->value
         ];
 
         foreach ($definitionList as $definitionId => $serviceTagName) {

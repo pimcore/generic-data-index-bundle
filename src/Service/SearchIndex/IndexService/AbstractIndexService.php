@@ -172,7 +172,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
         $mappingProperties = [];
 
         $mappingProperties[FieldCategory::SYSTEM_FIELDS->value]['properties'] = array_map(
-            function ($fieldProperties) {
+            static function ($fieldProperties) {
                 $mapping = [
                     'type' => $fieldProperties['type'],
                 ];

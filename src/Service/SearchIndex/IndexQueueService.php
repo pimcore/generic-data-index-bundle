@@ -475,11 +475,6 @@ class IndexQueueService
         };
     }
 
-    /**
-     * @param ElementInterface $element
-     *
-     * @throws UnhandledMatchError
-     */
     protected function getElementIndexName(ElementInterface $element): string
     {
         return match (true) {

@@ -13,8 +13,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\FieldDefinitionAdapterInterface;
-use Pimcore\Model\DataObject\ClassDefinition;
+use Pimcore\{
+    Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\FieldDefinitionAdapterInterface,
+    Model\DataObject\ClassDefinition};
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\NotFoundExceptionInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;

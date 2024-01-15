@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use DateTimeInterface;
 use Exception;
+use OpenSearch\Namespaces\IndicesNamespace;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Model\Asset;
@@ -24,6 +25,14 @@ use Pimcore\Model\Element\Service;
 class AssetIndexService extends AbstractIndexService
 {
     private const NOT_LOCALIZED_KEY = 'default';
+
+    /**
+     * @return IndicesNamespace
+     */
+    private function getIndices(): IndicesNamespace
+    {
+        return $this->openSearchClient->indices();
+    }
 
     protected function getIndexName(ElementInterface $element): string
     {
@@ -79,7 +88,8 @@ class AssetIndexService extends AbstractIndexService
 
         //$extractMappingEvent = new ExtractMappingEvent($mappingProperties[FieldCategory::CUSTOM_FIELDS->value]);
         //$this->eventDispatcher->dispatch($extractMappingEvent);
-        //$mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] = $extractMappingEvent->getCustomFieldsMapping();
+        //$mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] =
+        //  $extractMappingEvent->getCustomFieldsMapping();
 
         $mappingParams = [
             'index' => $this->getAssetIndexName(),
@@ -97,7 +107,7 @@ class AssetIndexService extends AbstractIndexService
     public function updateMapping(bool $forceCreateIndex = false): AssetIndexService
     {
 
-        if ($forceCreateIndex || !$this->openSearchClient->indices()->existsAlias(['name' => $this->getAssetIndexName()])) {
+        if ($forceCreateIndex || !$this->getIndices()->existsAlias(['name' => $this->getAssetIndexName()])) {
             $this->createIndex();
         }
 
@@ -111,17 +121,21 @@ class AssetIndexService extends AbstractIndexService
         return $this;
     }
 
+    /**
+     * @throws \JsonException
+     */
     protected function doUpdateMapping(): AssetIndexService
     {
         $mapping = $this->extractMapping();
-        $response = $this->openSearchClient->indices()->putMapping($mapping);
-        $this->logger->debug(json_encode($response));
+        $response = $this->getIndices()->putMapping($mapping);
+        $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
 
         return $this;
     }
 
     /**
      * @param Asset $element
+     * @throws \JsonException
      */
     protected function getIndexData(ElementInterface $element): array
     {
@@ -134,7 +148,7 @@ class AssetIndexService extends AbstractIndexService
         //$this->eventDispatcher->dispatch($updateIndexDataEvent);
         //$customFields = $updateIndexDataEvent->getCustomFields();
 
-        $checksum = crc32(json_encode([$systemFields, $standardFields, $customFields]));
+        $checksum = crc32(json_encode([$systemFields, $standardFields, $customFields], JSON_THROW_ON_ERROR));
         $systemFields[SystemField::CHECKSUM->value] = $checksum;
 
         return [
@@ -153,8 +167,12 @@ class AssetIndexService extends AbstractIndexService
 
         return [
             SystemField::ID->value => $asset->getId(),
-            SystemField::CREATION_DATE->value => $date->setTimestamp($asset->getCreationDate())->format(DateTimeInterface::ATOM),
-            SystemField::MODIFICATION_DATE->value => $date->setTimestamp($asset->getModificationDate())->format(DateTimeInterface::ATOM),
+            SystemField::CREATION_DATE->value => $date->setTimestamp(
+                $asset->getCreationDate())->format(DateTimeInterface::ATOM
+            ),
+            SystemField::MODIFICATION_DATE->value => $date->setTimestamp(
+                $asset->getModificationDate())->format(DateTimeInterface::ATOM
+            ),
             SystemField::TYPE->value => $asset->getType(),
             SystemField::KEY->value => $asset->getKey(),
             SystemField::PATH->value => $asset->getPath(),
@@ -162,11 +180,15 @@ class AssetIndexService extends AbstractIndexService
             SystemField::PATH_LEVELS->value => $this->extractPathLevels($asset),
             SystemField::TAGS->value => $this->extractTagIds($asset),
             SystemField::MIME_TYPE->value => $asset->getMimetype(),
-            //SystemField::THUMBNAIL->value => $this->thumbnailService->getThumbnailPath($asset, ImageThumbnails::ELEMENT_TEASER),
+            //SystemField::THUMBNAIL->value => $this->thumbnailService->getThumbnailPath(
+            //  $asset,
+            //  ImageThumbnails::ELEMENT_TEASER
+            //),
             //SystemField::COLLECTIONS->value => $this->getCollectionIdsByElement($asset),
             //SystemField::PUBLIC_SHARES->value => $this->getPublicShareIdsByElement($asset),
             SystemField::USER_OWNER->value => $asset->getUserOwner(),
-            SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value => $this->workflowService->hasWorkflowWithPermissions($asset),
+            SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
+                $this->workflowService->hasWorkflowWithPermissions($asset),
             SystemField::FILE_SIZE->value => $asset->getFileSize(),
         ];
     }
@@ -176,7 +198,7 @@ class AssetIndexService extends AbstractIndexService
         $standardFields = [];
 
         foreach($asset->getMetadata() as $metadata) {
-            if(is_array($metadata) && isset($metadata['data']) && isset($metadata['name'])) {
+            if(is_array($metadata) && isset($metadata['data'], $metadata['name'])) {
                 $data = $metadata['data'];
                 $language = $metadata['language'] ?? null;
                 $language = $language ?: self::NOT_LOCALIZED_KEY;
