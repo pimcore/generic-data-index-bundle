@@ -38,12 +38,12 @@ abstract class AbstractIndexService implements IndexServiceInterface
     protected Client $openSearchClient;
 
     public function __construct(
-        protected EventDispatcherInterface $eventDispatcher,
-        protected SearchIndexConfigService $searchIndexConfigService,
-        protected LanguageService $languageService,
-        protected WorkflowService $workflowService,
-        protected OpenSearchService $openSearchService,
-        protected BulkOperationService $bulkOperationService,
+        protected readonly EventDispatcherInterface $eventDispatcher,
+        protected readonly SearchIndexConfigService $searchIndexConfigService,
+        protected readonly LanguageService $languageService,
+        protected readonly WorkflowService $workflowService,
+        protected readonly OpenSearchService $openSearchService,
+        protected readonly BulkOperationService $bulkOperationService,
     ) {
         $this->openSearchClient = $this->openSearchService->getOpenSearchClient();
     }

@@ -21,14 +21,11 @@ use Symfony\Component\Messenger\MessageBusInterface;
 #[AsMessageHandler]
 class IndexUpdateQueueHandler
 {
-    protected IndexQueueService $indexQueueService;
-
-    protected MessageBusInterface $messageBus;
-
-    public function __construct(IndexQueueService $indexQueueService, MessageBusInterface $messageBus)
+    public function __construct(
+        protected readonly IndexQueueService $indexQueueService,
+        protected readonly MessageBusInterface $messageBus
+    )
     {
-        $this->indexQueueService = $indexQueueService;
-        $this->messageBus = $messageBus;
     }
 
     public function __invoke(IndexUpdateQueueMessage $message)

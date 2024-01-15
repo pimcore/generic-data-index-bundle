@@ -30,7 +30,7 @@ class OpenSearchService
     private Client $openSearchClient;
 
     public function __construct(
-        private SearchIndexConfigService $searchIndexConfigService,
+        private readonly SearchIndexConfigService $searchIndexConfigService,
     ) {
         $this->openSearchClient = (new \OpenSearch\ClientBuilder())
             ->setHosts(['https://opensearch:9200'])

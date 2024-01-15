@@ -21,9 +21,9 @@ class SearchIndexConfigService
     use LoggerAwareTrait;
 
     public function __construct(
-        protected string $indexPrefix,
-        protected array $indexSettings,
-        protected array $searchSettings,
+        protected readonly string $indexPrefix,
+        protected readonly array $indexSettings,
+        protected readonly array $searchSettings,
     ) {
     }
 

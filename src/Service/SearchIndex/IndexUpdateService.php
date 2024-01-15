@@ -23,9 +23,9 @@ class IndexUpdateService
     protected bool $reCreateIndex = false;
 
     public function __construct(
-        protected AssetIndexService $assetIndexService,
-        protected DataObjectIndexService $dataObjectIndexService,
-        protected IndexQueueService $indexQueueService,
+        protected readonly AssetIndexService $assetIndexService,
+        protected readonly DataObjectIndexService $dataObjectIndexService,
+        protected readonly IndexQueueService $indexQueueService,
     ) {
 
     }

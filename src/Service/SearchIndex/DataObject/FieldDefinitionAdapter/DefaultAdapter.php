@@ -25,7 +25,7 @@ class DefaultAdapter implements FieldDefinitionAdapterInterface
     protected Data $fieldDefinition;
 
     public function __construct(
-        protected SearchIndexConfigService $searchIndexConfigService,
+        protected readonly SearchIndexConfigService $searchIndexConfigService,
     ) {
     }
 

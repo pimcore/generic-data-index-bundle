@@ -21,7 +21,7 @@ class BulkOperationService
 
     private array $bulkOperationData = [];
 
-    public function __construct(private OpenSearchService $openSearchService)
+    public function __construct(private readonly OpenSearchService $openSearchService)
     {
     }
 

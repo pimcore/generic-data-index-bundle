@@ -47,15 +47,15 @@ class IndexQueueService
     protected bool $performIndexRefresh = false;
 
     public function __construct(
-        private Connection $connection,
-        private AssetIndexService $assetIndexService,
-        private DataObjectIndexService $dataObjectIndexService,
-        private SearchIndexConfigService $searchIndexConfigService,
-        private OpenSearchService $openSearchService,
-        private BulkOperationService $bulkOperationService,
-        private MessageBusInterface $messageBus,
-        private DenormalizerInterface $denormalizer,
-        private TimeService $timeService,
+        private readonly Connection $connection,
+        private readonly AssetIndexService $assetIndexService,
+        private readonly DataObjectIndexService $dataObjectIndexService,
+        private readonly SearchIndexConfigService $searchIndexConfigService,
+        private readonly OpenSearchService $openSearchService,
+        private readonly BulkOperationService $bulkOperationService,
+        private readonly MessageBusInterface $messageBus,
+        private readonly DenormalizerInterface $denormalizer,
+        private readonly TimeService $timeService,
     ) {
     }
 

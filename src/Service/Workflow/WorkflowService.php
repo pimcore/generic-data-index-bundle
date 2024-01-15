@@ -21,8 +21,8 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 class WorkflowService
 {
     public function __construct(
-        private Manager $workflowManager,
-        private TokenStorageInterface $tokenStorage
+        private readonly Manager $workflowManager,
+        private readonly TokenStorageInterface $tokenStorage
     ) {
     }
 

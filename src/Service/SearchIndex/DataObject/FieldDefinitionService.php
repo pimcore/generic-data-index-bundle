@@ -19,7 +19,7 @@ use Symfony\Component\DependencyInjection\ServiceLocator;
 
 class FieldDefinitionService
 {
-    public function __construct(protected ServiceLocator $adapterLocator)
+    public function __construct(protected readonly ServiceLocator $adapterLocator)
     {
     }
 
