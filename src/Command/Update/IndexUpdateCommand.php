@@ -87,6 +87,7 @@ class IndexUpdateCommand extends AbstractCommand
      * @param OutputInterface $output
      *
      * @return int
+     *
      * @throws \Doctrine\DBAL\Exception
      * @throws RuntimeException
      */
