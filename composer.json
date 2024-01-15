@@ -1,5 +1,5 @@
 {
-  "name": "pimcore/x-template-name-bundle-x",
+  "name": "pimcore/generic-data-index-bundle",
   "license": "Pimcore Enterprise License (PEL)",
   "type": "pimcore-bundle",
   "description": "Pimcore xTemplate Bundlex",
@@ -34,11 +34,12 @@
     "phpunit/phpunit": "10.2.7",
     "nyholm/psr7": "^1",
     "symfony/phpunit-bridge": "^6",
-    "fakerphp/faker": "^1.23"
+    "fakerphp/faker": "^1.23",
+    "friendsofphp/php-cs-fixer": "^3.4"
   },
   "autoload": {
     "psr-4": {
-      "Pimcore\\Bundle\\xTemplateBundlex\\": "src/",
+      "Pimcore\\Bundle\\GenericDataIndexBundle\\": "src/",
       "Pimcore\\": "core-extension/Pimcore/"
     }
   },

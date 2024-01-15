@@ -1,7 +1,7 @@
 version: '3.0'
 services:
-    php-x-template-bundle-x:
-        image: pimcore/pimcore:php8.2-debug-latest
+    php-generic-data-index-bundle:
+        image: pimcore/pimcore:php8.2-debug-dev
         environment:
             PHP_IDE_CONFIG: serverName=localhost
         volumes:
