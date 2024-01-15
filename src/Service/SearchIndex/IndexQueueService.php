@@ -184,6 +184,7 @@ class IndexQueueService
 
     /**
      * @param IndexQueue[] $entries
+     *
      * @throws \Doctrine\DBAL\Exception
      */
     private function deleteQueueEntries(array $entries): void
@@ -476,6 +477,7 @@ class IndexQueueService
 
     /**
      * @param ElementInterface $element
+     *
      * @throws UnhandledMatchError
      */
     protected function getElementIndexName(ElementInterface $element): string
