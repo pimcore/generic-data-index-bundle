@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 use DateTimeInterface;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
@@ -66,7 +67,7 @@ class AssetIndexService extends AbstractIndexService
     protected function extractSystemFieldsMapping(): array
     {
         $mappingProperties = parent::extractSystemFieldsMapping();
-        $mappingProperties[FieldCategory::SYSTEM_FIELDS->value]['properties'][FieldCategory\SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value] = ['type' => 'boolean'];
+        $mappingProperties[FieldCategory::SYSTEM_FIELDS->value]['properties'][SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value] = ['type' => 'boolean'];
 
         return $mappingProperties;
     }
@@ -134,7 +135,7 @@ class AssetIndexService extends AbstractIndexService
         //$customFields = $updateIndexDataEvent->getCustomFields();
 
         $checksum = crc32(json_encode([$systemFields, $standardFields, $customFields]));
-        $systemFields[FieldCategory\SystemField::CHECKSUM->value] = $checksum;
+        $systemFields[SystemField::CHECKSUM->value] = $checksum;
 
         return [
             FieldCategory::SYSTEM_FIELDS->value => $systemFields,
@@ -151,22 +152,22 @@ class AssetIndexService extends AbstractIndexService
         $date = new \DateTime();
 
         return [
-            FieldCategory\SystemField::ID->value => $asset->getId(),
-            FieldCategory\SystemField::CREATION_DATE->value => $date->setTimestamp($asset->getCreationDate())->format(DateTimeInterface::ATOM),
-            FieldCategory\SystemField::MODIFICATION_DATE->value => $date->setTimestamp($asset->getModificationDate())->format(DateTimeInterface::ATOM),
-            FieldCategory\SystemField::TYPE->value => $asset->getType(),
-            FieldCategory\SystemField::KEY->value => $asset->getKey(),
-            FieldCategory\SystemField::PATH->value => $asset->getPath(),
-            FieldCategory\SystemField::FULL_PATH->value => $asset->getRealFullPath(),
-            FieldCategory\SystemField::PATH_LEVELS->value => $this->extractPathLevels($asset),
-            FieldCategory\SystemField::TAGS->value => $this->extractTagIds($asset),
-            FieldCategory\SystemField::MIME_TYPE->value => $asset->getMimetype(),
-            //FieldCategory\SystemField::THUMBNAIL->value => $this->thumbnailService->getThumbnailPath($asset, ImageThumbnails::ELEMENT_TEASER),
-            //FieldCategory\SystemField::COLLECTIONS->value => $this->getCollectionIdsByElement($asset),
-            //FieldCategory\SystemField::PUBLIC_SHARES->value => $this->getPublicShareIdsByElement($asset),
-            FieldCategory\SystemField::USER_OWNER->value => $asset->getUserOwner(),
-            FieldCategory\SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value => $this->workflowService->hasWorkflowWithPermissions($asset),
-            FieldCategory\SystemField::FILE_SIZE->value => $asset->getFileSize(),
+            SystemField::ID->value => $asset->getId(),
+            SystemField::CREATION_DATE->value => $date->setTimestamp($asset->getCreationDate())->format(DateTimeInterface::ATOM),
+            SystemField::MODIFICATION_DATE->value => $date->setTimestamp($asset->getModificationDate())->format(DateTimeInterface::ATOM),
+            SystemField::TYPE->value => $asset->getType(),
+            SystemField::KEY->value => $asset->getKey(),
+            SystemField::PATH->value => $asset->getPath(),
+            SystemField::FULL_PATH->value => $asset->getRealFullPath(),
+            SystemField::PATH_LEVELS->value => $this->extractPathLevels($asset),
+            SystemField::TAGS->value => $this->extractTagIds($asset),
+            SystemField::MIME_TYPE->value => $asset->getMimetype(),
+            //SystemField::THUMBNAIL->value => $this->thumbnailService->getThumbnailPath($asset, ImageThumbnails::ELEMENT_TEASER),
+            //SystemField::COLLECTIONS->value => $this->getCollectionIdsByElement($asset),
+            //SystemField::PUBLIC_SHARES->value => $this->getPublicShareIdsByElement($asset),
+            SystemField::USER_OWNER->value => $asset->getUserOwner(),
+            SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value => $this->workflowService->hasWorkflowWithPermissions($asset),
+            SystemField::FILE_SIZE->value => $asset->getFileSize(),
         ];
     }
 

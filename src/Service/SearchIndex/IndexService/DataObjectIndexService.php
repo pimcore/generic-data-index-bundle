@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 use DateTimeInterface;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\Concrete;
@@ -186,7 +187,7 @@ class DataObjectIndexService extends AbstractIndexService
         //$customFields = $updateIndexDataEvent->getCustomFields();
 
         $checksum = crc32(json_encode([$systemFields, $standardFields, $customFields]));
-        $systemFields[FieldCategory\SystemField::CHECKSUM->value] = $checksum;
+        $systemFields[SystemField::CHECKSUM->value] = $checksum;
 
         return [
             FieldCategory::SYSTEM_FIELDS->value => $systemFields,
@@ -242,22 +243,22 @@ class DataObjectIndexService extends AbstractIndexService
         $date = new \DateTime();
 
         return [
-            FieldCategory\SystemField::ID->value => $dataObject->getId(),
-            FieldCategory\SystemField::CREATION_DATE->value => $date->setTimestamp($dataObject->getCreationDate())->format(DateTimeInterface::ATOM),
-            FieldCategory\SystemField::MODIFICATION_DATE->value => $date->setTimestamp($dataObject->getModificationDate())->format(DateTimeInterface::ATOM),
-            FieldCategory\SystemField::PUBLISHED->value => $dataObject->getPublished(),
-            FieldCategory\SystemField::TYPE->value => $dataObject->getType(),
-            FieldCategory\SystemField::KEY->value => $dataObject->getKey(),
-            FieldCategory\SystemField::PATH->value => $dataObject->getPath(),
-            FieldCategory\SystemField::FULL_PATH->value => $dataObject->getRealFullPath(),
-            FieldCategory\SystemField::PATH_LEVELS->value => $this->extractPathLevels($dataObject),
-            FieldCategory\SystemField::TAGS->value => $this->extractTagIds($dataObject),
-            FieldCategory\SystemField::CLASS_NAME->value => $dataObject->getClassName(),
-            //FieldCategory\SystemField::NAME => $this->nameExtractorService->extractAllLanguageNames($dataObject),
-            //FieldCategory\SystemField::THUMBNAIL => $this->mainImageExtractorService->extractThumbnail($dataObject),
-            //FieldCategory\SystemField::COLLECTIONS => $this->getCollectionIdsByElement($dataObject),
-            //FieldCategory\SystemField::PUBLIC_SHARES => $this->getPublicShareIdsByElement($dataObject),
-            FieldCategory\SystemField::USER_OWNER->value => $dataObject->getUserOwner(),
+            SystemField::ID->value => $dataObject->getId(),
+            SystemField::CREATION_DATE->value => $date->setTimestamp($dataObject->getCreationDate())->format(DateTimeInterface::ATOM),
+            SystemField::MODIFICATION_DATE->value => $date->setTimestamp($dataObject->getModificationDate())->format(DateTimeInterface::ATOM),
+            SystemField::PUBLISHED->value => $dataObject->getPublished(),
+            SystemField::TYPE->value => $dataObject->getType(),
+            SystemField::KEY->value => $dataObject->getKey(),
+            SystemField::PATH->value => $dataObject->getPath(),
+            SystemField::FULL_PATH->value => $dataObject->getRealFullPath(),
+            SystemField::PATH_LEVELS->value => $this->extractPathLevels($dataObject),
+            SystemField::TAGS->value => $this->extractTagIds($dataObject),
+            SystemField::CLASS_NAME->value => $dataObject->getClassName(),
+            //SystemField::NAME => $this->nameExtractorService->extractAllLanguageNames($dataObject),
+            //SystemField::THUMBNAIL => $this->mainImageExtractorService->extractThumbnail($dataObject),
+            //SystemField::COLLECTIONS => $this->getCollectionIdsByElement($dataObject),
+            //SystemField::PUBLIC_SHARES => $this->getPublicShareIdsByElement($dataObject),
+            SystemField::USER_OWNER->value => $dataObject->getUserOwner(),
         ];
     }
 

@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 use Exception;
 use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
@@ -55,10 +56,10 @@ abstract class AbstractIndexService implements IndexServiceInterface
             [
                 'index' => $indexName,
                 'body' => [
-                    '_source' => [FieldCategory::SYSTEM_FIELDS->value . '.' . FieldCategory\SystemField::FULL_PATH->value],
+                    '_source' => [FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::FULL_PATH->value],
                     'query' => [
                         'term' => [
-                            FieldCategory::SYSTEM_FIELDS->value . '.' . FieldCategory\SystemField::ID->value =>
+                            FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::ID->value =>
                                 $element->getId(),
                         ],
                     ],
@@ -80,7 +81,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
             'body' => [
                 'query' => [
                     'term' => [
-                        FieldCategory::SYSTEM_FIELDS->value . '.' . FieldCategory\SystemField::FULL_PATH->value
+                        FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::FULL_PATH->value
                         => $oldFullPath,
                     ],
                 ],
@@ -145,7 +146,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
 
                 'query' => [
                     'term' => [
-                        FieldCategory::SYSTEM_FIELDS->value . '.' . FieldCategory\SystemField::FULL_PATH->value
+                        FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::FULL_PATH->value
                         => $oldFullPath,
                     ],
                 ],
@@ -251,7 +252,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
 
         try {
             $indexDocument = $this->openSearchClient->get($params);
-            $originalChecksum = $indexDocument['_source'][FieldCategory::SYSTEM_FIELDS->value][FieldCategory\SystemField::CHECKSUM->value] ?? -1;
+            $originalChecksum = $indexDocument['_source'][FieldCategory::SYSTEM_FIELDS->value][SystemField::CHECKSUM->value] ?? -1;
         } catch (Exception $e) {
             $this->logger->debug($e->getMessage());
             $originalChecksum = -1;
@@ -259,7 +260,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
 
         $indexData = $this->getIndexData($element);
 
-        if ($indexData[FieldCategory::SYSTEM_FIELDS->value][FieldCategory\SystemField::CHECKSUM->value] !== $originalChecksum) {
+        if ($indexData[FieldCategory::SYSTEM_FIELDS->value][SystemField::CHECKSUM->value] !== $originalChecksum) {
 
             $this->bulkOperationService->add(['update' => ['_index' => $index, '_id' => $element->getId()]]);
             $this->bulkOperationService->add(['doc' => $indexData, 'doc_as_upsert' => true]);
