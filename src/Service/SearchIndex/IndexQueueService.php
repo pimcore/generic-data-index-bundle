@@ -524,4 +524,10 @@ class IndexQueueService
 
         $progressBar->finish();
     }
+
+    public function commit(): IndexQueueService
+    {
+        $this->bulkOperationService->commit();
+        return $this;
+    }
 }
