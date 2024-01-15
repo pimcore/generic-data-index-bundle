@@ -32,6 +32,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
 {
     /**
      * {@inheritdoc}
+     *
      * @throws \Exception
      */
     public function load(array $configs, ContainerBuilder $container): void
@@ -48,6 +49,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
     public function prepend(ContainerBuilder $container): void
     {
         $filename = __DIR__ . '/../../config/doctrine.yaml';
+
         try {
             $config = Yaml::parseFile($filename);
         } catch (ParseException $e) {
