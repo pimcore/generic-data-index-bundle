@@ -28,7 +28,7 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements Pim
         return dirname(__DIR__);
     }
 
-    public function build(ContainerBuilder $container)
+    public function build(ContainerBuilder $container): void
     {
         $container
             ->addCompilerPass(new SearchIndexFieldDefinitionPass());
