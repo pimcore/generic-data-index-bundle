@@ -17,7 +17,7 @@ class SelectOptionsService
 {
     public function getKeyByValue(?string $value, array $options): ?string
     {
-        if(is_null($value)) {
+        if($value === null) {
             return null;
         }
 

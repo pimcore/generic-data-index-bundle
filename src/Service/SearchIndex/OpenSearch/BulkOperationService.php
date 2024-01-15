@@ -36,10 +36,10 @@ class BulkOperationService
     /**
      * @throws RuntimeException
      */
-    public function commit()
+    public function commit(): void
     {
         if(!count($this->bulkOperationData)) {
-            return true;
+            return;
         }
 
         $this->logger->info('Commit bulk to index.');

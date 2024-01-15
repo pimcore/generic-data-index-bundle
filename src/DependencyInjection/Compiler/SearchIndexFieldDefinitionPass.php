@@ -34,7 +34,7 @@ class SearchIndexFieldDefinitionPass implements CompilerPassInterface
             $taggedServices = $container->findTaggedServiceIds($serviceTagName);
 
             $arguments = [];
-            if (sizeof($taggedServices)) {
+            if (count($taggedServices)) {
                 foreach ($taggedServices as $id => $tags) {
                     foreach ($tags as $attributes) {
                         $arguments[$attributes['type']] = new Reference($id);
