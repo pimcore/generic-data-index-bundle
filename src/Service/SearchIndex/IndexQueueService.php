@@ -40,6 +40,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
+use UnhandledMatchError;
 
 class IndexQueueService
 {
@@ -183,6 +184,7 @@ class IndexQueueService
 
     /**
      * @param IndexQueue[] $entries
+     * @throws \Doctrine\DBAL\Exception
      */
     private function deleteQueueEntries(array $entries): void
     {
@@ -218,6 +220,9 @@ class IndexQueueService
         return $this->denormalizer->denormalize($entry, IndexQueue::class);
     }
 
+    /**
+     * @throws \Doctrine\DBAL\Exception
+     */
     public function updateDataObjects(ClassDefinition $classDefinition): IndexQueueService
     {
         $dataObjectTableName = 'object_' . $classDefinition->getId();
@@ -392,18 +397,14 @@ class IndexQueueService
     }
 
     /**
-     * @throws InvalidArgumentException
+     * @throws UnhandledMatchError
      */
     protected function getIndexServiceByElementType(string $elementType): AbstractIndexService|AssetIndexService|DataObjectIndexService
     {
-        switch ($elementType) {
-            case $elementType === ElementType::DATA_OBJECT->value:
-                return $this->dataObjectIndexService;
-            case $elementType === ElementType::ASSET->value:
-                return $this->assetIndexService;
-        }
-
-        throw new InvalidArgumentException('Index service for element type ' . $elementType . ' does not exist.');
+        return match ($elementType) {
+            ElementType::DATA_OBJECT->value => $this->dataObjectIndexService,
+            ElementType::ASSET->value => $this->assetIndexService,
+        };
     }
 
     /**
@@ -452,48 +453,37 @@ class IndexQueueService
     }
 
     /**
-     * @throws InvalidArgumentException
+     * @throws UnhandledMatchError
      */
-    protected function getElement(int $id, string $type): Asset|AbstractObject
+    public function getElement(int $id, string $type): Asset|AbstractObject|null
     {
-        switch ($type) {
-            case ElementType::ASSET->value:
-                return Asset::getById($id);
-            case ElementType::DATA_OBJECT->value:
-                return AbstractObject::getById($id);
-            default:
-                throw new InvalidArgumentException('elementType ' . $type . ' not supported');
-        }
+        return match($type) {
+            ElementType::ASSET->value => Asset::getById($id),
+            ElementType::DATA_OBJECT->value => AbstractObject::getById($id),
+        };
     }
 
     /**
-     * @throws InvalidArgumentException
+     * @throws UnhandledMatchError
      */
     protected function getElementType(ElementInterface $element): string
     {
-        switch ($element) {
-            case $element instanceof AbstractObject:
-                return ElementType::DATA_OBJECT->value;
-            case $element instanceof Asset:
-                return ElementType::ASSET->value;
-            default:
-                throw new InvalidArgumentException('element ' . get_class($element) . ' not supported');
-        }
+        return match (true) {
+            $element instanceof AbstractObject => ElementType::DATA_OBJECT->value,
+            $element instanceof Asset => ElementType::ASSET->value,
+        };
     }
 
     /**
-     * @throws InvalidArgumentException
+     * @param ElementInterface $element
+     * @throws UnhandledMatchError
      */
     protected function getElementIndexName(ElementInterface $element): string
     {
-        switch ($element) {
-            case $element instanceof Concrete:
-                return $element->getClassName();
-            case $element instanceof Asset:
-                return 'asset';
-            default:
-                throw new InvalidArgumentException('element ' . get_class($element) . ' not supported');
-        }
+        return match (true) {
+            $element instanceof Concrete => $element->getClassName(),
+            $element instanceof Asset => 'asset',
+        };
     }
 
     public function isPerformIndexRefresh(): bool
@@ -508,13 +498,16 @@ class IndexQueueService
         return $this;
     }
 
+    /**
+     * @throws \Doctrine\DBAL\Exception
+     */
     public function countQueuedItems(): int
     {
         try {
             return $this->connection->fetchOne(
                 sprintf('SELECT count(*) as count FROM %s', IndexQueue::TABLE)
             ) ?? 0;
-        } catch (TableNotFoundException $exception) {
+        } catch (TableNotFoundException) {
             return 0;
         }
     }
