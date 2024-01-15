@@ -23,11 +23,11 @@ class IndexQueue
 {
     public const TABLE = 'generic_data_index_queue';
 
-    #[ORM\Id()]
+    #[ORM\Id]
     #[ORM\Column(type: 'integer', options: ['unsigned' => true])]
     private int $elementId;
 
-    #[ORM\Id()]
+    #[ORM\Id]
     #[ORM\Column(type: 'string', length: 20)]
     private string $elementType;
 

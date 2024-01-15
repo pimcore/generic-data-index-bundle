@@ -55,7 +55,7 @@ class OpenSearchService
             $this->logger->log($silent ? LogLevel::DEBUG : LogLevel::INFO, "Deleting index $indexName");
             $response = $this->openSearchClient->indices()->delete(['index' => $indexName]);
             $this->logger->debug(json_encode($response));
-        } catch (Missing404Exception $e) {
+        } catch (Missing404Exception) {
             $this->logger->debug('Delete index - index did not exist: ' . $indexName);
         }
 
@@ -68,7 +68,7 @@ class OpenSearchService
             $result = $this->openSearchClient->indices()->getAlias([
                 'name' => $indexName,
             ]);
-        } catch (Missing404Exception $e) {
+        } catch (Missing404Exception) {
             return '';
         }
 
