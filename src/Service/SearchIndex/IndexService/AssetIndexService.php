@@ -135,6 +135,7 @@ class AssetIndexService extends AbstractIndexService
 
     /**
      * @param Asset $element
+     *
      * @throws \JsonException
      */
     protected function getIndexData(ElementInterface $element): array
@@ -169,10 +170,10 @@ class AssetIndexService extends AbstractIndexService
             SystemField::ID->value => $asset->getId(),
             SystemField::CREATION_DATE->value => $date->setTimestamp(
                 $asset->getCreationDate())->format(DateTimeInterface::ATOM
-            ),
+                ),
             SystemField::MODIFICATION_DATE->value => $date->setTimestamp(
                 $asset->getModificationDate())->format(DateTimeInterface::ATOM
-            ),
+                ),
             SystemField::TYPE->value => $asset->getType(),
             SystemField::KEY->value => $asset->getKey(),
             SystemField::PATH->value => $asset->getPath(),
