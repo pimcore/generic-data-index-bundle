@@ -16,13 +16,14 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: self::TABLE)]
+#[ORM\Index(columns: ['dispatched'], name: self::TABLE . '_dispatched')]
 
 class IndexQueue
 {
     const TABLE = 'generic_data_index_queue';
 
     #[ORM\Id()]
-    #[ORM\Column(type: 'integer')]
+    #[ORM\Column(type: 'integer', options: ['unsigned' => true])]
     private int $elementId;
 
     #[ORM\Id()]
@@ -35,8 +36,11 @@ class IndexQueue
     #[ORM\Column(type: 'string', length: 20)]
     private string $operation;
 
-    #[ORM\Column(type: 'integer')]
-    private int $operationTime;
+    #[ORM\Column(type: 'bigint', options: ['unsigned' => true])]
+    private string $operationTime;
+
+    #[ORM\Column(type: 'bigint', options: ['unsigned' => true, 'default' => 0])]
+    private string $dispatched;
 
     public function getElementId(): int
     {
@@ -86,15 +90,25 @@ class IndexQueue
         return $this;
     }
 
-    public function getOperationTime(): int
+    public function getOperationTime(): string
     {
         return $this->operationTime;
     }
 
-    public function setOperationTime(int $operationTime): IndexQueue
+    public function setOperationTime(string $operationTime): IndexQueue
     {
         $this->operationTime = $operationTime;
 
         return $this;
+    }
+
+    public function getDispatched(): string
+    {
+        return $this->dispatched;
+    }
+
+    public function setDispatched(string $dispatched): void
+    {
+        $this->dispatched = $dispatched;
     }
 }

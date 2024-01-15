@@ -16,24 +16,13 @@ class IndexUpdateQueueMessage
 {
     protected array $entries;
 
-    protected string $messageId;
-
-    public function __construct(array $entries, string $messageId)
+    public function __construct(array $entries)
     {
         $this->entries = $entries;
-        $this->messageId = $messageId;
     }
 
     public function getEntries(): array
     {
         return $this->entries;
-    }
-
-    /**
-     * @return string
-     */
-    public function getMessageId(): string
-    {
-        return $this->messageId;
     }
 }

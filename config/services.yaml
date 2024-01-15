@@ -19,6 +19,8 @@ services:
         resource: '../src/MessageHandler'
         tags: [ { name: messenger.message_handler, bus: messenger.bus.pimcore-generic-data-index } ]
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\TimeService: ~
+
 # add more services, or override services that need manual wiring
 #    Pimcore\_generic-data-index-bundle\ExampleClass:
 #        arguments:

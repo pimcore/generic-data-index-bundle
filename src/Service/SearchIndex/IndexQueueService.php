@@ -12,7 +12,6 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
-use Carbon\Carbon;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\TableNotFoundException;
 use Exception;
@@ -25,6 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\Asset
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
@@ -36,7 +36,8 @@ use Pimcore\Model\Element\Tag;
 use Symfony\Component\Console\Helper\ProgressBar;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Serializer\Exception\ExceptionInterface;
+use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
 class IndexQueueService
 {
@@ -52,7 +53,8 @@ class IndexQueueService
         private OpenSearchService $openSearchService,
         private BulkOperationService $bulkOperationService,
         private MessageBusInterface $messageBus,
-        private SerializerInterface $serializer,
+        private DenormalizerInterface $denormalizer,
+        private TimeService $timeService,
     ) {
     }
 
@@ -90,7 +92,7 @@ class IndexQueueService
             } else {
                 $tableName = 'assets';
                 $or = $doIndexElement ? '' : sprintf('id = %s OR', $this->connection->quote($element->getId()));
-                $sql = 'SELECT id, %s, %s, %s, %s FROM %s WHERE %s path LIKE %s';
+                $sql = 'SELECT id, %s, %s, %s, %s, 0 FROM %s WHERE %s path LIKE %s';
                 $selectQuery = sprintf($sql,
                     $this->connection->quote($elementType),
                     $this->connection->quote($this->getElementIndexName($element)),
@@ -103,9 +105,9 @@ class IndexQueueService
             }
 
             if (!$doIndexElement || !($element instanceof Asset) || $element instanceof Asset\Folder) {
-                $this->connection->executeQuery(sprintf('INSERT INTO %s (%s) %s ON DUPLICATE KEY UPDATE operation = VALUES(operation), operationTime = VALUES(operationTime)',
+                $this->connection->executeQuery(sprintf('INSERT INTO %s (%s) %s ON DUPLICATE KEY UPDATE operation = VALUES(operation), operationTime = VALUES(operationTime), dispatched = VALUES(dispatched)',
                     IndexQueue::TABLE,
-                    implode(',', ['elementId', 'elementType', 'elementIndexName', 'operation', 'operationTime']),
+                    implode(',', ['elementId', 'elementType', 'elementIndexName', 'operation', 'operationTime', 'dispatched']),
                     $selectQuery
                 ));
             }
@@ -124,27 +126,20 @@ class IndexQueueService
         return $this;
     }
 
-    /**
-     * @param bool $dispatch
-     * @param int $limit
-     *
-     * @return array
-     */
-    public function getUnhandledIndexQueueEntries(bool $dispatch = false, int $limit = 100000)
+    public function getUnhandledIndexQueueEntries(bool $dispatch = false, int $limit = 100000): array
     {
         $unhandledIndexQueueEntries = [];
 
         try {
             if ($dispatch === true) {
-                $dispatchId = time();
-                $workerId = uniqid();
+                $dispatchId = $this->timeService->getCurrentMillisecondTimestamp();
 
-                $this->connection->executeQuery('UPDATE ' . IndexQueue::TABLE . ' SET dispatched = ?, workerId = ? WHERE (ISNULL(dispatched) OR dispatched < ?) LIMIT ' . intval($limit),
-                    [$dispatchId, $workerId, $dispatchId - 3000]);
+                $this->connection->executeQuery('UPDATE ' . IndexQueue::TABLE . ' SET dispatched = ? WHERE dispatched < ? LIMIT ' . intval($limit),
+                    [$dispatchId, $dispatchId - 60*60*24*1000]);
 
-                $unhandledIndexQueueEntries = $this->connection->executeQuery('SELECT elementId, elementType, elementIndexName, operation, operationTime FROM ' . IndexQueue::TABLE . ' WHERE workerId = ? LIMIT ' . intval($limit), [$workerId])->fetchAllAssociative();
+                $unhandledIndexQueueEntries = $this->connection->executeQuery('SELECT elementId, elementType, elementIndexName, operation, operationTime, dispatched FROM ' . IndexQueue::TABLE . ' WHERE dispatched = ? LIMIT ' . intval($limit), [$dispatchId])->fetchAllAssociative();
             } else {
-                $unhandledIndexQueueEntries = $this->connection->executeQuery('SELECT elementId, elementType, elementIndexName, operation, operationTime FROM ' . IndexQueue::TABLE . ' ORDER BY operationTime LIMIT ' . intval($limit))->fetchAllAssociative();
+                $unhandledIndexQueueEntries = $this->connection->executeQuery('SELECT elementId, elementType, elementIndexName, operation, operationTime, dispatched FROM ' . IndexQueue::TABLE . ' ORDER BY operationTime LIMIT ' . intval($limit))->fetchAllAssociative();
             }
         } catch (Exception $e) {
             $this->logger->info('getUnhandledIndexQueueEntries failed! Error: ' . $e->getMessage());
@@ -209,9 +204,15 @@ class IndexQueueService
         }
     }
 
+    /**
+     * @throws ExceptionInterface
+     */
     public function denormalizeDatabaseEntry(array $entry): IndexQueue
     {
-        return $this->serializer->denormalize($entry, IndexQueue::class);
+        //bigint field potentially exceed max php int values on 32 bit systems, therefore this is handled as string
+        $entry['operationTime'] = (string)$entry['operationTime'];
+        $entry['dispatched'] = (string)$entry['dispatched'];
+        return $this->denormalizer->denormalize($entry, IndexQueue::class);
     }
 
     /**
@@ -223,7 +224,7 @@ class IndexQueueService
     {
         $dataObjectTableName = 'object_' . $classDefinition->getId();
 
-        $selectQuery = sprintf("SELECT oo_id, '%s', '%s', '%s', '%s' FROM %s",
+        $selectQuery = sprintf("SELECT oo_id, '%s', '%s', '%s', '%s', 0 FROM %s",
             ElementType::DATA_OBJECT->value,
             $classDefinition->getName(),
             IndexQueueOperation::UPDATE->value,
@@ -241,7 +242,7 @@ class IndexQueueService
      */
     public function updateAssets()
     {
-        $selectQuery = sprintf("SELECT id, '%s', '%s', '%s', '%s' FROM %s",
+        $selectQuery = sprintf("SELECT id, '%s', '%s', '%s', '%s', 0 FROM %s",
             ElementType::ASSET->value,
             'asset',
             IndexQueueOperation::UPDATE->value,
@@ -259,7 +260,7 @@ class IndexQueueService
     public function updateByTag(Tag $tag)
     {
         //assets
-        $selectQuery = sprintf("SELECT id, '%s', '%s', '%s', '%s' FROM assets where id in (select cid from tags_assignment where ctype='asset' and tagid = %s)",
+        $selectQuery = sprintf("SELECT id, '%s', '%s', '%s', '%s', 0 FROM assets where id in (select cid from tags_assignment where ctype='asset' and tagid = %s)",
             ElementType::ASSET->value,
             'asset',
             IndexQueueOperation::UPDATE->value,
@@ -269,7 +270,7 @@ class IndexQueueService
         $this->updateBySelectQuery($selectQuery);
 
         //data objects
-        $selectQuery = sprintf("SELECT '%s', '%s', '%s', '%s', '%s' FROM objects where %s in (select cid from tags_assignment where ctype='object' and tagid = %s)",
+        $selectQuery = sprintf("SELECT '%s', '%s', '%s', '%s', '%s', 0 FROM objects where %s in (select cid from tags_assignment where ctype='object' and tagid = %s)",
             Service::getVersionDependentDatabaseColumnName('o_id'),
             Service::getVersionDependentDatabaseColumnName('o_className'),
             ElementType::DATA_OBJECT->value,
@@ -316,9 +317,9 @@ class IndexQueueService
      */
     protected function updateBySelectQuery(string $selectQuery)
     {
-        $this->connection->executeQuery(sprintf('INSERT INTO %s (%s) %s ON DUPLICATE KEY UPDATE operation = VALUES(operation), operationTime = VALUES(operationTime)',
+        $this->connection->executeQuery(sprintf('INSERT INTO %s (%s) %s ON DUPLICATE KEY UPDATE operation = VALUES(operation), operationTime = VALUES(operationTime), dispatched = VALUES(dispatched)',
             IndexQueue::TABLE,
-            implode(',', ['elementId', 'elementType', 'elementIndexName', 'operation', 'operationTime']),
+            implode(',', ['elementId', 'elementType', 'elementIndexName', 'operation', 'operationTime', 'dispatched']),
             $selectQuery
         ));
     }
@@ -475,16 +476,9 @@ class IndexQueueService
         }
     }
 
-    /**
-     * Get current timestamp + milliseconds
-     *
-     * @return int
-     */
-    protected function getCurrentQueueTableOperationTime()
+    protected function getCurrentQueueTableOperationTime(): int
     {
-        $carbonNow = Carbon::now();
-
-        return (int)($carbonNow->getTimestamp() . str_pad((string)$carbonNow->milli, 3, '0'));
+        return $this->timeService->getCurrentMillisecondTimestamp();
     }
 
     /**
@@ -565,15 +559,15 @@ class IndexQueueService
 
     public function dispatchQueueMessages(OutputInterface $output)
     {
-        $entries = $this->getUnhandledIndexQueueEntries();
+        $entries = $this->getUnhandledIndexQueueEntries(true);
 
         $progressBar = new ProgressBar($output, count($entries));
         $progressBar->start();
 
         foreach(array_chunk($entries, 400) as $entriesBatch) {
-            $message = new IndexUpdateQueueMessage($entries, uniqid());
+            $message = new IndexUpdateQueueMessage($entries);
             $this->messageBus->dispatch($message);
-            $progressBar->advance(sizeof($entriesBatch));
+            $progressBar->advance(count($entriesBatch));
         }
 
         $progressBar->finish();
