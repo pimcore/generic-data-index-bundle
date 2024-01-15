@@ -136,12 +136,12 @@ class IndexQueueService
             if ($dispatch === true) {
                 $dispatchId = $this->timeService->getCurrentMillisecondTimestamp();
 
-                $this->connection->executeQuery('UPDATE ' . IndexQueue::TABLE . ' SET dispatched = ? WHERE dispatched < ? LIMIT ' . intval($limit),
+                $this->connection->executeQuery('UPDATE ' . IndexQueue::TABLE . ' SET dispatched = ? WHERE dispatched < ? LIMIT ' . $limit,
                     [$dispatchId, $dispatchId - 60*60*24*1000]);
 
-                $unhandledIndexQueueEntries = $this->connection->executeQuery('SELECT elementId, elementType, elementIndexName, operation, operationTime, dispatched FROM ' . IndexQueue::TABLE . ' WHERE dispatched = ? LIMIT ' . intval($limit), [$dispatchId])->fetchAllAssociative();
+                $unhandledIndexQueueEntries = $this->connection->executeQuery('SELECT elementId, elementType, elementIndexName, operation, operationTime, dispatched FROM ' . IndexQueue::TABLE . ' WHERE dispatched = ? LIMIT ' . $limit, [$dispatchId])->fetchAllAssociative();
             } else {
-                $unhandledIndexQueueEntries = $this->connection->executeQuery('SELECT elementId, elementType, elementIndexName, operation, operationTime, dispatched FROM ' . IndexQueue::TABLE . ' ORDER BY operationTime LIMIT ' . intval($limit))->fetchAllAssociative();
+                $unhandledIndexQueueEntries = $this->connection->executeQuery('SELECT elementId, elementType, elementIndexName, operation, operationTime, dispatched FROM ' . IndexQueue::TABLE . ' ORDER BY operationTime LIMIT ' . $limit)->fetchAllAssociative();
             }
         } catch (Exception $e) {
             $this->logger->info('getUnhandledIndexQueueEntries failed! Error: ' . $e->getMessage());
@@ -342,10 +342,10 @@ class IndexQueueService
             /** @var ElementInterface|null $element */
             $element = null;
 
-            if ('object' === $requiredByEntry['type']) {
+            if ($requiredByEntry['type'] === 'object') {
                 $element = AbstractObject::getById($requiredByEntry['id']);
             }
-            if ('asset' === $requiredByEntry['type']) {
+            if ($requiredByEntry['type'] === 'asset') {
                 $element = Asset::getById($requiredByEntry['id']);
             }
             if ($element) {
