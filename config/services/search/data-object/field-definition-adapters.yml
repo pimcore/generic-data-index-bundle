@@ -4,17 +4,23 @@ services:
         autoconfigure: true
         public: false
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\DefaultAdapter:
-        shared: false
-        tags:
-            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "wysiwyg" }
-
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\TextAdapter:
         shared: false
         tags:
-            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "input" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "wysiwyg" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "textarea" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\TextKeywordAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "select" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "multiselect" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "input" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "calculatedValue" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "country" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "countrymultiselect" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "language" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "languagemultiselect" }
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\NumericAdapter:
         shared: false
@@ -26,10 +32,6 @@ services:
         shared: false
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "date" }
-
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\DateTimeAdapter:
-        shared: false
-        tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "datetime" }
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\LocalizedFieldsAdapter:
@@ -48,45 +50,13 @@ services:
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "checkbox" }
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\SelectAdapter:
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\RelationAdapter:
         shared: false
         tags:
-            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "select" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "manyToOneRelation" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "manyToManyObjectRelation" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "manyToManyRelation" }
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\MultiSelectAdapter:
-        shared: false
-        tags:
-            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "multiselect" }
-
-    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\CountryAdapter:
-    #    shared: false
-    #    tags:
-    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "country" }
-
-    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\LanguageAdapter:
-    #    shared: false
-    #    tags:
-    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "language" }
-
-    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\CountryMultiSelectAdapter:
-    #    shared: false
-    #    tags:
-    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "countrymultiselect" }
-
-    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\LanguageMultiSelectAdapter:
-    #    shared: false
-    #    tags:
-    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "languagemultiselect" }
-
-    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\ManyToOneRelationAdapter:
-    #    shared: false
-    #    tags:
-    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "manyToOneRelation" }
-
-    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\ManyToManyObjectRelationAdapter:
-    #    shared: false
-    #    tags:
-    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "manyToManyObjectRelation" }
 
     #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\AdvancedManyToManyRelationAdapter:
     #    shared: false
@@ -97,8 +67,3 @@ services:
     #    shared: false
     #    tags:
     #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "advancedManyToManyObjectRelation" }
-
-    #Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\ManyToManyRelationAdapter:
-    #    shared: false
-    #    tags:
-    #        - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "manyToManyRelation" }

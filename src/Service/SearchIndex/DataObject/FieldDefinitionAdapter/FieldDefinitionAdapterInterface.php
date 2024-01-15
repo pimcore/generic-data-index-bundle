@@ -22,7 +22,7 @@ interface FieldDefinitionAdapterInterface
 
     public function getFieldDefinition(): Data;
 
-    public function getIndexData(Concrete $object): mixed;
-
     public function getOpenSearchMapping(): array;
+
+    public function getOpenSearchAttributeName(): string;
 }

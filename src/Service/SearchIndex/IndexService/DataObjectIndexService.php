@@ -77,22 +77,14 @@ class DataObjectIndexService extends AbstractIndexService
     {
         $mappingProperties = $this->extractSystemFieldsMapping();
 
+       // $standardFeildProperties =
         foreach ($classDefinition->getFieldDefinitions() as $fieldDefinition) {
             if (!$fieldDefinition->getName()) {
                 continue;
             }
             $fieldDefinitionAdapter = $this->fieldDefinitionService->getFieldDefinitionAdapter($fieldDefinition);
             if ($fieldDefinitionAdapter) {
-
-                //localizedfields are nested with other ESMappings
-                if ($fieldDefinition instanceof ClassDefinition\Data\Localizedfields) {
-                    foreach ($fieldDefinitionAdapter->getOpenSearchMapping() as $mappingKey => $mappingEntry) {
-                        $mappingProperties[FieldCategory::STANDARD_FIELDS->value]['properties'][$mappingKey] = $mappingEntry;
-                    }
-                } else {
-                    list($mappingKey, $mappingEntry) = $fieldDefinitionAdapter->getOpenSearchMapping();
-                    $mappingProperties[FieldCategory::STANDARD_FIELDS->value]['properties'][$mappingKey] = $mappingEntry;
-                }
+                $mappingProperties[FieldCategory::STANDARD_FIELDS->value]['properties'][$fieldDefinitionAdapter->getOpenSearchAttributeName()] = $fieldDefinitionAdapter->getOpenSearchMapping();
             }
         }
 

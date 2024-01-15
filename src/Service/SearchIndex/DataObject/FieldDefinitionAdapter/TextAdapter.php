@@ -13,6 +13,17 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
-class TextAdapter extends DefaultAdapter
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
+
+class TextAdapter extends AbstractAdapter
 {
+    public function getOpenSearchMapping(): array
+    {
+        $searchAnalyzerAttributes = $this->searchIndexConfigService->getSearchAnalyzerAttributes();
+
+        return [
+            'type' => AttributeType::TEXT->value,
+            'fields' => $searchAnalyzerAttributes[AttributeType::TEXT->value]['fields'] ?? [],
+        ];
+    }
 }

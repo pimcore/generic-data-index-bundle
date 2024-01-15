@@ -16,25 +16,12 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Model\DataObject\Concrete;
 
-class NumericAdapter extends DefaultAdapter
+class NumericAdapter extends AbstractAdapter
 {
     public function getOpenSearchMapping(): array
     {
         return [
-            $this->fieldDefinition->getName(),
-            [
-                'type' => AttributeType::FLOAT->value,
-            ],
+            'type' => AttributeType::FLOAT->value,
         ];
-    }
-
-    public function getIndexData(Concrete $object): mixed
-    {
-        return $this->doGetIndexDataValue($object);
-    }
-
-    protected function doGetIndexDataValue(Concrete $object): mixed
-    {
-        return (float)$this->doGetRawIndexDataValue($object);
     }
 }

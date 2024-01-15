@@ -20,7 +20,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\Concrete;
 use Symfony\Contracts\Service\Attribute\Required;
 
-class LocalizedFieldsAdapter extends DefaultAdapter
+class LocalizedFieldsAdapter extends AbstractAdapter
 {
     protected LocaleServiceInterface $localeService;
 
@@ -45,58 +45,30 @@ class LocalizedFieldsAdapter extends DefaultAdapter
 
     public function getOpenSearchMapping(): array
     {
-        /** @var array $mapping */
-        $mapping = [];
-        /** @var string[] $languages */
+        $mapping = [
+            'properties' => []
+        ];
         $languages = $this->languageService->getValidLanguages();
-        /** @var Data[] $childFieldDefinitions */
         $childFieldDefinitions = $this->fieldDefinition->getFieldDefinitions();
 
-        foreach ($childFieldDefinitions as $childFieldDefinition) {
-            $fieldDefinitionAdapter = $this->fieldDefinitionService->getFieldDefinitionAdapter($childFieldDefinition);
-            if ($fieldDefinitionAdapter) {
+        foreach ($languages as $language) {
+            $languageProperties = [];
 
-                list($mappingKey, $mappingStructure) = $fieldDefinitionAdapter->getOpenSearchMapping();
+            foreach ($childFieldDefinitions as $childFieldDefinition) {
+                $fieldDefinitionAdapter = $this->fieldDefinitionService->getFieldDefinitionAdapter($childFieldDefinition);
+                if ($fieldDefinitionAdapter) {
+                    $mappingKey = $fieldDefinitionAdapter->getOpenSearchAttributeName();
 
-                $mapping[$mappingKey] = [
-                    'properties' => [],
-                ];
-
-                foreach ($languages as $language) {
-                    $mapping[$mappingKey]['properties'][$language] = $mappingStructure;
+                    $languageProperties[$mappingKey] = $fieldDefinitionAdapter->getOpenSearchMapping();
                 }
             }
+
+            $mapping['properties'][$language] = [
+                'properties' => $languageProperties,
+            ];
         }
 
         return $mapping;
-    }
-
-    public function getIndexData(Concrete $object): mixed
-    {
-        /** @var array $indexData */
-        $indexData = [];
-        /** @var string $localeBackup */
-        $localeBackup = $this->localeService->getLocale();
-        /** @var string[] $validLanguages */
-        $validLanguages = $this->languageService->getValidLanguages();
-
-        if ($validLanguages) {
-            foreach ($validLanguages as $language) {
-                /** @var Data $fieldDefinition */
-                foreach ($this->fieldDefinition->getFieldDefinitions() as $key => $fieldDefinition) {
-                    $this->localeService->setLocale($language);
-
-                    $fieldDefinitionAdapter = $this->fieldDefinitionService->getFieldDefinitionAdapter($fieldDefinition);
-                    if ($fieldDefinitionAdapter) {
-                        $indexData[$key][$language] = $fieldDefinitionAdapter->getIndexData($object);
-                    }
-                }
-            }
-        }
-
-        $this->localeService->setLocale($localeBackup);
-
-        return $indexData;
     }
 
     #[Required]
