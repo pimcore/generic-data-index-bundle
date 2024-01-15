@@ -14,9 +14,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
-use Pimcore\Model\DataObject\Concrete;
-use Pimcore\Model\DataObject\Data\InputQuantityValue;
-use Pimcore\Model\DataObject\Data\QuantityValue;
 
 class QuantityValueAdapter extends AbstractAdapter
 {

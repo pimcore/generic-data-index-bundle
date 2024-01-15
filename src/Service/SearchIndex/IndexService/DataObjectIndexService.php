@@ -77,7 +77,7 @@ class DataObjectIndexService extends AbstractIndexService
     {
         $mappingProperties = $this->extractSystemFieldsMapping();
 
-       // $standardFeildProperties =
+        // $standardFeildProperties =
         foreach ($classDefinition->getFieldDefinitions() as $fieldDefinition) {
             if (!$fieldDefinition->getName()) {
                 continue;

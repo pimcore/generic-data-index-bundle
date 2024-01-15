@@ -13,9 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
-use Carbon\Carbon;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
-use Pimcore\Bundle\PortalEngineBundle\Enum\ElasticSearchFields;
 
 class RelationAdapter extends AbstractAdapter
 {
@@ -24,12 +22,12 @@ class RelationAdapter extends AbstractAdapter
         return [
             'properties' => [
                 'id' => [
-                    'type' => AttributeType::LONG
+                    'type' => AttributeType::LONG,
                 ],
                 'type' => [
-                    'type' => AttributeType::TEXT
+                    'type' => AttributeType::TEXT,
                 ],
-            ]
+            ],
         ];
     }
 }

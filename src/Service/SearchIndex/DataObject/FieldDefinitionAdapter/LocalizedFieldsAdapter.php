@@ -17,7 +17,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDe
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService;
 use Pimcore\Localization\LocaleServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
-use Pimcore\Model\DataObject\Concrete;
 use Symfony\Contracts\Service\Attribute\Required;
 
 class LocalizedFieldsAdapter extends AbstractAdapter
@@ -46,7 +45,7 @@ class LocalizedFieldsAdapter extends AbstractAdapter
     public function getOpenSearchMapping(): array
     {
         $mapping = [
-            'properties' => []
+            'properties' => [],
         ];
         $languages = $this->languageService->getValidLanguages();
         $childFieldDefinitions = $this->fieldDefinition->getFieldDefinitions();
