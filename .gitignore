@@ -47,3 +47,4 @@ package-lock.json
 /.htaccess
 /auth.json
 /config.json
+/composer.phar
