@@ -21,7 +21,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 class IndexQueue
 {
-    const TABLE = 'generic_data_index_queue';
+    public const TABLE = 'generic_data_index_queue';
 
     #[ORM\Id()]
     #[ORM\Column(type: 'integer', options: ['unsigned' => true])]

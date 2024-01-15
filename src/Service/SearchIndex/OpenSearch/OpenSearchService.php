@@ -22,9 +22,9 @@ use Psr\Log\LogLevel;
 
 class OpenSearchService
 {
-    const INDEX_VERION_ODD = 'odd';
+    private const INDEX_VERION_ODD = 'odd';
 
-    const INDEX_VERION_EVEN = 'even';
+    private const INDEX_VERION_EVEN = 'even';
 
     use LoggerAwareTrait;
 

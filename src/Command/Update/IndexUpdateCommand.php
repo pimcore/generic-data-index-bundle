@@ -28,11 +28,11 @@ class IndexUpdateCommand extends AbstractCommand
 {
     use LockableTrait;
 
-    const OPTION_CLASS_DEFINITION_ID = 'class-definition-id';
+    private const OPTION_CLASS_DEFINITION_ID = 'class-definition-id';
 
-    const OPTION_UPDATE_ASSET_INDEX = 'update-asset-index';
+    private const OPTION_UPDATE_ASSET_INDEX = 'update-asset-index';
 
-    const OPTION_RECREATE_INDEX = 'recreate_index';
+    private const OPTION_RECREATE_INDEX = 'recreate_index';
 
     protected IndexUpdateService $indexUpdateService;
 
