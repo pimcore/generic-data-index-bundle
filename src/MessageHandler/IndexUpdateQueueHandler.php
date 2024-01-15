@@ -24,8 +24,7 @@ class IndexUpdateQueueHandler
     public function __construct(
         protected readonly IndexQueueService $indexQueueService,
         protected readonly MessageBusInterface $messageBus
-    )
-    {
+    ) {
     }
 
     public function __invoke(IndexUpdateQueueMessage $message)
