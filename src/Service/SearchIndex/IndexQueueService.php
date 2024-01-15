@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\TableNotFoundException;
 use Exception;
+use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
@@ -59,7 +60,7 @@ class IndexQueueService
     ) {
     }
 
-    public function updateIndexQueue(ElementInterface $element, string $operation, bool $doIndexElement = false): self
+    public function updateIndexQueue(ElementInterface $element, string $operation, bool $doIndexElement = false): IndexQueueService
     {
         try {
             $this->checkOperationValid($operation);
@@ -217,12 +218,7 @@ class IndexQueueService
         return $this->denormalizer->denormalize($entry, IndexQueue::class);
     }
 
-    /**
-     * @param ClassDefinition $classDefinition
-     *
-     * @return $this
-     */
-    public function updateDataObjects($classDefinition)
+    public function updateDataObjects(ClassDefinition $classDefinition): IndexQueueService
     {
         $dataObjectTableName = 'object_' . $classDefinition->getId();
 
@@ -239,10 +235,11 @@ class IndexQueueService
         return $this;
     }
 
+
     /**
-     * @return $this
+     * @throws \Doctrine\DBAL\Exception
      */
-    public function updateAssets()
+    public function updateAssets(): IndexQueueService
     {
         $selectQuery = sprintf("SELECT id, '%s', '%s', '%s', '%s', 0 FROM %s",
             ElementType::ASSET->value,
@@ -257,9 +254,9 @@ class IndexQueueService
     }
 
     /**
-     * @return $this
+     * @throws \Doctrine\DBAL\Exception
      */
-    public function updateByTag(Tag $tag)
+    public function updateByTag(Tag $tag): IndexQueueService
     {
         //assets
         $selectQuery = sprintf("SELECT id, '%s', '%s', '%s', '%s', 0 FROM assets where id in (select cid from tags_assignment where ctype='asset' and tagid = %s)",
@@ -300,12 +297,9 @@ class IndexQueueService
     /**
      * Directly update children paths in OpenSearch for assets as otherwise you might get strange results if you rename a folder in the portal engine frontend.
      *
-     * @param ElementInterface $element
-     * @param string $oldFullPath
-     *
      * @throws Exception
      */
-    protected function rewriteChildrenIndexPaths(ElementInterface $element, string $oldFullPath)
+    protected function rewriteChildrenIndexPaths(ElementInterface $element, string $oldFullPath): void
     {
         if ($element instanceof Asset) {
             $indexService = $this->getIndexServiceByElement($element);
@@ -317,7 +311,7 @@ class IndexQueueService
     /**
      * @throws \Doctrine\DBAL\Exception
      */
-    protected function updateBySelectQuery(string $selectQuery)
+    protected function updateBySelectQuery(string $selectQuery): void
     {
         $this->connection->executeQuery(sprintf('INSERT INTO %s (%s) %s ON DUPLICATE KEY UPDATE operation = VALUES(operation), operationTime = VALUES(operationTime), dispatched = VALUES(dispatched)',
             IndexQueue::TABLE,
@@ -326,12 +320,7 @@ class IndexQueueService
         ));
     }
 
-    /**
-     * @param ElementInterface $element
-     *
-     * @return $this
-     */
-    public function refreshIndexByElement(ElementInterface $element)
+    public function refreshIndexByElement(ElementInterface $element): IndexQueueService
     {
         try {
             $indexName = $this->searchIndexConfigService->getIndexName(
@@ -347,12 +336,8 @@ class IndexQueueService
         return $this;
     }
 
-    /**
-     * @param Asset $asset
-     *
-     * @return $this
-     */
-    protected function updateAssetDependencies(Asset $asset)
+
+    protected function updateAssetDependencies(Asset $asset): IndexQueueService
     {
         foreach ($asset->getDependencies()->getRequiredBy() as $requiredByEntry) {
 
@@ -374,14 +359,9 @@ class IndexQueueService
     }
 
     /**
-     * @param ElementInterface $element
-     * @param string $operation
-     *
-     * @return $this
-     *
      * @throws Exception
      */
-    protected function doHandleIndexData(ElementInterface $element, string $operation)
+    protected function doHandleIndexData(ElementInterface $element, string $operation): IndexQueueService
     {
 
         $indexService = $this->getIndexServiceByElement($element);
@@ -406,21 +386,17 @@ class IndexQueueService
     }
 
     /**
-     * @return AbstractIndexService|AssetIndexService|DataObjectIndexService
-     *
      * @throws Exception
      */
-    protected function getIndexServiceByElement(ElementInterface $element)
+    protected function getIndexServiceByElement(ElementInterface $element): AbstractIndexService|AssetIndexService|DataObjectIndexService
     {
         return $this->getIndexServiceByElementType($this->getElementType($element));
     }
 
     /**
-     * @return AbstractIndexService|AssetIndexService|DataObjectIndexService
-     *
-     * @throws Exception
+     * @throws InvalidArgumentException
      */
-    protected function getIndexServiceByElementType(string $elementType)
+    protected function getIndexServiceByElementType(string $elementType): AbstractIndexService|AssetIndexService|DataObjectIndexService
     {
         switch ($elementType) {
             case $elementType === ElementType::DATA_OBJECT->value:
@@ -429,15 +405,13 @@ class IndexQueueService
                 return $this->assetIndexService;
         }
 
-        throw new Exception('Index service for element type ' . $elementType . ' does not exist.');
+        throw new InvalidArgumentException('Index service for element type ' . $elementType . ' does not exist.');
     }
 
     /**
-     * @param ElementInterface $element
-     *
-     * @return $this
+     * @throws Exception
      */
-    protected function doUpdateIndexData(ElementInterface $element)
+    protected function doUpdateIndexData(ElementInterface $element): IndexQueueService
     {
         $this
             ->getIndexServiceByElement($element)
@@ -447,13 +421,9 @@ class IndexQueueService
     }
 
     /**
-     * @param ElementInterface $element
-     *
-     * @return $this
-     *
      * @throws Exception
      */
-    protected function doDeleteFromIndex(ElementInterface $element)
+    protected function doDeleteFromIndex(ElementInterface $element): IndexQueueService
     {
         $elementId = $element->getId();
         $elementIndexName = $this->getElementIndexName($element);
@@ -466,15 +436,15 @@ class IndexQueueService
     }
 
     /**
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
      */
-    protected function checkOperationValid(string $operation)
+    protected function checkOperationValid(string $operation): void
     {
         if(!in_array($operation, [
             IndexQueueOperation::UPDATE->value,
             IndexQueueOperation::DELETE->value,
-        ])) {
-            throw new \InvalidArgumentException(sprintf('Operation %s not valid', $operation));
+        ], true)) {
+            throw new InvalidArgumentException(sprintf('Operation %s not valid', $operation));
         }
     }
 
@@ -484,14 +454,9 @@ class IndexQueueService
     }
 
     /**
-     * @param int $id
-     * @param string $type
-     *
-     * @return Asset|AbstractObject|null
-     *
-     * @throws Exception
+     * @throws InvalidArgumentException
      */
-    protected function getElement($id, $type)
+    protected function getElement(int $id, string $type): Asset|AbstractObject
     {
         switch ($type) {
             case ElementType::ASSET->value:
@@ -499,12 +464,12 @@ class IndexQueueService
             case ElementType::DATA_OBJECT->value:
                 return AbstractObject::getById($id);
             default:
-                throw new Exception('elementType ' . $type . ' not supported');
+                throw new InvalidArgumentException('elementType ' . $type . ' not supported');
         }
     }
 
     /**
-     * @throws \InvalidArgumentException
+     * @throws InvalidArgumentException
      */
     protected function getElementType(ElementInterface $element): string
     {
@@ -514,12 +479,12 @@ class IndexQueueService
             case $element instanceof Asset:
                 return ElementType::ASSET->value;
             default:
-                throw new \InvalidArgumentException('element ' . get_class($element) . ' not supported');
+                throw new InvalidArgumentException('element ' . get_class($element) . ' not supported');
         }
     }
 
     /**
-     * @throws Exception
+     * @throws InvalidArgumentException
      */
     protected function getElementIndexName(ElementInterface $element): string
     {
@@ -529,13 +494,10 @@ class IndexQueueService
             case $element instanceof Asset:
                 return 'asset';
             default:
-                throw new Exception('element ' . get_class($element) . ' not supported');
+                throw new InvalidArgumentException('element ' . get_class($element) . ' not supported');
         }
     }
 
-    /**
-     * @return bool
-     */
     public function isPerformIndexRefresh(): bool
     {
         return $this->performIndexRefresh;
@@ -559,7 +521,7 @@ class IndexQueueService
         }
     }
 
-    public function dispatchQueueMessages(OutputInterface $output)
+    public function dispatchQueueMessages(OutputInterface $output): void
     {
         $entries = $this->getUnhandledIndexQueueEntries(true);
 

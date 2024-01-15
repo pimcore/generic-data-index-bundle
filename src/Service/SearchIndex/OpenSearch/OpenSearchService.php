@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch;
 
+use Exception;
 use OpenSearch\Client;
 use OpenSearch\Common\Exceptions\Missing404Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
@@ -48,7 +49,7 @@ class OpenSearchService
             ->refresh(['index' => $indexName]);
     }
 
-    public function deleteIndex($indexName, bool $silent = false)
+    public function deleteIndex($indexName, bool $silent = false): OpenSearchService
     {
         try {
             $this->logger->log($silent ? LogLevel::DEBUG : LogLevel::INFO, "Deleting index $indexName");
@@ -78,7 +79,7 @@ class OpenSearchService
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
     public function reindex(string $indexName, array $mapping): void
     {
@@ -102,7 +103,7 @@ class OpenSearchService
             $this->openSearchClient->reindex([
                 'body' => $body,
             ]);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->logger->error('Reindexing failed due to following error: ' . $e);
         }
 
@@ -110,9 +111,9 @@ class OpenSearchService
     }
 
     /**
-     * @throws \Exception
+     * @throws Exception
      */
-    private function switchIndexAliasAndCleanup(string $aliasName, string $oldIndexName, string $newIndexName)
+    private function switchIndexAliasAndCleanup(string $aliasName, string $oldIndexName, string $newIndexName): void
     {
         $params['body'] = [
             'actions' => [
@@ -132,7 +133,7 @@ class OpenSearchService
         ];
         $result = $this->openSearchClient->indices()->updateAliases($params);
         if (!$result['acknowledged']) {
-            throw new \Exception('Switching Alias failed for ' . $newIndexName);
+            throw new Exception('Switching Alias failed for ' . $newIndexName);
         }
 
         $this->deleteIndex($oldIndexName);
@@ -163,7 +164,7 @@ class OpenSearchService
             );
 
             $this->logger->debug(json_encode($response));
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->logger->error($e);
         }
 

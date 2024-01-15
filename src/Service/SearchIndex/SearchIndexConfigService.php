@@ -29,10 +29,6 @@ class SearchIndexConfigService
 
     /**
      * returns index name for given class name
-     *
-     * @param string $name
-     *
-     * @return string
      */
     public function getIndexName(string $name): string
     {
@@ -44,43 +40,25 @@ class SearchIndexConfigService
         return $this->getIndexPrefix() . $indexName;
     }
 
-    /**
-     * @return string
-     */
     public function getIndexPrefix(): string
     {
         return $this->indexPrefix;
     }
 
-    /**
-     * @return array
-     */
-    public function getIndexSettings()
+    public function getIndexSettings(): array
     {
         return $this->indexSettings;
     }
 
-    /**
-     * @return array
-     */
-    public function getSearchSettings()
+
+    public function getSearchSettings(): array
     {
         return $this->searchSettings;
     }
 
-    /**
-     * @return int
-     */
+
     public function getMaxSynchronousChildrenRenameLimit(): int
     {
         return $this->searchSettings['max_synchronous_children_rename_limit'] ?? 0;
-    }
-
-    /**
-     * @return LoggerInterface|null
-     */
-    public function getLogger(): ?LoggerInterface
-    {
-        return $this->logger;
     }
 }

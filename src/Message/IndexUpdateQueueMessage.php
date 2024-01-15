@@ -15,11 +15,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Message;
 
 class IndexUpdateQueueMessage
 {
-    protected array $entries;
-
-    public function __construct(array $entries)
+    public function __construct(protected array $entries)
     {
-        $this->entries = $entries;
     }
 
     public function getEntries(): array

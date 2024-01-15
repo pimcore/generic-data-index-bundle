@@ -20,7 +20,7 @@ use Pimcore\Model\Element\Service;
 
 class AssetIndexService extends AbstractIndexService
 {
-    const NOT_LOCALIZED_KEY = 'default';
+    private const NOT_LOCALIZED_KEY = 'default';
 
     protected function getIndexName(ElementInterface $element): string
     {
@@ -40,7 +40,7 @@ class AssetIndexService extends AbstractIndexService
         return $indexName . '-' . ($currentIndexVersion === 'even' ? 'even' : 'odd');
     }
 
-    public function createIndex(): self
+    public function createIndex(): AssetIndexService
     {
         $fullIndexName = $this->getCurrentFullIndexName();
 
@@ -51,7 +51,7 @@ class AssetIndexService extends AbstractIndexService
         return $this;
     }
 
-    public function deleteIndex(): self
+    public function deleteIndex(): AssetIndexService
     {
         $this
             ->openSearchService
@@ -91,12 +91,7 @@ class AssetIndexService extends AbstractIndexService
         return $mappingParams;
     }
 
-    /**
-     * @param bool $forceCreateIndex
-     *
-     * @return $this
-     */
-    public function updateMapping($forceCreateIndex = false)
+    public function updateMapping(bool $forceCreateIndex = false): AssetIndexService
     {
 
         if ($forceCreateIndex || !$this->openSearchClient->indices()->existsAlias(['name' => $this->getAssetIndexName()])) {
@@ -113,10 +108,7 @@ class AssetIndexService extends AbstractIndexService
         return $this;
     }
 
-    /**
-     * @return $this
-     */
-    protected function doUpdateMapping()
+    protected function doUpdateMapping(): AssetIndexService
     {
         $mapping = $this->extractMapping();
         $response = $this->openSearchClient->indices()->putMapping($mapping);
@@ -127,8 +119,6 @@ class AssetIndexService extends AbstractIndexService
 
     /**
      * @param Asset $element
-     *
-     * @return array
      */
     protected function getIndexData(ElementInterface $element): array
     {
@@ -208,11 +198,9 @@ class AssetIndexService extends AbstractIndexService
     }
 
     /**
-     * Called in index.yml
-     *
-     * @param array $coreFieldsConfig
+     * Called in index.yaml
      */
-    public function setCoreFieldsConfig(array $coreFieldsConfig)
+    public function setCoreFieldsConfig(array $coreFieldsConfig): void
     {
         if (is_array($coreFieldsConfig['general']) && is_array($coreFieldsConfig['asset'])) {
             $this->coreFieldsConfig = array_merge($coreFieldsConfig['general'], $coreFieldsConfig['asset']);

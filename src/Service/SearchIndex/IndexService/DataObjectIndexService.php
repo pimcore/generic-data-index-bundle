@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService;
 
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -41,11 +42,6 @@ class DataObjectIndexService extends AbstractIndexService
         return $this->searchIndexConfigService->getIndexName($classDefinitionName);
     }
 
-    /**
-     * @param ClassDefinition $classDefinition
-     *
-     * @return string
-     */
     protected function getCurrentFullIndexName(ClassDefinition $classDefinition): string
     {
         $indexName = $this->searchIndexConfigService->getIndexName($classDefinition->getName());
@@ -75,7 +71,7 @@ class DataObjectIndexService extends AbstractIndexService
         return $this;
     }
 
-    public function extractMapping(ClassDefinition $classDefinition)
+    public function extractMapping(ClassDefinition $classDefinition): array
     {
         $mappingProperties = $this->extractSystemFieldsMapping();
 
@@ -123,12 +119,10 @@ class DataObjectIndexService extends AbstractIndexService
      *  - if that fails, create new index and reindex on ES side
      *  - if that also fails, throws exception
      *
-     * @param ClassDefinition $classDefinition
-     * @param bool $forceCreateIndex
-     *
      * @return $this
+     * @throws Exception
      */
-    public function updateMapping(ClassDefinition $classDefinition, $forceCreateIndex = false)
+    public function updateMapping(ClassDefinition $classDefinition, bool $forceCreateIndex = false): DataObjectIndexService
     {
         $index = $this->searchIndexConfigService->getIndexName($classDefinition->getName());
 
@@ -139,7 +133,7 @@ class DataObjectIndexService extends AbstractIndexService
         //updating mapping without recreating index
         try {
             $this->doUpdateMapping($classDefinition);
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->logger->info($e);
             //try recreating index
             $this->openSearchService->reindex($index, $this->extractMapping($classDefinition));
@@ -150,10 +144,6 @@ class DataObjectIndexService extends AbstractIndexService
 
     /**
      * updates mapping for index - throws exception if not successful
-     *
-     * @param ClassDefinition $classDefinition
-     *
-     * @return $this
      */
     protected function doUpdateMapping(ClassDefinition $classDefinition): DataObjectIndexService
     {
@@ -166,6 +156,7 @@ class DataObjectIndexService extends AbstractIndexService
 
     /**
      * @param Concrete $element
+     * @throws Exception
      */
     protected function getIndexData(ElementInterface $element): array
     {
@@ -201,13 +192,7 @@ class DataObjectIndexService extends AbstractIndexService
         ];
     }
 
-    /**
-     * @param ClassDefinition $classDefinition
-     * @param string $aliasName
-     *
-     * @return $this
-     */
-    public function addClassDefinitionToAlias(ClassDefinition $classDefinition, string $aliasName)
+    public function addClassDefinitionToAlias(ClassDefinition $classDefinition, string $aliasName): DataObjectIndexService
     {
         if (!$this->existsAliasForClassDefinition($classDefinition, $aliasName)) {
             $response = $this->openSearchClient->indices()->putAlias([
@@ -220,13 +205,7 @@ class DataObjectIndexService extends AbstractIndexService
         return $this;
     }
 
-    /**
-     * @param ClassDefinition $classDefinition
-     * @param string $aliasName
-     *
-     * @return $this
-     */
-    public function removeClassDefinitionFromAlias(ClassDefinition $classDefinition, string $aliasName)
+    public function removeClassDefinitionFromAlias(ClassDefinition $classDefinition, string $aliasName): DataObjectIndexService
     {
         if ($this->existsAliasForClassDefinition($classDefinition, $aliasName)) {
             $response = $this->openSearchClient->indices()->deleteAlias([
@@ -239,13 +218,7 @@ class DataObjectIndexService extends AbstractIndexService
         return $this;
     }
 
-    /**
-     * @param ClassDefinition $classDefinition
-     * @param string $aliasName
-     *
-     * @return bool
-     */
-    protected function existsAliasForClassDefinition(ClassDefinition $classDefinition, string $aliasName)
+    protected function existsAliasForClassDefinition(ClassDefinition $classDefinition, string $aliasName): bool
     {
         return $this->openSearchClient->indices()->existsAlias([
             'name' => $this->prefixAliasName($aliasName),
@@ -287,10 +260,8 @@ class DataObjectIndexService extends AbstractIndexService
 
     /**
      * Called in index.yml
-     *
-     * @param array $coreFieldsConfig
      */
-    public function setCoreFieldsConfig(array $coreFieldsConfig)
+    public function setCoreFieldsConfig(array $coreFieldsConfig): void
     {
         if (is_array($coreFieldsConfig['general']) && is_array($coreFieldsConfig['data_object'])) {
             $this->coreFieldsConfig = array_merge($coreFieldsConfig['general'], $coreFieldsConfig['data_object']);

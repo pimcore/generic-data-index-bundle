@@ -17,6 +17,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Serializer\Exception\ExceptionInterface;
 
 #[AsMessageHandler]
 class IndexUpdateQueueHandler
@@ -27,7 +28,10 @@ class IndexUpdateQueueHandler
     ) {
     }
 
-    public function __invoke(IndexUpdateQueueMessage $message)
+    /**
+     * @throws ExceptionInterface
+     */
+    public function __invoke(IndexUpdateQueueMessage $message): void
     {
         $entries = [];
         foreach ($message->getEntries() as $entry) {

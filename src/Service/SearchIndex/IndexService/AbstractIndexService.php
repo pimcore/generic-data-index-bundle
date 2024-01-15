@@ -68,7 +68,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
         return $result['hits']['hits'][0]['_source']['system_fields']['fullPath'] ?? null;
     }
 
-    public function rewriteChildrenIndexPaths(ElementInterface $element, string $indexName, string $oldFullPath)
+    public function rewriteChildrenIndexPaths(ElementInterface $element, string $indexName, string $oldFullPath): void
     {
         $pathLevels = explode('/', $element->getRealFullPath());
 
@@ -154,14 +154,10 @@ abstract class AbstractIndexService implements IndexServiceInterface
         $this->openSearchClient->updateByQuery($query);
     }
 
-    abstract public function setCoreFieldsConfig(array $coreFieldsConfig);
+    abstract public function setCoreFieldsConfig(array $coreFieldsConfig): void;
 
-    /**
-     * @param string|null $fieldName
-     *
-     * @return array
-     */
-    public function getCoreFieldsConfig($fieldName = null)
+
+    public function getCoreFieldsConfig(?string $fieldName = null): array
     {
         if ($fieldName !== null && array_key_exists($fieldName, $this->coreFieldsConfig)) {
             return $this->coreFieldsConfig[$fieldName];
@@ -170,10 +166,8 @@ abstract class AbstractIndexService implements IndexServiceInterface
         return $this->coreFieldsConfig;
     }
 
-    /**
-     * @return array
-     */
-    protected function extractSystemFieldsMapping()
+
+    protected function extractSystemFieldsMapping(): array
     {
         $mappingProperties = [];
 
@@ -217,11 +211,6 @@ abstract class AbstractIndexService implements IndexServiceInterface
         return $result;
     }
 
-    /**
-     * @param ElementInterface $element
-     *
-     * @return array
-     */
     protected function extractTagIds(ElementInterface $element): array
     {
         $tag = new Tag();
@@ -235,20 +224,13 @@ abstract class AbstractIndexService implements IndexServiceInterface
         return $ids;
     }
 
-    /**
-     * @return bool
-     */
+
     public function isPerformIndexRefresh(): bool
     {
         return $this->performIndexRefresh;
     }
 
-    /**
-     * @param bool $performIndexRefresh
-     *
-     * @return $this
-     */
-    public function setPerformIndexRefresh(bool $performIndexRefresh)
+    public function setPerformIndexRefresh(bool $performIndexRefresh): AbstractIndexService
     {
         $this->performIndexRefresh = $performIndexRefresh;
 
@@ -259,7 +241,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
 
     abstract protected function getIndexData(ElementInterface $element): array;
 
-    public function doUpdateIndexData(ElementInterface $element): self
+    public function doUpdateIndexData(ElementInterface $element): AbstractIndexService
     {
 
         $index = $this->getIndexName($element);
@@ -292,7 +274,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
         return $this;
     }
 
-    public function doDeleteFromIndex(int $elementId, string $elementIndexName): self
+    public function doDeleteFromIndex(int $elementId, string $elementIndexName): AbstractIndexService
     {
         $this->bulkOperationService->add([
             'delete' => [

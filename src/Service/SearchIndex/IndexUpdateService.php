@@ -32,10 +32,10 @@ class IndexUpdateService
 
     /**
      * @return $this
+     * @throws \Doctrine\DBAL\Exception
      */
-    public function updateAll()
+    public function updateAll(): IndexUpdateService
     {
-
         $this
             ->updateClassDefinitions()
             ->updateAssets();
@@ -43,10 +43,7 @@ class IndexUpdateService
         return $this;
     }
 
-    /**
-     * @return $this
-     */
-    public function updateClassDefinitions()
+    public function updateClassDefinitions(): IndexUpdateService
     {
         foreach ((new Listing())->load() as $classDefinition) {
             $this->updateClassDefinition($classDefinition);
@@ -55,12 +52,7 @@ class IndexUpdateService
         return $this;
     }
 
-    /**
-     * @param ClassDefinition $classDefinition
-     *
-     * @return $this
-     */
-    public function updateClassDefinition($classDefinition)
+    public function updateClassDefinition(ClassDefinition $classDefinition): IndexUpdateService
     {
         if ($this->reCreateIndex) {
             $this
@@ -84,6 +76,9 @@ class IndexUpdateService
         return $this;
     }
 
+    /**
+     * @throws \Doctrine\DBAL\Exception
+     */
     public function updateAssets(): IndexUpdateService
     {
 
@@ -105,12 +100,8 @@ class IndexUpdateService
         return $this;
     }
 
-    /**
-     * @param bool $reCreateIndex
-     *
-     * @return IndexUpdateService
-     */
-    public function setReCreateIndex(bool $reCreateIndex): self
+
+    public function setReCreateIndex(bool $reCreateIndex): IndexUpdateService
     {
         $this->reCreateIndex = $reCreateIndex;
 
