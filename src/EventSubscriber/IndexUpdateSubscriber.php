@@ -164,10 +164,13 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
             return;
         }*/
 
-        $this->indexQueueService->updateIndexQueue(
-            element: $event->getAsset(),
-            operation: IndexQueueOperation::UPDATE->value,
-            doIndexElement: true);
+        $this->indexQueueService
+            ->updateIndexQueue(
+                element: $event->getAsset(),
+                operation: IndexQueueOperation::UPDATE->value,
+                doIndexElement: true
+            )
+            ->commit();
     }
 
 
