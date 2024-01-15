@@ -32,16 +32,14 @@ use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Element\Service;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
-
 class IndexUpdateSubscriber implements EventSubscriberInterface
 {
     public function __construct(
         protected readonly IndexQueueService $indexQueueService,
         protected readonly DataObjectIndexService $dataObjectIndexService,
         protected readonly AssetIndexService $assetIndexService,
-       # protected readonly Installer $installer,
-    )
-    {
+        // protected readonly Installer $installer,
+    ) {
     }
 
     public static function getSubscribedEvents(): array
@@ -64,9 +62,9 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
 
     public function updateDataObject(DataObjectEvent $event): void
     {
-       /* if (!$this->installer->isInstalled()) {
-            return;
-       }*/
+        /* if (!$this->installer->isInstalled()) {
+             return;
+        }*/
 
         //do not update index when auto save or only saving version
         if (
@@ -90,7 +88,6 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
         AbstractObject::setGetInheritedValues($inheritanceBackup);
     }
 
-
     public function deleteDataObject(DataObjectEvent $event): void
     {
         /*if (!$this->installer->isInstalled()) {
@@ -105,7 +102,6 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
             )
             ->commit();
     }
-
 
     /**
      * @throws Exception
@@ -145,6 +141,7 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
         }*/
 
         $classDefinition = $event->getClassDefinition();
+
         try {
             $this->dataObjectIndexService
                 ->deleteIndex($classDefinition)
@@ -172,7 +169,6 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
             )
             ->commit();
     }
-
 
     public function deleteAsset(AssetEvent $event): void
     {
