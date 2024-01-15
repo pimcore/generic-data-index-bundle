@@ -55,10 +55,31 @@ class IndexUpdateCommand extends AbstractCommand
     {
         $this
             ->setName('generic-data-index:update:index')
-            ->addOption(self::OPTION_CLASS_DEFINITION_ID, 'cid', InputOption::VALUE_OPTIONAL, 'Update mapping and data for specific data object classDefinition', null)
-            ->addOption(self::OPTION_UPDATE_ASSET_INDEX, 'a', InputOption::VALUE_NONE, 'Update mapping and data for asset index', null)
-            ->addOption(self::OPTION_RECREATE_INDEX, 'r', InputOption::VALUE_NONE, 'Delete OpenSearch index and recreate it', null)
-            ->setDescription('Updates index/mapping for all classDefinitions/asset without deleting them. Adds there elements to index queue.');
+            ->addOption(
+                self::OPTION_CLASS_DEFINITION_ID,
+                'cid',
+                InputOption::VALUE_OPTIONAL,
+                'Update mapping and data for specific data object classDefinition',
+                null
+            )
+            ->addOption(
+                self::OPTION_UPDATE_ASSET_INDEX,
+                'a',
+                InputOption::VALUE_NONE,
+                'Update mapping and data for asset index',
+                null
+            )
+            ->addOption(
+                self::OPTION_RECREATE_INDEX,
+                'r',
+                InputOption::VALUE_NONE,
+                'Delete OpenSearch index and recreate it',
+                null
+            )
+            ->setDescription(
+                'Updates index/mapping for all classDefinitions/asset without ' .
+                'deleting them. Adds there elements to index queue.'
+            );
     }
 
     /**
