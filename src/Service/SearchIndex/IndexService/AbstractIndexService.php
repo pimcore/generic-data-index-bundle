@@ -156,7 +156,6 @@ abstract class AbstractIndexService implements IndexServiceInterface
 
     abstract public function setCoreFieldsConfig(array $coreFieldsConfig): void;
 
-
     public function getCoreFieldsConfig(?string $fieldName = null): array
     {
         if ($fieldName !== null && array_key_exists($fieldName, $this->coreFieldsConfig)) {
@@ -165,7 +164,6 @@ abstract class AbstractIndexService implements IndexServiceInterface
 
         return $this->coreFieldsConfig;
     }
-
 
     protected function extractSystemFieldsMapping(): array
     {
@@ -223,7 +221,6 @@ abstract class AbstractIndexService implements IndexServiceInterface
 
         return $ids;
     }
-
 
     public function isPerformIndexRefresh(): bool
     {

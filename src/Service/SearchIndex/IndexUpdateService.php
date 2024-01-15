@@ -32,6 +32,7 @@ class IndexUpdateService
 
     /**
      * @return $this
+     *
      * @throws \Doctrine\DBAL\Exception
      */
     public function updateAll(): IndexUpdateService
@@ -99,7 +100,6 @@ class IndexUpdateService
 
         return $this;
     }
-
 
     public function setReCreateIndex(bool $reCreateIndex): IndexUpdateService
     {

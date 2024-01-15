@@ -235,7 +235,6 @@ class IndexQueueService
         return $this;
     }
 
-
     /**
      * @throws \Doctrine\DBAL\Exception
      */
@@ -335,7 +334,6 @@ class IndexQueueService
 
         return $this;
     }
-
 
     protected function updateAssetDependencies(Asset $asset): IndexQueueService
     {

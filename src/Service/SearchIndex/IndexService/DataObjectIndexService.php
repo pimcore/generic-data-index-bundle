@@ -120,6 +120,7 @@ class DataObjectIndexService extends AbstractIndexService
      *  - if that also fails, throws exception
      *
      * @return $this
+     *
      * @throws Exception
      */
     public function updateMapping(ClassDefinition $classDefinition, bool $forceCreateIndex = false): DataObjectIndexService
@@ -156,6 +157,7 @@ class DataObjectIndexService extends AbstractIndexService
 
     /**
      * @param Concrete $element
+     *
      * @throws Exception
      */
     protected function getIndexData(ElementInterface $element): array

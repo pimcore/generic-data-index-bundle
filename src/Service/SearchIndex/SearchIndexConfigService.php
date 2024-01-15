@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Psr\Log\LoggerAwareTrait;
-use Psr\Log\LoggerInterface;
 
 class SearchIndexConfigService
 {
@@ -50,12 +49,10 @@ class SearchIndexConfigService
         return $this->indexSettings;
     }
 
-
     public function getSearchSettings(): array
     {
         return $this->searchSettings;
     }
-
 
     public function getMaxSynchronousChildrenRenameLimit(): int
     {
