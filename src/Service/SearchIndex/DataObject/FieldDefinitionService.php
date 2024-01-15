@@ -15,6 +15,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\FieldDefinitionAdapterInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
 class FieldDefinitionService
@@ -27,8 +29,12 @@ class FieldDefinitionService
     {
         $adapter = null;
 
-        if ($this->adapterLocator->has($fieldDefinition->getFieldtype())) {
-            $adapter = $this->adapterLocator->get($fieldDefinition->getFieldtype());
+        if ($this->adapterLocator->has($fieldDefinition->getFieldType())) {
+            try {
+                $adapter = $this->adapterLocator->get($fieldDefinition->getFieldType());
+            } catch (NotFoundExceptionInterface|ContainerExceptionInterface) {
+                return null;
+            }
             $adapter->setFieldDefinition($fieldDefinition);
         }
 

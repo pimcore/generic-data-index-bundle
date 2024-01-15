@@ -32,6 +32,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
 {
     /**
      * {@inheritdoc}
+     * @throws \Exception
      */
     public function load(array $configs, ContainerBuilder $container): void
     {
@@ -41,17 +42,14 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $loader = new Loader\YamlFileLoader($container, new FileLocator(__DIR__.'/../../config'));
         $loader->load('services.yaml');
 
-        $this
-            ->registerIndexServiceParams($container, $config['index_service']);
+        $this->registerIndexServiceParams($container, $config['index_service']);
     }
 
-    public function prepend(ContainerBuilder $container)
+    public function prepend(ContainerBuilder $container): void
     {
-        $yamlParser = new Yaml();
         $filename = __DIR__ . '/../../config/doctrine.yaml';
-
         try {
-            $config = $yamlParser->parseFile($filename);
+            $config = Yaml::parseFile($filename);
         } catch (ParseException $e) {
             throw new InvalidArgumentException(sprintf('The file "%s" does not contain valid YAML.', $filename), 0, $e);
         }
@@ -59,7 +57,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $container->prependExtensionConfig('doctrine', $config['doctrine']);
     }
 
-    protected function registerIndexServiceParams(ContainerBuilder $container, array $esClientParams)
+    protected function registerIndexServiceParams(ContainerBuilder $container, array $esClientParams): static
     {
         $definition = $container->getDefinition(SearchIndexConfigService::class);
         $definition->setArgument('$indexPrefix', $esClientParams['es_client_params']['index_prefix']);

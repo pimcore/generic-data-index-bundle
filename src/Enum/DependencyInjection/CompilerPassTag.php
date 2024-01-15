@@ -15,5 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection;
 
 enum CompilerPassTag: string
 {
-    case DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION = 'pimcore.generic_data_index.data-object.search_index_field_definition';
+    case DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION =
+    'pimcore.generic_data_index.data-object.search_index_field_definition';
 }

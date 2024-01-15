@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject\ClassDefinition;
+use RuntimeException;
 use Symfony\Component\Console\Command\LockableTrait;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -38,7 +39,19 @@ class IndexUpdateCommand extends AbstractCommand
 
     protected IndexQueueService $indexQueueService;
 
-    protected function configure()
+    #[Required]
+    public function setIndexUpdateService(IndexUpdateService $indexUpdateService): void
+    {
+        $this->indexUpdateService = $indexUpdateService;
+    }
+
+    #[Required]
+    public function setIndexQueueService(IndexQueueService $indexQueueService): void
+    {
+        $this->indexQueueService = $indexQueueService;
+    }
+
+    protected function configure(): void
     {
         $this
             ->setName('generic-data-index:update:index')
@@ -52,14 +65,14 @@ class IndexUpdateCommand extends AbstractCommand
      * @param InputInterface $input
      * @param OutputInterface $output
      *
-     * @throws Exception
-     *
      * @return int
+     * @throws \Doctrine\DBAL\Exception
+     * @throws RuntimeException
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if (!$this->lock()) {
-            throw new Exception('The command is already running in another process.');
+            throw new RuntimeException('The command is already running in another process.');
         }
 
         $this->indexUpdateService->setReCreateIndex($input->getOption(self::OPTION_RECREATE_INDEX));
@@ -75,10 +88,18 @@ class IndexUpdateCommand extends AbstractCommand
             try {
                 $classDefinition = ClassDefinition::getById($classDefinitionId);
                 if (!$classDefinition) {
-                    throw new Exception(sprintf('ClassDefinition with id %s not found', $classDefinitionId));
+                    throw new RuntimeException(
+                        sprintf('ClassDefinition with id %s not found', $classDefinitionId)
+                    );
                 }
 
-                $this->output->writeln(sprintf('<info>Update index and indices for ClassDefinition with id %s</info>', $classDefinitionId), OutputInterface::VERBOSITY_VERBOSE);
+                $this->output->writeln(
+                    sprintf(
+                        '<info>Update index and indices for ClassDefinition with id %s</info>',
+                        $classDefinitionId
+                    ),
+                    OutputInterface::VERBOSITY_VERBOSE
+                );
 
                 $this
                     ->indexUpdateService
@@ -92,7 +113,10 @@ class IndexUpdateCommand extends AbstractCommand
             $updateAll = false;
 
             try {
-                $output->writeln('<info>Update asset index</info>', OutputInterface::VERBOSITY_VERBOSE);
+                $output->writeln(
+                    '<info>Update asset index</info>',
+                    OutputInterface::VERBOSITY_VERBOSE
+                );
 
                 $this
                     ->indexUpdateService
@@ -103,7 +127,10 @@ class IndexUpdateCommand extends AbstractCommand
         }
 
         if ($updateAll) {
-            $this->output->writeln('<info>Update all mappings and indices for objects/assets</info>', OutputInterface::VERBOSITY_VERBOSE);
+            $this->output->writeln(
+                '<info>Update all mappings and indices for objects/assets</info>',
+                OutputInterface::VERBOSITY_VERBOSE
+            );
 
             $this
                 ->indexUpdateService
@@ -117,17 +144,5 @@ class IndexUpdateCommand extends AbstractCommand
         $this->output->writeln('<info>Finished</info>', OutputInterface::VERBOSITY_VERBOSE);
 
         return self::SUCCESS;
-    }
-
-    #[Required]
-    public function setIndexUpdateService(IndexUpdateService $indexUpdateService): void
-    {
-        $this->indexUpdateService = $indexUpdateService;
-    }
-
-    #[Required]
-    public function setIndexQueueService(IndexQueueService $indexQueueService): void
-    {
-        $this->indexQueueService = $indexQueueService;
     }
 }
