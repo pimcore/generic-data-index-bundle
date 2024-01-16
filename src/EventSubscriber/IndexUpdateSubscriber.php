@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Event\AssetEvents;
 use Pimcore\Event\DataObjectClassDefinitionEvents;
 use Pimcore\Event\DataObjectEvents;
@@ -34,6 +35,8 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 class IndexUpdateSubscriber implements EventSubscriberInterface
 {
+    use LoggerAwareTrait;
+
     public function __construct(
         protected readonly IndexQueueService $indexQueueService,
         protected readonly DataObjectIndexService $dataObjectIndexService,
@@ -148,7 +151,7 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
                 ->removeClassDefinitionFromAlias($classDefinition, 'class_definitions')
             ;
         } catch (Exception $e) {
-            Logger::err($e);
+            $this->logger->error($e->getMessage());
         }
     }
 
