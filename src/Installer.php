@@ -16,5 +16,4 @@ use Pimcore;
 
 class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller
 {
-
 }
