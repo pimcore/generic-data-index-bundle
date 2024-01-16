@@ -283,14 +283,14 @@ class DataObjectIndexService extends AbstractIndexService
                 'className',
                 "'{$operation}'",
                 "'{$operationTime}'",
-                '0'
+                '0',
             ])
             ->from('objects')
             ->where('classId = :classId')
             ->andWhere('path LIKE :path')
             ->setParameters([
                 'classId' => $element->getClassId(),
-                'path' => $element->getRealFullPath() . '/%'
+                'path' => $element->getRealFullPath() . '/%',
             ]);
 
         if ($includeElement) {
@@ -301,6 +301,4 @@ class DataObjectIndexService extends AbstractIndexService
 
         return $select;
     }
-
-
 }
