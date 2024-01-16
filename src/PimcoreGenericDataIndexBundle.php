@@ -40,5 +40,4 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements Pim
         /** @var InstallerInterface|null */
         return $this->container->get(Installer::class);
     }
-
 }
