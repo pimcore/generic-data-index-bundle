@@ -20,6 +20,7 @@ use OpenSearch\Namespaces\IndicesNamespace;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
@@ -85,9 +86,14 @@ class AssetIndexService extends AbstractIndexService
 
     public function extractMapping(): array
     {
-        $mappingProperties = $this->extractSystemFieldsMapping();
-        $mappingProperties[FieldCategory::CUSTOM_FIELDS->value] = [];
-
+        $mappingProperties = [
+            FieldCategory::SYSTEM_FIELDS->value => [
+                'properties' => $this->searchIndexConfigService
+                    ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELDS_SETTINGS_ASSET),
+            ],
+            FieldCategory::STANDARD_FIELDS->value => [],
+            FieldCategory::CUSTOM_FIELDS->value => [],
+        ];
         //$extractMappingEvent = new ExtractMappingEvent($mappingProperties[FieldCategory::CUSTOM_FIELDS->value]);
         //$this->eventDispatcher->dispatch($extractMappingEvent);
         //$mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] =
@@ -161,9 +167,6 @@ class AssetIndexService extends AbstractIndexService
         ];
     }
 
-    /**
-     * returns system fields index data array for given $asset
-     */
     private function getSystemFieldsIndexData(Asset $asset): array
     {
         $date = new \DateTime();
@@ -223,15 +226,5 @@ class AssetIndexService extends AbstractIndexService
         }
 
         return $data;
-    }
-
-    /**
-     * Called in index.yaml
-     */
-    public function setCoreFieldsConfig(array $coreFieldsConfig): void
-    {
-        if (is_array($coreFieldsConfig['general']) && is_array($coreFieldsConfig['asset'])) {
-            $this->coreFieldsConfig = array_merge($coreFieldsConfig['general'], $coreFieldsConfig['asset']);
-        }
     }
 }

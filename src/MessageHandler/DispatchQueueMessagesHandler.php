@@ -30,7 +30,7 @@ class DispatchQueueMessagesHandler
 
     public function __invoke(DispatchQueueMessagesMessage $message): void
     {
-        $batchSize = 20;
+        $batchSize = 400;
         while (true) {
             $entries = $this->indexQueueService->getUnhandledIndexQueueEntries(true, $batchSize);
             $amountOfEntries = count($entries);

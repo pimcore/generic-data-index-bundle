@@ -65,6 +65,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $definition->setArgument('$indexPrefix', $esClientParams['es_client_params']['index_prefix']);
         $definition->setArgument('$indexSettings', $esClientParams['index_settings']);
         $definition->setArgument('$searchSettings', $esClientParams['search_settings']);
+        $definition->setArgument('$systemFieldsSettings', $esClientParams['system_fields_settings']);
 
         return $this;
     }

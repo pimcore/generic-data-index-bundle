@@ -19,10 +19,15 @@ class SearchIndexConfigService
 {
     use LoggerAwareTrait;
 
+    private const SYSTEM_FIELDS_SETTINGS_GENERAL = 'general';
+    public const SYSTEM_FIELDS_SETTINGS_ASSET = 'asset';
+    public const SYSTEM_FIELDS_SETTINGS_DATA_OBJECT = 'data_object';
+
     public function __construct(
         protected readonly string $indexPrefix,
         protected readonly array $indexSettings,
         protected readonly array $searchSettings,
+        protected readonly array $systemFieldsSettings,
     ) {
     }
 
@@ -62,5 +67,24 @@ class SearchIndexConfigService
     public function getMaxSynchronousChildrenRenameLimit(): int
     {
         return $this->searchSettings['max_synchronous_children_rename_limit'] ?? 0;
+    }
+
+    public function getSystemFieldsSettings(string $elementType): array
+    {
+        $systemFieldsSettings = array_merge(
+            $this->systemFieldsSettings[self::SYSTEM_FIELDS_SETTINGS_GENERAL],
+            $this->systemFieldsSettings[$elementType] ?? []
+        );
+
+        foreach($systemFieldsSettings as &$systemFieldsSetting) {
+            if (!count($systemFieldsSetting['properties'])) {
+                unset($systemFieldsSetting['properties']);
+            }
+            if (!count($systemFieldsSetting['fields'])) {
+                unset($systemFieldsSetting['fields']);
+            }
+        }
+
+        return $systemFieldsSettings;
     }
 }

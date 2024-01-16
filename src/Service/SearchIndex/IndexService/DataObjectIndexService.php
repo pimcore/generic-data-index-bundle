@@ -16,9 +16,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 use DateTimeInterface;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\Element\ElementInterface;
@@ -76,7 +78,16 @@ class DataObjectIndexService extends AbstractIndexService
 
     public function extractMapping(ClassDefinition $classDefinition): array
     {
-        $mappingProperties = $this->extractSystemFieldsMapping();
+        $mappingProperties = [
+            FieldCategory::SYSTEM_FIELDS->value => [
+                'properties' => $this->searchIndexConfigService
+                    ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELDS_SETTINGS_DATA_OBJECT),
+            ],
+            FieldCategory::STANDARD_FIELDS->value => [
+                'properties' => []
+            ],
+            FieldCategory::CUSTOM_FIELDS->value => [],
+        ];
 
         // $standardFeildProperties =
         foreach ($classDefinition->getFieldDefinitions() as $fieldDefinition) {
@@ -89,7 +100,6 @@ class DataObjectIndexService extends AbstractIndexService
             }
         }
 
-        $mappingProperties[FieldCategory::CUSTOM_FIELDS->value] = [];
 
         //$extractMappingEvent = new ExtractMappingEvent($classDefinition, $mappingProperties[FieldCategory::CUSTOM_FIELDS->value]);
         //$this->eventDispatcher->dispatch($extractMappingEvent);
@@ -226,9 +236,6 @@ class DataObjectIndexService extends AbstractIndexService
         return $this->searchIndexConfigService->prefixIndexName($aliasName);
     }
 
-    /**
-     * returns core fields index data array for given data object
-     */
     protected function getSystemFieldsIndexData(Concrete $dataObject): array
     {
         $date = new \DateTime();
@@ -254,16 +261,6 @@ class DataObjectIndexService extends AbstractIndexService
     }
 
     /**
-     * Called in index.yml
-     */
-    public function setCoreFieldsConfig(array $coreFieldsConfig): void
-    {
-        if (is_array($coreFieldsConfig['general']) && is_array($coreFieldsConfig['data_object'])) {
-            $this->coreFieldsConfig = array_merge($coreFieldsConfig['general'], $coreFieldsConfig['data_object']);
-        }
-    }
-
-    /**
      * @throws Exception
      */
     public function getRelatedItemsOnUpdateQuery(ElementInterface $element, string $operation, int $operationTime, bool $includeElement = false): ?QueryBuilder
@@ -279,7 +276,7 @@ class DataObjectIndexService extends AbstractIndexService
         $select = $this->dbConnection->createQueryBuilder()
             ->select([
                 'id',
-                "'object'",
+                "'" . ElementType::DATA_OBJECT->value . "'",
                 'className',
                 "'{$operation}'",
                 "'{$operationTime}'",

@@ -67,7 +67,7 @@ class IndexQueueService
         try {
             $this->checkOperationValid($operation);
 
-            $oldFullPath = $element instanceof Asset\Folder ? $this->getCurrentIndexFullPath($element) : null;
+            $oldFullPath = $this->getCurrentIndexFullPath($element);
 
             if ($doIndexElement) {
                 $this->doHandleIndexData($element, $operation);
@@ -93,9 +93,7 @@ class IndexQueueService
                 $this->updateAssetDependencies($element);
             }
 
-            if ($element instanceof Asset\Folder && !empty($oldFullPath) && $oldFullPath !== $element->getRealFullPath()) {
-                $this->rewriteChildrenIndexPaths($element, $oldFullPath);
-            }
+            $this->rewriteChildrenIndexPaths($element, $oldFullPath);
         } catch (Exception $e) {
             $this->logger->warning('Update indexQueue in database-table' . IndexQueue::TABLE . ' failed! Error: ' . $e->getMessage());
         }
@@ -278,13 +276,20 @@ class IndexQueueService
      *
      * @throws Exception
      */
-    protected function rewriteChildrenIndexPaths(ElementInterface $element, string $oldFullPath): void
+    protected function rewriteChildrenIndexPaths(ElementInterface $element, ?string $oldFullPath): void
     {
-        if ($element instanceof Asset) {
-            $indexService = $this->getIndexServiceByElement($element);
-            $indexName = $this->searchIndexConfigService->getIndexName($this->getElementIndexName($element));
-            $indexService->rewriteChildrenIndexPaths($element, $indexName, $oldFullPath);
+        if (empty($oldFullPath) || $oldFullPath === $element->getRealFullPath()) {
+            return;
         }
+
+        if ($element instanceof Asset && !$element instanceof Asset\Folder) {
+            return;
+        }
+
+        $indexName = $this->searchIndexConfigService->getIndexName($this->getElementIndexName($element));
+        $this
+            ->getIndexServiceByElement($element)
+            ->rewriteChildrenIndexPaths($element, $indexName, $oldFullPath);
     }
 
     /**

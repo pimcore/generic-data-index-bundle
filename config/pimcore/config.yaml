@@ -1,2 +1,114 @@
 imports:
-    - { resource: messenger.yaml }
+  - { resource: messenger.yaml }
+
+pimcore_generic_data_index:
+  index_service:
+    search_settings:
+      list_page_size: 60
+      list_max_filter_options: 500
+      search_analyzer_attributes:
+        text:
+          fields:
+            analyzed_ngram:
+              type: text
+              analyzer: generic_data_index_ngram_analyzer
+              search_analyzer: generic_data_index_whitespace_analyzer
+            analyzed:
+              type: text
+              analyzer: standard
+              search_analyzer: generic_data_index_whitespace_analyzer
+
+    index_settings:
+      index:
+        mapping:
+          nested_fields:
+            limit: 200
+          total_fields:
+            limit: 100000
+      number_of_shards: 1
+      number_of_replicas: 0
+      max_ngram_diff: 30
+      max_result_window: 10000
+      analysis:
+        analyzer:
+          generic_data_index_ngram_analyzer:
+            tokenizer: generic_data_index_ngram_tokenzier
+            filter:
+              - lowercase
+          generic_data_index_whitespace_analyzer:
+            tokenizer: generic_data_index_whitespace_tokenzier
+            filter:
+              - lowercase
+          generic_data_index_path_analyzer:
+            tokenizer: generic_data_index_path_tokenizer
+
+        tokenizer:
+          generic_data_index_ngram_tokenzier:
+            type: ngram
+            min_gram: 3
+            max_gram: 25
+            token_chars: [ letter, digit ]
+          generic_data_index_whitespace_tokenzier:
+            type: whitespace
+          generic_data_index_path_tokenizer:
+            type: "path_hierarchy"
+
+    system_fields_settings:
+      general:
+        id:
+          type: long
+        creationDate:
+          type: date
+        modificationDate:
+          type: date
+        type:
+          type: keyword
+        key:
+          type: keyword
+          fields:
+            analyzed_ngram:
+              type: text
+              analyzer: generic_data_index_ngram_analyzer
+              search_analyzer: generic_data_index_whitespace_analyzer
+            analyzed:
+              type: text
+              analyzer: standard
+              search_analyzer: generic_data_index_whitespace_analyzer
+        path:
+          type: text
+          analyzer: generic_data_index_path_analyzer
+        fullPath:
+          type: text
+          analyzer: generic_data_index_path_analyzer
+        pathLevels:
+          type: nested
+          properties:
+            level:
+              type: integer
+            name:
+              type: keyword
+        tags:
+          type: integer
+        thumbnail:
+          type: keyword
+        userOwner:
+          type: integer
+      data_object:
+        published:
+          type: boolean
+        classname:
+          type: keyword
+      asset:
+        mimetype:
+          type: keyword
+          fields:
+            analyzed_ngram:
+              type: text
+              analyzer: generic_data_index_ngram_analyzer
+              search_analyzer: generic_data_index_whitespace_analyzer
+            analyzed:
+              type: text
+              analyzer: standard
+              search_analyzer: generic_data_index_whitespace_analyzer
+        fileSize:
+          type: long

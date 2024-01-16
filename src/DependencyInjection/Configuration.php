@@ -78,6 +78,13 @@ class Configuration implements ConfigurationInterface
                             ->end()
                         ->end()
                         ->append($this->buildVariableNode('index_settings'))
+                        ->arrayNode('system_fields_settings')
+                            ->children()
+                                ->append($this->buildSystemFieldsSettingsNode('general'))
+                                ->append($this->buildSystemFieldsSettingsNode('data_object'))
+                                ->append($this->buildSystemFieldsSettingsNode('asset'))
+                            ->end()
+                        ->end()
                     ->end()
                 ->end();
 
@@ -100,6 +107,29 @@ class Configuration implements ConfigurationInterface
             ->treatNullLike([])
             ->beforeNormalization()
             ->castToArray()
+            ->end();
+
+        return $node;
+    }
+
+    private function buildSystemFieldsSettingsNode(string $name): ArrayNodeDefinition
+    {
+        $node = new ArrayNodeDefinition($name);
+        /* @phpstan-ignore-next-line */
+        $node
+            ->useAttributeAsKey('field')
+                ->prototype('scalar')
+            ->end()
+            ->arrayPrototype()
+                ->children()
+                    ->scalarNode('type')
+                        ->isRequired()
+                    ->end()
+                    ->scalarNode('analyzer')
+                    ->end()
+                    ->append($this->buildVariableNode('properties'))
+                    ->append($this->buildVariableNode('fields'))
+                ->end()
             ->end();
 
         return $node;

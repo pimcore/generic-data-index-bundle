@@ -35,8 +35,6 @@ abstract class AbstractIndexService implements IndexServiceInterface
 {
     use LoggerAwareTrait;
 
-    protected array $coreFieldsConfig = [];
-
     protected bool $performIndexRefresh = false;
 
     protected Client $openSearchClient;
@@ -93,6 +91,10 @@ abstract class AbstractIndexService implements IndexServiceInterface
         ]);
 
         $countResult = $countResult['hits']['total'] ?? 0;
+
+        if ($countResult === 0) {
+            return;
+        }
 
         if ($countResult > $this->searchIndexConfigService->getMaxSynchronousChildrenRenameLimit()) {
             $msg = sprintf(
@@ -157,44 +159,6 @@ abstract class AbstractIndexService implements IndexServiceInterface
         ];
 
         $this->openSearchClient->updateByQuery($query);
-    }
-
-    abstract public function setCoreFieldsConfig(array $coreFieldsConfig): void;
-
-    public function getCoreFieldsConfig(?string $fieldName = null): array
-    {
-        if ($fieldName !== null && array_key_exists($fieldName, $this->coreFieldsConfig)) {
-            return $this->coreFieldsConfig[$fieldName];
-        }
-
-        return $this->coreFieldsConfig;
-    }
-
-    protected function extractSystemFieldsMapping(): array
-    {
-        $mappingProperties = [];
-
-        $mappingProperties[FieldCategory::SYSTEM_FIELDS->value]['properties'] = array_map(
-            static function ($fieldProperties) {
-                $mapping = [
-                    'type' => $fieldProperties['type'],
-                ];
-                if (!empty($fieldProperties['analyzer'])) {
-                    $mapping['analyzer'] = $fieldProperties['analyzer'];
-                }
-                if (!empty($fieldProperties['properties'])) {
-                    $mapping['properties'] = $fieldProperties['properties'];
-                }
-                if (!empty($fieldProperties['fields'])) {
-                    $mapping['fields'] = $fieldProperties['fields'];
-                }
-
-                return $mapping;
-            },
-            $this->getCoreFieldsConfig()
-        );
-
-        return $mappingProperties;
     }
 
     protected function extractPathLevels(ElementInterface $element): array
