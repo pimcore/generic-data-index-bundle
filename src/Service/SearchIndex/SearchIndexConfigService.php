@@ -20,7 +20,9 @@ class SearchIndexConfigService
     use LoggerAwareTrait;
 
     private const SYSTEM_FIELDS_SETTINGS_GENERAL = 'general';
+
     public const SYSTEM_FIELDS_SETTINGS_ASSET = 'asset';
+
     public const SYSTEM_FIELDS_SETTINGS_DATA_OBJECT = 'data_object';
 
     public function __construct(

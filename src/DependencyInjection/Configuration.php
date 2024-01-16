@@ -115,7 +115,7 @@ class Configuration implements ConfigurationInterface
     private function buildSystemFieldsSettingsNode(string $name): ArrayNodeDefinition
     {
         $node = new ArrayNodeDefinition($name);
-        /* @phpstan-ignore-next-line */
+        // @phpstan-ignore-next-line
         $node
             ->useAttributeAsKey('field')
                 ->prototype('scalar')

@@ -84,7 +84,7 @@ class DataObjectIndexService extends AbstractIndexService
                     ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELDS_SETTINGS_DATA_OBJECT),
             ],
             FieldCategory::STANDARD_FIELDS->value => [
-                'properties' => []
+                'properties' => [],
             ],
             FieldCategory::CUSTOM_FIELDS->value => [],
         ];
@@ -99,7 +99,6 @@ class DataObjectIndexService extends AbstractIndexService
                 $mappingProperties[FieldCategory::STANDARD_FIELDS->value]['properties'][$fieldDefinitionAdapter->getOpenSearchAttributeName()] = $fieldDefinitionAdapter->getOpenSearchMapping();
             }
         }
-
 
         //$extractMappingEvent = new ExtractMappingEvent($classDefinition, $mappingProperties[FieldCategory::CUSTOM_FIELDS->value]);
         //$this->eventDispatcher->dispatch($extractMappingEvent);
