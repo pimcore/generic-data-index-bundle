@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use DateTimeInterface;
 use Exception;
+use JsonException;
 use OpenSearch\Namespaces\IndicesNamespace;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
@@ -122,7 +123,7 @@ class AssetIndexService extends AbstractIndexService
     }
 
     /**
-     * @throws \JsonException
+     * @throws JsonException
      */
     protected function doUpdateMapping(): AssetIndexService
     {
@@ -136,7 +137,7 @@ class AssetIndexService extends AbstractIndexService
     /**
      * @param Asset $element
      *
-     * @throws \JsonException
+     * @throws JsonException
      */
     protected function getIndexData(ElementInterface $element): array
     {
