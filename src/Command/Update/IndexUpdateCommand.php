@@ -83,11 +83,6 @@ class IndexUpdateCommand extends AbstractCommand
     }
 
     /**
-     * @param InputInterface $input
-     * @param OutputInterface $output
-     *
-     * @return int
-     *
      * @throws \Doctrine\DBAL\Exception
      * @throws RuntimeException
      */
@@ -159,7 +154,12 @@ class IndexUpdateCommand extends AbstractCommand
                 ->updateAll();
         }
 
-        $this->indexQueueService->dispatchQueueMessages($output);
+        $this->output->writeln(
+            '<info>Dispatch queue messages</info>',
+            OutputInterface::VERBOSITY_VERBOSE
+        );
+
+        $this->indexQueueService->dispatchQueueMessages(true);
 
         $this->release();
 

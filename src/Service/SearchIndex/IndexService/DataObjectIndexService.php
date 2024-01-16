@@ -113,8 +113,6 @@ class DataObjectIndexService extends AbstractIndexService
      *  - if that fails, create new index and reindex on ES side
      *  - if that also fails, throws exception
      *
-     * @return $this
-     *
      * @throws Exception
      */
     public function updateMapping(ClassDefinition $classDefinition, bool $forceCreateIndex = false): DataObjectIndexService

@@ -16,15 +16,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\MessageHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 
 #[AsMessageHandler]
 class IndexUpdateQueueHandler
 {
     public function __construct(
-        protected readonly IndexQueueService $indexQueueService,
-        protected readonly MessageBusInterface $messageBus
+        protected readonly IndexQueueService $indexQueueService
     ) {
     }
 

@@ -19,6 +19,7 @@ use JsonException;
 use OpenSearch\Namespaces\IndicesNamespace;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
@@ -42,7 +43,7 @@ class AssetIndexService extends AbstractIndexService
 
     protected function getAssetIndexName(): string
     {
-        return $this->searchIndexConfigService->getIndexName('asset');
+        return $this->searchIndexConfigService->getIndexName(IndexName::ASSET->value);
     }
 
     protected function getCurrentFullIndexName(): string

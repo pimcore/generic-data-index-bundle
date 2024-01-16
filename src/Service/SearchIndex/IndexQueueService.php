@@ -18,8 +18,11 @@ use Doctrine\DBAL\Exception\TableNotFoundException;
 use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Messenger\TransportName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
+use Pimcore\Bundle\GenericDataIndexBundle\Message\DispatchQueueMessagesMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AbstractIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
@@ -35,9 +38,8 @@ use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Service;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Tag;
-use Symfony\Component\Console\Helper\ProgressBar;
-use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use UnhandledMatchError;
@@ -248,7 +250,7 @@ class IndexQueueService
     {
         $selectQuery = sprintf("SELECT id, '%s', '%s', '%s', '%s', 0 FROM %s",
             ElementType::ASSET->value,
-            'asset',
+            IndexName::ASSET->value,
             IndexQueueOperation::UPDATE->value,
             $this->getCurrentQueueTableOperationTime(),
             'assets'
@@ -266,7 +268,7 @@ class IndexQueueService
         //assets
         $selectQuery = sprintf("SELECT id, '%s', '%s', '%s', '%s', 0 FROM assets where id in (select cid from tags_assignment where ctype='asset' and tagid = %s)",
             ElementType::ASSET->value,
-            'asset',
+            IndexName::ASSET->value,
             IndexQueueOperation::UPDATE->value,
             $this->getCurrentQueueTableOperationTime(),
             $tag->getId()
@@ -479,7 +481,7 @@ class IndexQueueService
     {
         return match (true) {
             $element instanceof Concrete => $element->getClassName(),
-            $element instanceof Asset => 'asset',
+            $element instanceof Asset => IndexName::ASSET->value,
         };
     }
 
@@ -509,20 +511,16 @@ class IndexQueueService
         }
     }
 
-    public function dispatchQueueMessages(OutputInterface $output): void
+    public function dispatchQueueMessages(bool $synchronously = false): void
     {
-        $entries = $this->getUnhandledIndexQueueEntries(true);
+        $stamps = [];
 
-        $progressBar = new ProgressBar($output, count($entries));
-        $progressBar->start();
-
-        foreach(array_chunk($entries, 400) as $entriesBatch) {
-            $message = new IndexUpdateQueueMessage($entries);
-            $this->messageBus->dispatch($message);
-            $progressBar->advance(count($entriesBatch));
+        if ($synchronously) {
+            $stamps[] = new TransportNamesStamp(TransportName::SYNC->value);
         }
 
-        $progressBar->finish();
+        $message = new DispatchQueueMessagesMessage();
+        $this->messageBus->dispatch($message, $stamps);
     }
 
     public function commit(): IndexQueueService

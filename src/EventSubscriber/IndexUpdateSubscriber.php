@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
@@ -116,9 +117,10 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
         }
 
         $classDefinition = $event->getClassDefinition();
+
         $this->dataObjectIndexService
             ->updateMapping($classDefinition, true)
-            ->addClassDefinitionToAlias($classDefinition, 'class_definitions');
+            ->addClassDefinitionToAlias($classDefinition, IndexName::DATA_OBJECT->value);
     }
 
     /**
@@ -131,10 +133,14 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
         }
 
         $classDefinition = $event->getClassDefinition();
+
         $this->dataObjectIndexService
             ->updateMapping($classDefinition)
-            ->addClassDefinitionToAlias($classDefinition, 'class_definitions');
-        $this->indexQueueService->updateDataObjects($classDefinition);
+            ->addClassDefinitionToAlias($classDefinition, IndexName::DATA_OBJECT->value);
+
+        $this->indexQueueService
+            ->updateDataObjects($classDefinition)
+            ->dispatchQueueMessages();
     }
 
     public function deleteDataObjectIndex(ClassDefinitionEvent $event): void
@@ -148,7 +154,7 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
         try {
             $this->dataObjectIndexService
                 ->deleteIndex($classDefinition)
-                ->removeClassDefinitionFromAlias($classDefinition, 'class_definitions')
+                ->removeClassDefinitionFromAlias($classDefinition, IndexName::DATA_OBJECT->value)
             ;
         } catch (Exception $e) {
             $this->logger->error($e->getMessage());
@@ -195,7 +201,9 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $this->indexQueueService->updateByTag($event->getTag());
+        $this->indexQueueService
+            ->updateByTag($event->getTag())
+            ->dispatchQueueMessages();
     }
 
     public function updateTagAssignment(TagEvent $event): void

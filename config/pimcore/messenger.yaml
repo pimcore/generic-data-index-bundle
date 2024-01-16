@@ -2,9 +2,11 @@ framework:
     messenger:
         enabled: true
         transports:
-            pimcore_index_queues: 'doctrine://default?queue_name=pimcore_index_queues'
+            pimcore_generic_data_index_queue: 'doctrine://default?queue_name=pimcore_index_queues'
+            pimcore_generic_data_index_sync: 'sync://'
         routing:
-            Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage: pimcore_index_queues
+            Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage: pimcore_generic_data_index_queue
+            Pimcore\Bundle\GenericDataIndexBundle\Message\DispatchQueueMessagesMessage: pimcore_generic_data_index_queue
         buses:
             messenger.bus.pimcore-generic-data-index:
                 middleware:
