@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle;
 
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\SearchIndexFieldDefinitionPass;
 use Pimcore\Extension\Bundle\AbstractPimcoreBundle;
+use Pimcore\Extension\Bundle\Installer\InstallerInterface;
 use Pimcore\Extension\Bundle\PimcoreBundleAdminClassicInterface;
 use Pimcore\Extension\Bundle\Traits\BundleAdminClassicTrait;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -33,4 +34,11 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements Pim
         $container
             ->addCompilerPass(new SearchIndexFieldDefinitionPass());
     }
+
+    public function getInstaller(): ?InstallerInterface
+    {
+        /** @var InstallerInterface|null */
+        return $this->container->get(Installer::class);
+    }
+
 }

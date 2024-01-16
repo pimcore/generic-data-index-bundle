@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
+use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService;
@@ -40,7 +41,7 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
         protected readonly IndexQueueService $indexQueueService,
         protected readonly DataObjectIndexService $dataObjectIndexService,
         protected readonly AssetIndexService $assetIndexService,
-        // protected readonly Installer $installer,
+        protected readonly Installer $installer,
     ) {
     }
 
@@ -64,9 +65,9 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
 
     public function updateDataObject(DataObjectEvent $event): void
     {
-        /* if (!$this->installer->isInstalled()) {
-             return;
-        }*/
+        if (!$this->installer->isInstalled()) {
+            return;
+        }
 
         //do not update index when auto save or only saving version
         if (
@@ -92,9 +93,9 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
 
     public function deleteDataObject(DataObjectEvent $event): void
     {
-        /*if (!$this->installer->isInstalled()) {
+        if (!$this->installer->isInstalled()) {
             return;
-        }*/
+        }
 
         $this->indexQueueService
             ->updateIndexQueue(
@@ -110,9 +111,9 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
      */
     public function addDataObjectMapping(ClassDefinitionEvent $event): void
     {
-        /*if (!$this->installer->isInstalled()) {
+        if (!$this->installer->isInstalled()) {
             return;
-        }*/
+        }
 
         $classDefinition = $event->getClassDefinition();
         $this->dataObjectIndexService
@@ -125,9 +126,9 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
      */
     public function updateDataObjectMapping(ClassDefinitionEvent $event): void
     {
-        /*if (!$this->installer->isInstalled()) {
+        if (!$this->installer->isInstalled()) {
             return;
-        }*/
+        }
 
         $classDefinition = $event->getClassDefinition();
         $this->dataObjectIndexService
@@ -138,9 +139,9 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
 
     public function deleteDataObjectIndex(ClassDefinitionEvent $event): void
     {
-        /*if (!$this->installer->isInstalled()) {
+        if (!$this->installer->isInstalled()) {
             return;
-        }*/
+        }
 
         $classDefinition = $event->getClassDefinition();
 
@@ -154,14 +155,11 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
         }
     }
 
-    /**
-     * @param AssetEvent $event
-     */
     public function updateAsset(AssetEvent $event): void
     {
-        /*if (!$this->installer->isInstalled()) {
+        if (!$this->installer->isInstalled()) {
             return;
-        }*/
+        }
 
         $this->indexQueueService
             ->updateIndexQueue(
@@ -174,9 +172,9 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
 
     public function deleteAsset(AssetEvent $event): void
     {
-        /*if (!$this->installer->isInstalled()) {
+        if (!$this->installer->isInstalled()) {
             return;
-        }*/
+        }
 
         $this->indexQueueService
             ->updateIndexQueue(
@@ -193,18 +191,18 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
      */
     public function deleteTag(TagEvent $event): void
     {
-        /*if (!$this->installer->isInstalled()) {
+        if (!$this->installer->isInstalled()) {
             return;
-        }*/
+        }
 
         $this->indexQueueService->updateByTag($event->getTag());
     }
 
     public function updateTagAssignment(TagEvent $event): void
     {
-        /*if (!$this->installer->isInstalled()) {
+        if (!$this->installer->isInstalled()) {
             return;
-        }*/
+        }
 
         $element = Service::getElementById($event->getArgument('elementType'), $event->getArgument('elementId'));
 
