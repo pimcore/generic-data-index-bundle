@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -17,7 +18,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService;
-use Pimcore\Bundle\PortalEngineBundle\Enum\Index\Statistics\ElasticSearchAlias;
 use Pimcore\Event\AssetEvents;
 use Pimcore\Event\DataObjectClassDefinitionEvents;
 use Pimcore\Event\DataObjectEvents;
@@ -115,7 +115,7 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
         $classDefinition = $event->getClassDefinition();
         $this->dataObjectIndexService
             ->updateMapping($classDefinition, true)
-            ->addClassDefinitionToAlias($classDefinition, ElasticSearchAlias::CLASS_DEFINITIONS);
+            ->addClassDefinitionToAlias($classDefinition, 'class_definitions');
     }
 
     /**
@@ -130,7 +130,7 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
         $classDefinition = $event->getClassDefinition();
         $this->dataObjectIndexService
             ->updateMapping($classDefinition)
-            ->addClassDefinitionToAlias($classDefinition, ElasticSearchAlias::CLASS_DEFINITIONS);
+            ->addClassDefinitionToAlias($classDefinition, 'class_definitions');
         $this->indexQueueService->updateDataObjects($classDefinition);
     }
 
@@ -145,7 +145,7 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
         try {
             $this->dataObjectIndexService
                 ->deleteIndex($classDefinition)
-                ->removeClassDefinitionFromAlias($classDefinition, ElasticSearchAlias::CLASS_DEFINITIONS)
+                ->removeClassDefinitionFromAlias($classDefinition, 'class_definitions')
             ;
         } catch (Exception $e) {
             Logger::err($e);
