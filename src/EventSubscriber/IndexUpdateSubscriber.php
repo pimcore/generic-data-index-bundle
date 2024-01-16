@@ -27,7 +27,6 @@ use Pimcore\Event\Model\DataObject\ClassDefinitionEvent;
 use Pimcore\Event\Model\DataObjectEvent;
 use Pimcore\Event\Model\TagEvent;
 use Pimcore\Event\TagEvents;
-use Pimcore\Logger;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Element\Service;
