@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService;
 
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Query\QueryBuilder;
 use Exception;
 use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
@@ -46,6 +48,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
         protected readonly WorkflowService $workflowService,
         protected readonly OpenSearchService $openSearchService,
         protected readonly BulkOperationService $bulkOperationService,
+        protected readonly Connection $dbConnection,
     ) {
         $this->openSearchClient = $this->openSearchService->getOpenSearchClient();
     }
@@ -285,5 +288,10 @@ abstract class AbstractIndexService implements IndexServiceInterface
         $this->logger->info('Add deletion of item ID ' . $elementId . ' from ' . $elementIndexName . ' index to bulk.');
 
         return $this;
+    }
+
+    public function getRelatedItemsOnUpdateQuery(ElementInterface $element, string $operation, int $operationTime, bool $includeElement = false): ?QueryBuilder
+    {
+        return null;
     }
 }

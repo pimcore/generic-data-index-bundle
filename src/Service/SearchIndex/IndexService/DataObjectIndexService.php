@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService;
 
 use DateTimeInterface;
+use Doctrine\DBAL\Query\QueryBuilder;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
@@ -261,4 +262,45 @@ class DataObjectIndexService extends AbstractIndexService
             $this->coreFieldsConfig = array_merge($coreFieldsConfig['general'], $coreFieldsConfig['data_object']);
         }
     }
+
+    /**
+     * @throws Exception
+     */
+    public function getRelatedItemsOnUpdateQuery(ElementInterface $element, string $operation, int $operationTime, bool $includeElement = false): ?QueryBuilder
+    {
+        if(!$element instanceof Concrete) {
+            return null;
+        }
+
+        if(!$element->getClass()->getAllowInherit()) {
+            return null;
+        }
+
+        $select = $this->dbConnection->createQueryBuilder()
+            ->select([
+                'id',
+                "'object'",
+                'className',
+                "'{$operation}'",
+                "'{$operationTime}'",
+                '0'
+            ])
+            ->from('objects')
+            ->where('classId = :classId')
+            ->andWhere('path LIKE :path')
+            ->setParameters([
+                'classId' => $element->getClassId(),
+                'path' => $element->getRealFullPath() . '/%'
+            ]);
+
+        if ($includeElement) {
+            $select
+                ->orWhere('id = :id')
+                ->setParameter('id', $element->getId());
+        }
+
+        return $select;
+    }
+
+
 }

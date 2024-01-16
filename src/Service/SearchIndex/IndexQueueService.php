@@ -73,47 +73,20 @@ class IndexQueueService
                 $this->doHandleIndexData($element, $operation);
             }
 
-            $elementType = $this->getElementType($element);
-
-            $currentQueueTableOperationTime = $this->getCurrentQueueTableOperationTime();
-
-            if ($element instanceof AbstractObject) {
-                $tableName = 'objects';
-                $or = $doIndexElement ? '' : sprintf('%s = %s OR', Service::getVersionDependentDatabaseColumnName('o_id'), $this->connection->quote($element->getId()));
-                $sql = "SELECT %s, %s, %s, %s, %s FROM %s WHERE (%s %s LIKE %s) and %s != 'folder'";
-                $selectQuery = sprintf($sql,
-                    Service::getVersionDependentDatabaseColumnName('o_id'),
-                    Service::getVersionDependentDatabaseColumnName('o_className'),
-                    $this->connection->quote($elementType),
-                    $this->connection->quote($operation),
-                    $this->connection->quote($currentQueueTableOperationTime),
-                    $this->connection->quoteIdentifier($tableName),
-                    $or,
-                    Service::getVersionDependentDatabaseColumnName('o_className'),
-                    $this->connection->quote($element->getRealFullPath() . '/%'),
-                    Service::getVersionDependentDatabaseColumnName('o_type')
+            $subQuery = $this->getIndexServiceByElement($element)
+                ->getRelatedItemsOnUpdateQuery(
+                    element: $element,
+                    operation: $operation,
+                    operationTime: $this->getCurrentQueueTableOperationTime(),
+                    includeElement: !$doIndexElement,
                 );
-            } else {
-                $tableName = 'assets';
-                $or = $doIndexElement ? '' : sprintf('id = %s OR', $this->connection->quote($element->getId()));
-                $sql = 'SELECT id, %s, %s, %s, %s, 0 FROM %s WHERE %s path LIKE %s';
-                $selectQuery = sprintf($sql,
-                    $this->connection->quote($elementType),
-                    $this->connection->quote($this->getElementIndexName($element)),
-                    $this->connection->quote($operation),
-                    $this->connection->quote($currentQueueTableOperationTime),
-                    $this->connection->quoteIdentifier($tableName),
-                    $or,
-                    $this->connection->quote($element->getRealFullPath() . '/%')
-                );
-            }
 
-            if (!$doIndexElement || !($element instanceof Asset) || $element instanceof Asset\Folder) {
+            if ($subQuery) {
                 $this->connection->executeQuery(sprintf('INSERT INTO %s (%s) %s ON DUPLICATE KEY UPDATE operation = VALUES(operation), operationTime = VALUES(operationTime), dispatched = VALUES(dispatched)',
                     IndexQueue::TABLE,
                     implode(',', ['elementId', 'elementType', 'elementIndexName', 'operation', 'operationTime', 'dispatched']),
-                    $selectQuery
-                ));
+                    $subQuery
+                ), $subQuery->getParameters());
             }
 
             if ($element instanceof Asset) {
