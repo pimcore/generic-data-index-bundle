@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection;
 
 use InvalidArgumentException;
+use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Factory\OpenSearchClientFactory;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -59,13 +60,19 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $container->prependExtensionConfig('doctrine', $config['doctrine']);
     }
 
-    protected function registerIndexServiceParams(ContainerBuilder $container, array $esClientParams): static
+    protected function registerIndexServiceParams(ContainerBuilder $container, array $indexSettings): static
     {
         $definition = $container->getDefinition(SearchIndexConfigService::class);
-        $definition->setArgument('$indexPrefix', $esClientParams['es_client_params']['index_prefix']);
-        $definition->setArgument('$indexSettings', $esClientParams['index_settings']);
-        $definition->setArgument('$searchSettings', $esClientParams['search_settings']);
-        $definition->setArgument('$systemFieldsSettings', $esClientParams['system_fields_settings']);
+        $definition->setArgument('$indexPrefix', $indexSettings['client_params']['index_prefix']);
+        $definition->setArgument('$indexSettings', $indexSettings['index_settings']);
+        $definition->setArgument('$searchSettings', $indexSettings['search_settings']);
+        $definition->setArgument('$systemFieldsSettings', $indexSettings['system_fields_settings']);
+
+        $definition = $container->getDefinition(OpenSearchClientFactory::class);
+        $definition->setArgument('$hosts', $indexSettings['client_params']['hosts']);
+        $definition->setArgument('$username', $indexSettings['client_params']['username']);
+        $definition->setArgument('$password', $indexSettings['client_params']['password']);
+        $definition->setArgument('$sslVerification', $indexSettings['client_params']['ssl_verification']);
 
         return $this;
     }

@@ -8,12 +8,28 @@ use OpenSearch\ClientBuilder;
 
 class OpenSearchClientFactory
 {
+    public function __construct(
+        private readonly array $hosts,
+        private readonly ?string $username,
+        private readonly ?string $password,
+        private readonly bool $sslVerification)
+    {
+
+    }
+
     public function createOpenSearchClient(): Client
     {
-        return (new ClientBuilder())
-            ->setHosts(['https://opensearch:9200'])
-            ->setBasicAuthentication('admin', 'admin')
-            ->setSSLVerification(false)
+        $clientBuilder = (new ClientBuilder())
+            ->setHosts($this->hosts);
+
+        if($this->username && $this->password) {
+            $clientBuilder
+                ->setBasicAuthentication($this->username, $this->password);
+        }
+
+        $clientBuilder->setSSLVerification($this->sslVerification);
+
+        return $clientBuilder
             ->build();
     }
 }
