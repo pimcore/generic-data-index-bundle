@@ -19,6 +19,7 @@ use Exception;
 use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer\AbstractElementNormalizer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
@@ -27,8 +28,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Element\ElementInterface;
-use Pimcore\Model\Element\Service;
-use Pimcore\Model\Element\Tag;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 abstract class AbstractIndexService implements IndexServiceInterface
@@ -38,6 +37,8 @@ abstract class AbstractIndexService implements IndexServiceInterface
     protected bool $performIndexRefresh = false;
 
     protected Client $openSearchClient;
+
+    protected AbstractElementNormalizer $elementNormalizer;
 
     public function __construct(
         protected readonly EventDispatcherInterface $eventDispatcher,
@@ -161,36 +162,6 @@ abstract class AbstractIndexService implements IndexServiceInterface
         $this->openSearchClient->updateByQuery($query);
     }
 
-    protected function extractPathLevels(ElementInterface $element): array
-    {
-        $path = $element->getType() === 'folder' ? $element->getRealFullPath() : $element->getPath();
-        $levels = explode('/', rtrim($path, '/'));
-        unset($levels[0]);
-
-        $result = [];
-        foreach ($levels as $level => $name) {
-            $result[] = [
-                'level' => $level,
-                'name' => $name,
-            ];
-        }
-
-        return $result;
-    }
-
-    protected function extractTagIds(ElementInterface $element): array
-    {
-        $tag = new Tag();
-        $tags = $tag->getDao()->getTagsForElement(Service::getElementType($element), $element->getId());
-
-        $ids = [];
-        foreach ($tags as $tag) {
-            $ids[] = $tag->getId();
-        }
-
-        return $ids;
-    }
-
     public function isPerformIndexRefresh(): bool
     {
         return $this->performIndexRefresh;
@@ -205,7 +176,29 @@ abstract class AbstractIndexService implements IndexServiceInterface
 
     abstract protected function getIndexName(ElementInterface $element): string;
 
-    abstract protected function getIndexData(ElementInterface $element): array;
+    protected function getIndexData(ElementInterface $element): array
+    {
+        $indexData = $this->elementNormalizer->normalize($element);
+
+        $systemFields = $indexData[FieldCategory::SYSTEM_FIELDS->value];
+        $standardFields = $indexData[FieldCategory::STANDARD_FIELDS->value];
+        $customFields = [];
+
+        //dispatch event before building checksum
+        //$updateIndexDataEvent = new UpdateIndexDataEvent($dataObject, $customFields);
+        //$this->eventDispatcher->dispatch($updateIndexDataEvent);
+        //$customFields = $updateIndexDataEvent->getCustomFields();
+
+        $checksum = crc32(json_encode([$systemFields, $standardFields, $customFields], JSON_THROW_ON_ERROR));
+        $systemFields[SystemField::CHECKSUM->value] = $checksum;
+
+        return [
+            FieldCategory::SYSTEM_FIELDS->value => $systemFields,
+            FieldCategory::STANDARD_FIELDS->value => $standardFields,
+            FieldCategory::CUSTOM_FIELDS->value => $customFields,
+        ];
+    }
+
 
     public function doUpdateIndexData(ElementInterface $element): AbstractIndexService
     {

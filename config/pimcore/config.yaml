@@ -112,3 +112,5 @@ pimcore_generic_data_index:
               search_analyzer: generic_data_index_whitespace_analyzer
         fileSize:
           type: long
+        hasWorkflowWithPermissions:
+          type: boolean

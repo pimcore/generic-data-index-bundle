@@ -13,25 +13,20 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService;
 
-use DateTimeInterface;
 use Exception;
 use JsonException;
 use OpenSearch\Namespaces\IndicesNamespace;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer\AssetNormalizer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
-use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
-use Pimcore\Model\Element\Service;
+use Symfony\Contracts\Service\Attribute\Required;
 
 class AssetIndexService extends AbstractIndexService
 {
-    private const NOT_LOCALIZED_KEY = 'default';
 
-    /**
-     * @return IndicesNamespace
-     */
+
     private function getIndices(): IndicesNamespace
     {
         return $this->openSearchClient->indices();
@@ -76,14 +71,6 @@ class AssetIndexService extends AbstractIndexService
         return $this;
     }
 
-    protected function extractSystemFieldsMapping(): array
-    {
-        $mappingProperties = parent::extractSystemFieldsMapping();
-        $mappingProperties[FieldCategory::SYSTEM_FIELDS->value]['properties'][SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value] = ['type' => 'boolean'];
-
-        return $mappingProperties;
-    }
-
     public function extractMapping(): array
     {
         $mappingProperties = [
@@ -99,7 +86,7 @@ class AssetIndexService extends AbstractIndexService
         //$mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] =
         //  $extractMappingEvent->getCustomFieldsMapping();
 
-        $mappingParams = [
+        return [
             'index' => $this->getAssetIndexName(),
             'body' => [
                 '_source' => [
@@ -108,10 +95,11 @@ class AssetIndexService extends AbstractIndexService
                 'properties' => $mappingProperties,
             ],
         ];
-
-        return $mappingParams;
     }
 
+    /**
+     * @throws Exception
+     */
     public function updateMapping(bool $forceCreateIndex = false): AssetIndexService
     {
 
@@ -141,90 +129,9 @@ class AssetIndexService extends AbstractIndexService
         return $this;
     }
 
-    /**
-     * @param Asset $element
-     *
-     * @throws JsonException
-     */
-    protected function getIndexData(ElementInterface $element): array
+    #[Required]
+    public function setElementNormalizer(AssetNormalizer $elementNormalizer): void
     {
-        $systemFields = $this->getSystemFieldsIndexData($element);
-        $standardFields = $this->getStandardFieldsIndexData($element);
-        $customFields = [];
-
-        //dispatch event before building checksum
-        //$updateIndexDataEvent = new UpdateIndexDataEvent($asset, $customFields);
-        //$this->eventDispatcher->dispatch($updateIndexDataEvent);
-        //$customFields = $updateIndexDataEvent->getCustomFields();
-
-        $checksum = crc32(json_encode([$systemFields, $standardFields, $customFields], JSON_THROW_ON_ERROR));
-        $systemFields[SystemField::CHECKSUM->value] = $checksum;
-
-        return [
-            FieldCategory::SYSTEM_FIELDS->value => $systemFields,
-            FieldCategory::STANDARD_FIELDS->value => $standardFields,
-            FieldCategory::CUSTOM_FIELDS->value => $customFields,
-        ];
-    }
-
-    private function getSystemFieldsIndexData(Asset $asset): array
-    {
-        $date = new \DateTime();
-
-        return [
-            SystemField::ID->value => $asset->getId(),
-            SystemField::CREATION_DATE->value => $date->setTimestamp(
-                $asset->getCreationDate())->format(DateTimeInterface::ATOM
-                ),
-            SystemField::MODIFICATION_DATE->value => $date->setTimestamp(
-                $asset->getModificationDate())->format(DateTimeInterface::ATOM
-                ),
-            SystemField::TYPE->value => $asset->getType(),
-            SystemField::KEY->value => $asset->getKey(),
-            SystemField::PATH->value => $asset->getPath(),
-            SystemField::FULL_PATH->value => $asset->getRealFullPath(),
-            SystemField::PATH_LEVELS->value => $this->extractPathLevels($asset),
-            SystemField::TAGS->value => $this->extractTagIds($asset),
-            SystemField::MIME_TYPE->value => $asset->getMimetype(),
-            //SystemField::THUMBNAIL->value => $this->thumbnailService->getThumbnailPath(
-            //  $asset,
-            //  ImageThumbnails::ELEMENT_TEASER
-            //),
-            //SystemField::COLLECTIONS->value => $this->getCollectionIdsByElement($asset),
-            //SystemField::PUBLIC_SHARES->value => $this->getPublicShareIdsByElement($asset),
-            SystemField::USER_OWNER->value => $asset->getUserOwner(),
-            SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
-                $this->workflowService->hasWorkflowWithPermissions($asset),
-            SystemField::FILE_SIZE->value => $asset->getFileSize(),
-        ];
-    }
-
-    private function getStandardFieldsIndexData(Asset $asset): array
-    {
-        $standardFields = [];
-
-        foreach($asset->getMetadata() as $metadata) {
-            if(is_array($metadata) && isset($metadata['data'], $metadata['name'])) {
-                $data = $metadata['data'];
-                $language = $metadata['language'] ?? null;
-                $language = $language ?: self::NOT_LOCALIZED_KEY;
-                $standardFields[$language] = $standardFields[$language] ?? [];
-                $standardFields[$language][$metadata['name']] = $this->transformMetadataForIndex($data);
-            }
-        }
-
-        return $standardFields;
-    }
-
-    private function transformMetadataForIndex(mixed $data): mixed
-    {
-        if($data instanceof ElementInterface) {
-            return [
-                'type' => Service::getElementType($data),
-                'id' => $data->getId(),
-            ];
-        }
-
-        return $data;
+        $this->elementNormalizer = $elementNormalizer;
     }
 }

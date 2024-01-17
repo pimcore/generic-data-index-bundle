@@ -13,29 +13,21 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService;
 
-use DateTimeInterface;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer\DataObjectNormalizer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\Element\ElementInterface;
-use Pimcore\Normalizer\NormalizerInterface;
 use Symfony\Contracts\Service\Attribute\Required;
 
 class DataObjectIndexService extends AbstractIndexService
 {
     protected FieldDefinitionService $fieldDefinitionService;
-
-    #[Required]
-    public function setFieldDefinitionService(FieldDefinitionService $fieldDefinitionService): void
-    {
-        $this->fieldDefinitionService = $fieldDefinitionService;
-    }
 
     /**
      * @param Concrete $element
@@ -89,7 +81,6 @@ class DataObjectIndexService extends AbstractIndexService
             FieldCategory::CUSTOM_FIELDS->value => [],
         ];
 
-        // $standardFeildProperties =
         foreach ($classDefinition->getFieldDefinitions() as $fieldDefinition) {
             if (!$fieldDefinition->getName()) {
                 continue;
@@ -104,7 +95,7 @@ class DataObjectIndexService extends AbstractIndexService
         //$this->eventDispatcher->dispatch($extractMappingEvent);
         //$mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] = $extractMappingEvent->getCustomFieldsMapping();
 
-        $mappingParams = [
+        return [
             'index' => $this->searchIndexConfigService->getIndexName($classDefinition->getName()),
             'body' => [
                 '_source' => [
@@ -113,8 +104,6 @@ class DataObjectIndexService extends AbstractIndexService
                 'properties' => $mappingProperties,
             ],
         ];
-
-        return $mappingParams;
     }
 
     /**
@@ -157,45 +146,6 @@ class DataObjectIndexService extends AbstractIndexService
         return $this;
     }
 
-    /**
-     * @param Concrete $element
-     *
-     * @throws Exception
-     */
-    protected function getIndexData(ElementInterface $element): array
-    {
-
-        $dataObject = $element;
-
-        $systemFields = $this->getSystemFieldsIndexData($dataObject);
-        $standardFields = [];
-        $customFields = [];
-
-        foreach ($dataObject->getClass()->getFieldDefinitions() as $key => $fieldDefinition) {
-
-            $value = $dataObject->get($key);
-            if($fieldDefinition instanceof NormalizerInterface) {
-                $value = $fieldDefinition->normalize($value);
-            }
-
-            $standardFields[$key] = $value;
-        }
-
-        //dispatch event before building checksum
-        //$updateIndexDataEvent = new UpdateIndexDataEvent($dataObject, $customFields);
-        //$this->eventDispatcher->dispatch($updateIndexDataEvent);
-        //$customFields = $updateIndexDataEvent->getCustomFields();
-
-        $checksum = crc32(json_encode([$systemFields, $standardFields, $customFields]));
-        $systemFields[SystemField::CHECKSUM->value] = $checksum;
-
-        return [
-            FieldCategory::SYSTEM_FIELDS->value => $systemFields,
-            FieldCategory::STANDARD_FIELDS->value => $standardFields,
-            FieldCategory::CUSTOM_FIELDS->value => $customFields,
-        ];
-    }
-
     public function addClassDefinitionToAlias(ClassDefinition $classDefinition, string $aliasName): DataObjectIndexService
     {
         if (!$this->existsAliasForClassDefinition($classDefinition, $aliasName)) {
@@ -235,30 +185,6 @@ class DataObjectIndexService extends AbstractIndexService
         return $this->searchIndexConfigService->prefixIndexName($aliasName);
     }
 
-    protected function getSystemFieldsIndexData(Concrete $dataObject): array
-    {
-        $date = new \DateTime();
-
-        return [
-            SystemField::ID->value => $dataObject->getId(),
-            SystemField::CREATION_DATE->value => $date->setTimestamp($dataObject->getCreationDate())->format(DateTimeInterface::ATOM),
-            SystemField::MODIFICATION_DATE->value => $date->setTimestamp($dataObject->getModificationDate())->format(DateTimeInterface::ATOM),
-            SystemField::PUBLISHED->value => $dataObject->getPublished(),
-            SystemField::TYPE->value => $dataObject->getType(),
-            SystemField::KEY->value => $dataObject->getKey(),
-            SystemField::PATH->value => $dataObject->getPath(),
-            SystemField::FULL_PATH->value => $dataObject->getRealFullPath(),
-            SystemField::PATH_LEVELS->value => $this->extractPathLevels($dataObject),
-            SystemField::TAGS->value => $this->extractTagIds($dataObject),
-            SystemField::CLASS_NAME->value => $dataObject->getClassName(),
-            //SystemField::NAME => $this->nameExtractorService->extractAllLanguageNames($dataObject),
-            //SystemField::THUMBNAIL => $this->mainImageExtractorService->extractThumbnail($dataObject),
-            //SystemField::COLLECTIONS => $this->getCollectionIdsByElement($dataObject),
-            //SystemField::PUBLIC_SHARES => $this->getPublicShareIdsByElement($dataObject),
-            SystemField::USER_OWNER->value => $dataObject->getUserOwner(),
-        ];
-    }
-
     /**
      * @throws Exception
      */
@@ -296,5 +222,18 @@ class DataObjectIndexService extends AbstractIndexService
         }
 
         return $select;
+    }
+
+
+    #[Required]
+    public function setFieldDefinitionService(FieldDefinitionService $fieldDefinitionService): void
+    {
+        $this->fieldDefinitionService = $fieldDefinitionService;
+    }
+
+    #[Required]
+    public function setElementNormalizer(DataObjectNormalizer $elementNormalizer): void
+    {
+        $this->elementNormalizer = $elementNormalizer;
     }
 }
