@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Exception;
+use JsonException;
 use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
@@ -28,6 +29,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Element\ElementInterface;
+use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 abstract class AbstractIndexService implements IndexServiceInterface
@@ -176,6 +178,10 @@ abstract class AbstractIndexService implements IndexServiceInterface
 
     abstract protected function getIndexName(ElementInterface $element): string;
 
+    /**
+     * @throws JsonException
+     * @throws ExceptionInterface
+     */
     protected function getIndexData(ElementInterface $element): array
     {
         $indexData = $this->elementNormalizer->normalize($element);
