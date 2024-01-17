@@ -43,12 +43,12 @@ abstract class AbstractIndexService implements IndexServiceInterface
     public function __construct(
         protected readonly EventDispatcherInterface $eventDispatcher,
         protected readonly SearchIndexConfigService $searchIndexConfigService,
-        protected readonly LanguageService          $languageService,
-        protected readonly WorkflowService          $workflowService,
-        protected readonly OpenSearchService        $openSearchService,
-        protected readonly BulkOperationService     $bulkOperationService,
-        protected readonly PathService              $pathUpdateService,
-        protected readonly Connection               $dbConnection,
+        protected readonly LanguageService $languageService,
+        protected readonly WorkflowService $workflowService,
+        protected readonly OpenSearchService $openSearchService,
+        protected readonly BulkOperationService $bulkOperationService,
+        protected readonly PathService $pathUpdateService,
+        protected readonly Connection $dbConnection,
     ) {
     }
 
