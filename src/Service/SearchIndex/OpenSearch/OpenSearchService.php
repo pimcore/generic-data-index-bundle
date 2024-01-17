@@ -28,16 +28,10 @@ class OpenSearchService
 
     use LoggerAwareTrait;
 
-    private Client $openSearchClient;
-
     public function __construct(
         private readonly SearchIndexConfigService $searchIndexConfigService,
+        private readonly Client $openSearchClient,
     ) {
-        $this->openSearchClient = (new \OpenSearch\ClientBuilder())
-            ->setHosts(['https://opensearch:9200'])
-            ->setBasicAuthentication('admin', 'admin')
-            ->setSSLVerification(false)
-            ->build();
     }
 
     public function refreshIndex(string $indexName): array
@@ -175,7 +169,7 @@ class OpenSearchService
         return $this;
     }
 
-    public function addAlias(string $indexName, string $aliasName): OpenSearchService
+    public function addAlias(string $aliasName, string $indexName): OpenSearchService
     {
         $params['body'] = [
             'actions' => [
@@ -190,6 +184,64 @@ class OpenSearchService
         $this->openSearchClient->indices()->updateAliases($params);
 
         return $this;
+    }
+
+    public function putAlias(string $aliasName, string $indexName): array
+    {
+        return $this->openSearchClient->indices()->putAlias([
+            'name' => $aliasName,
+            'index' => $indexName,
+        ]);
+    }
+
+    public function existsAlias(string $aliasName, string $indexName = null): bool
+    {
+        return $this->openSearchClient->indices()->existsAlias([
+            'name' => $aliasName,
+            'index' => $indexName,
+        ]);
+    }
+
+    public function deleteAlias(string $indexName, string $aliasName): array
+    {
+        return $this->openSearchClient->indices()->deleteAlias([
+            'name' => $aliasName,
+            'index' => $indexName,
+        ]);
+    }
+
+    public function getDocument(string $index, int $id): array
+    {
+        $params = [
+            'index' => $index,
+            'id' => $id,
+        ];
+
+        return $this->openSearchClient->get($params);
+    }
+
+    public function putMapping(array $params): array
+    {
+        return $this->openSearchClient->indices()->putMapping($params);
+    }
+
+    public function countByAttributeValue(string $indexName, string $attribute, string $value): int
+    {
+        $this->openSearchClient->search([
+            'index' => $indexName,
+            'track_total_hits' => true,
+            'rest_total_hits_as_int' => true,
+            'body' => [
+                'query' => [
+                    'term' => [
+                        $attribute => $value,
+                    ],
+                ],
+                'size' => 0,
+            ],
+        ]);
+
+        return $countResult['hits']['total'] ?? 0;
     }
 
     public function getOpenSearchClient(): Client

@@ -1,0 +1,21 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+        
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService:
+        arguments:
+            $openSearchClient: '@generic-data-index-bundle.opensearch-client'
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService: ~
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathService:
+        arguments:
+            $openSearchClient: '@generic-data-index-bundle.opensearch-client'
+
+    Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Factory\OpenSearchClientFactory: ~
+
+    generic-data-index-bundle.opensearch-client:
+        class: OpenSearch\Client
+        factory: ['@Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Factory\OpenSearchClientFactory', 'createOpenSearchClient']

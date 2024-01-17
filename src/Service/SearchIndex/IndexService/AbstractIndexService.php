@@ -17,7 +17,6 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Exception;
 use JsonException;
-use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer\AbstractElementNormalizer;
@@ -25,6 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexServiceInterf
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -38,62 +38,27 @@ abstract class AbstractIndexService implements IndexServiceInterface
 
     protected bool $performIndexRefresh = false;
 
-    protected Client $openSearchClient;
-
     protected AbstractElementNormalizer $elementNormalizer;
 
     public function __construct(
         protected readonly EventDispatcherInterface $eventDispatcher,
         protected readonly SearchIndexConfigService $searchIndexConfigService,
-        protected readonly LanguageService $languageService,
-        protected readonly WorkflowService $workflowService,
-        protected readonly OpenSearchService $openSearchService,
-        protected readonly BulkOperationService $bulkOperationService,
-        protected readonly Connection $dbConnection,
+        protected readonly LanguageService          $languageService,
+        protected readonly WorkflowService          $workflowService,
+        protected readonly OpenSearchService        $openSearchService,
+        protected readonly BulkOperationService     $bulkOperationService,
+        protected readonly PathService              $pathUpdateService,
+        protected readonly Connection               $dbConnection,
     ) {
-        $this->openSearchClient = $this->openSearchService->getOpenSearchClient();
-    }
-
-    public function getCurrentIndexFullPath(ElementInterface $element, string $indexName): ?string
-    {
-        $result = $this->openSearchClient->search(
-            [
-                'index' => $indexName,
-                'body' => [
-                    '_source' => [FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::FULL_PATH->value],
-                    'query' => [
-                        'term' => [
-                            FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::ID->value =>
-                                $element->getId(),
-                        ],
-                    ],
-                ],
-            ]
-        );
-
-        return $result['hits']['hits'][0]['_source']['system_fields']['fullPath'] ?? null;
     }
 
     public function rewriteChildrenIndexPaths(ElementInterface $element, string $indexName, string $oldFullPath): void
     {
-        $pathLevels = explode('/', $element->getRealFullPath());
-
-        $countResult = $this->openSearchClient->search([
-            'index' => $indexName,
-            'track_total_hits' => true,
-            'rest_total_hits_as_int' => true,
-            'body' => [
-                'query' => [
-                    'term' => [
-                        FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::FULL_PATH->value
-                        => $oldFullPath,
-                    ],
-                ],
-                'size' => 0,
-            ],
-        ]);
-
-        $countResult = $countResult['hits']['total'] ?? 0;
+        $countResult = $this->openSearchService->countByAttributeValue(
+            $indexName,
+            FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::FULL_PATH->value,
+            $oldFullPath
+        );
 
         if ($countResult === 0) {
             return;
@@ -112,56 +77,7 @@ abstract class AbstractIndexService implements IndexServiceInterface
             return;
         }
 
-        $query = [
-            'index' => $indexName,
-            'refresh' => true,
-            'conflicts' => 'proceed',
-            'body' => [
-
-                'script' => [
-                    'lang' => 'painless',
-                    'source' => '
-                        String currentPath = "";
-                            if(ctx._source.system_fields.path.length() >= params.currentPath.length()) {
-                               currentPath = ctx._source.system_fields.path.substring(0,params.currentPath.length());
-                            }
-                            if(currentPath == params.currentPath) {
-                                String subPath = ctx._source.system_fields.path.substring(params.currentPath.length());
-                                ctx._source.system_fields.path = params.newPath + subPath;
-
-                                String subFullPath = ctx._source.system_fields.fullPath.substring(params.currentPath.length());
-                                ctx._source.system_fields.fullPath = params.newPath + subFullPath;
-
-                                for (int i = 0; i < ctx._source.system_fields.pathLevels.length; i++) {
-
-
-                                  if(ctx._source.system_fields.pathLevels[i].level == params.changePathLevel) {
-
-                                    ctx._source.system_fields.pathLevels[i].name = params.newPathLevelName;
-                                  }
-                                }
-                            }
-                            ctx._source.system_fields.checksum = 0
-                   ',
-
-                    'params' => [
-                        'currentPath' => $oldFullPath . '/',
-                        'newPath' => $element->getRealFullPath() . '/',
-                        'changePathLevel' => count($pathLevels) - 1,
-                        'newPathLevelName' => end($pathLevels),
-                    ],
-                ],
-
-                'query' => [
-                    'term' => [
-                        FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::FULL_PATH->value
-                        => $oldFullPath,
-                    ],
-                ],
-            ],
-        ];
-
-        $this->openSearchClient->updateByQuery($query);
+        $this->pathUpdateService->updatePath($indexName, $oldFullPath, $element->getRealFullPath());
     }
 
     public function isPerformIndexRefresh(): bool
@@ -214,13 +130,8 @@ abstract class AbstractIndexService implements IndexServiceInterface
 
         $index = $this->getIndexName($element);
 
-        $params = [
-            'index' => $index,
-            'id' => $element->getId(),
-        ];
-
         try {
-            $indexDocument = $this->openSearchClient->get($params);
+            $indexDocument = $this->openSearchService->getDocument($index, $element->getId());
             $originalChecksum = $indexDocument['_source'][FieldCategory::SYSTEM_FIELDS->value][SystemField::CHECKSUM->value] ?? -1;
         } catch (Exception $e) {
             $this->logger->debug($e->getMessage());

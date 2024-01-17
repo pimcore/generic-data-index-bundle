@@ -53,7 +53,7 @@ class DataObjectIndexService extends AbstractIndexService
         $this
             ->openSearchService
             ->createIndex($fullIndexName)
-            ->addAlias($fullIndexName, $this->searchIndexConfigService->getIndexName($classDefinition->getName()))
+            ->addAlias($this->searchIndexConfigService->getIndexName($classDefinition->getName()), $fullIndexName)
         ;
 
         return $this;
@@ -118,7 +118,7 @@ class DataObjectIndexService extends AbstractIndexService
     {
         $index = $this->searchIndexConfigService->getIndexName($classDefinition->getName());
 
-        if ($forceCreateIndex || !$this->openSearchClient->indices()->existsAlias(['name' => $index])) {
+        if ($forceCreateIndex || !$this->openSearchService->existsAlias($index)) {
             $this->createIndex($classDefinition);
         }
 
@@ -139,8 +139,9 @@ class DataObjectIndexService extends AbstractIndexService
      */
     protected function doUpdateMapping(ClassDefinition $classDefinition): DataObjectIndexService
     {
-        $mapping = $this->extractMapping($classDefinition);
-        $response = $this->openSearchClient->indices()->putMapping($mapping);
+        $response = $this->openSearchService->putMapping(
+            $this->extractMapping($classDefinition)
+        );
         $this->logger->debug(json_encode($response));
 
         return $this;
@@ -149,10 +150,12 @@ class DataObjectIndexService extends AbstractIndexService
     public function addClassDefinitionToAlias(ClassDefinition $classDefinition, string $aliasName): DataObjectIndexService
     {
         if (!$this->existsAliasForClassDefinition($classDefinition, $aliasName)) {
-            $response = $this->openSearchClient->indices()->putAlias([
-                'name' => $this->prefixAliasName($aliasName),
-                'index' => $this->getCurrentFullIndexName($classDefinition),
-            ]);
+
+            $response = $this->openSearchService->putAlias(
+                $this->prefixAliasName($aliasName),
+                $this->getCurrentFullIndexName($classDefinition),
+            );
+
             $this->logger->debug(json_encode($response));
         }
 
@@ -162,10 +165,10 @@ class DataObjectIndexService extends AbstractIndexService
     public function removeClassDefinitionFromAlias(ClassDefinition $classDefinition, string $aliasName): DataObjectIndexService
     {
         if ($this->existsAliasForClassDefinition($classDefinition, $aliasName)) {
-            $response = $this->openSearchClient->indices()->deleteAlias([
-                'name' => $this->prefixAliasName($aliasName),
-                'index' => $this->getCurrentFullIndexName($classDefinition),
-            ]);
+            $response = $this->openSearchService->deleteAlias(
+                $this->getCurrentFullIndexName($classDefinition),
+                $this->prefixAliasName($aliasName),
+            );
             $this->logger->debug(json_encode($response));
         }
 
@@ -174,10 +177,10 @@ class DataObjectIndexService extends AbstractIndexService
 
     protected function existsAliasForClassDefinition(ClassDefinition $classDefinition, string $aliasName): bool
     {
-        return $this->openSearchClient->indices()->existsAlias([
-            'name' => $this->prefixAliasName($aliasName),
-            'index' => $this->getCurrentFullIndexName($classDefinition),
-        ]);
+        return $this->openSearchService->existsAlias(
+            $this->prefixAliasName($aliasName),
+            $this->getCurrentFullIndexName($classDefinition)
+        );
     }
 
     private function prefixAliasName(string $aliasName): string

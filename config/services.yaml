@@ -1,5 +1,5 @@
 imports:
-    - { resource: 'services/search/index.yaml' }
+    - { resource: 'services/search/*' }
     - { resource: 'services/search/data-object/*' }
     - { resource: 'services/*' }
 services:

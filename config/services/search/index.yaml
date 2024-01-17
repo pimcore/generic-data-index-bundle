@@ -10,8 +10,6 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService: ~
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService: ~
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService: ~
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService:
         arguments:

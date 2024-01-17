@@ -28,6 +28,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\Asset
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
@@ -55,6 +56,7 @@ class IndexQueueService
         private readonly DataObjectIndexService $dataObjectIndexService,
         private readonly SearchIndexConfigService $searchIndexConfigService,
         private readonly OpenSearchService $openSearchService,
+        private readonly PathService $pathService,
         private readonly BulkOperationService $bulkOperationService,
         private readonly MessageBusInterface $messageBus,
         private readonly DenormalizerInterface $denormalizer,
@@ -265,10 +267,9 @@ class IndexQueueService
      */
     protected function getCurrentIndexFullPath(ElementInterface $element): ?string
     {
-        $indexService = $this->getIndexServiceByElement($element);
         $indexName = $this->searchIndexConfigService->getIndexName($this->getElementIndexName($element));
 
-        return $indexService->getCurrentIndexFullPath($element, $indexName);
+        return $this->pathService->getCurrentIndexFullPath($element, $indexName);
     }
 
     /**

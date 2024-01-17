@@ -25,10 +25,6 @@ use Symfony\Contracts\Service\Attribute\Required;
 
 class AssetIndexService extends AbstractIndexService
 {
-    private function getIndices(): IndicesNamespace
-    {
-        return $this->openSearchClient->indices();
-    }
 
     protected function getIndexName(ElementInterface $element): string
     {
@@ -54,7 +50,7 @@ class AssetIndexService extends AbstractIndexService
 
         $this->openSearchService
             ->createIndex($fullIndexName)
-            ->addAlias($fullIndexName, $this->getAssetIndexName());
+            ->addAlias($this->getAssetIndexName(), $fullIndexName);
 
         return $this;
     }
@@ -101,7 +97,7 @@ class AssetIndexService extends AbstractIndexService
     public function updateMapping(bool $forceCreateIndex = false): AssetIndexService
     {
 
-        if ($forceCreateIndex || !$this->getIndices()->existsAlias(['name' => $this->getAssetIndexName()])) {
+        if ($forceCreateIndex || !$this->openSearchService->existsAlias($this->getAssetIndexName())) {
             $this->createIndex();
         }
 
@@ -120,8 +116,9 @@ class AssetIndexService extends AbstractIndexService
      */
     protected function doUpdateMapping(): AssetIndexService
     {
-        $mapping = $this->extractMapping();
-        $response = $this->getIndices()->putMapping($mapping);
+        $response = $this->openSearchService->putMapping(
+            $this->extractMapping()
+        );
         $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
 
         return $this;
