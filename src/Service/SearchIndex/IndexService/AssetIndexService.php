@@ -15,7 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Exception;
 use JsonException;
-use OpenSearch\Namespaces\IndicesNamespace;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer\AssetNormalizer;
@@ -25,7 +24,6 @@ use Symfony\Contracts\Service\Attribute\Required;
 
 class AssetIndexService extends AbstractIndexService
 {
-
     protected function getIndexName(ElementInterface $element): string
     {
         return $this->getAssetIndexName();
