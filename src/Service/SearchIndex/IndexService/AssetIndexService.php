@@ -25,8 +25,6 @@ use Symfony\Contracts\Service\Attribute\Required;
 
 class AssetIndexService extends AbstractIndexService
 {
-
-
     private function getIndices(): IndicesNamespace
     {
         return $this->openSearchClient->indices();

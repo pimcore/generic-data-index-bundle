@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer;
 
 use DateTime;
@@ -12,7 +22,6 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 abstract class AbstractElementNormalizer implements NormalizerInterface
 {
-
     protected function extractPathLevels(ElementInterface $element): array
     {
         $path = $element->getType() === 'folder' ? $element->getRealFullPath() : $element->getPath();
