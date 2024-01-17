@@ -224,7 +224,6 @@ class DataObjectIndexService extends AbstractIndexService
         return $select;
     }
 
-
     #[Required]
     public function setFieldDefinitionService(FieldDefinitionService $fieldDefinitionService): void
     {

@@ -205,7 +205,6 @@ abstract class AbstractIndexService implements IndexServiceInterface
         ];
     }
 
-
     public function doUpdateIndexData(ElementInterface $element): AbstractIndexService
     {
 
