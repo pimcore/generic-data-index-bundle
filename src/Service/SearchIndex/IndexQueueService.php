@@ -92,7 +92,6 @@ class IndexQueueService
         return $this;
     }
 
-
     /**
      * @param IndexQueue[] $entries
      */
