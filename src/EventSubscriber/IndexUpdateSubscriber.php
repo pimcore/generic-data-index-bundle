@@ -17,6 +17,7 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService;
@@ -40,6 +41,7 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
 
     public function __construct(
         protected readonly IndexQueueService $indexQueueService,
+        protected readonly EnqueueService $enqueueService,
         protected readonly DataObjectIndexService $dataObjectIndexService,
         protected readonly AssetIndexService $assetIndexService,
         protected readonly Installer $installer,
@@ -139,8 +141,8 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
             ->updateMapping($classDefinition)
             ->addClassDefinitionToAlias($classDefinition, IndexName::DATA_OBJECT->value);
 
-        $this->indexQueueService
-            ->updateDataObjects($classDefinition)
+        $this->enqueueService
+            ->enqueueByClassDefinition($classDefinition)
             ->dispatchQueueMessages();
     }
 
@@ -203,8 +205,8 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $this->indexQueueService
-            ->updateByTag($event->getTag())
+        $this->enqueueService
+            ->enqueueByTag($event->getTag())
             ->dispatchQueueMessages();
     }
 

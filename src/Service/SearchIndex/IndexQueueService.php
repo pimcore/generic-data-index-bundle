@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AbstractIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
@@ -27,15 +28,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataO
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
-use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\Concrete;
-use Pimcore\Model\DataObject\Service;
 use Pimcore\Model\Element\ElementInterface;
-use Pimcore\Model\Element\Tag;
 use UnhandledMatchError;
 
 class IndexQueueService
@@ -52,8 +49,8 @@ class IndexQueueService
         private readonly PathService $pathService,
         private readonly BulkOperationService $bulkOperationService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
-        private readonly TimeService $timeService,
         private readonly IndexQueueRepository $indexQueueRepository,
+        private readonly EnqueueService $enqueueService,
     ) {
     }
 
@@ -68,17 +65,11 @@ class IndexQueueService
                 $this->doHandleIndexData($element, $operation);
             }
 
-            $subQuery = $this->getIndexServiceByElement($element)
-                ->getRelatedItemsOnUpdateQuery(
-                    element: $element,
-                    operation: $operation,
-                    operationTime: $this->getCurrentQueueTableOperationTime(),
-                    includeElement: !$doIndexElement,
-                );
-
-            if ($subQuery) {
-                $this->indexQueueRepository->enqueueBySelectQuery($subQuery->getSQL(), $subQuery->getParameters());
-            }
+            $this->enqueueService->enqueueRelatedItemsOnUpdate(
+                indexService: $this->getIndexServiceByElement($element),
+                element: $element,
+                includeElement: !$doIndexElement
+            );
 
             if ($element instanceof Asset) {
                 $this->updateAssetDependencies($element);
@@ -115,73 +106,6 @@ class IndexQueueService
         } catch (Exception $e) {
             $this->logger->info('handleIndexQueueEntry failed! Error: ' . $e->getMessage());
         }
-
-        return $this;
-    }
-
-    /**
-     * @throws \Doctrine\DBAL\Exception
-     */
-    public function updateDataObjects(ClassDefinition $classDefinition): IndexQueueService
-    {
-        $dataObjectTableName = 'object_' . $classDefinition->getId();
-
-        $selectQuery = sprintf("SELECT oo_id, '%s', '%s', '%s', '%s', 0 FROM %s",
-            ElementType::DATA_OBJECT->value,
-            $classDefinition->getName(),
-            IndexQueueOperation::UPDATE->value,
-            $this->getCurrentQueueTableOperationTime(),
-            $dataObjectTableName
-        );
-
-        $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
-
-        return $this;
-    }
-
-    /**
-     * @throws \Doctrine\DBAL\Exception
-     */
-    public function updateAssets(): IndexQueueService
-    {
-        $selectQuery = sprintf("SELECT id, '%s', '%s', '%s', '%s', 0 FROM %s",
-            ElementType::ASSET->value,
-            IndexName::ASSET->value,
-            IndexQueueOperation::UPDATE->value,
-            $this->getCurrentQueueTableOperationTime(),
-            'assets'
-        );
-        $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
-
-        return $this;
-    }
-
-    /**
-     * @throws \Doctrine\DBAL\Exception
-     */
-    public function updateByTag(Tag $tag): IndexQueueService
-    {
-        //assets
-        $selectQuery = sprintf("SELECT id, '%s', '%s', '%s', '%s', 0 FROM assets where id in (select cid from tags_assignment where ctype='asset' and tagid = %s)",
-            ElementType::ASSET->value,
-            IndexName::ASSET->value,
-            IndexQueueOperation::UPDATE->value,
-            $this->getCurrentQueueTableOperationTime(),
-            $tag->getId()
-        );
-        $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
-
-        //data objects
-        $selectQuery = sprintf("SELECT '%s', '%s', '%s', '%s', '%s', 0 FROM objects where %s in (select cid from tags_assignment where ctype='object' and tagid = %s)",
-            Service::getVersionDependentDatabaseColumnName('o_id'),
-            Service::getVersionDependentDatabaseColumnName('o_className'),
-            ElementType::DATA_OBJECT->value,
-            IndexQueueOperation::UPDATE->value,
-            $this->getCurrentQueueTableOperationTime(),
-            Service::getVersionDependentDatabaseColumnName('o_id'),
-            $tag->getId()
-        );
-        $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
 
         return $this;
     }
@@ -338,11 +262,6 @@ class IndexQueueService
         ], true)) {
             throw new InvalidArgumentException(sprintf('Operation %s not valid', $operation));
         }
-    }
-
-    protected function getCurrentQueueTableOperationTime(): int
-    {
-        return $this->timeService->getCurrentMillisecondTimestamp();
     }
 
     /**

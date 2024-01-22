@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Doctrine\DBAL\Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -27,6 +28,7 @@ class IndexUpdateService
         protected readonly AssetIndexService $assetIndexService,
         protected readonly DataObjectIndexService $dataObjectIndexService,
         protected readonly IndexQueueService $indexQueueService,
+        protected readonly EnqueueService $enqueueService,
     ) {
 
     }
@@ -54,6 +56,9 @@ class IndexUpdateService
         return $this;
     }
 
+    /**
+     * @throws Exception
+     */
     public function updateClassDefinition(ClassDefinition $classDefinition): IndexUpdateService
     {
         if ($this->reCreateIndex) {
@@ -68,8 +73,8 @@ class IndexUpdateService
 
         //add dataObjects to update queue
         $this
-            ->indexQueueService
-            ->updateDataObjects($classDefinition);
+            ->enqueueService
+            ->enqueueByClassDefinition($classDefinition);
 
         //@todo $this
         //    ->dataObjectIndexService
@@ -96,8 +101,8 @@ class IndexUpdateService
 
         //add assets to update queue
         $this
-            ->indexQueueService
-            ->updateAssets();
+            ->enqueueService
+            ->enqueueAssets();
 
         return $this;
     }

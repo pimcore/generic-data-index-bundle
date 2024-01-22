@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Command\Update;
 
 use Exception;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -37,7 +37,7 @@ class IndexUpdateCommand extends AbstractCommand
 
     protected IndexUpdateService $indexUpdateService;
 
-    protected IndexQueueService $indexQueueService;
+    protected EnqueueService $enqueueService;
 
     #[Required]
     public function setIndexUpdateService(IndexUpdateService $indexUpdateService): void
@@ -46,9 +46,9 @@ class IndexUpdateCommand extends AbstractCommand
     }
 
     #[Required]
-    public function setIndexQueueService(IndexQueueService $indexQueueService): void
+    public function setEnqueueService(EnqueueService $enqueueService): void
     {
-        $this->indexQueueService = $indexQueueService;
+        $this->enqueueService = $enqueueService;
     }
 
     protected function configure(): void
@@ -159,7 +159,7 @@ class IndexUpdateCommand extends AbstractCommand
             OutputInterface::VERBOSITY_VERBOSE
         );
 
-        $this->indexQueueService->dispatchQueueMessages(true);
+        $this->enqueueService->dispatchQueueMessages(true);
 
         $this->release();
 
