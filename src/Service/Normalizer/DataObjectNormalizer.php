@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemF
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Folder;
+use Pimcore\Model\DataObject\Localizedfield;
 use Pimcore\Normalizer\NormalizerInterface;
 
 final class DataObjectNormalizer extends AbstractElementNormalizer
@@ -97,6 +98,11 @@ final class DataObjectNormalizer extends AbstractElementNormalizer
      */
     private function normalizeStandardFields(Concrete $dataObject): array
     {
+        $inheritedValuesBackup = AbstractObject::doGetInheritedValues();
+        $fallbackLanguagesBackup = Localizedfield::doGetFallbackValues();
+        AbstractObject::setGetInheritedValues(true);
+        Localizedfield::setGetFallbackValues(true);
+
         $result = [];
 
         foreach ($dataObject->getClass()->getFieldDefinitions() as $key => $fieldDefinition) {
@@ -108,6 +114,9 @@ final class DataObjectNormalizer extends AbstractElementNormalizer
 
             $result[$key] = $value;
         }
+
+        AbstractObject::setGetInheritedValues($inheritedValuesBackup);
+        Localizedfield::setGetFallbackValues($fallbackLanguagesBackup);
 
         return $result;
     }
