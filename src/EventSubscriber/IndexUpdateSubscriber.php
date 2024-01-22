@@ -87,7 +87,8 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
                 operation: IndexQueueOperation::UPDATE->value,
                 doIndexElement: true
             )
-            ->commit();
+            ->commit()
+            ->dispatchQueueMessages();
 
         AbstractObject::setGetInheritedValues($inheritanceBackup);
     }
@@ -173,7 +174,8 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
                 operation: IndexQueueOperation::UPDATE->value,
                 doIndexElement: true
             )
-            ->commit();
+            ->commit()
+            ->dispatchQueueMessages();
     }
 
     public function deleteAsset(AssetEvent $event): void
@@ -222,7 +224,8 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
                     operation: IndexQueueOperation::UPDATE->value,
                     doIndexElement: true
                 )
-                ->commit();
+                ->commit()
+                ->dispatchQueueMessages();
         }
     }
 }

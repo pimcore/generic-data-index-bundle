@@ -18,11 +18,10 @@ use Doctrine\DBAL\Exception\TableNotFoundException;
 use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\Messenger\TransportName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
-use Pimcore\Bundle\GenericDataIndexBundle\Message\DispatchQueueMessagesMessage;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AbstractIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService;
@@ -38,8 +37,6 @@ use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Service;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Tag;
-use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use UnhandledMatchError;
@@ -58,7 +55,7 @@ class IndexQueueService
         private readonly OpenSearchService $openSearchService,
         private readonly PathService $pathService,
         private readonly BulkOperationService $bulkOperationService,
-        private readonly MessageBusInterface $messageBus,
+        private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
         private readonly DenormalizerInterface $denormalizer,
         private readonly TimeService $timeService,
     ) {
@@ -491,14 +488,7 @@ class IndexQueueService
 
     public function dispatchQueueMessages(bool $synchronously = false): void
     {
-        $stamps = [];
-
-        if ($synchronously) {
-            $stamps[] = new TransportNamesStamp(TransportName::SYNC->value);
-        }
-
-        $message = new DispatchQueueMessagesMessage();
-        $this->messageBus->dispatch($message, $stamps);
+        $this->queueMessagesDispatcher->dispatchQueueMessages($synchronously);
     }
 
     public function commit(): IndexQueueService

@@ -9,6 +9,7 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService: ~
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService:
