@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue;
 
 use Doctrine\DBAL\Exception;
@@ -20,8 +30,7 @@ class EnqueueService
         private readonly IndexQueueRepository $indexQueueRepository,
         private readonly TimeService $timeService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
-    )
-    {
+    ) {
 
     }
 
@@ -103,14 +112,13 @@ class EnqueueService
         AbstractIndexService $indexService,
         ElementInterface $element,
         bool $includeElement
-    )
-    {
+    ) {
         $subQuery = $indexService->getRelatedItemsOnUpdateQuery(
-                element: $element,
-                operation: IndexQueueOperation::UPDATE->value,
-                operationTime: $this->timeService->getCurrentMillisecondTimestamp(),
-                includeElement: $includeElement,
-            );
+            element: $element,
+            operation: IndexQueueOperation::UPDATE->value,
+            operationTime: $this->timeService->getCurrentMillisecondTimestamp(),
+            includeElement: $includeElement,
+        );
 
         if ($subQuery) {
             $this->indexQueueRepository->enqueueBySelectQuery($subQuery->getSQL(), $subQuery->getParameters());
