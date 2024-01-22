@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Messenger\TransportName;
@@ -15,8 +25,7 @@ final class QueueMessagesDispatcher
 
     public function __construct(
         private readonly MessageBusInterface $messageBus,
-    )
-    {
+    ) {
     }
 
     public function dispatchQueueMessages(bool $synchronously = false): void
