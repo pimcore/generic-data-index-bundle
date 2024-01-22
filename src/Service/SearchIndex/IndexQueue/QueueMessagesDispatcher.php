@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Messenger\TransportName;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\DispatchQueueMessagesMessage;
+use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Model\Tool\TmpStore;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
@@ -25,12 +26,13 @@ final class QueueMessagesDispatcher
 
     public function __construct(
         private readonly MessageBusInterface $messageBus,
+        private readonly IndexQueueRepository $indexQueueRepository,
     ) {
     }
 
     public function dispatchQueueMessages(bool $synchronously = false): void
     {
-        if (!$synchronously && $this->pendingMessageExists()) {
+        if (!$synchronously && !$this->messageShouldBeTriggered()) {
             return;
         }
 
@@ -46,7 +48,13 @@ final class QueueMessagesDispatcher
         $this->markAsPending();
     }
 
-    private function pendingMessageExists(): bool
+    public function messageShouldBeTriggered(): bool
+    {
+        return !$this->pendingMessageExists()
+            && $this->indexQueueRepository->dispatchableItemExists();
+    }
+
+    public function pendingMessageExists(): bool
     {
         return TmpStore::get(self::PENDING_TMP_STOREY_KEY) !== null;
     }

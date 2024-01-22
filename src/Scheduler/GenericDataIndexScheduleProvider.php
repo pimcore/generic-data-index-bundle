@@ -14,7 +14,10 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Scheduler;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Message\DispatchQueueMessagesMessage;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Scheduler\Attribute\AsSchedule;
+use Symfony\Component\Scheduler\Event\PreRunEvent;
 use Symfony\Component\Scheduler\RecurringMessage;
 use Symfony\Component\Scheduler\Schedule;
 use Symfony\Component\Scheduler\ScheduleProviderInterface;
@@ -22,10 +25,27 @@ use Symfony\Component\Scheduler\ScheduleProviderInterface;
 #[AsSchedule('generic_data_index')]
 class GenericDataIndexScheduleProvider implements ScheduleProviderInterface
 {
+    public function __construct(
+        private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
+        private readonly EventDispatcherInterface $eventDispatcher,
+    )
+    {
+
+    }
+
     public function getSchedule(): Schedule
     {
-        return (new Schedule())->add(
-            RecurringMessage::every('1 minute', new DispatchQueueMessagesMessage())
-        );
+        return (new Schedule($this->eventDispatcher))->add(
+
+            RecurringMessage::every('10 seconds', new DispatchQueueMessagesMessage())
+
+        )->before(function (PreRunEvent $event) {
+            if (
+                $event->getMessage() instanceof DispatchQueueMessagesMessage
+                && !$this->queueMessagesDispatcher->messageShouldBeTriggered()
+            ) {
+                $event->shouldCancel(true);
+            }
+        });
     }
 }
