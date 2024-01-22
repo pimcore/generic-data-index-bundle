@@ -36,7 +36,7 @@ class Configuration implements ConfigurationInterface
         /** @var ArrayNodeDefinition $rootNode */
         $rootNode = $treeBuilder->getRootNode();
 
-        /* @phpstan-ignore-next-line */
+        // @phpstan-ignore-next-line
         $rootNode
             ->children()
                 ->arrayNode('index_service')
