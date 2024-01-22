@@ -28,8 +28,7 @@ class GenericDataIndexScheduleProvider implements ScheduleProviderInterface
     public function __construct(
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
         private readonly EventDispatcherInterface $eventDispatcher,
-    )
-    {
+    ) {
 
     }
 
