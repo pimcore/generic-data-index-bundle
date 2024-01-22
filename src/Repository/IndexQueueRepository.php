@@ -135,7 +135,7 @@ class IndexQueueRepository extends ServiceEntityRepository
                     dispatched = VALUES(dispatched)
         SQL;
 
-        $sql = sprintf($sql,IndexQueue::TABLE, $selectQuery);
+        $sql = sprintf($sql, IndexQueue::TABLE, $selectQuery);
 
         $this->connection->executeQuery($sql, $params);
     }
