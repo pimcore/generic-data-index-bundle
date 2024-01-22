@@ -13,14 +13,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Exception\TableNotFoundException;
 use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
+use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AbstractIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
@@ -37,8 +36,6 @@ use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Service;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Tag;
-use Symfony\Component\Serializer\Exception\ExceptionInterface;
-use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use UnhandledMatchError;
 
 class IndexQueueService
@@ -48,7 +45,6 @@ class IndexQueueService
     protected bool $performIndexRefresh = false;
 
     public function __construct(
-        private readonly Connection $connection,
         private readonly AssetIndexService $assetIndexService,
         private readonly DataObjectIndexService $dataObjectIndexService,
         private readonly SearchIndexConfigService $searchIndexConfigService,
@@ -56,8 +52,8 @@ class IndexQueueService
         private readonly PathService $pathService,
         private readonly BulkOperationService $bulkOperationService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
-        private readonly DenormalizerInterface $denormalizer,
         private readonly TimeService $timeService,
+        private readonly IndexQueueRepository $indexQueueRepository,
     ) {
     }
 
@@ -81,11 +77,7 @@ class IndexQueueService
                 );
 
             if ($subQuery) {
-                $this->connection->executeQuery(sprintf('INSERT INTO %s (%s) %s ON DUPLICATE KEY UPDATE operation = VALUES(operation), operationTime = VALUES(operationTime), dispatched = VALUES(dispatched)',
-                    IndexQueue::TABLE,
-                    implode(',', ['elementId', 'elementType', 'elementIndexName', 'operation', 'operationTime', 'dispatched']),
-                    $subQuery
-                ), $subQuery->getParameters());
+                $this->indexQueueRepository->enqueueBySelectQuery($subQuery->getSQL(), $subQuery->getParameters());
             }
 
             if ($element instanceof Asset) {
@@ -100,32 +92,6 @@ class IndexQueueService
         return $this;
     }
 
-    public function getUnhandledIndexQueueEntries(bool $dispatch = false, int $limit = 100000): array
-    {
-        $unhandledIndexQueueEntries = [];
-
-        try {
-            if ($dispatch === true) {
-                $dispatchId = $this->timeService->getCurrentMillisecondTimestamp();
-
-                $this->connection->executeQuery('UPDATE ' . IndexQueue::TABLE . ' SET dispatched = ? WHERE dispatched < ? LIMIT ' . $limit,
-                    [$dispatchId, $dispatchId - 60*60*24*1000]);
-
-                $unhandledIndexQueueEntries = $this->connection->executeQuery('SELECT elementId, elementType, elementIndexName, operation, operationTime, dispatched FROM ' . IndexQueue::TABLE . ' WHERE dispatched = ? LIMIT ' . $limit, [$dispatchId])->fetchAllAssociative();
-            } else {
-                $unhandledIndexQueueEntries = $this->connection->executeQuery('SELECT elementId, elementType, elementIndexName, operation, operationTime, dispatched FROM ' . IndexQueue::TABLE . ' ORDER BY operationTime LIMIT ' . $limit)->fetchAllAssociative();
-            }
-        } catch (Exception $e) {
-            $this->logger->info('getUnhandledIndexQueueEntries failed! Error: ' . $e->getMessage());
-        }
-
-        return $unhandledIndexQueueEntries;
-    }
-
-    public function handleIndexQueueEntry(IndexQueue $entry): IndexQueueService
-    {
-        return $this->handleIndexQueueEntries([$entry]);
-    }
 
     /**
      * @param IndexQueue[] $entries
@@ -144,52 +110,13 @@ class IndexQueueService
             }
 
             $this->bulkOperationService->commit();
-            $this->deleteQueueEntries($entries);
+            $this->indexQueueRepository->deleteQueueEntries($entries);
 
         } catch (Exception $e) {
             $this->logger->info('handleIndexQueueEntry failed! Error: ' . $e->getMessage());
         }
 
         return $this;
-    }
-
-    /**
-     * @param IndexQueue[] $entries
-     *
-     * @throws \Doctrine\DBAL\Exception
-     */
-    private function deleteQueueEntries(array $entries): void
-    {
-        foreach(array_chunk($entries, 500) as $chunk) {
-            $condition = [];
-
-            /** @var IndexQueue $entry */
-            foreach($chunk as $entry) {
-                $condition[] = sprintf(
-                    '(elementId = %s AND elementType = %s and operationTime = %s)',
-                    $this->connection->quote($entry->getElementId()),
-                    $this->connection->quote($entry->getElementType()),
-                    $this->connection->quote($entry->getOperationTime())
-                );
-            }
-
-            $condition = '(' . implode(' OR ', $condition) . ')';
-
-            //delete handled entry from queue table
-            $this->connection->executeQuery('DELETE FROM ' . IndexQueue::TABLE . ' WHERE ' . $condition);
-        }
-    }
-
-    /**
-     * @throws ExceptionInterface
-     */
-    public function denormalizeDatabaseEntry(array $entry): IndexQueue
-    {
-        //bigint field potentially exceed max php int values on 32 bit systems, therefore this is handled as string
-        $entry['operationTime'] = (string)$entry['operationTime'];
-        $entry['dispatched'] = (string)$entry['dispatched'];
-
-        return $this->denormalizer->denormalize($entry, IndexQueue::class);
     }
 
     /**
@@ -207,7 +134,7 @@ class IndexQueueService
             $dataObjectTableName
         );
 
-        $this->updateBySelectQuery($selectQuery);
+        $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
 
         return $this;
     }
@@ -224,7 +151,7 @@ class IndexQueueService
             $this->getCurrentQueueTableOperationTime(),
             'assets'
         );
-        $this->updateBySelectQuery($selectQuery);
+        $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
 
         return $this;
     }
@@ -242,7 +169,7 @@ class IndexQueueService
             $this->getCurrentQueueTableOperationTime(),
             $tag->getId()
         );
-        $this->updateBySelectQuery($selectQuery);
+        $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
 
         //data objects
         $selectQuery = sprintf("SELECT '%s', '%s', '%s', '%s', '%s', 0 FROM objects where %s in (select cid from tags_assignment where ctype='object' and tagid = %s)",
@@ -254,7 +181,7 @@ class IndexQueueService
             Service::getVersionDependentDatabaseColumnName('o_id'),
             $tag->getId()
         );
-        $this->updateBySelectQuery($selectQuery);
+        $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
 
         return $this;
     }
@@ -288,18 +215,6 @@ class IndexQueueService
         $this
             ->getIndexServiceByElement($element)
             ->rewriteChildrenIndexPaths($element, $indexName, $oldFullPath);
-    }
-
-    /**
-     * @throws \Doctrine\DBAL\Exception
-     */
-    protected function updateBySelectQuery(string $selectQuery): void
-    {
-        $this->connection->executeQuery(sprintf('INSERT INTO %s (%s) %s ON DUPLICATE KEY UPDATE operation = VALUES(operation), operationTime = VALUES(operationTime), dispatched = VALUES(dispatched)',
-            IndexQueue::TABLE,
-            implode(',', ['elementId', 'elementType', 'elementIndexName', 'operation', 'operationTime', 'dispatched']),
-            $selectQuery
-        ));
     }
 
     public function refreshIndexByElement(ElementInterface $element): IndexQueueService
@@ -470,20 +385,6 @@ class IndexQueueService
         $this->performIndexRefresh = $performIndexRefresh;
 
         return $this;
-    }
-
-    /**
-     * @throws \Doctrine\DBAL\Exception
-     */
-    public function countQueuedItems(): int
-    {
-        try {
-            return $this->connection->fetchOne(
-                sprintf('SELECT count(*) as count FROM %s', IndexQueue::TABLE)
-            ) ?? 0;
-        } catch (TableNotFoundException) {
-            return 0;
-        }
     }
 
     public function dispatchQueueMessages(bool $synchronously = false): void

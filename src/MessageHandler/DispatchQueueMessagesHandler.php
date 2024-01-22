@@ -15,8 +15,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\MessageHandler;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Message\DispatchQueueMessagesMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage;
+use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -24,7 +24,7 @@ use Symfony\Component\Messenger\MessageBusInterface;
 class DispatchQueueMessagesHandler
 {
     public function __construct(
-        protected readonly IndexQueueService $indexQueueService,
+        protected readonly IndexQueueRepository $indexQueueRepository,
         protected readonly QueueMessagesDispatcher $queueMessagesDispatcher,
         protected readonly MessageBusInterface $messageBus
     ) {
@@ -34,7 +34,7 @@ class DispatchQueueMessagesHandler
     {
         $batchSize = 400;
         while (true) {
-            $entries = $this->indexQueueService->getUnhandledIndexQueueEntries(true, $batchSize);
+            $entries = $this->indexQueueRepository->getUnhandledIndexQueueEntries(true, $batchSize);
             $amountOfEntries = count($entries);
 
             if ($amountOfEntries > 0) {
