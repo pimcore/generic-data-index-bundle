@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
@@ -18,6 +28,7 @@ class DataObjectMappingHandler extends AbstractMappingHandler
         if (!$context instanceof ClassDefinition) {
             return [];
         }
+
         return $this->extractMappingByClassDefinition(
             $context
         );
@@ -31,7 +42,6 @@ class DataObjectMappingHandler extends AbstractMappingHandler
 
         return $this->searchIndexConfigService->getIndexName('data_object_folders');
     }
-
 
     private function extractMappingByClassDefinition(ClassDefinition $classDefinition): array
     {

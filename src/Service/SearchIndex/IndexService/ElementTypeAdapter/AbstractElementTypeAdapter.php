@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter;
 
 use Doctrine\DBAL\Query\QueryBuilder;
@@ -15,8 +25,8 @@ abstract class AbstractElementTypeAdapter
 {
     protected SearchIndexConfigService $searchIndexConfigService;
 
-
     abstract public function supports(ElementInterface $element): bool;
+
     public function getIndexName(ElementInterface $element): string
     {
         return $this->searchIndexConfigService->getIndexName(
@@ -25,11 +35,13 @@ abstract class AbstractElementTypeAdapter
     }
 
     abstract public function getIndexNameShort(ElementInterface $element): string;
+
     abstract public function getElementType(): string;
 
     abstract public function childrenPathRewriteNeeded(ElementInterface $element): bool;
 
     abstract public function getNormalizer(): NormalizerInterface;
+
     abstract public function getMappingHandler(): MappingHandlerInterface;
 
     /**
@@ -40,8 +52,7 @@ abstract class AbstractElementTypeAdapter
         string $operation,
         int $operationTime,
         bool $includeElement = false
-    ): ?QueryBuilder
-    {
+    ): ?QueryBuilder {
         return null;
     }
 

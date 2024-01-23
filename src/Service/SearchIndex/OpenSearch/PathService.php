@@ -30,8 +30,7 @@ class PathService
         protected readonly Client $openSearchClient,
         protected readonly ElementTypeAdapterService $typeAdapterService,
         protected readonly SearchIndexConfigService $searchIndexConfigService,
-    )
-    {
+    ) {
     }
 
     /**

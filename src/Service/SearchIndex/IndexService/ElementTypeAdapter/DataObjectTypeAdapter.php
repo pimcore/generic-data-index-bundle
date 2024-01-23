@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter;
 
 use Doctrine\DBAL\Connection;
@@ -18,11 +28,10 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 class DataObjectTypeAdapter extends AbstractElementTypeAdapter
 {
     public function __construct(
-        private readonly DataObjectNormalizer     $normalizer,
+        private readonly DataObjectNormalizer $normalizer,
         private readonly DataObjectMappingHandler $mappingHandler,
-        private readonly Connection               $dbConnection,
-    )
-    {
+        private readonly Connection $dbConnection,
+    ) {
     }
 
     public function supports(ElementInterface $element): bool
@@ -68,8 +77,7 @@ class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         string $operation,
         int $operationTime,
         bool $includeElement = false
-    ): ?QueryBuilder
-    {
+    ): ?QueryBuilder {
         if(!$element instanceof Concrete) {
             return null;
         }

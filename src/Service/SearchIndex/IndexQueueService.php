@@ -76,6 +76,7 @@ class IndexQueueService
 
     /**
      * @param IndexQueue[] $entries
+     *
      * @throws ExceptionInterface
      */
     public function handleIndexQueueEntries(array $entries): IndexQueueService
@@ -101,7 +102,6 @@ class IndexQueueService
         return $this;
     }
 
-
     protected function updateAssetDependencies(Asset $asset): IndexQueueService
     {
         foreach ($asset->getDependencies()->getRequiredBy() as $requiredByEntry) {
@@ -126,7 +126,9 @@ class IndexQueueService
     /**
      * @param ElementInterface $element
      * @param string $operation
+     *
      * @return $this
+     *
      * @throws JsonException
      * @throws ExceptionInterface
      */

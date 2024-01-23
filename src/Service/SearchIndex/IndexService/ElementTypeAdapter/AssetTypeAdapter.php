@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
@@ -14,14 +24,11 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 class AssetTypeAdapter extends AbstractElementTypeAdapter
 {
-
     public function __construct(
-        private readonly AssetNormalizer     $normalizer,
+        private readonly AssetNormalizer $normalizer,
         private readonly AssetMappingHandler $mappingExtractor,
-    )
-    {
+    ) {
     }
-
 
     public function supports(ElementInterface $element): bool
     {
@@ -57,5 +64,4 @@ class AssetTypeAdapter extends AbstractElementTypeAdapter
     {
         return $this->mappingExtractor;
     }
-
 }

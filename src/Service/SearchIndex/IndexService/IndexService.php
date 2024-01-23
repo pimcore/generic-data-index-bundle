@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService;
 
-
 use Exception;
 use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
@@ -38,7 +37,6 @@ class IndexService implements IndexServiceInterface
         protected readonly BulkOperationService $bulkOperationService,
     ) {
     }
-
 
     public function isPerformIndexRefresh(): bool
     {
@@ -104,8 +102,6 @@ class IndexService implements IndexServiceInterface
 
         return $this;
     }
-
-
 
     /**
      * @throws JsonException

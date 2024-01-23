@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler;
 
 use Exception;
@@ -15,8 +25,7 @@ abstract class AbstractMappingHandler implements MappingHandlerInterface
     public function __construct(
         protected readonly OpenSearchService $openSearchService,
         protected readonly SearchIndexConfigService $searchIndexConfigService,
-    )
-    {
+    ) {
     }
 
     public function updateMapping(mixed $context = null, bool $forceCreateIndex = false): void
@@ -50,6 +59,7 @@ abstract class AbstractMappingHandler implements MappingHandlerInterface
     }
 
     abstract protected function extractMappingProperties(mixed $context = null): array;
+
     abstract protected function getIndexAliasName(mixed $context = null): string;
 
     public function getCurrentFullIndexName(mixed $context = null): string
@@ -59,7 +69,6 @@ abstract class AbstractMappingHandler implements MappingHandlerInterface
 
         return $indexName . '-' . ($currentIndexVersion === 'even' ? 'even' : 'odd');
     }
-
 
     protected function doUpdateMapping(mixed $context): void
     {

@@ -112,8 +112,7 @@ class EnqueueService
     public function enqueueRelatedItemsOnUpdate(
         ElementInterface $element,
         bool $includeElement
-    ): void
-    {
+    ): void {
         $subQuery = $this->typeAdapterService
             ->getTypeAdapter($element)
             ->getRelatedItemsOnUpdateQuery(
