@@ -14,13 +14,13 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
 use Exception;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Event\AssetEvents;
 use Pimcore\Event\DataObjectClassDefinitionEvents;
@@ -42,8 +42,9 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
     public function __construct(
         protected readonly IndexQueueService $indexQueueService,
         protected readonly EnqueueService $enqueueService,
-        protected readonly DataObjectIndexService $dataObjectIndexService,
-        protected readonly AssetIndexService $assetIndexService,
+        protected readonly DataObjectTypeAdapter $dataObjectTypeAdapter,
+        protected readonly AssetTypeAdapter $assetTypeAdapter,
+        protected readonly OpenSearchService $openSearchService,
         protected readonly Installer $installer,
     ) {
     }
@@ -121,9 +122,12 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
 
         $classDefinition = $event->getClassDefinition();
 
-        $this->dataObjectIndexService
-            ->updateMapping($classDefinition, true)
-            ->addClassDefinitionToAlias($classDefinition, IndexName::DATA_OBJECT->value);
+        $this->dataObjectTypeAdapter
+            ->getMappingHandler()
+            ->updateMapping(
+                context: $classDefinition,
+                forceCreateIndex: true
+            );
     }
 
     /**
@@ -137,9 +141,12 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
 
         $classDefinition = $event->getClassDefinition();
 
-        $this->dataObjectIndexService
-            ->updateMapping($classDefinition)
-            ->addClassDefinitionToAlias($classDefinition, IndexName::DATA_OBJECT->value);
+        $this->dataObjectTypeAdapter
+            ->getMappingHandler()
+            ->updateMapping(
+                context: $classDefinition,
+                forceCreateIndex: true
+            );
 
         $this->enqueueService
             ->enqueueByClassDefinition($classDefinition)
@@ -155,10 +162,9 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
         $classDefinition = $event->getClassDefinition();
 
         try {
-            $this->dataObjectIndexService
-                ->deleteIndex($classDefinition)
-                ->removeClassDefinitionFromAlias($classDefinition, IndexName::DATA_OBJECT->value)
-            ;
+            $this->openSearchService->deleteIndex(
+                $this->dataObjectTypeAdapter->getIndexNameByClassDefinition($classDefinition)
+            );
         } catch (Exception $e) {
             $this->logger->error($e->getMessage());
         }

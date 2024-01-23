@@ -5,13 +5,20 @@ services:
         public: false
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService: ~
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService: ~
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService: ~
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexService: ~
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\ElementTypeAdapterService: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter: ~
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler\AssetMappingHandler: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler\DataObjectMappingHandler: ~
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService:
         arguments:

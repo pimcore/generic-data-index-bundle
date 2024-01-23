@@ -17,5 +17,4 @@ use Pimcore\Model\Element\ElementInterface;
 
 interface IndexServiceInterface
 {
-    public function rewriteChildrenIndexPaths(ElementInterface $element, string $indexName, string $oldFullPath);
 }

@@ -15,23 +15,21 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Exception;
 use InvalidArgumentException;
+use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AbstractIndexService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
-use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\Element\ElementInterface;
+use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use UnhandledMatchError;
 
 class IndexQueueService
@@ -41,9 +39,7 @@ class IndexQueueService
     protected bool $performIndexRefresh = false;
 
     public function __construct(
-        private readonly AssetIndexService $assetIndexService,
-        private readonly DataObjectIndexService $dataObjectIndexService,
-        private readonly SearchIndexConfigService $searchIndexConfigService,
+        private readonly IndexService $indexService,
         private readonly PathService $pathService,
         private readonly BulkOperationService $bulkOperationService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
@@ -57,14 +53,11 @@ class IndexQueueService
         try {
             $this->checkOperationValid($operation);
 
-            $oldFullPath = $this->getCurrentIndexFullPath($element);
-
             if ($doIndexElement) {
                 $this->doHandleIndexData($element, $operation);
             }
 
             $this->enqueueService->enqueueRelatedItemsOnUpdate(
-                indexService: $this->getIndexServiceByElement($element),
                 element: $element,
                 includeElement: !$doIndexElement
             );
@@ -73,7 +66,7 @@ class IndexQueueService
                 $this->updateAssetDependencies($element);
             }
 
-            $this->rewriteChildrenIndexPaths($element, $oldFullPath);
+            $this->pathService->rewriteChildrenIndexPaths($element);
         } catch (Exception $e) {
             $this->logger->warning('Update indexQueue in database-table' . IndexQueue::TABLE . ' failed! Error: ' . $e->getMessage());
         }
@@ -83,6 +76,7 @@ class IndexQueueService
 
     /**
      * @param IndexQueue[] $entries
+     * @throws ExceptionInterface
      */
     public function handleIndexQueueEntries(array $entries): IndexQueueService
     {
@@ -107,36 +101,6 @@ class IndexQueueService
         return $this;
     }
 
-    /**
-     * @throws Exception
-     */
-    protected function getCurrentIndexFullPath(ElementInterface $element): ?string
-    {
-        $indexName = $this->searchIndexConfigService->getIndexName($this->getElementIndexName($element));
-
-        return $this->pathService->getCurrentIndexFullPath($element, $indexName);
-    }
-
-    /**
-     * Directly update children paths in OpenSearch for assets as otherwise you might get strange results if you rename a folder in the portal engine frontend.
-     *
-     * @throws Exception
-     */
-    protected function rewriteChildrenIndexPaths(ElementInterface $element, ?string $oldFullPath): void
-    {
-        if (empty($oldFullPath) || $oldFullPath === $element->getRealFullPath()) {
-            return;
-        }
-
-        if ($element instanceof Asset && !$element instanceof Asset\Folder) {
-            return;
-        }
-
-        $indexName = $this->searchIndexConfigService->getIndexName($this->getElementIndexName($element));
-        $this
-            ->getIndexServiceByElement($element)
-            ->rewriteChildrenIndexPaths($element, $indexName, $oldFullPath);
-    }
 
     protected function updateAssetDependencies(Asset $asset): IndexQueueService
     {
@@ -160,74 +124,30 @@ class IndexQueueService
     }
 
     /**
-     * @throws Exception
+     * @param ElementInterface $element
+     * @param string $operation
+     * @return $this
+     * @throws JsonException
+     * @throws ExceptionInterface
      */
     protected function doHandleIndexData(ElementInterface $element, string $operation): IndexQueueService
     {
+        $performIndexRefreshBackup = $this->indexService->isPerformIndexRefresh();
 
-        $indexService = $this->getIndexServiceByElement($element);
-        $indexServicePerformIndexRefreshBackup = $indexService->isPerformIndexRefresh();
-
-        $indexService->setPerformIndexRefresh($this->performIndexRefresh);
+        $this->indexService->setPerformIndexRefresh($this->isPerformIndexRefresh());
 
         switch ($operation) {
             case IndexQueueOperation::UPDATE->value:
-                $this->doUpdateIndexData($element);
+                $this->indexService->updateIndexData($element);
 
                 break;
             case IndexQueueOperation::DELETE->value:
-                $this->doDeleteFromIndex($element);
+                $this->indexService->deleteFromIndex($element);
 
                 break;
         }
 
-        $indexService->setPerformIndexRefresh($indexServicePerformIndexRefreshBackup);
-
-        return $this;
-    }
-
-    /**
-     * @throws Exception
-     */
-    protected function getIndexServiceByElement(ElementInterface $element): AbstractIndexService|AssetIndexService|DataObjectIndexService
-    {
-        return $this->getIndexServiceByElementType($this->getElementType($element));
-    }
-
-    /**
-     * @throws UnhandledMatchError
-     */
-    protected function getIndexServiceByElementType(string $elementType): AbstractIndexService|AssetIndexService|DataObjectIndexService
-    {
-        return match ($elementType) {
-            ElementType::DATA_OBJECT->value => $this->dataObjectIndexService,
-            ElementType::ASSET->value => $this->assetIndexService,
-        };
-    }
-
-    /**
-     * @throws Exception
-     */
-    protected function doUpdateIndexData(ElementInterface $element): IndexQueueService
-    {
-        $this
-            ->getIndexServiceByElement($element)
-            ->doUpdateIndexData($element);
-
-        return $this;
-    }
-
-    /**
-     * @throws Exception
-     */
-    protected function doDeleteFromIndex(ElementInterface $element): IndexQueueService
-    {
-        $elementId = $element->getId();
-        $elementIndexName = $this->getElementIndexName($element);
-
-        $this
-            ->getIndexServiceByElement($element)
-            ->doDeleteFromIndex($elementId, $elementIndexName);
+        $this->indexService->setPerformIndexRefresh($performIndexRefreshBackup);
 
         return $this;
     }
@@ -253,25 +173,6 @@ class IndexQueueService
         return match($type) {
             ElementType::ASSET->value => Asset::getById($id),
             ElementType::DATA_OBJECT->value => AbstractObject::getById($id),
-        };
-    }
-
-    /**
-     * @throws UnhandledMatchError
-     */
-    protected function getElementType(ElementInterface $element): string
-    {
-        return match (true) {
-            $element instanceof AbstractObject => ElementType::DATA_OBJECT->value,
-            $element instanceof Asset => ElementType::ASSET->value,
-        };
-    }
-
-    protected function getElementIndexName(ElementInterface $element): string
-    {
-        return match (true) {
-            $element instanceof Concrete => $element->getClassName(),
-            $element instanceof Asset => IndexName::ASSET->value,
         };
     }
 

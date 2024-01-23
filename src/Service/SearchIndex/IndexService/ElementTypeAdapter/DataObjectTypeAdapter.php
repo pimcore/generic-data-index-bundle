@@ -1,0 +1,106 @@
+<?php
+declare(strict_types=1);
+
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter;
+
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Query\QueryBuilder;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer\DataObjectNormalizer;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler\DataObjectMappingHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler\MappingHandlerInterface;
+use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\DataObject\ClassDefinition;
+use Pimcore\Model\DataObject\Concrete;
+use Pimcore\Model\Element\ElementInterface;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
+
+class DataObjectTypeAdapter extends AbstractElementTypeAdapter
+{
+    public function __construct(
+        private readonly DataObjectNormalizer     $normalizer,
+        private readonly DataObjectMappingHandler $mappingHandler,
+        private readonly Connection               $dbConnection,
+    )
+    {
+    }
+
+    public function supports(ElementInterface $element): bool
+    {
+        return $element instanceof AbstractObject;
+    }
+
+    public function getIndexNameShort(ElementInterface $element): string
+    {
+        return $element->getClassName();
+    }
+
+    public function getIndexNameByClassDefinition(ClassDefinition $classDefinition): string
+    {
+        return $this->searchIndexConfigService->getIndexName($classDefinition->getName());
+    }
+
+    public function getElementType(): string
+    {
+        return ElementType::DATA_OBJECT->value;
+    }
+
+    /**
+     * @param AbstractObject $element
+     */
+    public function childrenPathRewriteNeeded(ElementInterface $element): bool
+    {
+        return $element->hasChildren(includingUnpublished: true);
+    }
+
+    public function getNormalizer(): NormalizerInterface
+    {
+        return $this->normalizer;
+    }
+
+    public function getMappingHandler(): MappingHandlerInterface
+    {
+        return $this->mappingHandler;
+    }
+
+    public function getRelatedItemsOnUpdateQuery(
+        ElementInterface $element,
+        string $operation,
+        int $operationTime,
+        bool $includeElement = false
+    ): ?QueryBuilder
+    {
+        if(!$element instanceof Concrete) {
+            return null;
+        }
+
+        if(!$element->getClass()->getAllowInherit()) {
+            return null;
+        }
+
+        $select = $this->dbConnection->createQueryBuilder()
+            ->select([
+                'id',
+                "'" . ElementType::DATA_OBJECT->value . "'",
+                'className',
+                "'{$operation}'",
+                "'{$operationTime}'",
+                '0',
+            ])
+            ->from('objects')
+            ->where('classId = :classId')
+            ->andWhere('path LIKE :path')
+            ->setParameters([
+                'classId' => $element->getClassId(),
+                'path' => $element->getRealFullPath() . '/%',
+            ]);
+
+        if ($includeElement) {
+            $select
+                ->orWhere('id = :id')
+                ->setParameter('id', $element->getId());
+        }
+
+        return $select;
+    }
+}

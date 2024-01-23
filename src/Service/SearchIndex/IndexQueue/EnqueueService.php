@@ -18,7 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AbstractIndexService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\ElementTypeAdapterService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeService;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\Element\ElementInterface;
@@ -30,6 +30,7 @@ class EnqueueService
         private readonly IndexQueueRepository $indexQueueRepository,
         private readonly TimeService $timeService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
+        private readonly ElementTypeAdapterService $typeAdapterService,
     ) {
 
     }
@@ -106,19 +107,21 @@ class EnqueueService
     }
 
     /**
-     * @throws Exception
+     * @throws \Exception
      */
     public function enqueueRelatedItemsOnUpdate(
-        AbstractIndexService $indexService,
         ElementInterface $element,
         bool $includeElement
-    ) {
-        $subQuery = $indexService->getRelatedItemsOnUpdateQuery(
-            element: $element,
-            operation: IndexQueueOperation::UPDATE->value,
-            operationTime: $this->timeService->getCurrentMillisecondTimestamp(),
-            includeElement: $includeElement,
-        );
+    ): void
+    {
+        $subQuery = $this->typeAdapterService
+            ->getTypeAdapter($element)
+            ->getRelatedItemsOnUpdateQuery(
+                element: $element,
+                operation: IndexQueueOperation::UPDATE->value,
+                operationTime: $this->timeService->getCurrentMillisecondTimestamp(),
+                includeElement: $includeElement,
+            );
 
         if ($subQuery) {
             $this->indexQueueRepository->enqueueBySelectQuery($subQuery->getSQL(), $subQuery->getParameters());

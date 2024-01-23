@@ -13,10 +13,15 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
-use Doctrine\DBAL\Exception;
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\AssetIndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\DataObjectIndexService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
+use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\ClassDefinition\Listing;
 
@@ -25,8 +30,9 @@ class IndexUpdateService
     protected bool $reCreateIndex = false;
 
     public function __construct(
-        protected readonly AssetIndexService $assetIndexService,
-        protected readonly DataObjectIndexService $dataObjectIndexService,
+        protected readonly AssetTypeAdapter $assetTypeAdapter,
+        protected readonly DataObjectTypeAdapter $dataObjectTypeAdapter,
+        protected readonly OpenSearchService $openSearchService,
         protected readonly IndexQueueService $indexQueueService,
         protected readonly EnqueueService $enqueueService,
     ) {
@@ -47,6 +53,9 @@ class IndexUpdateService
         return $this;
     }
 
+    /**
+     * @throws Exception
+     */
     public function updateClassDefinitions(): IndexUpdateService
     {
         foreach ((new Listing())->load() as $classDefinition) {
@@ -57,19 +66,27 @@ class IndexUpdateService
     }
 
     /**
+     * @param ClassDefinition $classDefinition
+     * @return $this
      * @throws Exception
      */
     public function updateClassDefinition(ClassDefinition $classDefinition): IndexUpdateService
     {
         if ($this->reCreateIndex) {
             $this
-                ->dataObjectIndexService
-                ->deleteIndex($classDefinition);
+                ->openSearchService
+                ->deleteIndex(
+                    $this->dataObjectTypeAdapter->getMappingHandler()->getCurrentFullIndexName($classDefinition)
+                );
         }
 
         $this
-            ->dataObjectIndexService
-            ->updateMapping($classDefinition, $this->reCreateIndex);
+            ->dataObjectTypeAdapter
+            ->getMappingHandler()
+            ->updateMapping(
+                context: $classDefinition,
+                forceCreateIndex: $this->reCreateIndex
+            );
 
         //add dataObjects to update queue
         $this
@@ -91,13 +108,18 @@ class IndexUpdateService
 
         if ($this->reCreateIndex) {
             $this
-                ->assetIndexService
-                ->deleteIndex();
+                ->openSearchService
+                ->deleteIndex(
+                    $this->assetTypeAdapter->getMappingHandler()->getCurrentFullIndexName()
+                );
         }
 
         $this
-            ->assetIndexService
-            ->updateMapping($this->reCreateIndex);
+            ->assetTypeAdapter
+            ->getMappingHandler()
+            ->updateMapping(
+                forceCreateIndex: $this->reCreateIndex
+            );
 
         //add assets to update queue
         $this
