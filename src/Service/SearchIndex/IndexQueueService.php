@@ -45,7 +45,6 @@ class IndexQueueService
         private readonly AssetIndexService $assetIndexService,
         private readonly DataObjectIndexService $dataObjectIndexService,
         private readonly SearchIndexConfigService $searchIndexConfigService,
-        private readonly OpenSearchService $openSearchService,
         private readonly PathService $pathService,
         private readonly BulkOperationService $bulkOperationService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
@@ -138,22 +137,6 @@ class IndexQueueService
         $this
             ->getIndexServiceByElement($element)
             ->rewriteChildrenIndexPaths($element, $indexName, $oldFullPath);
-    }
-
-    public function refreshIndexByElement(ElementInterface $element): IndexQueueService
-    {
-        try {
-            $indexName = $this->searchIndexConfigService->getIndexName(
-                $this->getElementIndexName($element)
-            );
-
-            $this->openSearchService->refreshIndex($indexName);
-
-        } catch (Exception $e) {
-            $this->logger->debug($e->getMessage());
-        }
-
-        return $this;
     }
 
     protected function updateAssetDependencies(Asset $asset): IndexQueueService
