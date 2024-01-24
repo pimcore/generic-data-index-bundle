@@ -49,7 +49,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     public function deleteIndex(mixed $context = null): void
     {
         $this->openSearchService->deleteIndex(
-            $this->getCurrentFullIndexName()
+            $this->getCurrentFullIndexName($context)
         );
     }
 
@@ -73,7 +73,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         $this->logger->debug(json_encode($response));
     }
 
-    private function createIndex(mixed $context, string $aliasName): void
+    protected function createIndex(mixed $context, string $aliasName): void
     {
         $fullIndexName = $this->getCurrentFullIndexName($context);
 
@@ -85,7 +85,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
 
     }
 
-    private function getCurrentFullIndexName(mixed $context = null): string
+    protected function getCurrentFullIndexName(mixed $context = null): string
     {
         $indexName = $this->getAliasIndexName($context);
         $currentIndexVersion = $this->openSearchService->getCurrentIndexVersion($indexName);

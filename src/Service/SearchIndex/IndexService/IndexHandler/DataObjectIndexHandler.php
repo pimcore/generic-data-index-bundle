@@ -22,6 +22,8 @@ use Symfony\Contracts\Service\Attribute\Required;
 
 class DataObjectIndexHandler extends AbstractIndexHandler
 {
+    public const DATA_OBJECT_INDEX_ALIAS = 'data-object';
+
     private FieldDefinitionService $fieldDefinitionService;
 
     private DataObjectTypeAdapter $dataObjectTypeAdapter;
@@ -36,6 +38,17 @@ class DataObjectIndexHandler extends AbstractIndexHandler
             $context
         );
     }
+
+    protected function createIndex(mixed $context, string $aliasName): void
+    {
+        parent::createIndex($context, $aliasName);
+
+        $this->openSearchService->putAlias(
+            $this->searchIndexConfigService->getIndexName(self::DATA_OBJECT_INDEX_ALIAS),
+            $this->getCurrentFullIndexName($context)
+        );
+    }
+
 
     protected function getAliasIndexName(mixed $context = null): string
     {
