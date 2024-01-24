@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Doctrine\DBAL\Query\QueryBuilder;
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -49,6 +50,11 @@ abstract class AbstractElementTypeAdapter
     abstract public function childrenPathRewriteNeeded(ElementInterface $element): bool;
 
     abstract public function getNormalizer(): NormalizerInterface;
+
+    abstract public function getUpdateIndexDataEvent(
+        ElementInterface $element,
+        array $customFields
+    ): UpdateIndexDataEventInterface;
 
     /**
      * @throws Exception

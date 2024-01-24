@@ -24,6 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSea
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 class IndexService implements IndexServiceInterface
 {
@@ -35,6 +36,7 @@ class IndexService implements IndexServiceInterface
         protected readonly ElementTypeAdapterService $typeAdapterService,
         protected readonly OpenSearchService $openSearchService,
         protected readonly BulkOperationService $bulkOperationService,
+        protected readonly EventDispatcherInterface $eventDispatcher
     ) {
     }
 
@@ -109,8 +111,8 @@ class IndexService implements IndexServiceInterface
      */
     private function getIndexData(ElementInterface $element): array
     {
-        $indexData = $this->typeAdapterService
-            ->getTypeAdapter($element)
+        $typeAdapter = $this->typeAdapterService->getTypeAdapter($element);
+        $indexData = $typeAdapter
             ->getNormalizer()
             ->normalize($element);
 
@@ -119,9 +121,9 @@ class IndexService implements IndexServiceInterface
         $customFields = [];
 
         //dispatch event before building checksum
-        //$updateIndexDataEvent = new UpdateIndexDataEvent($dataObject, $customFields);
-        //$this->eventDispatcher->dispatch($updateIndexDataEvent);
-        //$customFields = $updateIndexDataEvent->getCustomFields();
+        $updateIndexDataEvent = $typeAdapter->getUpdateIndexDataEvent($element, $customFields);
+        $this->eventDispatcher->dispatch($updateIndexDataEvent);
+        $customFields = $updateIndexDataEvent->getCustomFields();
 
         $checksum = crc32(json_encode([$systemFields, $standardFields, $customFields], JSON_THROW_ON_ERROR));
         $systemFields[SystemField::CHECKSUM->value] = $checksum;

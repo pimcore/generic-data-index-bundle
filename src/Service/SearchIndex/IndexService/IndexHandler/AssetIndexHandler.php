@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Symfony\Contracts\Service\Attribute\Required;
@@ -32,10 +33,9 @@ class AssetIndexHandler extends AbstractIndexHandler
             FieldCategory::STANDARD_FIELDS->value => [],
             FieldCategory::CUSTOM_FIELDS->value => [],
         ];
-        //$extractMappingEvent = new ExtractMappingEvent($mappingProperties[FieldCategory::CUSTOM_FIELDS->value]);
-        //$this->eventDispatcher->dispatch($extractMappingEvent);
-        //$mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] =
-        //  $extractMappingEvent->getCustomFieldsMapping();
+
+        $mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] =
+            $this->fireEventAndGetCustomFieldsMapping($mappingProperties[FieldCategory::CUSTOM_FIELDS->value]);
 
         return $mappingProperties;
     }
@@ -49,5 +49,13 @@ class AssetIndexHandler extends AbstractIndexHandler
     public function setAssetAdapter(AssetTypeAdapter $assetAdapter): void
     {
         $this->assetAdapter = $assetAdapter;
+    }
+
+    private function fireEventAndGetCustomFieldsMapping($customFields): array
+    {
+        $extractMappingEvent = new ExtractMappingEvent($customFields);
+        $this->eventDispatcher->dispatch($extractMappingEvent);
+
+        return $extractMappingEvent->getCustomFieldsMapping();
     }
 }
