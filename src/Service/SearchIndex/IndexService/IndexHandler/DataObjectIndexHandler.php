@@ -49,7 +49,6 @@ class DataObjectIndexHandler extends AbstractIndexHandler
         );
     }
 
-
     protected function getAliasIndexName(mixed $context = null): string
     {
         return $this->dataObjectTypeAdapter->getAliasIndexName($context);
