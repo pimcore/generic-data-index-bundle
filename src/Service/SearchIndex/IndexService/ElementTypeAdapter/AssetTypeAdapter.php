@@ -16,8 +16,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer\AssetNormalizer;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler\AssetMappingHandler;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler\MappingHandlerInterface;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -26,7 +24,6 @@ class AssetTypeAdapter extends AbstractElementTypeAdapter
 {
     public function __construct(
         private readonly AssetNormalizer $normalizer,
-        private readonly AssetMappingHandler $mappingExtractor,
     ) {
     }
 
@@ -35,14 +32,14 @@ class AssetTypeAdapter extends AbstractElementTypeAdapter
         return $element instanceof Asset;
     }
 
-    public function getIndexNameShort(ElementInterface $element): string
+    public function getIndexNameShortByElement(ElementInterface $element): string
     {
-        return IndexName::ASSET->value;
+        return $this->getIndexNameShort();
     }
 
-    public function getAssetIndexName(): string
+    public function getIndexNameShort(mixed $context = null): string
     {
-        return $this->searchIndexConfigService->getIndexName(IndexName::ASSET->value);
+        return IndexName::ASSET->value;
     }
 
     public function getElementType(): string
@@ -58,10 +55,5 @@ class AssetTypeAdapter extends AbstractElementTypeAdapter
     public function getNormalizer(): NormalizerInterface
     {
         return $this->normalizer;
-    }
-
-    public function getMappingHandler(): MappingHandlerInterface
-    {
-        return $this->mappingExtractor;
     }
 }

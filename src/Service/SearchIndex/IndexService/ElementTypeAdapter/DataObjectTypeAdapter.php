@@ -17,8 +17,6 @@ use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer\DataObjectNormalizer;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler\DataObjectMappingHandler;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler\MappingHandlerInterface;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\Concrete;
@@ -29,7 +27,6 @@ class DataObjectTypeAdapter extends AbstractElementTypeAdapter
 {
     public function __construct(
         private readonly DataObjectNormalizer $normalizer,
-        private readonly DataObjectMappingHandler $mappingHandler,
         private readonly Connection $dbConnection,
     ) {
     }
@@ -39,9 +36,22 @@ class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         return $element instanceof AbstractObject;
     }
 
-    public function getIndexNameShort(ElementInterface $element): string
+    public function getIndexNameShortByElement(ElementInterface $element): string
     {
-        return $element->getClassName();
+        $classDefinition = null;
+        if($element instanceof Concrete) {
+            $classDefinition = $element->getClass();
+        }
+        return $this->getIndexNameShort($classDefinition);
+    }
+
+    public function getIndexNameShort(mixed $context): string
+    {
+        if ($context instanceof ClassDefinition) {
+            return $context->getName();
+        }
+
+        return 'data_object_folders';
     }
 
     public function getIndexNameByClassDefinition(ClassDefinition $classDefinition): string
@@ -65,11 +75,6 @@ class DataObjectTypeAdapter extends AbstractElementTypeAdapter
     public function getNormalizer(): NormalizerInterface
     {
         return $this->normalizer;
-    }
-
-    public function getMappingHandler(): MappingHandlerInterface
-    {
-        return $this->mappingHandler;
     }
 
     public function getRelatedItemsOnUpdateQuery(

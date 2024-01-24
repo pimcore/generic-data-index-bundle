@@ -11,16 +11,16 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
 use Exception;
 
-interface MappingHandlerInterface
+interface IndexHandlerInterface
 {
     /**
      * @throws Exception
      */
     public function updateMapping(mixed $context = null, bool $forceCreateIndex = false): void;
 
-    public function getCurrentFullIndexName(mixed $context = null): string;
+    public function deleteIndex(mixed $context): void;
 }

@@ -58,7 +58,7 @@ class IndexService implements IndexServiceInterface
     {
         $indexName = $this->typeAdapterService
             ->getTypeAdapter($element)
-            ->getIndexName($element);
+            ->getAliasIndexNameByElement($element);
 
         try {
             $indexDocument = $this->openSearchService->getDocument($indexName, $element->getId());
@@ -87,7 +87,7 @@ class IndexService implements IndexServiceInterface
     {
         $indexName = $this->typeAdapterService
             ->getTypeAdapter($element)
-            ->getIndexName($element);
+            ->getAliasIndexNameByElement($element);
 
         $elementId = $element->getId();
 

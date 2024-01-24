@@ -15,8 +15,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\ClassDefinition\Listing;
@@ -26,11 +26,11 @@ class IndexUpdateService
     protected bool $reCreateIndex = false;
 
     public function __construct(
-        protected readonly AssetTypeAdapter $assetTypeAdapter,
-        protected readonly DataObjectTypeAdapter $dataObjectTypeAdapter,
-        protected readonly OpenSearchService $openSearchService,
-        protected readonly IndexQueueService $indexQueueService,
-        protected readonly EnqueueService $enqueueService,
+        protected readonly AssetIndexHandler      $assetIndexHandler,
+        protected readonly DataObjectIndexHandler $dataObjectIndexHandler,
+        protected readonly OpenSearchService      $openSearchService,
+        protected readonly IndexQueueService      $indexQueueService,
+        protected readonly EnqueueService         $enqueueService,
     ) {
 
     }
@@ -71,16 +71,12 @@ class IndexUpdateService
     public function updateClassDefinition(ClassDefinition $classDefinition): IndexUpdateService
     {
         if ($this->reCreateIndex) {
-            $this
-                ->openSearchService
-                ->deleteIndex(
-                    $this->dataObjectTypeAdapter->getMappingHandler()->getCurrentFullIndexName($classDefinition)
-                );
+            $this->dataObjectIndexHandler
+                ->deleteIndex($classDefinition);
         }
 
         $this
-            ->dataObjectTypeAdapter
-            ->getMappingHandler()
+            ->dataObjectIndexHandler
             ->updateMapping(
                 context: $classDefinition,
                 forceCreateIndex: $this->reCreateIndex
@@ -105,16 +101,12 @@ class IndexUpdateService
     {
 
         if ($this->reCreateIndex) {
-            $this
-                ->openSearchService
-                ->deleteIndex(
-                    $this->assetTypeAdapter->getMappingHandler()->getCurrentFullIndexName()
-                );
+            $this->assetIndexHandler
+                ->deleteIndex();
         }
 
         $this
-            ->assetTypeAdapter
-            ->getMappingHandler()
+            ->assetIndexHandler
             ->updateMapping(
                 forceCreateIndex: $this->reCreateIndex
             );
