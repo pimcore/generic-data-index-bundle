@@ -17,6 +17,7 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 abstract class AbstractMappingHandler implements MappingHandlerInterface
 {
@@ -25,6 +26,7 @@ abstract class AbstractMappingHandler implements MappingHandlerInterface
     public function __construct(
         protected readonly OpenSearchService $openSearchService,
         protected readonly SearchIndexConfigService $searchIndexConfigService,
+        protected readonly EventDispatcherInterface $eventDispatcher
     ) {
     }
 
