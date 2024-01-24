@@ -16,10 +16,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Event\Asset;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /**
- * @internal
- */
-
-/**
  * Fires before the mapping will be sent to the search-server index.
  * Can be used to add mappings for customized additional fields.
  * You will find a description and example on how it works in the docs.

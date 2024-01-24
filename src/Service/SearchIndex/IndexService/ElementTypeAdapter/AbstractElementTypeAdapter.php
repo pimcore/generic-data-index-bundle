@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Doctrine\DBAL\Query\QueryBuilder;
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler\MappingHandlerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Model\Element\ElementInterface;
@@ -43,6 +44,11 @@ abstract class AbstractElementTypeAdapter
     abstract public function getNormalizer(): NormalizerInterface;
 
     abstract public function getMappingHandler(): MappingHandlerInterface;
+
+    abstract public function getUpdateIndexDataEvent(
+        ElementInterface $element,
+        array $customFields
+    ): UpdateIndexDataEventInterface;
 
     /**
      * @throws Exception

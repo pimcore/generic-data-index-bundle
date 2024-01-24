@@ -15,6 +15,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
+use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\UpdateIndexDataEvent;
+use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer\AssetNormalizer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler\AssetMappingHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler\MappingHandlerInterface;
@@ -63,5 +65,17 @@ class AssetTypeAdapter extends AbstractElementTypeAdapter
     public function getMappingHandler(): MappingHandlerInterface
     {
         return $this->mappingExtractor;
+    }
+
+    public function getUpdateIndexDataEvent(
+        ElementInterface $element,
+        array $customFields
+    ): UpdateIndexDataEventInterface
+    {
+        if(!$element instanceof Asset) {
+            throw new \InvalidArgumentException('Element must be of type Asset');
+        }
+
+        return new UpdateIndexDataEvent($element, $customFields);
     }
 }

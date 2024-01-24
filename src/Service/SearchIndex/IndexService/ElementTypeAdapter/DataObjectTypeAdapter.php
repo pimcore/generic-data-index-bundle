@@ -16,6 +16,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent;
+use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer\DataObjectNormalizer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler\DataObjectMappingHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler\MappingHandlerInterface;
@@ -110,5 +112,17 @@ class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         }
 
         return $select;
+    }
+
+    public function getUpdateIndexDataEvent(
+        ElementInterface $element,
+        array $customFields
+    ): UpdateIndexDataEventInterface
+    {
+        if (!$element instanceof Concrete) {
+            throw new \InvalidArgumentException('Element must be instance of ' . Concrete::class);
+        }
+
+        return new UpdateIndexDataEvent($element, $customFields);
     }
 }
