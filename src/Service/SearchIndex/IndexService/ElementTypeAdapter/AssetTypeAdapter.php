@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter;
 
+use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\UpdateIndexDataEvent;
@@ -65,7 +66,7 @@ class AssetTypeAdapter extends AbstractElementTypeAdapter
     ): UpdateIndexDataEventInterface
     {
         if(!$element instanceof Asset) {
-            throw new \InvalidArgumentException('Element must be of type Asset');
+            throw new InvalidArgumentException('Element must be of type Asset');
         }
 
         return new UpdateIndexDataEvent($element, $customFields);
