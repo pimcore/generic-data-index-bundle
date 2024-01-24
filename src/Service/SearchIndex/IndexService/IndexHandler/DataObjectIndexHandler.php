@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractMappingEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
@@ -77,9 +78,11 @@ class DataObjectIndexHandler extends AbstractIndexHandler
             }
         }
 
-        //$extractMappingEvent = new ExtractMappingEvent($classDefinition, $mappingProperties[FieldCategory::CUSTOM_FIELDS->value]);
-        //$this->eventDispatcher->dispatch($extractMappingEvent);
-        //$mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] = $extractMappingEvent->getCustomFieldsMapping();
+        $mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] =
+            $this->fireEventAndGetCustomFieldsMapping(
+            $classDefinition,
+            $mappingProperties[FieldCategory::CUSTOM_FIELDS->value]
+        );
 
         return $mappingProperties;
     }
@@ -94,5 +97,12 @@ class DataObjectIndexHandler extends AbstractIndexHandler
     public function setDataObjectTypeAdapter(DataObjectTypeAdapter $dataObjectTypeAdapter): void
     {
         $this->dataObjectTypeAdapter = $dataObjectTypeAdapter;
+    }
+
+    public function fireEventAndGetCustomFieldsMapping(ClassDefinition $classDefinition, array $customFields): array
+    {
+        $extractMappingEvent = new ExtractMappingEvent($classDefinition, $customFields);
+        $this->eventDispatcher->dispatch($extractMappingEvent);
+        return $extractMappingEvent->getCustomFieldsMapping();
     }
 }
