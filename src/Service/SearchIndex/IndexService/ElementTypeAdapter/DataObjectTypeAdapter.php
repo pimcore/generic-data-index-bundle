@@ -124,8 +124,7 @@ class DataObjectTypeAdapter extends AbstractElementTypeAdapter
     public function getUpdateIndexDataEvent(
         ElementInterface $element,
         array $customFields
-    ): UpdateIndexDataEventInterface
-    {
+    ): UpdateIndexDataEventInterface {
         if (!$element instanceof Concrete) {
             throw new InvalidArgumentException('Element must be instance of ' . Concrete::class);
         }

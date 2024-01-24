@@ -80,9 +80,9 @@ class DataObjectIndexHandler extends AbstractIndexHandler
 
         $mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] =
             $this->fireEventAndGetCustomFieldsMapping(
-            $classDefinition,
-            $mappingProperties[FieldCategory::CUSTOM_FIELDS->value]
-        );
+                $classDefinition,
+                $mappingProperties[FieldCategory::CUSTOM_FIELDS->value]
+            );
 
         return $mappingProperties;
     }
@@ -103,6 +103,7 @@ class DataObjectIndexHandler extends AbstractIndexHandler
     {
         $extractMappingEvent = new ExtractMappingEvent($classDefinition, $customFields);
         $this->eventDispatcher->dispatch($extractMappingEvent);
+
         return $extractMappingEvent->getCustomFieldsMapping();
     }
 }

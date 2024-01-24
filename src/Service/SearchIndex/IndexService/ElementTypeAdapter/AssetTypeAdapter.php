@@ -63,8 +63,7 @@ class AssetTypeAdapter extends AbstractElementTypeAdapter
     public function getUpdateIndexDataEvent(
         ElementInterface $element,
         array $customFields
-    ): UpdateIndexDataEventInterface
-    {
+    ): UpdateIndexDataEventInterface {
         if(!$element instanceof Asset) {
             throw new InvalidArgumentException('Element must be of type Asset');
         }
