@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject;
 
-use Pimcore\Model\DataObject\ClassDefinition;
+use Pimcore\Model\DataObject\ClassDefinitionInterface;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /**
@@ -23,17 +23,17 @@ use Symfony\Contracts\EventDispatcher\Event;
  */
 final class ExtractMappingEvent extends Event
 {
-    protected ClassDefinition $classDefinition;
+    protected ClassDefinitionInterface $classDefinition;
 
     protected array $customFieldsMapping;
 
-    public function __construct(ClassDefinition $classDefinition, array $customFieldsMapping)
+    public function __construct(ClassDefinitionInterface $classDefinition, array $customFieldsMapping)
     {
         $this->classDefinition = $classDefinition;
         $this->customFieldsMapping = $customFieldsMapping;
     }
 
-    public function getClassDefinition(): ClassDefinition
+    public function getClassDefinition(): ClassDefinitionInterface
     {
         return $this->classDefinition;
     }
