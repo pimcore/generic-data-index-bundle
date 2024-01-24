@@ -73,7 +73,6 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         $this->logger->debug(json_encode($response));
     }
 
-
     private function createIndex(mixed $context, string $aliasName): void
     {
         $fullIndexName = $this->getCurrentFullIndexName($context);

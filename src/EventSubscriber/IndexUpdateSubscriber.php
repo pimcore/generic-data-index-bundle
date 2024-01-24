@@ -40,12 +40,12 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
     use LoggerAwareTrait;
 
     public function __construct(
-        protected readonly IndexQueueService      $indexQueueService,
-        protected readonly EnqueueService         $enqueueService,
+        protected readonly IndexQueueService $indexQueueService,
+        protected readonly EnqueueService $enqueueService,
         protected readonly DataObjectIndexHandler $dataObjectMappingHandler,
-        protected readonly AssetIndexHandler      $assetMappingHandler,
-        protected readonly OpenSearchService      $openSearchService,
-        protected readonly Installer              $installer,
+        protected readonly AssetIndexHandler $assetMappingHandler,
+        protected readonly OpenSearchService $openSearchService,
+        protected readonly Installer $installer,
     ) {
     }
 

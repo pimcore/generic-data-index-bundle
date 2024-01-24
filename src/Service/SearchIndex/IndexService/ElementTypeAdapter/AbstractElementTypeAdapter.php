@@ -39,6 +39,7 @@ abstract class AbstractElementTypeAdapter
             $this->getIndexNameShort($context)
         );
     }
+
     abstract public function getIndexNameShort(mixed $context): string;
 
     abstract public function getIndexNameShortByElement(ElementInterface $element): string;

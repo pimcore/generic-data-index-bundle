@@ -23,6 +23,7 @@ use Symfony\Contracts\Service\Attribute\Required;
 class DataObjectIndexHandler extends AbstractIndexHandler
 {
     private FieldDefinitionService $fieldDefinitionService;
+
     private DataObjectTypeAdapter $dataObjectTypeAdapter;
 
     public function extractMappingProperties(mixed $context = null): array
@@ -86,6 +87,4 @@ class DataObjectIndexHandler extends AbstractIndexHandler
     {
         $this->dataObjectTypeAdapter = $dataObjectTypeAdapter;
     }
-
-
 }

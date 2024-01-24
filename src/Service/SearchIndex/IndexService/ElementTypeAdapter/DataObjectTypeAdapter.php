@@ -42,6 +42,7 @@ class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         if($element instanceof Concrete) {
             $classDefinition = $element->getClass();
         }
+
         return $this->getIndexNameShort($classDefinition);
     }
 

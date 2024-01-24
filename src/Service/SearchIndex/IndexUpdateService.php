@@ -26,11 +26,11 @@ class IndexUpdateService
     protected bool $reCreateIndex = false;
 
     public function __construct(
-        protected readonly AssetIndexHandler      $assetIndexHandler,
+        protected readonly AssetIndexHandler $assetIndexHandler,
         protected readonly DataObjectIndexHandler $dataObjectIndexHandler,
-        protected readonly OpenSearchService      $openSearchService,
-        protected readonly IndexQueueService      $indexQueueService,
-        protected readonly EnqueueService         $enqueueService,
+        protected readonly OpenSearchService $openSearchService,
+        protected readonly IndexQueueService $indexQueueService,
+        protected readonly EnqueueService $enqueueService,
     ) {
 
     }
