@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Event\Asset;
@@ -33,12 +33,11 @@ class UpdateIndexDataEventTest extends Unit
         $this->assertEquals(['test' => 'test'], $event->getCustomFields());
     }
 
-    public function testSetCustomFields() : void
+    public function testSetCustomFields(): void
     {
         $assetMock = $this->createMock(Asset::class);
         $event = new UpdateIndexDataEvent($assetMock, ['test' => 'test']);
         $event->setCustomFields(['test2' => 'test2']);
         $this->assertEquals(['test2' => 'test2'], $event->getCustomFields());
     }
-
 }
