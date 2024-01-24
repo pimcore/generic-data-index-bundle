@@ -52,7 +52,7 @@ class PathService
             return;
         }
 
-        $indexName = $typeAdapter->getIndexName($element);
+        $indexName = $typeAdapter->getAliasIndexNameByElement($element);
 
         $countResult = $this->countDocumentsByPath($indexName, $oldFullPath);
 
@@ -155,7 +155,7 @@ class PathService
     {
         $indexName = $this->typeAdapterService
             ->getTypeAdapter($element)
-            ->getIndexName($element);
+            ->getAliasIndexNameByElement($element);
 
         $result = $this->openSearchClient->search(
             [

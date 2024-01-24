@@ -11,17 +11,22 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Contracts\Service\Attribute\Required;
 
-class DataObjectMappingHandler extends AbstractMappingHandler
+class DataObjectIndexHandler extends AbstractIndexHandler
 {
+    public const DATA_OBJECT_INDEX_ALIAS = 'data-object';
+
     private FieldDefinitionService $fieldDefinitionService;
+
+    private DataObjectTypeAdapter $dataObjectTypeAdapter;
 
     public function extractMappingProperties(mixed $context = null): array
     {
@@ -34,13 +39,19 @@ class DataObjectMappingHandler extends AbstractMappingHandler
         );
     }
 
-    protected function getIndexAliasName(mixed $context = null): string
+    protected function createIndex(mixed $context, string $aliasName): void
     {
-        if ($context instanceof ClassDefinition) {
-            return $this->searchIndexConfigService->getIndexName($context->getName());
-        }
+        parent::createIndex($context, $aliasName);
 
-        return $this->searchIndexConfigService->getIndexName('data_object_folders');
+        $this->openSearchService->putAlias(
+            $this->searchIndexConfigService->getIndexName(self::DATA_OBJECT_INDEX_ALIAS),
+            $this->getCurrentFullIndexName($context)
+        );
+    }
+
+    protected function getAliasIndexName(mixed $context = null): string
+    {
+        return $this->dataObjectTypeAdapter->getAliasIndexName($context);
     }
 
     private function extractMappingByClassDefinition(ClassDefinition $classDefinition): array
@@ -77,5 +88,11 @@ class DataObjectMappingHandler extends AbstractMappingHandler
     public function setFieldDefinitionService(FieldDefinitionService $fieldDefinitionService): void
     {
         $this->fieldDefinitionService = $fieldDefinitionService;
+    }
+
+    #[Required]
+    public function setDataObjectTypeAdapter(DataObjectTypeAdapter $dataObjectTypeAdapter): void
+    {
+        $this->dataObjectTypeAdapter = $dataObjectTypeAdapter;
     }
 }

@@ -11,7 +11,7 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
@@ -19,7 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
-abstract class AbstractMappingHandler implements MappingHandlerInterface
+abstract class AbstractIndexHandler implements IndexHandlerInterface
 {
     use LoggerAwareTrait;
 
@@ -32,7 +32,7 @@ abstract class AbstractMappingHandler implements MappingHandlerInterface
 
     public function updateMapping(mixed $context = null, bool $forceCreateIndex = false): void
     {
-        $aliasName = $this->getIndexAliasName($context);
+        $aliasName = $this->getAliasIndexName($context);
 
         if ($forceCreateIndex || !$this->openSearchService->existsAlias($aliasName)) {
             $this->createIndex($context, $aliasName);
@@ -48,31 +48,18 @@ abstract class AbstractMappingHandler implements MappingHandlerInterface
         }
     }
 
-    private function createIndex(mixed $context, string $aliasName): void
+    public function deleteIndex(mixed $context = null): void
     {
-        $fullIndexName = $this->getCurrentFullIndexName($context);
-
-        $this
-            ->openSearchService
-            ->createIndex($fullIndexName)
-            ->addAlias($aliasName, $fullIndexName)
-        ;
-
+        $this->openSearchService->deleteIndex(
+            $this->getCurrentFullIndexName($context)
+        );
     }
 
     abstract protected function extractMappingProperties(mixed $context = null): array;
 
-    abstract protected function getIndexAliasName(mixed $context = null): string;
+    abstract protected function getAliasIndexName(mixed $context = null): string;
 
-    public function getCurrentFullIndexName(mixed $context = null): string
-    {
-        $indexName = $this->getIndexAliasName($context);
-        $currentIndexVersion = $this->openSearchService->getCurrentIndexVersion($indexName);
-
-        return $indexName . '-' . ($currentIndexVersion === 'even' ? 'even' : 'odd');
-    }
-
-    protected function doUpdateMapping(mixed $context): void
+    private function doUpdateMapping(mixed $context): void
     {
         $response = $this->openSearchService->putMapping(
             [
@@ -86,5 +73,25 @@ abstract class AbstractMappingHandler implements MappingHandlerInterface
             ]
         );
         $this->logger->debug(json_encode($response));
+    }
+
+    protected function createIndex(mixed $context, string $aliasName): void
+    {
+        $fullIndexName = $this->getCurrentFullIndexName($context);
+
+        $this
+            ->openSearchService
+            ->createIndex($fullIndexName)
+            ->addAlias($aliasName, $fullIndexName)
+        ;
+
+    }
+
+    protected function getCurrentFullIndexName(mixed $context = null): string
+    {
+        $indexName = $this->getAliasIndexName($context);
+        $currentIndexVersion = $this->openSearchService->getCurrentIndexVersion($indexName);
+
+        return $indexName . '-' . ($currentIndexVersion === 'even' ? 'even' : 'odd');
     }
 }

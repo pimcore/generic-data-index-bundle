@@ -16,7 +16,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 use Doctrine\DBAL\Query\QueryBuilder;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler\MappingHandlerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -28,22 +27,29 @@ abstract class AbstractElementTypeAdapter
 
     abstract public function supports(ElementInterface $element): bool;
 
-    public function getIndexName(ElementInterface $element): string
+    public function getAliasIndexNameByElement(ElementInterface $element): string
     {
         return $this->searchIndexConfigService->getIndexName(
-            $this->getIndexNameShort($element)
+            $this->getIndexNameShortByElement($element)
         );
     }
 
-    abstract public function getIndexNameShort(ElementInterface $element): string;
+    public function getAliasIndexName(mixed $context): string
+    {
+        return $this->searchIndexConfigService->getIndexName(
+            $this->getIndexNameShort($context)
+        );
+    }
+
+    abstract public function getIndexNameShort(mixed $context): string;
+
+    abstract public function getIndexNameShortByElement(ElementInterface $element): string;
 
     abstract public function getElementType(): string;
 
     abstract public function childrenPathRewriteNeeded(ElementInterface $element): bool;
 
     abstract public function getNormalizer(): NormalizerInterface;
-
-    abstract public function getMappingHandler(): MappingHandlerInterface;
 
     abstract public function getUpdateIndexDataEvent(
         ElementInterface $element,

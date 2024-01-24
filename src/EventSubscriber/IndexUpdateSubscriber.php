@@ -18,8 +18,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Event\AssetEvents;
@@ -42,8 +42,8 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
     public function __construct(
         protected readonly IndexQueueService $indexQueueService,
         protected readonly EnqueueService $enqueueService,
-        protected readonly DataObjectTypeAdapter $dataObjectTypeAdapter,
-        protected readonly AssetTypeAdapter $assetTypeAdapter,
+        protected readonly DataObjectIndexHandler $dataObjectMappingHandler,
+        protected readonly AssetIndexHandler $assetMappingHandler,
         protected readonly OpenSearchService $openSearchService,
         protected readonly Installer $installer,
     ) {
@@ -122,8 +122,7 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
 
         $classDefinition = $event->getClassDefinition();
 
-        $this->dataObjectTypeAdapter
-            ->getMappingHandler()
+        $this->dataObjectMappingHandler
             ->updateMapping(
                 context: $classDefinition,
                 forceCreateIndex: true
@@ -141,8 +140,7 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
 
         $classDefinition = $event->getClassDefinition();
 
-        $this->dataObjectTypeAdapter
-            ->getMappingHandler()
+        $this->dataObjectMappingHandler
             ->updateMapping(
                 context: $classDefinition,
                 forceCreateIndex: true
@@ -162,9 +160,8 @@ class IndexUpdateSubscriber implements EventSubscriberInterface
         $classDefinition = $event->getClassDefinition();
 
         try {
-            $this->openSearchService->deleteIndex(
-                $this->dataObjectTypeAdapter->getIndexNameByClassDefinition($classDefinition)
-            );
+            $this->dataObjectMappingHandler
+                ->deleteIndex($classDefinition);
         } catch (Exception $e) {
             $this->logger->error($e->getMessage());
         }

@@ -11,15 +11,18 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\MappingHandler;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
+use Symfony\Contracts\Service\Attribute\Required;
 
-class AssetMappingHandler extends AbstractMappingHandler
+class AssetIndexHandler extends AbstractIndexHandler
 {
+    private AssetTypeAdapter $assetAdapter;
+
     protected function extractMappingProperties(mixed $context = null): array
     {
         $mappingProperties = [
@@ -37,9 +40,15 @@ class AssetMappingHandler extends AbstractMappingHandler
         return $mappingProperties;
     }
 
-    protected function getIndexAliasName(mixed $context = null): string
+    protected function getAliasIndexName(mixed $context = null): string
     {
-        return $this->searchIndexConfigService->getIndexName(ElementType::ASSET->value);
+        return $this->assetAdapter->getAliasIndexName($context);
+    }
+
+    #[Required]
+    public function setAssetAdapter(AssetTypeAdapter $assetAdapter): void
+    {
+        $this->assetAdapter = $assetAdapter;
     }
 
     private function fireEventAndGetCustomFieldsMapping($customFields): array
