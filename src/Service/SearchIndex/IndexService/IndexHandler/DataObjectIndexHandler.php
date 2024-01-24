@@ -39,11 +39,7 @@ class DataObjectIndexHandler extends AbstractIndexHandler
 
     protected function getAliasIndexName(mixed $context = null): string
     {
-        if ($context instanceof ClassDefinition) {
-            return $this->searchIndexConfigService->getIndexName($context->getName());
-        }
-
-        return $this->searchIndexConfigService->getIndexName('data_object_folders');
+        return $this->dataObjectTypeAdapter->getAliasIndexName($context);
     }
 
     private function extractMappingByClassDefinition(ClassDefinition $classDefinition): array
