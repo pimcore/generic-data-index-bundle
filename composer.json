@@ -2,7 +2,7 @@
   "name": "pimcore/generic-data-index-bundle",
   "license": "Pimcore Enterprise License (PEL)",
   "type": "pimcore-bundle",
-  "description": "Pimcore xTemplate Bundlex",
+  "description": "Pimcore Generic data index Bundle",
   "config": {
     "discard-changes": true,
     "sort-packages": true,
