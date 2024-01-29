@@ -51,7 +51,7 @@ class OpenSearchService
             $response = $this->openSearchClient->indices()->delete(['index' => $indexName]);
             $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
         } catch (JsonException $e) {
-            $this->logger->debug('Error while parsing json response: ' . $indexName);
+            $this->logger->debug('Error while parsing json response: ' . $indexName. ' ' . $e);
         }
 
         return $this;
