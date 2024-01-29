@@ -15,10 +15,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Exception;
 use InvalidArgumentException;
-use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidElementTypeException;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
@@ -29,8 +30,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Element\ElementInterface;
-use Symfony\Component\Serializer\Exception\ExceptionInterface;
-use UnhandledMatchError;
 
 class IndexQueueService
 {
@@ -86,7 +85,6 @@ class IndexQueueService
     /**
      * @param IndexQueue[] $entries
      *
-     * @throws ExceptionInterface
      */
     public function handleIndexQueueEntries(array $entries): IndexQueueService
     {
@@ -110,7 +108,7 @@ class IndexQueueService
             $this->indexQueueRepository->deleteQueueEntries($entries);
 
         } catch (Exception $e) {
-            $this->logger->info('handleIndexQueueEntry failed! Error: ' . $e->getMessage());
+            $this->logger->warning('handleIndexQueueEntry failed! Error: ' . $e->getMessage());
         }
 
         return $this;
@@ -143,8 +141,7 @@ class IndexQueueService
      *
      * @return $this
      *
-     * @throws JsonException
-     * @throws ExceptionInterface
+     * @throws IndexDataException
      */
     protected function doHandleIndexData(ElementInterface $element, string $operation): IndexQueueService
     {
@@ -182,13 +179,14 @@ class IndexQueueService
     }
 
     /**
-     * @throws UnhandledMatchError
+     * @throws InvalidElementTypeException
      */
     public function getElement(int $id, string $type): Asset|AbstractObject|null
     {
         return match($type) {
             ElementType::ASSET->value => Asset::getById($id),
             ElementType::DATA_OBJECT->value => AbstractObject::getById($id),
+            default => throw new InvalidElementTypeException('Invalid element type: ' . $type)
         };
     }
 

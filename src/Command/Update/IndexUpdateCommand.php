@@ -14,11 +14,12 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Command\Update;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\IdNotFoundException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject\ClassDefinition;
-use RuntimeException;
 use Symfony\Component\Console\Command\LockableTrait;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -83,13 +84,15 @@ class IndexUpdateCommand extends AbstractCommand
     }
 
     /**
-     * @throws \Doctrine\DBAL\Exception
-     * @throws RuntimeException
+     * @throws CommandAlreadyRunningException
+     *
      */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         if (!$this->lock()) {
-            throw new RuntimeException('The command is already running in another process.');
+            throw new CommandAlreadyRunningException(
+                'The command is already running in another process.'
+            );
         }
 
         $this->indexUpdateService->setReCreateIndex($input->getOption(self::OPTION_RECREATE_INDEX));
@@ -105,7 +108,7 @@ class IndexUpdateCommand extends AbstractCommand
             try {
                 $classDefinition = ClassDefinition::getById($classDefinitionId);
                 if (!$classDefinition) {
-                    throw new RuntimeException(
+                    throw new IdNotFoundException(
                         sprintf('ClassDefinition with id %s not found', $classDefinitionId)
                     );
                 }
@@ -144,14 +147,18 @@ class IndexUpdateCommand extends AbstractCommand
         }
 
         if ($updateAll) {
-            $this->output->writeln(
-                '<info>Update all mappings and indices for objects/assets</info>',
-                OutputInterface::VERBOSITY_VERBOSE
-            );
+            try {
+                $this->output->writeln(
+                    '<info>Update all mappings and indices for objects/assets</info>',
+                    OutputInterface::VERBOSITY_VERBOSE
+                );
 
-            $this
-                ->indexUpdateService
-                ->updateAll();
+                $this
+                    ->indexUpdateService
+                    ->updateAll();
+            } catch (Exception $e) {
+                $this->output->writeln('<error>' . $e->getMessage() . '</error>');
+            }
         }
 
         $this->output->writeln(
