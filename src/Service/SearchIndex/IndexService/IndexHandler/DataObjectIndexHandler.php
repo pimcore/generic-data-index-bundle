@@ -29,7 +29,7 @@ class DataObjectIndexHandler extends AbstractIndexHandler
 
     private DataObjectTypeAdapter $dataObjectTypeAdapter;
 
-    public function extractMappingProperties(mixed $context = null): array
+    protected function extractMappingProperties(mixed $context = null): array
     {
         if (!$context instanceof ClassDefinition) {
             return [];

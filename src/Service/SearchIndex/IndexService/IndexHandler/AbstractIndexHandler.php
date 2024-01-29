@@ -56,7 +56,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         );
     }
 
-    abstract public function extractMappingProperties(mixed $context = null): array;
+    abstract protected function extractMappingProperties(mixed $context = null): array;
 
     abstract protected function getAliasIndexName(mixed $context = null): string;
 
