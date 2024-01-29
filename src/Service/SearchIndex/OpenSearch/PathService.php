@@ -34,7 +34,8 @@ class PathService
     }
 
     /**
-     * Directly update children paths in OpenSearch for assets as otherwise you might get strange results if you rename a folder in the portal engine frontend.
+     * Directly update children paths in OpenSearch for assets as otherwise you might get strange results
+     * if you rename a folder in the portal engine frontend.
      *
      * @throws Exception
      */
@@ -134,7 +135,7 @@ class PathService
 
     private function countDocumentsByPath(string $indexName, string $path): int
     {
-        $this->openSearchClient->search([
+        $countResult = $this->openSearchClient->search([
             'index' => $indexName,
             'track_total_hits' => true,
             'rest_total_hits_as_int' => true,

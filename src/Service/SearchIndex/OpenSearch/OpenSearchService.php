@@ -226,7 +226,7 @@ class OpenSearchService
 
     public function countByAttributeValue(string $indexName, string $attribute, string $value): int
     {
-        $this->openSearchClient->search([
+        $countResult = $this->openSearchClient->search([
             'index' => $indexName,
             'track_total_hits' => true,
             'rest_total_hits_as_int' => true,
