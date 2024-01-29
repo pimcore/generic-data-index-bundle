@@ -15,7 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Command\Update;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\EnqueueAssetsException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IdNotFoundException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService;

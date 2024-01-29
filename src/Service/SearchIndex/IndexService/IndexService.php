@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService;
 
 use Exception;
-use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;

@@ -55,6 +55,7 @@ class BulkOperationService
 
             if ($response['errors'] ?? true) {
                 $responseEncoded = json_encode($response, JSON_THROW_ON_ERROR);
+
                 throw new RuntimeException(
                     'OpenSearch bulk produced errors: '. $responseEncoded
                 );

@@ -13,9 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Exception;
 
-/*
- * @internal
- */
-interface GenericDataIndexBundleExceptionInterface {
-
+// @internal
+interface GenericDataIndexBundleExceptionInterface
+{
 }
