@@ -52,8 +52,7 @@ class IndexQueueService
         ElementInterface $element,
         string $operation,
         bool $doIndexElement = false
-    ): IndexQueueService
-    {
+    ): IndexQueueService {
         try {
             $this->checkOperationValid($operation);
 

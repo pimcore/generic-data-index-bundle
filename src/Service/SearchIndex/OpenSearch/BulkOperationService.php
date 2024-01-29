@@ -52,7 +52,7 @@ class BulkOperationService
         $this->bulkOperationData = [];
 
         if ($response['errors'] ?? true) {
-            throw new RuntimeException('OpenSearch bulk produced errors: '. json_encode($response,  JSON_THROW_ON_ERROR));
+            throw new RuntimeException('OpenSearch bulk produced errors: '. json_encode($response, JSON_THROW_ON_ERROR));
         }
     }
 }
