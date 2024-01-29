@@ -16,15 +16,16 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch;
 use Exception;
 use OpenSearch\Client;
 use OpenSearch\Common\Exceptions\Missing404Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Psr\Log\LogLevel;
 
 class OpenSearchService
 {
-    private const INDEX_VERION_ODD = 'odd';
+    private const INDEX_VERSION_ODD = 'odd';
 
-    private const INDEX_VERION_EVEN = 'even';
+    private const INDEX_VERSION_EVEN = 'even';
 
     use LoggerAwareTrait;
 
@@ -58,11 +59,11 @@ class OpenSearchService
 
     public function getCurrentIndexVersion(string $indexName): string
     {
-        try {
-            $result = $this->openSearchClient->indices()->getAlias([
-                'name' => $indexName,
-            ]);
-        } catch (Missing404Exception) {
+        $result = $this->openSearchClient->indices()->getAlias([
+            'name' => $indexName,
+        ]);
+
+        if (empty($result)) {
             return '';
         }
 
@@ -78,9 +79,9 @@ class OpenSearchService
     public function reindex(string $indexName, array $mapping): void
     {
         $currentIndexVersion = $this->getCurrentIndexVersion($indexName);
-        $newIndexVersion = $currentIndexVersion === self::INDEX_VERION_EVEN
-            ? self::INDEX_VERION_ODD
-            : self::INDEX_VERION_EVEN;
+        $newIndexVersion = $currentIndexVersion === self::INDEX_VERSION_EVEN
+            ? self::INDEX_VERSION_ODD
+            : self::INDEX_VERSION_EVEN;
 
         $oldIndexName = $indexName . '-' . $currentIndexVersion;
         $newIndexName = $indexName . '-' . $newIndexVersion;
@@ -109,7 +110,7 @@ class OpenSearchService
     }
 
     /**
-     * @throws Exception
+     * @throws SwitchIndexAliasException
      */
     private function switchIndexAliasAndCleanup(string $aliasName, string $oldIndexName, string $newIndexName): void
     {
@@ -131,7 +132,7 @@ class OpenSearchService
         ];
         $result = $this->openSearchClient->indices()->updateAliases($params);
         if (!$result['acknowledged']) {
-            throw new Exception('Switching Alias failed for ' . $newIndexName);
+            throw new SwitchIndexAliasException('Switching Alias failed for ' . $newIndexName);
         }
 
         $this->deleteIndex($oldIndexName);
@@ -160,7 +161,7 @@ class OpenSearchService
                 ]
             );
 
-            $this->logger->debug(json_encode($response));
+            $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
         } catch (Exception $e) {
             $this->logger->error($e);
         }
