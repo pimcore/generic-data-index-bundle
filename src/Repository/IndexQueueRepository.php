@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Repository;
 
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepositoryProxy;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\Persistence\ManagerRegistry;
@@ -24,7 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
-class IndexQueueRepository extends ServiceEntityRepository
+class IndexQueueRepository extends ServiceEntityRepositoryProxy
 {
     use LoggerAwareTrait;
 

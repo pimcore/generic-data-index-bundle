@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
+use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService;
@@ -33,7 +34,7 @@ class LocalizedFieldsAdapter extends AbstractAdapter
      *
      * @required
      *
-     * @throws \Exception
+     * @throws Exception
      */
     public function setLocaleService(LocaleServiceInterface $localeService): void
     {

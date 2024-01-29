@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
+use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent;
@@ -39,6 +40,9 @@ class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         return $element instanceof AbstractObject;
     }
 
+    /**
+     * @throws Exception
+     */
     public function getIndexNameShortByElement(ElementInterface $element): string
     {
         $classDefinition = null;

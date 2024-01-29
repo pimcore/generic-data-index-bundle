@@ -74,7 +74,11 @@ class DataObjectIndexHandler extends AbstractIndexHandler
             }
             $fieldDefinitionAdapter = $this->fieldDefinitionService->getFieldDefinitionAdapter($fieldDefinition);
             if ($fieldDefinitionAdapter) {
-                $mappingProperties[FieldCategory::STANDARD_FIELDS->value]['properties'][$fieldDefinitionAdapter->getOpenSearchAttributeName()] = $fieldDefinitionAdapter->getOpenSearchMapping();
+                $mappingProperties
+                    [FieldCategory::STANDARD_FIELDS->value]
+                    ['properties']
+                    [$fieldDefinitionAdapter->getOpenSearchAttributeName()] =
+                        $fieldDefinitionAdapter->getOpenSearchMapping();
             }
         }
 
