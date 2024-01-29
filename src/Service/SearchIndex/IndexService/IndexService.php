@@ -17,6 +17,7 @@ use Exception;
 use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\ElementTypeAdapterService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
@@ -53,8 +54,7 @@ class IndexService implements IndexServiceInterface
     }
 
     /**
-     * @throws ExceptionInterface
-     * @throws JsonException
+     * @throws IndexDataException
      */
     public function updateIndexData(ElementInterface $element): IndexService
     {
@@ -106,32 +106,36 @@ class IndexService implements IndexServiceInterface
     }
 
     /**
-     * @throws JsonException
-     * @throws ExceptionInterface
+     * @throws IndexDataException
      */
     private function getIndexData(ElementInterface $element): array
     {
-        $typeAdapter = $this->typeAdapterService->getTypeAdapter($element);
-        $indexData = $typeAdapter
-            ->getNormalizer()
-            ->normalize($element);
+        try {
+            $typeAdapter = $this->typeAdapterService->getTypeAdapter($element);
+            $indexData = $typeAdapter
+                ->getNormalizer()
+                ->normalize($element);
 
-        $systemFields = $indexData[FieldCategory::SYSTEM_FIELDS->value];
-        $standardFields = $indexData[FieldCategory::STANDARD_FIELDS->value];
-        $customFields = [];
+            $systemFields = $indexData[FieldCategory::SYSTEM_FIELDS->value];
+            $standardFields = $indexData[FieldCategory::STANDARD_FIELDS->value];
+            $customFields = [];
 
-        //dispatch event before building checksum
-        $updateIndexDataEvent = $typeAdapter->getUpdateIndexDataEvent($element, $customFields);
-        $this->eventDispatcher->dispatch($updateIndexDataEvent);
-        $customFields = $updateIndexDataEvent->getCustomFields();
+            //dispatch event before building checksum
+            $updateIndexDataEvent = $typeAdapter->getUpdateIndexDataEvent($element, $customFields);
+            $this->eventDispatcher->dispatch($updateIndexDataEvent);
+            $customFields = $updateIndexDataEvent->getCustomFields();
 
-        $checksum = crc32(json_encode([$systemFields, $standardFields, $customFields], JSON_THROW_ON_ERROR));
-        $systemFields[SystemField::CHECKSUM->value] = $checksum;
+            $checksum = crc32(json_encode([$systemFields, $standardFields, $customFields], JSON_THROW_ON_ERROR));
+            $systemFields[SystemField::CHECKSUM->value] = $checksum;
 
-        return [
-            FieldCategory::SYSTEM_FIELDS->value => $systemFields,
-            FieldCategory::STANDARD_FIELDS->value => $standardFields,
-            FieldCategory::CUSTOM_FIELDS->value => $customFields,
-        ];
+            return [
+                FieldCategory::SYSTEM_FIELDS->value => $systemFields,
+                FieldCategory::STANDARD_FIELDS->value => $standardFields,
+                FieldCategory::CUSTOM_FIELDS->value => $customFields,
+            ];
+        } catch (Exception|ExceptionInterface $e) {
+            throw new IndexDataException($e->getMessage());
+        }
+
     }
 }

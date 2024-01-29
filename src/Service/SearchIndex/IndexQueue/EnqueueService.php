@@ -17,6 +17,7 @@ use Doctrine\DBAL\Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\EnqueueAssetsException;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\ElementTypeAdapterService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeService;
@@ -89,19 +90,25 @@ class EnqueueService
     }
 
     /**
-     * @throws Exception
+     * @throws EnqueueAssetsException
      */
     public function enqueueAssets(): EnqueueService
     {
-        $this->indexQueueRepository->enqueueBySelectQuery(
-            sprintf("SELECT id, '%s', '%s', '%s', '%s', 0 FROM %s",
-                ElementType::ASSET->value,
-                IndexName::ASSET->value,
-                IndexQueueOperation::UPDATE->value,
-                $this->timeService->getCurrentMillisecondTimestamp(),
-                'assets'
-            )
-        );
+        try {
+            $this->indexQueueRepository->enqueueBySelectQuery(
+                sprintf("SELECT id, '%s', '%s', '%s', '%s', 0 FROM %s",
+                    ElementType::ASSET->value,
+                    IndexName::ASSET->value,
+                    IndexQueueOperation::UPDATE->value,
+                    $this->timeService->getCurrentMillisecondTimestamp(),
+                    'assets'
+                )
+            );
+        } catch (Exception $e) {
+            throw new EnqueueAssetsException(
+                $e->getMessage()
+            );
+        }
 
         return $this;
     }
