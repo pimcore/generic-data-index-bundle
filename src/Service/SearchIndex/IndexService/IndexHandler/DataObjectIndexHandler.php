@@ -60,7 +60,7 @@ class DataObjectIndexHandler extends AbstractIndexHandler
         $mappingProperties = [
             FieldCategory::SYSTEM_FIELDS->value => [
                 'properties' => $this->searchIndexConfigService
-                    ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELDS_SETTINGS_DATA_OBJECT),
+                    ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELD_DATA_OBJECT),
             ],
             FieldCategory::STANDARD_FIELDS->value => [
                 'properties' => [],

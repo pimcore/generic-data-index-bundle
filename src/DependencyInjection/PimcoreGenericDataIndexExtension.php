@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection;
 
+use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Factory\OpenSearchClientFactory;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
@@ -34,7 +35,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
     /**
      * {@inheritdoc}
      *
-     * @throws \Exception
+     * @throws Exception
      */
     public function load(array $configs, ContainerBuilder $container): void
     {

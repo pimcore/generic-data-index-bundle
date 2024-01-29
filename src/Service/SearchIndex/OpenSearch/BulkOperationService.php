@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch;
 
+use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use RuntimeException;
 
@@ -34,7 +35,7 @@ class BulkOperationService
     }
 
     /**
-     * @throws RuntimeException
+     * @throws RuntimeException|JsonException
      */
     public function commit(): void
     {
@@ -51,7 +52,7 @@ class BulkOperationService
         $this->bulkOperationData = [];
 
         if ($response['errors'] ?? true) {
-            throw new RuntimeException('OpenSearch bulk produced errors: '. json_encode($response));
+            throw new RuntimeException('OpenSearch bulk produced errors: '. json_encode($response,  JSON_THROW_ON_ERROR));
         }
     }
 }

@@ -48,7 +48,11 @@ class IndexQueueService
     ) {
     }
 
-    public function updateIndexQueue(ElementInterface $element, string $operation, bool $doIndexElement = false): IndexQueueService
+    public function updateIndexQueue(
+        ElementInterface $element,
+        string $operation,
+        bool $doIndexElement = false
+    ): IndexQueueService
     {
         try {
             $this->checkOperationValid($operation);
@@ -68,7 +72,13 @@ class IndexQueueService
 
             $this->pathService->rewriteChildrenIndexPaths($element);
         } catch (Exception $e) {
-            $this->logger->warning('Update indexQueue in database-table' . IndexQueue::TABLE . ' failed! Error: ' . $e->getMessage());
+            $this->logger->warning(
+                sprintf(
+                    'Update indexQueue in database-table %s failed! Error: %s',
+                    IndexQueue::TABLE,
+                    $e->getMessage()
+                )
+            );
         }
 
         return $this;
@@ -84,8 +94,13 @@ class IndexQueueService
         try {
 
             foreach ($entries as $entry) {
-                $this->logger->debug(IndexQueue::TABLE . ' updating index for element ' . $entry->getElementId() . ' and type ' . $entry->getElementType());
-
+                $this->logger->debug(
+                    sprintf(
+                        '%s updating index for element %s and type %s',
+                        IndexQueue::TABLE,
+                        $entry->getElementId(),
+                        $entry->getElementType()
+                    ));
                 $element = $this->getElement($entry->getElementId(), $entry->getElementType());
                 if ($element) {
                     $this->doHandleIndexData($element, $entry->getOperation());

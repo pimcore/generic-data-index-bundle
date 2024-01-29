@@ -15,7 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 
-interface FieldDefinitionAdapterInterface
+interface AdapterInterface
 {
     public function setFieldDefinition(Data $fieldDefinition): self;
 

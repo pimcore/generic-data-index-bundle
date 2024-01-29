@@ -28,7 +28,7 @@ class AssetIndexHandler extends AbstractIndexHandler
         $mappingProperties = [
             FieldCategory::SYSTEM_FIELDS->value => [
                 'properties' => $this->searchIndexConfigService
-                    ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELDS_SETTINGS_ASSET),
+                    ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELD_ASSET),
             ],
             FieldCategory::STANDARD_FIELDS->value => [],
             FieldCategory::CUSTOM_FIELDS->value => [],

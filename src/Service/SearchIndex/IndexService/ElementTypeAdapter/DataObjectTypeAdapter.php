@@ -100,8 +100,8 @@ class DataObjectTypeAdapter extends AbstractElementTypeAdapter
                 'id',
                 "'" . ElementType::DATA_OBJECT->value . "'",
                 'className',
-                "'{$operation}'",
-                "'{$operationTime}'",
+                "'$operation'",
+                "'$operationTime'",
                 '0',
             ])
             ->from('objects')

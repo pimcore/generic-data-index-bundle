@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
+use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService;
 use Pimcore\Localization\LocaleServiceInterface;
@@ -22,9 +23,6 @@ use Symfony\Contracts\Service\Attribute\Required;
 class LocalizedFieldsAdapter extends AbstractAdapter
 {
     protected LocaleServiceInterface $localeService;
-
-    /** @var Data\Localizedfields */
-    protected Data $fieldDefinition;
 
     protected FieldDefinitionService $fieldDefinitionService;
 
@@ -48,7 +46,7 @@ class LocalizedFieldsAdapter extends AbstractAdapter
             'properties' => [],
         ];
         $languages = $this->languageService->getValidLanguages();
-        $childFieldDefinitions = $this->fieldDefinition->getFieldDefinitions();
+        $childFieldDefinitions = $this->getFieldDefinition()->getFieldDefinitions();
 
         foreach ($languages as $language) {
             $languageProperties = [];
@@ -82,5 +80,20 @@ class LocalizedFieldsAdapter extends AbstractAdapter
     public function setLanguageService(LanguageService $languageService): void
     {
         $this->languageService = $languageService;
+    }
+
+    public function getFieldDefinition(): Data\Localizedfields
+    {
+        if ($this->fieldDefinition instanceof Data\Localizedfields) {
+            return $this->fieldDefinition;
+        }
+
+        throw new InvalidArgumentException(
+            sprintf(
+                'FieldDefinition must be of type %s, %s given',
+                Data\Localizedfields::class,
+                get_class($this->fieldDefinition)
+            )
+        );
     }
 }

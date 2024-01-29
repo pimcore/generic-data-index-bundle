@@ -63,7 +63,9 @@ class PathService
 
         if ($countResult > $this->searchIndexConfigService->getMaxSynchronousChildrenRenameLimit()) {
             $msg = sprintf(
-                'Direct rewrite of children paths in OpenSearch was skipped as more than %s items need an update (%s items). The index will be updated asynchronously via index update queue command cronjob.',
+                'Direct rewrite of children paths in OpenSearch was skipped as more than %s 
+                items need an update (%s items). 
+                The index will be updated asynchronously via index update queue command cronjob.',
                 $this->searchIndexConfigService->getMaxSynchronousChildrenRenameLimit(),
                 $countResult
             );
@@ -89,29 +91,7 @@ class PathService
 
                 'script' => [
                     'lang' => 'painless',
-                    'source' => '
-                        String currentPath = "";
-                            if(ctx._source.system_fields.path.length() >= params.currentPath.length()) {
-                               currentPath = ctx._source.system_fields.path.substring(0,params.currentPath.length());
-                            }
-                            if(currentPath == params.currentPath) {
-                                String subPath = ctx._source.system_fields.path.substring(params.currentPath.length());
-                                ctx._source.system_fields.path = params.newPath + subPath;
-
-                                String subFullPath = ctx._source.system_fields.fullPath.substring(params.currentPath.length());
-                                ctx._source.system_fields.fullPath = params.newPath + subFullPath;
-
-                                for (int i = 0; i < ctx._source.system_fields.pathLevels.length; i++) {
-
-
-                                  if(ctx._source.system_fields.pathLevels[i].level == params.changePathLevel) {
-
-                                    ctx._source.system_fields.pathLevels[i].name = params.newPathLevelName;
-                                  }
-                                }
-                            }
-                            ctx._source.system_fields.checksum = 0
-                   ',
+                    'source' => $this->getScriptSource(),
 
                     'params' => [
                         'currentPath' => $currentPath . '/',
@@ -131,6 +111,31 @@ class PathService
         ];
 
         $this->openSearchClient->updateByQuery($query);
+    }
+
+    private function getScriptSource(): string
+    {
+        return 'String currentPath = "";
+                if(ctx._source.system_fields.path.length() >= params.currentPath.length()) {
+                   currentPath = ctx._source.system_fields.path.substring(0,params.currentPath.length());
+                }
+                if(currentPath == params.currentPath) {
+                    String subPath = ctx._source.system_fields.path.substring(params.currentPath.length());
+                    ctx._source.system_fields.path = params.newPath + subPath;
+
+                    String subFullPath = ctx._source.system_fields.fullPath.substring(params.currentPath.length());
+                    ctx._source.system_fields.fullPath = params.newPath + subFullPath;
+
+                    for (int i = 0; i < ctx._source.system_fields.pathLevels.length; i++) {
+
+
+                      if(ctx._source.system_fields.pathLevels[i].level == params.changePathLevel) {
+
+                        ctx._source.system_fields.pathLevels[i].name = params.newPathLevelName;
+                      }
+                    }
+                }
+                ctx._source.system_fields.checksum = 0';
     }
 
     private function countDocumentsByPath(string $indexName, string $path): int
