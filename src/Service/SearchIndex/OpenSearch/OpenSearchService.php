@@ -150,8 +150,7 @@ class OpenSearchService
             }
 
             if ($mappings) {
-                $body['mappings']['properties'] = $mappings['body']['properties'];
-                $body['mappings']['_source'] = $mappings['body']['_source'];
+                $body['mappings']['properties'] = $mappings;
             }
 
             $response = $this->openSearchClient->indices()->create(
