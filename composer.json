@@ -22,7 +22,7 @@
     "pimcore/pimcore": "^11.0",
     "opensearch-project/opensearch-php": "^2.2.0",
     "doctrine/orm": "^2.17.2",
-    "symfony/scheduler": "^6.3|^7.0"
+    "symfony/scheduler": "^6.4"
   },
   "require-dev": {
     "roave/security-advisories": "dev-latest",
