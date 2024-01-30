@@ -20,7 +20,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathService;
@@ -42,7 +41,6 @@ final class IndexQueueService
         private readonly IndexService $indexService,
         private readonly PathService $pathService,
         private readonly BulkOperationService $bulkOperationService,
-        private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
         private readonly IndexQueueRepository $indexQueueRepository,
         private readonly EnqueueService $enqueueService,
         private readonly ElementServiceInterface $elementService,
@@ -114,19 +112,14 @@ final class IndexQueueService
         }
     }
 
-    public function isPerformIndexRefresh(): bool
+    private function isPerformIndexRefresh(): bool
     {
         return $this->performIndexRefresh;
     }
 
-    public function setPerformIndexRefresh(bool $performIndexRefresh): void
+    private function setPerformIndexRefresh(bool $performIndexRefresh): void
     {
         $this->performIndexRefresh = $performIndexRefresh;
-    }
-
-    public function dispatchQueueMessages(bool $synchronously = false): void
-    {
-        $this->queueMessagesDispatcher->dispatchQueueMessages($synchronously);
     }
 
     public function commit(): IndexQueueService

@@ -17,6 +17,7 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -39,6 +40,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         private readonly IndexQueueService $indexQueueService,
         private readonly DataObjectIndexHandler $dataObjectMappingHandler,
         private readonly EnqueueService $enqueueService,
+        private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
     ) {
     }
 
@@ -77,8 +79,8 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
                 operation: IndexQueueOperation::UPDATE->value,
                 doIndexElement: true
             )
-            ->commit()
-            ->dispatchQueueMessages();
+            ->commit();
+        $this->queueMessagesDispatcher->dispatchQueueMessages();
 
         AbstractObject::setGetInheritedValues($inheritanceBackup);
     }
