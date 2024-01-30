@@ -18,7 +18,7 @@ use Psr\Log\LoggerAwareTrait;
 /**
  * @internal
  */
-final class SearchIndexConfigService
+final class SearchIndexConfigService implements SearchIndexConfigServiceInterface
 {
     use LoggerAwareTrait;
 

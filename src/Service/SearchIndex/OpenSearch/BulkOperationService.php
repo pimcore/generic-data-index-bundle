@@ -21,13 +21,13 @@ use RuntimeException;
 /**
  * @internal
  */
-final class BulkOperationService
+final class BulkOperationService implements BulkOperationServiceInterface
 {
     use LoggerAwareTrait;
 
     private array $bulkOperationData = [];
 
-    public function __construct(private readonly OpenSearchService $openSearchService)
+    public function __construct(private readonly OpenSearchServiceInterface $openSearchService)
     {
     }
 

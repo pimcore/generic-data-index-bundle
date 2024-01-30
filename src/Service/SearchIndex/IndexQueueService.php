@@ -19,30 +19,29 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
-use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Element\ElementInterface;
 
 /**
  * @internal
  */
-final class IndexQueueService
+final class IndexQueueService implements IndexQueueServiceInterface
 {
     use LoggerAwareTrait;
 
     private bool $performIndexRefresh = false;
 
     public function __construct(
-        private readonly IndexService $indexService,
-        private readonly PathService $pathService,
-        private readonly BulkOperationService $bulkOperationService,
+        private readonly IndexServiceInterface $indexService,
+        private readonly PathServiceInterface $pathService,
+        private readonly BulkOperationServiceInterface $bulkOperationService,
         private readonly IndexQueueRepository $indexQueueRepository,
-        private readonly EnqueueService $enqueueService,
+        private readonly EnqueueServiceInterface $enqueueService,
         private readonly ElementServiceInterface $elementService,
     ) {
     }
@@ -65,7 +64,9 @@ final class IndexQueueService
             );
 
             if ($element instanceof Asset) {
-                $this->updateAssetDependencies($element);
+                foreach ($this->indexService->updateAssetDependencies($element) as $asset) {
+                    $this->updateIndexQueue($asset, IndexQueueOperation::UPDATE->value);
+                }
             }
 
             $this->pathService->rewriteChildrenIndexPaths($element);
@@ -84,7 +85,6 @@ final class IndexQueueService
 
     /**
      * @param IndexQueue[] $entries
-     *
      */
     public function handleIndexQueueEntries(array $entries): void
     {
@@ -112,11 +112,6 @@ final class IndexQueueService
         }
     }
 
-    private function isPerformIndexRefresh(): bool
-    {
-        return $this->performIndexRefresh;
-    }
-
     public function commit(): IndexQueueService
     {
         $this->bulkOperationService->commit();
@@ -124,23 +119,9 @@ final class IndexQueueService
         return $this;
     }
 
-    private function updateAssetDependencies(Asset $asset): void
+    private function isPerformIndexRefresh(): bool
     {
-        foreach ($asset->getDependencies()->getRequiredBy() as $requiredByEntry) {
-
-            /** @var ElementInterface|null $element */
-            $element = null;
-
-            if ($requiredByEntry['type'] === 'object') {
-                $element = AbstractObject::getById($requiredByEntry['id']);
-            }
-            if ($requiredByEntry['type'] === 'asset') {
-                $element = Asset::getById($requiredByEntry['id']);
-            }
-            if ($element) {
-                $this->updateIndexQueue($element, IndexQueueOperation::UPDATE->value);
-            }
-        }
+        return $this->performIndexRefresh;
     }
 
     /**

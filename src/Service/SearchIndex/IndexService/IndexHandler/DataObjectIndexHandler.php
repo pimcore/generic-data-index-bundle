@@ -15,7 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractMappingEvent;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -28,7 +28,7 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
 {
     public const DATA_OBJECT_INDEX_ALIAS = 'data-object';
 
-    private FieldDefinitionService $fieldDefinitionService;
+    private FieldDefinitionServiceInterface $fieldDefinitionService;
 
     private DataObjectTypeAdapter $dataObjectTypeAdapter;
 
@@ -93,7 +93,7 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
     }
 
     #[Required]
-    public function setFieldDefinitionService(FieldDefinitionService $fieldDefinitionService): void
+    public function setFieldDefinitionService(FieldDefinitionServiceInterface $fieldDefinitionService): void
     {
         $this->fieldDefinitionService = $fieldDefinitionService;
     }

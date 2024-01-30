@@ -13,13 +13,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter;
 
-use InvalidArgumentException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidElementTypeException;
 use Pimcore\Model\Element\ElementInterface;
 
 /**
  * @internal
  */
-final class ElementTypeAdapterService
+final class AdapterService implements AdapterServiceInterface
 {
     /**
      * @var AbstractElementTypeAdapter[]
@@ -35,7 +35,7 @@ final class ElementTypeAdapterService
     }
 
     /**
-     * @throws InvalidArgumentException
+     * @throws InvalidElementTypeException
      */
     public function getTypeAdapter(ElementInterface $element): AbstractElementTypeAdapter
     {
@@ -45,6 +45,8 @@ final class ElementTypeAdapterService
             }
         }
 
-        throw new InvalidArgumentException('Element type adapter not found - type: ' . $element->getType());
+        throw new InvalidElementTypeException(
+            'Element type adapter not found - type: ' . $element->getType()
+        );
     }
 }

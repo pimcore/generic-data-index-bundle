@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Event\AssetEvents;
 use Pimcore\Event\Model\AssetEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -27,7 +27,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 final class AssetIndexUpdateSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private readonly IndexQueueService $indexQueueService,
+        private readonly IndexQueueServiceInterface $indexQueueService,
         private readonly Installer $installer,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
     ) {

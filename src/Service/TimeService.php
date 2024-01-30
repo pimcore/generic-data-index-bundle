@@ -18,7 +18,7 @@ use Carbon\Carbon;
 /**
  * @internal
  */
-final class TimeService
+final class TimeService implements TimeServiceInterface
 {
     /**
      * Get current timestamp + milliseconds

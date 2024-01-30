@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 use Doctrine\DBAL\Query\QueryBuilder;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Contracts\Service\Attribute\Required;
@@ -26,7 +26,7 @@ use Symfony\Contracts\Service\Attribute\Required;
  */
 abstract class AbstractElementTypeAdapter
 {
-    protected SearchIndexConfigService $searchIndexConfigService;
+    protected SearchIndexConfigServiceInterface $searchIndexConfigService;
 
     abstract public function supports(ElementInterface $element): bool;
 
@@ -72,8 +72,9 @@ abstract class AbstractElementTypeAdapter
     }
 
     #[Required]
-    public function setSearchIndexConfigService(SearchIndexConfigService $searchIndexConfigService): void
-    {
+    public function setSearchIndexConfigService(
+        SearchIndexConfigServiceInterface $searchIndexConfigService
+    ): void {
         $this->searchIndexConfigService = $searchIndexConfigService;
     }
 }

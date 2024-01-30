@@ -17,22 +17,22 @@ use Exception;
 use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\ElementTypeAdapterService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Element\ElementInterface;
 
 /**
  * @internal
  */
-final class PathService
+final class PathService implements PathServiceInterface
 {
     use LoggerAwareTrait;
 
     public function __construct(
         private readonly Client $openSearchClient,
-        private readonly ElementTypeAdapterService $typeAdapterService,
-        private readonly SearchIndexConfigService $searchIndexConfigService,
+        private readonly AdapterServiceInterface $typeAdapterService,
+        private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
     ) {
     }
 
@@ -80,6 +80,30 @@ final class PathService
         }
 
         $this->updatePath($indexName, $oldFullPath, $element->getRealFullPath());
+    }
+
+    public function getCurrentIndexFullPath(ElementInterface $element): ?string
+    {
+        $indexName = $this->typeAdapterService
+            ->getTypeAdapter($element)
+            ->getAliasIndexNameByElement($element);
+
+        $result = $this->openSearchClient->search(
+            [
+                'index' => $indexName,
+                'body' => [
+                    '_source' => [FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::FULL_PATH->value],
+                    'query' => [
+                        'term' => [
+                            FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::ID->value =>
+                                $element->getId(),
+                        ],
+                    ],
+                ],
+            ]
+        );
+
+        return $result['hits']['hits'][0]['_source']['system_fields']['fullPath'] ?? null;
     }
 
     private function updatePath(string $indexName, string $currentPath, string $newPath): void
@@ -158,29 +182,5 @@ final class PathService
         ]);
 
         return $countResult['hits']['total'] ?? 0;
-    }
-
-    public function getCurrentIndexFullPath(ElementInterface $element): ?string
-    {
-        $indexName = $this->typeAdapterService
-            ->getTypeAdapter($element)
-            ->getAliasIndexNameByElement($element);
-
-        $result = $this->openSearchClient->search(
-            [
-                'index' => $indexName,
-                'body' => [
-                    '_source' => [FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::FULL_PATH->value],
-                    'query' => [
-                        'term' => [
-                            FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::ID->value =>
-                                $element->getId(),
-                        ],
-                    ],
-                ],
-            ]
-        );
-
-        return $result['hits']['hits'][0]['_source']['system_fields']['fullPath'] ?? null;
     }
 }

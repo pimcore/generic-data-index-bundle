@@ -15,7 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
@@ -31,7 +31,7 @@ final class AssetNormalizer implements NormalizerInterface
 
     public const NOT_LOCALIZED_KEY = 'default';
 
-    public function __construct(private readonly WorkflowService $workflowService)
+    public function __construct(private readonly WorkflowServiceInterface $workflowService)
     {
     }
 

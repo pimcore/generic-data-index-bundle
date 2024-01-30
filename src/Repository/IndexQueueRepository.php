@@ -19,7 +19,7 @@ use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\QueryBuilder;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
@@ -29,7 +29,7 @@ final class IndexQueueRepository
     use LoggerAwareTrait;
 
     public function __construct(
-        private readonly TimeService $timeService,
+        private readonly TimeServiceInterface $timeService,
         private readonly Connection $connection,
         private readonly DenormalizerInterface $denormalizer,
         private readonly EntityManagerInterface $entityManager,

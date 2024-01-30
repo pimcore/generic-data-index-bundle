@@ -16,9 +16,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 use Doctrine\DBAL\Exception as DBALException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Event\Model\TagEvent;
 use Pimcore\Event\TagEvents;
 use Pimcore\Model\Asset;
@@ -33,8 +33,8 @@ final class TagIndexUpdateSubscriber implements EventSubscriberInterface
 {
     public function __construct(
         private readonly Installer $installer,
-        private readonly EnqueueService $enqueueService,
-        private readonly IndexQueueService $indexQueueService,
+        private readonly EnqueueServiceInterface $enqueueService,
+        private readonly IndexQueueServiceInterface $indexQueueService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
     ) {
     }
