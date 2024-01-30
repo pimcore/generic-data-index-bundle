@@ -21,7 +21,6 @@ use Pimcore\Model\DataObject\ClassDefinition;
  */
 interface IndexUpdateServiceInterface
 {
-
     /**
      * @throws Exception
      */

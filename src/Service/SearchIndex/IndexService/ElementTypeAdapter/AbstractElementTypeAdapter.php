@@ -74,8 +74,7 @@ abstract class AbstractElementTypeAdapter
     #[Required]
     public function setSearchIndexConfigService(
         SearchIndexConfigServiceInterface $searchIndexConfigService
-    ): void
-    {
+    ): void {
         $this->searchIndexConfigService = $searchIndexConfigService;
     }
 }
