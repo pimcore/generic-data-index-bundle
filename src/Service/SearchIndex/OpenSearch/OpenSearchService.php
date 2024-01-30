@@ -49,9 +49,10 @@ final class OpenSearchService implements OpenSearchServiceInterface
 
     public function deleteIndex($indexName, bool $silent = false): void
     {
-        if (!$this->existsIndex($indexName) ) {
+        if (!$this->existsIndex($indexName)) {
             return;
         }
+
         try {
             $this->logger->log($silent ? LogLevel::DEBUG : LogLevel::INFO, "Deleting index $indexName");
             $response = $this->openSearchClient->indices()->delete(['index' => $indexName]);
@@ -180,10 +181,11 @@ final class OpenSearchService implements OpenSearchServiceInterface
             'index' => $indexName,
         ]);
     }
+
     public function existsIndex(string $indexName): bool
     {
         return $this->openSearchClient->indices()->exists([
-            'index' => $indexName
+            'index' => $indexName,
         ]);
     }
 
