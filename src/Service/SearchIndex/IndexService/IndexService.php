@@ -123,7 +123,7 @@ final class IndexService implements IndexServiceInterface
 
     public function updateAssetDependencies(Asset $asset): array
     {
-        $updatedElements = [];
+        $elementsToUpdate = [];
         foreach ($asset->getDependencies()->getRequiredBy() as $requiredByEntry) {
             $element = null;
             if ($requiredByEntry['type'] === 'object') {
@@ -133,11 +133,11 @@ final class IndexService implements IndexServiceInterface
                 $element = Asset::getById($requiredByEntry['id']);
             }
             if ($element instanceof ElementInterface) {
-                $updatedElements[] = $element;
+                $elementsToUpdate[] = $element;
             }
         }
 
-        return $updatedElements;
+        return $elementsToUpdate;
     }
 
     /**
