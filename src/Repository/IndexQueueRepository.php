@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Repository;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
@@ -165,7 +166,8 @@ final class IndexQueueRepository
 
     private function createQueryBuilder(string $alias): QueryBuilder
     {
-        return $this->entityManager->getRepository(IndexQueue::class)
-            ->createQueryBuilder($alias);
+        /** @var EntityRepository $repository */
+        $repository = $this->entityManager->getRepository(IndexQueue::class);
+        return $repository->createQueryBuilder($alias);
     }
 }
