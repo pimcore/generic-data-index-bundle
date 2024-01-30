@@ -117,11 +117,6 @@ final class IndexQueueService
         return $this->performIndexRefresh;
     }
 
-    private function setPerformIndexRefresh(bool $performIndexRefresh): void
-    {
-        $this->performIndexRefresh = $performIndexRefresh;
-    }
-
     public function commit(): IndexQueueService
     {
         $this->bulkOperationService->commit();
