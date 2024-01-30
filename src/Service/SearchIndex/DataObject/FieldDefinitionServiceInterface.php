@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\FieldDefinitionAdapterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\AdapterInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 
 /**
@@ -21,5 +21,5 @@ use Pimcore\Model\DataObject\ClassDefinition;
  */
 interface FieldDefinitionServiceInterface
 {
-    public function getFieldDefinitionAdapter(ClassDefinition\Data $fieldDefinition): ?FieldDefinitionAdapterInterface;
+    public function getFieldDefinitionAdapter(ClassDefinition\Data $fieldDefinition): ?AdapterInterface;
 }
