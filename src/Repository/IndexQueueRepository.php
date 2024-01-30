@@ -162,6 +162,4 @@ final class IndexQueueRepository extends ServiceEntityRepository
 
         return $dispatchId;
     }
-
-
 }
