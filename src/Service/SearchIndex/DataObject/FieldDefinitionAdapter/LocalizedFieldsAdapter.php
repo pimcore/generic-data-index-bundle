@@ -13,33 +13,19 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
-use Exception;
-use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService;
-use Pimcore\Localization\LocaleServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Symfony\Contracts\Service\Attribute\Required;
 
-class LocalizedFieldsAdapter extends AbstractAdapter
+/**
+ * @internal
+ */
+final class LocalizedFieldsAdapter extends AbstractAdapter
 {
-    protected LocaleServiceInterface $localeService;
+    private FieldDefinitionService $fieldDefinitionService;
 
-    protected FieldDefinitionService $fieldDefinitionService;
-
-    protected LanguageService $languageService;
-
-    /**
-     * @param LocaleServiceInterface $localeService
-     *
-     * @required
-     *
-     * @throws Exception
-     */
-    public function setLocaleService(LocaleServiceInterface $localeService): void
-    {
-        $this->localeService = $localeService;
-    }
+    private LanguageService $languageService;
 
     public function getOpenSearchMapping(): array
     {
@@ -47,7 +33,9 @@ class LocalizedFieldsAdapter extends AbstractAdapter
             'properties' => [],
         ];
         $languages = $this->languageService->getValidLanguages();
-        $childFieldDefinitions = $this->getFieldDefinition()->getFieldDefinitions();
+        /** @var Data\Localizedfields $fieldDefinition */
+        $fieldDefinition = $this->getFieldDefinition();
+        $childFieldDefinitions = $fieldDefinition->getFieldDefinitions();
 
         foreach ($languages as $language) {
             $languageProperties = [];
@@ -81,20 +69,5 @@ class LocalizedFieldsAdapter extends AbstractAdapter
     public function setLanguageService(LanguageService $languageService): void
     {
         $this->languageService = $languageService;
-    }
-
-    public function getFieldDefinition(): Data\Localizedfields
-    {
-        if ($this->fieldDefinition instanceof Data\Localizedfields) {
-            return $this->fieldDefinition;
-        }
-
-        throw new InvalidArgumentException(
-            sprintf(
-                'FieldDefinition must be of type %s, %s given',
-                Data\Localizedfields::class,
-                get_class($this->fieldDefinition)
-            )
-        );
     }
 }

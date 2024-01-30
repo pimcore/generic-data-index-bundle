@@ -19,7 +19,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\Eleme
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Symfony\Contracts\Service\Attribute\Required;
 
-class AssetIndexHandler extends AbstractIndexHandler
+/**
+ * @internal
+ */
+final class AssetIndexHandler extends AbstractIndexHandler
 {
     private AssetTypeAdapter $assetAdapter;
 

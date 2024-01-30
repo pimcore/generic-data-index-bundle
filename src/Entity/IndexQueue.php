@@ -18,6 +18,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Index(columns: ['dispatched'], name: self::TABLE . '_dispatched')]
 
+/**
+ * @internal
+ */
 class IndexQueue
 {
     public const TABLE = 'generic_data_index_queue';

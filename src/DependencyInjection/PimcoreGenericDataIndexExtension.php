@@ -30,6 +30,10 @@ use Symfony\Component\Yaml\Yaml;
  *
  * @link http://symfony.com/doc/current/cookbook/bundles/extension.html
  */
+
+/**
+ * @internal
+ */
 class PimcoreGenericDataIndexExtension extends Extension implements PrependExtensionInterface
 {
     /**
@@ -61,7 +65,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $container->prependExtensionConfig('doctrine', $config['doctrine']);
     }
 
-    protected function registerIndexServiceParams(ContainerBuilder $container, array $indexSettings): static
+    private function registerIndexServiceParams(ContainerBuilder $container, array $indexSettings): void
     {
         $definition = $container->getDefinition(SearchIndexConfigService::class);
         $definition->setArgument('$indexPrefix', $indexSettings['client_params']['index_prefix']);
@@ -74,7 +78,5 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $definition->setArgument('$username', $indexSettings['client_params']['username']);
         $definition->setArgument('$password', $indexSettings['client_params']['password']);
         $definition->setArgument('$sslVerification', $indexSettings['client_params']['ssl_verification']);
-
-        return $this;
     }
 }

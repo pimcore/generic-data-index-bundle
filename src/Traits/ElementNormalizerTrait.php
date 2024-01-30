@@ -11,18 +11,20 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Traits;
 
 use DateTime;
 use DateTimeInterface;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
 use Pimcore\Model\Element\Tag;
-use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
-abstract class AbstractElementNormalizer implements NormalizerInterface
+/**
+ * @internal
+ */
+trait ElementNormalizerTrait
 {
-    protected function extractPathLevels(ElementInterface $element): array
+    private function extractPathLevels(ElementInterface $element): array
     {
         $path = $element->getType() === 'folder' ? $element->getRealFullPath() : $element->getPath();
         $levels = explode('/', rtrim($path, '/'));
@@ -39,7 +41,7 @@ abstract class AbstractElementNormalizer implements NormalizerInterface
         return $result;
     }
 
-    protected function extractTagIds(ElementInterface $element): array
+    private function extractTagIds(ElementInterface $element): array
     {
         $tag = new Tag();
         $tags = $tag->getDao()->getTagsForElement(Service::getElementType($element), $element->getId());
@@ -52,7 +54,7 @@ abstract class AbstractElementNormalizer implements NormalizerInterface
         return $ids;
     }
 
-    protected function formatTimestamp(?int $timestamp): ?string
+    private function formatTimestamp(?int $timestamp): ?string
     {
         if ($timestamp === null) {
             return null;

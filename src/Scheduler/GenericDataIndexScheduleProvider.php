@@ -22,8 +22,11 @@ use Symfony\Component\Scheduler\RecurringMessage;
 use Symfony\Component\Scheduler\Schedule;
 use Symfony\Component\Scheduler\ScheduleProviderInterface;
 
+/**
+ * @internal
+ */
 #[AsSchedule('generic_data_index')]
-class GenericDataIndexScheduleProvider implements ScheduleProviderInterface
+final class GenericDataIndexScheduleProvider implements ScheduleProviderInterface
 {
     public function __construct(
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,

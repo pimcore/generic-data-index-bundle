@@ -18,12 +18,14 @@ use Pimcore\Model\DataObject\ClassDefinition\Data;
 
 abstract class AbstractAdapter implements AdapterInterface
 {
-    protected Data $fieldDefinition;
+    private Data $fieldDefinition;
 
     public function __construct(
         protected readonly SearchIndexConfigService $searchIndexConfigService,
     ) {
     }
+
+    abstract public function getOpenSearchMapping(): array;
 
     public function setFieldDefinition(Data $fieldDefinition): self
     {
@@ -36,8 +38,6 @@ abstract class AbstractAdapter implements AdapterInterface
     {
         return $this->fieldDefinition;
     }
-
-    abstract public function getOpenSearchMapping(): array;
 
     public function getOpenSearchAttributeName(): string
     {

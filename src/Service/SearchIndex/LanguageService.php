@@ -15,9 +15,12 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Pimcore\Tool;
 
-class LanguageService
+/**
+ * @internal
+ */
+final class LanguageService
 {
-    protected array $validLanguages = [];
+    private array $validLanguages = [];
 
     public function setValidLanguages(array $argLanguages): void
     {

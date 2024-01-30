@@ -15,7 +15,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service;
 
 use Carbon\Carbon;
 
-class TimeService
+/**
+ * @internal
+ */
+final class TimeService
 {
     /**
      * Get current timestamp + milliseconds

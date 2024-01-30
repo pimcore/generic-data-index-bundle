@@ -25,7 +25,10 @@ use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Tag;
 
-class EnqueueService
+/**
+ * @internal
+ */
+final class EnqueueService
 {
     public function __construct(
         private readonly IndexQueueRepository $indexQueueRepository,

@@ -21,6 +21,9 @@ use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Contracts\Service\Attribute\Required;
 
+/**
+ * @internal
+ */
 abstract class AbstractElementTypeAdapter
 {
     protected SearchIndexConfigService $searchIndexConfigService;

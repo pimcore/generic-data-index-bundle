@@ -13,6 +13,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch;
 
+/**
+ * @internal
+ */
 enum AttributeType: string
 {
     case TEXT = 'text';

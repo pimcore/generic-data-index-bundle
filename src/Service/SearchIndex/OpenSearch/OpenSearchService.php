@@ -21,7 +21,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Psr\Log\LogLevel;
 
-class OpenSearchService
+/**
+ * @internal
+ */
+final class OpenSearchService
 {
     private const INDEX_VERSION_ODD = 'odd';
 

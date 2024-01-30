@@ -11,14 +11,13 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Exception;
+
+use RuntimeException;
 
 /**
  * @internal
  */
-enum FieldCategory: string
+final class DataObjectNormalizerException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
 {
-    case SYSTEM_FIELDS = 'system_fields';
-    case STANDARD_FIELDS = 'standard_fields';
-    case CUSTOM_FIELDS = 'custom_fields';
 }

@@ -16,14 +16,22 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectNormalizerException;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Folder;
 use Pimcore\Model\DataObject\Localizedfield;
-use Pimcore\Normalizer\NormalizerInterface;
+use Symfony\Component\Serializer\Exception\ExceptionInterface;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
-final class DataObjectNormalizer extends AbstractElementNormalizer
+/**
+ * @internal
+ */
+final class DataObjectNormalizer implements NormalizerInterface
 {
+    use ElementNormalizerTrait;
+
     /**
      * @param AbstractObject $object
      *
@@ -68,7 +76,7 @@ final class DataObjectNormalizer extends AbstractElementNormalizer
         ];
     }
 
-    protected function normalizeSystemFields(AbstractObject $dataObject): array
+    private function normalizeSystemFields(AbstractObject $dataObject): array
     {
         $result = [
             SystemField::ID->value => $dataObject->getId(),
@@ -94,30 +102,34 @@ final class DataObjectNormalizer extends AbstractElementNormalizer
     }
 
     /**
-     * @throws Exception
+     * @throws DataObjectNormalizerException
      */
     private function normalizeStandardFields(Concrete $dataObject): array
     {
-        $inheritedValuesBackup = AbstractObject::doGetInheritedValues();
-        $fallbackLanguagesBackup = Localizedfield::doGetFallbackValues();
-        AbstractObject::setGetInheritedValues(true);
-        Localizedfield::setGetFallbackValues(true);
+        try {
+            $inheritedValuesBackup = AbstractObject::doGetInheritedValues();
+            $fallbackLanguagesBackup = Localizedfield::doGetFallbackValues();
+            AbstractObject::setGetInheritedValues(true);
+            Localizedfield::setGetFallbackValues(true);
 
-        $result = [];
+            $result = [];
 
-        foreach ($dataObject->getClass()->getFieldDefinitions() as $key => $fieldDefinition) {
+            foreach ($dataObject->getClass()->getFieldDefinitions() as $key => $fieldDefinition) {
 
-            $value = $dataObject->get($key);
-            if($fieldDefinition instanceof NormalizerInterface) {
-                $value = $fieldDefinition->normalize($value);
+                $value = $dataObject->get($key);
+                if($fieldDefinition instanceof NormalizerInterface) {
+                    $value = $fieldDefinition->normalize($value);
+                }
+
+                $result[$key] = $value;
             }
 
-            $result[$key] = $value;
+            AbstractObject::setGetInheritedValues($inheritedValuesBackup);
+            Localizedfield::setGetFallbackValues($fallbackLanguagesBackup);
+
+            return $result;
+        } catch (Exception|ExceptionInterface $e) {
+            throw new DataObjectNormalizerException($e->getMessage());
         }
-
-        AbstractObject::setGetInheritedValues($inheritedValuesBackup);
-        Localizedfield::setGetFallbackValues($fallbackLanguagesBackup);
-
-        return $result;
     }
 }

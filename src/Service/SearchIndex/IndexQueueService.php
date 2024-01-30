@@ -31,11 +31,14 @@ use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Element\ElementInterface;
 
-class IndexQueueService
+/**
+ * @internal
+ */
+final class IndexQueueService
 {
     use LoggerAwareTrait;
 
-    protected bool $performIndexRefresh = false;
+    private bool $performIndexRefresh = false;
 
     public function __construct(
         private readonly IndexService $indexService,
@@ -114,70 +117,6 @@ class IndexQueueService
         return $this;
     }
 
-    protected function updateAssetDependencies(Asset $asset): IndexQueueService
-    {
-        foreach ($asset->getDependencies()->getRequiredBy() as $requiredByEntry) {
-
-            /** @var ElementInterface|null $element */
-            $element = null;
-
-            if ($requiredByEntry['type'] === 'object') {
-                $element = AbstractObject::getById($requiredByEntry['id']);
-            }
-            if ($requiredByEntry['type'] === 'asset') {
-                $element = Asset::getById($requiredByEntry['id']);
-            }
-            if ($element) {
-                $this->updateIndexQueue($element, IndexQueueOperation::UPDATE->value);
-            }
-        }
-
-        return $this;
-    }
-
-    /**
-     * @param ElementInterface $element
-     * @param string $operation
-     *
-     * @return $this
-     *
-     * @throws IndexDataException
-     */
-    protected function doHandleIndexData(ElementInterface $element, string $operation): IndexQueueService
-    {
-        $performIndexRefreshBackup = $this->indexService->isPerformIndexRefresh();
-
-        $this->indexService->setPerformIndexRefresh($this->isPerformIndexRefresh());
-
-        switch ($operation) {
-            case IndexQueueOperation::UPDATE->value:
-                $this->indexService->updateIndexData($element);
-
-                break;
-            case IndexQueueOperation::DELETE->value:
-                $this->indexService->deleteFromIndex($element);
-
-                break;
-        }
-
-        $this->indexService->setPerformIndexRefresh($performIndexRefreshBackup);
-
-        return $this;
-    }
-
-    /**
-     * @throws InvalidArgumentException
-     */
-    protected function checkOperationValid(string $operation): void
-    {
-        if(!in_array($operation, [
-            IndexQueueOperation::UPDATE->value,
-            IndexQueueOperation::DELETE->value,
-        ], true)) {
-            throw new InvalidArgumentException(sprintf('Operation %s not valid', $operation));
-        }
-    }
-
     /**
      * @throws InvalidElementTypeException
      */
@@ -212,5 +151,69 @@ class IndexQueueService
         $this->bulkOperationService->commit();
 
         return $this;
+    }
+
+    private function updateAssetDependencies(Asset $asset): IndexQueueService
+    {
+        foreach ($asset->getDependencies()->getRequiredBy() as $requiredByEntry) {
+
+            /** @var ElementInterface|null $element */
+            $element = null;
+
+            if ($requiredByEntry['type'] === 'object') {
+                $element = AbstractObject::getById($requiredByEntry['id']);
+            }
+            if ($requiredByEntry['type'] === 'asset') {
+                $element = Asset::getById($requiredByEntry['id']);
+            }
+            if ($element) {
+                $this->updateIndexQueue($element, IndexQueueOperation::UPDATE->value);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param ElementInterface $element
+     * @param string $operation
+     *
+     * @return $this
+     *
+     * @throws IndexDataException
+     */
+    private function doHandleIndexData(ElementInterface $element, string $operation): IndexQueueService
+    {
+        $performIndexRefreshBackup = $this->indexService->isPerformIndexRefresh();
+
+        $this->indexService->setPerformIndexRefresh($this->isPerformIndexRefresh());
+
+        switch ($operation) {
+            case IndexQueueOperation::UPDATE->value:
+                $this->indexService->updateIndexData($element);
+
+                break;
+            case IndexQueueOperation::DELETE->value:
+                $this->indexService->deleteFromIndex($element);
+
+                break;
+        }
+
+        $this->indexService->setPerformIndexRefresh($performIndexRefreshBackup);
+
+        return $this;
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    private function checkOperationValid(string $operation): void
+    {
+        if(!in_array($operation, [
+            IndexQueueOperation::UPDATE->value,
+            IndexQueueOperation::DELETE->value,
+        ], true)) {
+            throw new InvalidArgumentException(sprintf('Operation %s not valid', $operation));
+        }
     }
 }
