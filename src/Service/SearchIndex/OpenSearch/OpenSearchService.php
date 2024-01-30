@@ -136,6 +136,8 @@ final class OpenSearchService implements OpenSearchServiceInterface
         } catch (Exception $e) {
             $this->logger->error($e);
         }
+
+        return $this;
     }
 
     public function addAlias(string $aliasName, string $indexName): OpenSearchService
