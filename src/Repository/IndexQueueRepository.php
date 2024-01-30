@@ -14,10 +14,10 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Repository;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
-use Doctrine\Persistence\ObjectManager;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
@@ -29,7 +29,7 @@ final class IndexQueueRepository
 {
     use LoggerAwareTrait;
 
-    private readonly ObjectManager $entityManager;
+    private readonly EntityManager $entityManager;
 
     public function __construct(
         private readonly TimeServiceInterface $timeService,
@@ -37,7 +37,8 @@ final class IndexQueueRepository
         private readonly DenormalizerInterface $denormalizer,
         private readonly ManagerRegistry $doctrine,
     ) {
-        $this->entityManager = $this->doctrine->getManager('pimcore_generic_data_index');
+        //@phpstan-ignore-next-line
+        $this->entityManager = $this->doctrine->getManagerForClass(IndexQueue::class);
     }
 
     public function dispatchableItemExists(): bool
@@ -165,6 +166,8 @@ final class IndexQueueRepository
 
     private function createQueryBuilder(string $alias): QueryBuilder
     {
+        p_r(get_parent_class($this->entityManager));
+
         return $this->entityManager->getRepository(IndexQueue::class)
             ->createQueryBuilder($alias);
     }
