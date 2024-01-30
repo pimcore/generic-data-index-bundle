@@ -14,9 +14,9 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
+use Doctrine\ORM\Mapping\Entity;
 
-#[ORM\Entity(repositoryClass: IndexQueueRepository::class)]
+#[Entity]
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Index(columns: ['dispatched'], name: self::TABLE . '_dispatched')]
 

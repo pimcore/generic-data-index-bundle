@@ -18,7 +18,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data;
 /**
  * @internal
  */
-interface FieldDefinitionAdapterInterface
+interface AdapterInterface
 {
     public function setFieldDefinition(Data $fieldDefinition): self;
 

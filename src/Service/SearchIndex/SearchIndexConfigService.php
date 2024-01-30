@@ -22,11 +22,11 @@ final class SearchIndexConfigService implements SearchIndexConfigServiceInterfac
 {
     use LoggerAwareTrait;
 
-    private const SYSTEM_FIELDS_SETTINGS_GENERAL = 'general';
+    private const SYSTEM_FIELD_GENERAL = 'general';
 
-    public const SYSTEM_FIELDS_SETTINGS_ASSET = 'asset';
+    public const SYSTEM_FIELD_ASSET = 'asset';
 
-    public const SYSTEM_FIELDS_SETTINGS_DATA_OBJECT = 'data_object';
+    public const SYSTEM_FIELD_DATA_OBJECT = 'data_object';
 
     public function __construct(
         private readonly string $indexPrefix,
@@ -77,7 +77,7 @@ final class SearchIndexConfigService implements SearchIndexConfigServiceInterfac
     public function getSystemFieldsSettings(string $elementType): array
     {
         $systemFieldsSettings = array_merge(
-            $this->systemFieldsSettings[self::SYSTEM_FIELDS_SETTINGS_GENERAL],
+            $this->systemFieldsSettings[self::SYSTEM_FIELD_GENERAL],
             $this->systemFieldsSettings[$elementType] ?? []
         );
 

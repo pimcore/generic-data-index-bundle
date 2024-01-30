@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch;
 
 use Exception;
+use JsonException;
 use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -52,8 +53,8 @@ final class OpenSearchService implements OpenSearchServiceInterface
             $this->logger->log($silent ? LogLevel::DEBUG : LogLevel::INFO, "Deleting index $indexName");
             $response = $this->openSearchClient->indices()->delete(['index' => $indexName]);
             $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
-        } catch (Exception $e) {
-            $this->logger->debug('Delete index - index did not exist: ' . $indexName);
+        } catch (JsonException $e) {
+            $this->logger->debug('Error while parsing json response: ' . $indexName . ' ' . $e);
         }
     }
 

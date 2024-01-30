@@ -34,18 +34,7 @@ interface IndexQueueServiceInterface
      * @param IndexQueue[] $entries
      *
      */
-    public function handleIndexQueueEntries(array $entries): IndexQueueService;
-
-    /**
-     * @throws InvalidElementTypeException
-     */
-    public function getElement(int $id, string $type): Asset|AbstractObject|null;
-
-    public function isPerformIndexRefresh(): bool;
-
-    public function setPerformIndexRefresh(bool $performIndexRefresh): IndexQueueService;
-
-    public function dispatchQueueMessages(bool $synchronously = false): void;
+    public function handleIndexQueueEntries(array $entries): void;
 
     public function commit(): IndexQueueService;
 }
