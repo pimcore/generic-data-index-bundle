@@ -168,6 +168,7 @@ final class IndexQueueRepository
     {
         /** @var EntityRepository $repository */
         $repository = $this->entityManager->getRepository(IndexQueue::class);
+
         return $repository->createQueryBuilder($alias);
     }
 }
