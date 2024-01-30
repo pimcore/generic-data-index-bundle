@@ -21,6 +21,7 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
@@ -28,12 +29,15 @@ final class IndexQueueRepository
 {
     use LoggerAwareTrait;
 
+    private readonly EntityManagerInterface $entityManager;
+
     public function __construct(
         private readonly TimeServiceInterface $timeService,
         private readonly Connection $connection,
         private readonly DenormalizerInterface $denormalizer,
-        private readonly EntityManagerInterface $entityManager,
+        private readonly ManagerRegistry $doctrine,
     ) {
+        $this->entityManager = $this->doctrine->getManager('pimcore_generic_data_index');
     }
 
     public function dispatchableItemExists(): bool
@@ -73,7 +77,7 @@ final class IndexQueueRepository
                 ->getArrayResult();
 
         } catch (Exception $e) {
-            $this->logger->info('getUnhandledIndexQueueEntries failed! Error: ' . $e->getMessage());
+            $this->logger->error('getUnhandledIndexQueueEntries failed! Error: ' . $e->getMessage());
         }
 
         return [];
