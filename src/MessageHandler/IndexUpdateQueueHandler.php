@@ -15,7 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\MessageHandler;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 
@@ -26,7 +26,7 @@ use Symfony\Component\Serializer\Exception\ExceptionInterface;
 final class IndexUpdateQueueHandler
 {
     public function __construct(
-        private readonly IndexQueueService $indexQueueService,
+        private readonly IndexQueueServiceInterface $indexQueueService,
         private readonly IndexQueueRepository $indexQueueRepository,
     ) {
     }

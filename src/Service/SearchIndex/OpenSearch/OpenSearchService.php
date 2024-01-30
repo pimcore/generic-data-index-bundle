@@ -15,16 +15,15 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch;
 
 use Exception;
 use OpenSearch\Client;
-use OpenSearch\Common\Exceptions\Missing404Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Psr\Log\LogLevel;
 
 /**
  * @internal
  */
-final class OpenSearchService
+final class OpenSearchService implements OpenSearchServiceInterface
 {
     private const INDEX_VERSION_ODD = 'odd';
 
@@ -33,7 +32,7 @@ final class OpenSearchService
     use LoggerAwareTrait;
 
     public function __construct(
-        private readonly SearchIndexConfigService $searchIndexConfigService,
+        private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly Client $openSearchClient,
     ) {
     }
@@ -47,17 +46,15 @@ final class OpenSearchService
             ->refresh(['index' => $indexName]);
     }
 
-    public function deleteIndex($indexName, bool $silent = false): OpenSearchService
+    public function deleteIndex($indexName, bool $silent = false): void
     {
         try {
             $this->logger->log($silent ? LogLevel::DEBUG : LogLevel::INFO, "Deleting index $indexName");
             $response = $this->openSearchClient->indices()->delete(['index' => $indexName]);
-            $this->logger->debug(json_encode($response));
-        } catch (Missing404Exception) {
+            $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
+        } catch (Exception $e) {
             $this->logger->debug('Delete index - index did not exist: ' . $indexName);
         }
-
-        return $this;
     }
 
     public function getCurrentIndexVersion(string $indexName): string
@@ -112,36 +109,7 @@ final class OpenSearchService
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
     }
 
-    /**
-     * @throws SwitchIndexAliasException
-     */
-    private function switchIndexAliasAndCleanup(string $aliasName, string $oldIndexName, string $newIndexName): void
-    {
-        $params['body'] = [
-            'actions' => [
-                [
-                    'remove' => [
-                        'index' => '*',
-                        'alias' => $aliasName,
-                    ],
-                ],
-                [
-                    'add' => [
-                        'index' => $newIndexName,
-                        'alias' => $aliasName,
-                    ],
-                ],
-            ],
-        ];
-        $result = $this->openSearchClient->indices()->updateAliases($params);
-        if (!$result['acknowledged']) {
-            throw new SwitchIndexAliasException('Switching Alias failed for ' . $newIndexName);
-        }
-
-        $this->deleteIndex($oldIndexName);
-    }
-
-    public function createIndex(string $indexName, array $mappings = null): OpenSearchService
+    public function createIndex(string $indexName, array $mappings = null): void
     {
         $this->deleteIndex($indexName, true);
 
@@ -168,8 +136,6 @@ final class OpenSearchService
         } catch (Exception $e) {
             $this->logger->error($e);
         }
-
-        return $this;
     }
 
     public function addAlias(string $aliasName, string $indexName): OpenSearchService
@@ -250,5 +216,34 @@ final class OpenSearchService
     public function getOpenSearchClient(): Client
     {
         return $this->openSearchClient;
+    }
+
+    /**
+     * @throws SwitchIndexAliasException
+     */
+    private function switchIndexAliasAndCleanup(string $aliasName, string $oldIndexName, string $newIndexName): void
+    {
+        $params['body'] = [
+            'actions' => [
+                [
+                    'remove' => [
+                        'index' => '*',
+                        'alias' => $aliasName,
+                    ],
+                ],
+                [
+                    'add' => [
+                        'index' => $newIndexName,
+                        'alias' => $aliasName,
+                    ],
+                ],
+            ],
+        ];
+        $result = $this->openSearchClient->indices()->updateAliases($params);
+        if (!$result['acknowledged']) {
+            throw new SwitchIndexAliasException('Switching Alias failed for ' . $newIndexName);
+        }
+
+        $this->deleteIndex($oldIndexName);
     }
 }

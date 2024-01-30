@@ -21,7 +21,7 @@ use Symfony\Component\DependencyInjection\ServiceLocator;
 /**
  * @internal
  */
-final class FieldDefinitionService
+final class FieldDefinitionService implements FieldDefinitionServiceInterface
 {
     public function __construct(
         private readonly ServiceLocator $adapterLocator

@@ -21,11 +21,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidElementTypeException;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
@@ -34,19 +34,19 @@ use Pimcore\Model\Element\ElementInterface;
 /**
  * @internal
  */
-final class IndexQueueService
+final class IndexQueueService implements IndexQueueServiceInterface
 {
     use LoggerAwareTrait;
 
     private bool $performIndexRefresh = false;
 
     public function __construct(
-        private readonly IndexService $indexService,
-        private readonly PathService $pathService,
-        private readonly BulkOperationService $bulkOperationService,
+        private readonly IndexServiceInterface $indexService,
+        private readonly PathServiceInterface $pathService,
+        private readonly BulkOperationServiceInterface $bulkOperationService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
         private readonly IndexQueueRepository $indexQueueRepository,
-        private readonly EnqueueService $enqueueService,
+        private readonly EnqueueServiceInterface $enqueueService,
     ) {
     }
 

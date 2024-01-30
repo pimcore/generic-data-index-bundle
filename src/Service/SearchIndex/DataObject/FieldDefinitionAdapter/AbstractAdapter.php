@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 
 abstract class AbstractAdapter implements FieldDefinitionAdapterInterface
@@ -21,7 +21,7 @@ abstract class AbstractAdapter implements FieldDefinitionAdapterInterface
     private Data $fieldDefinition;
 
     public function __construct(
-        protected readonly SearchIndexConfigService $searchIndexConfigService,
+        protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
     ) {
     }
 

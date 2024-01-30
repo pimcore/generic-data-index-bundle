@@ -14,8 +14,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
 use Exception;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
@@ -24,8 +24,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     use LoggerAwareTrait;
 
     public function __construct(
-        protected readonly OpenSearchService $openSearchService,
-        protected readonly SearchIndexConfigService $searchIndexConfigService,
+        protected readonly OpenSearchServiceInterface $openSearchService,
+        protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         protected readonly EventDispatcherInterface $eventDispatcher
     ) {
     }

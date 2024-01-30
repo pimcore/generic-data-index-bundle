@@ -17,10 +17,9 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\ElementTypeAdapterService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
@@ -36,9 +35,9 @@ final class IndexService implements IndexServiceInterface
     private bool $performIndexRefresh = false;
 
     public function __construct(
-        private readonly ElementTypeAdapterService $typeAdapterService,
-        private readonly OpenSearchService $openSearchService,
-        private readonly BulkOperationService $bulkOperationService,
+        private readonly AdapterServiceInterface $typeAdapterService,
+        private readonly OpenSearchServiceInterface $openSearchService,
+        private readonly BulkOperationServiceInterface $bulkOperationService,
         private readonly EventDispatcherInterface $eventDispatcher
     ) {
     }

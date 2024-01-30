@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Exception;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -23,21 +23,19 @@ use Pimcore\Model\DataObject\ClassDefinition\Listing;
 /**
  * @internal
  */
-final class IndexUpdateService
+final class IndexUpdateService implements IndexUpdateServiceInterface
 {
     private bool $reCreateIndex = false;
 
     public function __construct(
         private readonly AssetIndexHandler $assetIndexHandler,
         private readonly DataObjectIndexHandler $dataObjectIndexHandler,
-        private readonly EnqueueService $enqueueService,
+        private readonly EnqueueServiceInterface $enqueueService,
     ) {
 
     }
 
     /**
-     * @return $this
-     *
      * @throws Exception
      */
     public function updateAll(): IndexUpdateService
@@ -62,10 +60,6 @@ final class IndexUpdateService
     }
 
     /**
-     * @param ClassDefinition $classDefinition
-     *
-     * @return $this
-     *
      * @throws Exception
      */
     public function updateClassDefinition(ClassDefinition $classDefinition): IndexUpdateService

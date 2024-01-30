@@ -13,8 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Symfony\Contracts\Service\Attribute\Required;
 
@@ -23,9 +23,9 @@ use Symfony\Contracts\Service\Attribute\Required;
  */
 final class LocalizedFieldsAdapter extends AbstractAdapter
 {
-    private FieldDefinitionService $fieldDefinitionService;
+    private FieldDefinitionServiceInterface $fieldDefinitionService;
 
-    private LanguageService $languageService;
+    private LanguageServiceInterface $languageService;
 
     public function getOpenSearchMapping(): array
     {
@@ -60,13 +60,13 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
     }
 
     #[Required]
-    public function setFieldDefinitionService(FieldDefinitionService $fieldDefinitionService): void
+    public function setFieldDefinitionService(FieldDefinitionServiceInterface $fieldDefinitionService): void
     {
         $this->fieldDefinitionService = $fieldDefinitionService;
     }
 
     #[Required]
-    public function setLanguageService(LanguageService $languageService): void
+    public function setLanguageService(LanguageServiceInterface $languageService): void
     {
         $this->languageService = $languageService;
     }

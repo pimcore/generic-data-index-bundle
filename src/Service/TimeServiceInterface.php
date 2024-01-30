@@ -11,11 +11,12 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service;
 
 /**
  * @internal
  */
-interface IndexServiceInterface
+interface TimeServiceInterface
 {
+    public function getCurrentMillisecondTimestamp(): int;
 }

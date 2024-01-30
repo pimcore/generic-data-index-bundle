@@ -4,13 +4,16 @@ services:
         autoconfigure: true
         public: false
         
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService:
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService
         arguments:
             $openSearchClient: '@generic-data-index-bundle.opensearch-client'
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathService:
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathService
         arguments:
             $openSearchClient: '@generic-data-index-bundle.opensearch-client'
 

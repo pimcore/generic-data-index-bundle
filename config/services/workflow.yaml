@@ -4,4 +4,5 @@ services:
         autoconfigure: true
         public: false
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowService: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowService

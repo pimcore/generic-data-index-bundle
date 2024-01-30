@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Factory\OpenSearchClientFactory;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
@@ -66,7 +67,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
 
     private function registerIndexServiceParams(ContainerBuilder $container, array $indexSettings): void
     {
-        $definition = $container->getDefinition(SearchIndexConfigService::class);
+        $definition = $container->getDefinition(SearchIndexConfigServiceInterface::class);
         $definition->setArgument('$indexPrefix', $indexSettings['client_params']['index_prefix']);
         $definition->setArgument('$indexSettings', $indexSettings['index_settings']);
         $definition->setArgument('$searchSettings', $indexSettings['search_settings']);

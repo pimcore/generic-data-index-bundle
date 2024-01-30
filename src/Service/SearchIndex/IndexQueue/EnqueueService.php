@@ -19,8 +19,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\EnqueueAssetsException;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\ElementTypeAdapterService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Tag;
@@ -28,13 +28,13 @@ use Pimcore\Model\Element\Tag;
 /**
  * @internal
  */
-final class EnqueueService
+final class EnqueueService implements EnqueueServiceInterface
 {
     public function __construct(
         private readonly IndexQueueRepository $indexQueueRepository,
-        private readonly TimeService $timeService,
+        private readonly TimeServiceInterface $timeService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
-        private readonly ElementTypeAdapterService $typeAdapterService,
+        private readonly AdapterServiceInterface $typeAdapterService,
     ) {
 
     }

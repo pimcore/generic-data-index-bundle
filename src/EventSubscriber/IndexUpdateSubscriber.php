@@ -16,8 +16,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Event\AssetEvents;
@@ -41,8 +41,8 @@ final class IndexUpdateSubscriber implements EventSubscriberInterface
     use LoggerAwareTrait;
 
     public function __construct(
-        private readonly IndexQueueService $indexQueueService,
-        private readonly EnqueueService $enqueueService,
+        private readonly IndexQueueServiceInterface $indexQueueService,
+        private readonly EnqueueServiceInterface $enqueueService,
         private readonly DataObjectIndexHandler $dataObjectMappingHandler,
         private readonly Installer $installer,
     ) {

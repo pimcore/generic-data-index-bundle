@@ -16,8 +16,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Command\Update;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IdNotFoundException;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Component\Console\Command\LockableTrait;
@@ -39,18 +39,18 @@ final class IndexUpdateCommand extends AbstractCommand
 
     private const OPTION_RECREATE_INDEX = 'recreate_index';
 
-    private IndexUpdateService $indexUpdateService;
+    private IndexUpdateServiceInterface $indexUpdateService;
 
-    private EnqueueService $enqueueService;
+    private EnqueueServiceInterface $enqueueService;
 
     #[Required]
-    public function setIndexUpdateService(IndexUpdateService $indexUpdateService): void
+    public function setIndexUpdateService(IndexUpdateServiceInterface $indexUpdateService): void
     {
         $this->indexUpdateService = $indexUpdateService;
     }
 
     #[Required]
-    public function setEnqueueService(EnqueueService $enqueueService): void
+    public function setEnqueueService(EnqueueServiceInterface $enqueueService): void
     {
         $this->enqueueService = $enqueueService;
     }

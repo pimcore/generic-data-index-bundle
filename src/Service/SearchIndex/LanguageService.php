@@ -18,7 +18,7 @@ use Pimcore\Tool;
 /**
  * @internal
  */
-final class LanguageService
+final class LanguageService implements LanguageServiceInterface
 {
     private array $validLanguages = [];
 
