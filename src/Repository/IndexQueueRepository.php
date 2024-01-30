@@ -13,10 +13,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Repository;
 
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\NonUniqueResultException;
-use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
@@ -25,20 +25,20 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
-final class IndexQueueRepository
+final class IndexQueueRepository extends ServiceEntityRepository
 {
     use LoggerAwareTrait;
 
     private readonly EntityManager $entityManager;
 
     public function __construct(
+        ManagerRegistry $registry,
         private readonly TimeServiceInterface $timeService,
         private readonly Connection $connection,
         private readonly DenormalizerInterface $denormalizer,
         private readonly ManagerRegistry $doctrine,
     ) {
-        //@phpstan-ignore-next-line
-        $this->entityManager = $this->doctrine->getManagerForClass(IndexQueue::class);
+        parent::__construct($registry, IndexQueue::class);
     }
 
     public function dispatchableItemExists(): bool
@@ -164,9 +164,5 @@ final class IndexQueueRepository
         return $dispatchId;
     }
 
-    private function createQueryBuilder(string $alias): QueryBuilder
-    {
-        return $this->entityManager->getRepository(IndexQueue::class)
-            ->createQueryBuilder($alias);
-    }
+
 }
