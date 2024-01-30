@@ -13,11 +13,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Repository;
 
-use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Connection;
-use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\NonUniqueResultException;
+use Doctrine\ORM\QueryBuilder;
 use Doctrine\Persistence\ManagerRegistry;
+use Doctrine\Persistence\ObjectManager;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
@@ -25,19 +25,19 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
-final class IndexQueueRepository extends ServiceEntityRepository
+final class IndexQueueRepository
 {
     use LoggerAwareTrait;
 
-    private readonly EntityManager $entityManager;
+    private readonly ObjectManager $entityManager;
 
     public function __construct(
-        ManagerRegistry $registry,
         private readonly TimeServiceInterface $timeService,
         private readonly Connection $connection,
         private readonly DenormalizerInterface $denormalizer,
+        ManagerRegistry $managerRegistry,
     ) {
-        parent::__construct($registry, IndexQueue::class);
+        $this->entityManager = $managerRegistry->getManager('pimcore_generic_data_index');
     }
 
     public function dispatchableItemExists(): bool
@@ -161,5 +161,11 @@ final class IndexQueueRepository extends ServiceEntityRepository
         );
 
         return $dispatchId;
+    }
+
+    private function createQueryBuilder(string $alias): QueryBuilder
+    {
+        return $this->entityManager->getRepository(IndexQueue::class)
+            ->createQueryBuilder($alias);
     }
 }
