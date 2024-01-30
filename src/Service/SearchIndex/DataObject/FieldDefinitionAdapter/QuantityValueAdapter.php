@@ -15,7 +15,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 
-class QuantityValueAdapter extends AbstractAdapter
+/**
+ * @internal
+ */
+final class QuantityValueAdapter extends AbstractAdapter
 {
     public function getOpenSearchMapping(): array
     {

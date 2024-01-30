@@ -18,7 +18,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\BulkOperationException;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use RuntimeException;
 
-class BulkOperationService
+/**
+ * @internal
+ */
+final class BulkOperationService
 {
     use LoggerAwareTrait;
 

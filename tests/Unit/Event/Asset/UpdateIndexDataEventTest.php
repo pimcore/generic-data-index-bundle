@@ -17,7 +17,10 @@ use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\UpdateIndexDataEvent;
 use Pimcore\Model\Asset;
 
-class UpdateIndexDataEventTest extends Unit
+/**
+ * @internal
+ */
+final class UpdateIndexDataEventTest extends Unit
 {
     public function testGetElement(): void
     {

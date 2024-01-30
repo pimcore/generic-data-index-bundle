@@ -17,7 +17,10 @@ use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractMappingEvent;
 use Pimcore\Model\DataObject\ClassDefinitionInterface;
 
-class ExtractMappingEventTest extends Unit
+/**
+ * @internal
+ */
+final class ExtractMappingEventTest extends Unit
 {
     public function testGetCustomFieldsMapping(): void
     {

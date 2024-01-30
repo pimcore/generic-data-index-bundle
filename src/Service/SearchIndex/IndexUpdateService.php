@@ -17,20 +17,20 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\ClassDefinition\Listing;
 
-class IndexUpdateService
+/**
+ * @internal
+ */
+final class IndexUpdateService
 {
-    protected bool $reCreateIndex = false;
+    private bool $reCreateIndex = false;
 
     public function __construct(
-        protected readonly AssetIndexHandler $assetIndexHandler,
-        protected readonly DataObjectIndexHandler $dataObjectIndexHandler,
-        protected readonly OpenSearchService $openSearchService,
-        protected readonly IndexQueueService $indexQueueService,
-        protected readonly EnqueueService $enqueueService,
+        private readonly AssetIndexHandler $assetIndexHandler,
+        private readonly DataObjectIndexHandler $dataObjectIndexHandler,
+        private readonly EnqueueService $enqueueService,
     ) {
 
     }

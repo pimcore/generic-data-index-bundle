@@ -55,6 +55,14 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         );
     }
 
+    public function getCurrentFullIndexName(mixed $context = null): string
+    {
+        $indexName = $this->getAliasIndexName($context);
+        $currentIndexVersion = $this->openSearchService->getCurrentIndexVersion($indexName);
+
+        return $indexName . '-' . ($currentIndexVersion === 'even' ? 'even' : 'odd');
+    }
+
     abstract protected function extractMappingProperties(mixed $context = null): array;
 
     abstract protected function getAliasIndexName(mixed $context = null): string;
@@ -84,14 +92,5 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             ->createIndex($fullIndexName)
             ->addAlias($aliasName, $fullIndexName)
         ;
-
-    }
-
-    protected function getCurrentFullIndexName(mixed $context = null): string
-    {
-        $indexName = $this->getAliasIndexName($context);
-        $currentIndexVersion = $this->openSearchService->getCurrentIndexVersion($indexName);
-
-        return $indexName . '-' . ($currentIndexVersion === 'even' ? 'even' : 'odd');
     }
 }

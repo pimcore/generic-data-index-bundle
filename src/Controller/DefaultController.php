@@ -15,6 +15,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Controller;
 
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * @internal
+ */
 final class DefaultController
 {
     public function defaultAction(): Response

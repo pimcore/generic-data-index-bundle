@@ -15,7 +15,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 
-class NumericAdapter extends AbstractAdapter
+/**
+ * @internal
+ */
+final class NumericAdapter extends AbstractAdapter
 {
     public function getOpenSearchMapping(): array
     {

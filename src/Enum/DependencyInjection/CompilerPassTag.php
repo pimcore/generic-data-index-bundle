@@ -13,6 +13,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection;
 
+/**
+ * @internal
+ */
 enum CompilerPassTag: string
 {
     case DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION =

@@ -18,7 +18,10 @@ use Pimcore\Workflow\Manager;
 use Symfony\Component\Security\Core\Authentication\Token\NullToken;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
-class WorkflowService
+/**
+ * @internal
+ */
+final class WorkflowService
 {
     public function __construct(
         private readonly Manager $workflowManager,

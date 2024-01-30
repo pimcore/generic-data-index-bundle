@@ -24,7 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
-class IndexQueueRepository extends ServiceEntityRepository
+final class IndexQueueRepository extends ServiceEntityRepository
 {
     use LoggerAwareTrait;
 

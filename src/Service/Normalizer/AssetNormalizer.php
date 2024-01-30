@@ -16,12 +16,19 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowService;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
-class AssetNormalizer extends AbstractElementNormalizer
+/**
+ * @internal
+ */
+final class AssetNormalizer implements NormalizerInterface
 {
+    use ElementNormalizerTrait;
+
     public const NOT_LOCALIZED_KEY = 'default';
 
     public function __construct(private readonly WorkflowService $workflowService)

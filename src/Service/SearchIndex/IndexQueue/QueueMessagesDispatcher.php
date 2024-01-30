@@ -20,6 +20,9 @@ use Pimcore\Model\Tool\TmpStore;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 
+/**
+ * @internal
+ */
 final class QueueMessagesDispatcher
 {
     private const PENDING_TMP_STOREY_KEY = 'generic_data_index_queue_messages_dispatch_pending';

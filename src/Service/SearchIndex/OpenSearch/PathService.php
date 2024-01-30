@@ -22,14 +22,17 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Element\ElementInterface;
 
-class PathService
+/**
+ * @internal
+ */
+final class PathService
 {
     use LoggerAwareTrait;
 
     public function __construct(
-        protected readonly Client $openSearchClient,
-        protected readonly ElementTypeAdapterService $typeAdapterService,
-        protected readonly SearchIndexConfigService $searchIndexConfigService,
+        private readonly Client $openSearchClient,
+        private readonly ElementTypeAdapterService $typeAdapterService,
+        private readonly SearchIndexConfigService $searchIndexConfigService,
     ) {
     }
 

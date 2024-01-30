@@ -26,7 +26,10 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Contracts\Service\Attribute\Required;
 
-class IndexUpdateCommand extends AbstractCommand
+/**
+ * @internal
+ */
+final class IndexUpdateCommand extends AbstractCommand
 {
     use LockableTrait;
 
@@ -36,9 +39,9 @@ class IndexUpdateCommand extends AbstractCommand
 
     private const OPTION_RECREATE_INDEX = 'recreate_index';
 
-    protected IndexUpdateService $indexUpdateService;
+    private IndexUpdateService $indexUpdateService;
 
-    protected EnqueueService $enqueueService;
+    private EnqueueService $enqueueService;
 
     #[Required]
     public function setIndexUpdateService(IndexUpdateService $indexUpdateService): void

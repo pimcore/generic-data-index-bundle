@@ -26,17 +26,20 @@ use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
-class IndexService implements IndexServiceInterface
+/**
+ * @internal
+ */
+final class IndexService implements IndexServiceInterface
 {
     use LoggerAwareTrait;
 
-    protected bool $performIndexRefresh = false;
+    private bool $performIndexRefresh = false;
 
     public function __construct(
-        protected readonly ElementTypeAdapterService $typeAdapterService,
-        protected readonly OpenSearchService $openSearchService,
-        protected readonly BulkOperationService $bulkOperationService,
-        protected readonly EventDispatcherInterface $eventDispatcher
+        private readonly ElementTypeAdapterService $typeAdapterService,
+        private readonly OpenSearchService $openSearchService,
+        private readonly BulkOperationService $bulkOperationService,
+        private readonly EventDispatcherInterface $eventDispatcher
     ) {
     }
 

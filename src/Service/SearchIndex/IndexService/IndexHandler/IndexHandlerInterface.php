@@ -15,6 +15,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Exception;
 
+/**
+ * @internal
+ */
 interface IndexHandlerInterface
 {
     /**
@@ -23,4 +26,6 @@ interface IndexHandlerInterface
     public function updateMapping(mixed $context = null, bool $forceCreateIndex = false): void;
 
     public function deleteIndex(mixed $context): void;
+
+    public function getCurrentFullIndexName(mixed $context = null): string;
 }

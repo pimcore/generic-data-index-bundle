@@ -15,7 +15,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Psr\Log\LoggerAwareTrait;
 
-class SearchIndexConfigService
+/**
+ * @internal
+ */
+final class SearchIndexConfigService
 {
     use LoggerAwareTrait;
 
@@ -26,10 +29,10 @@ class SearchIndexConfigService
     public const SYSTEM_FIELDS_SETTINGS_DATA_OBJECT = 'data_object';
 
     public function __construct(
-        protected readonly string $indexPrefix,
-        protected readonly array $indexSettings,
-        protected readonly array $searchSettings,
-        protected readonly array $systemFieldsSettings,
+        private readonly string $indexPrefix,
+        private readonly array $indexSettings,
+        private readonly array $searchSettings,
+        private readonly array $systemFieldsSettings,
     ) {
     }
 

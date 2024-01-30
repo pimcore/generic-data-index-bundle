@@ -18,9 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Event\AssetEvents;
 use Pimcore\Event\DataObjectClassDefinitionEvents;
@@ -35,17 +33,18 @@ use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Element\Service;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
-class IndexUpdateSubscriber implements EventSubscriberInterface
+/**
+ * @internal
+ */
+final class IndexUpdateSubscriber implements EventSubscriberInterface
 {
     use LoggerAwareTrait;
 
     public function __construct(
-        protected readonly IndexQueueService $indexQueueService,
-        protected readonly EnqueueService $enqueueService,
-        protected readonly DataObjectIndexHandler $dataObjectMappingHandler,
-        protected readonly AssetIndexHandler $assetMappingHandler,
-        protected readonly OpenSearchService $openSearchService,
-        protected readonly Installer $installer,
+        private readonly IndexQueueService $indexQueueService,
+        private readonly EnqueueService $enqueueService,
+        private readonly DataObjectIndexHandler $dataObjectMappingHandler,
+        private readonly Installer $installer,
     ) {
     }
 

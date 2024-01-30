@@ -20,13 +20,16 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMe
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Messenger\MessageBusInterface;
 
+/**
+ * @internal
+ */
 #[AsMessageHandler]
-class DispatchQueueMessagesHandler
+final class DispatchQueueMessagesHandler
 {
     public function __construct(
-        protected readonly IndexQueueRepository $indexQueueRepository,
-        protected readonly QueueMessagesDispatcher $queueMessagesDispatcher,
-        protected readonly MessageBusInterface $messageBus
+        private readonly IndexQueueRepository $indexQueueRepository,
+        private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
+        private readonly MessageBusInterface $messageBus
     ) {
     }
 

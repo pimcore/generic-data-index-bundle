@@ -18,10 +18,14 @@ use Pimcore\Model\DataObject\ClassDefinition;
 use Psr\Container\ContainerExceptionInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
-class FieldDefinitionService
+/**
+ * @internal
+ */
+final class FieldDefinitionService
 {
-    public function __construct(protected readonly ServiceLocator $adapterLocator)
-    {
+    public function __construct(
+        private readonly ServiceLocator $adapterLocator
+    ) {
     }
 
     public function getFieldDefinitionAdapter(ClassDefinition\Data $fieldDefinition): ?FieldDefinitionAdapterInterface
