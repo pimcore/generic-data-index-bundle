@@ -25,7 +25,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOpe
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
-use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Element\ElementInterface;
 
 /**
@@ -65,7 +64,9 @@ final class IndexQueueService implements IndexQueueServiceInterface
             );
 
             if ($element instanceof Asset) {
-                $this->updateAssetDependencies($element);
+                foreach ($this->indexService->updateAssetDependencies($element) as $asset) {
+                    $this->updateIndexQueue($asset, IndexQueueOperation::UPDATE->value);
+                }
             }
 
             $this->pathService->rewriteChildrenIndexPaths($element);
@@ -121,25 +122,6 @@ final class IndexQueueService implements IndexQueueServiceInterface
     private function isPerformIndexRefresh(): bool
     {
         return $this->performIndexRefresh;
-    }
-
-    private function updateAssetDependencies(Asset $asset): void
-    {
-        foreach ($asset->getDependencies()->getRequiredBy() as $requiredByEntry) {
-
-            /** @var ElementInterface|null $element */
-            $element = null;
-
-            if ($requiredByEntry['type'] === 'object') {
-                $element = AbstractObject::getById($requiredByEntry['id']);
-            }
-            if ($requiredByEntry['type'] === 'asset') {
-                $element = Asset::getById($requiredByEntry['id']);
-            }
-            if ($element) {
-                $this->updateIndexQueue($element, IndexQueueOperation::UPDATE->value);
-            }
-        }
     }
 
     /**
