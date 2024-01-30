@@ -88,7 +88,7 @@ final class IndexQueueService
      * @param IndexQueue[] $entries
      *
      */
-    public function handleIndexQueueEntries(array $entries): IndexQueueService
+    public function handleIndexQueueEntries(array $entries): void
     {
         try {
 
@@ -112,8 +112,6 @@ final class IndexQueueService
         } catch (Exception $e) {
             $this->logger->warning('handleIndexQueueEntry failed! Error: ' . $e->getMessage());
         }
-
-        return $this;
     }
 
     public function isPerformIndexRefresh(): bool
@@ -121,11 +119,9 @@ final class IndexQueueService
         return $this->performIndexRefresh;
     }
 
-    public function setPerformIndexRefresh(bool $performIndexRefresh): IndexQueueService
+    public function setPerformIndexRefresh(bool $performIndexRefresh): void
     {
         $this->performIndexRefresh = $performIndexRefresh;
-
-        return $this;
     }
 
     public function dispatchQueueMessages(bool $synchronously = false): void
@@ -140,7 +136,7 @@ final class IndexQueueService
         return $this;
     }
 
-    private function updateAssetDependencies(Asset $asset): IndexQueueService
+    private function updateAssetDependencies(Asset $asset): void
     {
         foreach ($asset->getDependencies()->getRequiredBy() as $requiredByEntry) {
 
@@ -157,19 +153,12 @@ final class IndexQueueService
                 $this->updateIndexQueue($element, IndexQueueOperation::UPDATE->value);
             }
         }
-
-        return $this;
     }
 
     /**
-     * @param ElementInterface $element
-     * @param string $operation
-     *
-     * @return $this
-     *
      * @throws IndexDataException
      */
-    private function doHandleIndexData(ElementInterface $element, string $operation): IndexQueueService
+    private function doHandleIndexData(ElementInterface $element, string $operation): void
     {
         $performIndexRefreshBackup = $this->indexService->isPerformIndexRefresh();
 
@@ -187,8 +176,6 @@ final class IndexQueueService
         }
 
         $this->indexService->setPerformIndexRefresh($performIndexRefreshBackup);
-
-        return $this;
     }
 
     /**
