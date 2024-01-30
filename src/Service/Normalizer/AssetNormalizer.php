@@ -83,7 +83,7 @@ final class AssetNormalizer implements NormalizerInterface
             SystemField::FULL_PATH->value => $asset->getRealFullPath(),
             SystemField::PATH_LEVELS->value => $this->extractPathLevels($asset),
             SystemField::TAGS->value => $this->extractTagIds($asset),
-            SystemField::MIME_TYPE->value => $asset->getMimetype(),
+            SystemField::MIME_TYPE->value => $asset->getMimeType(),
             SystemField::USER_OWNER->value => $asset->getUserOwner(),
             SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
                 $this->workflowService->hasWorkflowWithPermissions($asset),

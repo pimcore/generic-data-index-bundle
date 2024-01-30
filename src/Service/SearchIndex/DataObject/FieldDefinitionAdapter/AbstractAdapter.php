@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 
-abstract class AbstractAdapter implements FieldDefinitionAdapterInterface
+abstract class AbstractAdapter implements AdapterInterface
 {
     private Data $fieldDefinition;
 

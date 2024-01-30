@@ -14,8 +14,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch;
 
 use Exception;
+use JsonException;
 use OpenSearch\Client;
-use OpenSearch\Common\Exceptions\Missing404Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -52,9 +52,9 @@ final class OpenSearchService
         try {
             $this->logger->log($silent ? LogLevel::DEBUG : LogLevel::INFO, "Deleting index $indexName");
             $response = $this->openSearchClient->indices()->delete(['index' => $indexName]);
-            $this->logger->debug(json_encode($response));
-        } catch (Missing404Exception) {
-            $this->logger->debug('Delete index - index did not exist: ' . $indexName);
+            $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
+        } catch (JsonException $e) {
+            $this->logger->debug('Error while parsing json response: ' . $indexName. ' ' . $e);
         }
 
         return $this;

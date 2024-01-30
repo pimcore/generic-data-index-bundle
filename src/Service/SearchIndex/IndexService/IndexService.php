@@ -66,7 +66,8 @@ final class IndexService implements IndexServiceInterface
 
         try {
             $indexDocument = $this->openSearchService->getDocument($indexName, $element->getId());
-            $originalChecksum = $indexDocument['_source'][FieldCategory::SYSTEM_FIELDS->value][SystemField::CHECKSUM->value] ?? -1;
+            $originalChecksum =
+                $indexDocument['_source'][FieldCategory::SYSTEM_FIELDS->value][SystemField::CHECKSUM->value] ?? -1;
         } catch (Exception $e) {
             $this->logger->debug($e->getMessage());
             $originalChecksum = -1;
@@ -79,9 +80,21 @@ final class IndexService implements IndexServiceInterface
             $this->bulkOperationService->add(['update' => ['_index' => $indexName, '_id' => $element->getId()]]);
             $this->bulkOperationService->add(['doc' => $indexData, 'doc_as_upsert' => true]);
 
-            $this->logger->info('Add update of element ID ' . $element->getId() . ' from ' . $indexName . ' index to bulk.');
+            $this->logger->info(
+                sprintf(
+                    'Add update of element ID %s from %s index to bulk.',
+                    $element->getId(),
+                    $indexName
+                )
+            );
         } else {
-            $this->logger->info('Not updating index ' . $indexName . ' for element ID ' . $element->getId() . ' - nothing has changed.');
+            $this->logger->info(
+                sprintf(
+                    'Not updating index %s for element ID %s - nothing has changed.',
+                    $indexName,
+                    $element->getId()
+                )
+            );
         }
 
         return $this;

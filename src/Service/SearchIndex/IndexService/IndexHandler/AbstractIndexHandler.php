@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
 use Exception;
+use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -67,6 +68,9 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
 
     abstract protected function getAliasIndexName(mixed $context = null): string;
 
+    /**
+     * @throws JsonException
+     */
     private function doUpdateMapping(mixed $context): void
     {
         $response = $this->openSearchService->putMapping(
@@ -80,7 +84,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                 ],
             ]
         );
-        $this->logger->debug(json_encode($response));
+        $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
     }
 
     protected function createIndex(mixed $context, string $aliasName): void

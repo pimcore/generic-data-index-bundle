@@ -23,6 +23,11 @@ services:
         tags: [ { name: messenger.message_handler, bus: messenger.bus.pimcore-generic-data-index } ]
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\TimeService: ~
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\ElementService
+
+
     Pimcore\Bundle\GenericDataIndexBundle\Scheduler\GenericDataIndexScheduleProvider: ~
     Pimcore\Bundle\GenericDataIndexBundle\Installer:
         public: true

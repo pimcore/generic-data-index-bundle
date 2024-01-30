@@ -14,15 +14,12 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Exception;
-use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidElementTypeException;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathService;
@@ -44,14 +41,17 @@ final class IndexQueueService
         private readonly IndexService $indexService,
         private readonly PathService $pathService,
         private readonly BulkOperationService $bulkOperationService,
-        private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
         private readonly IndexQueueRepository $indexQueueRepository,
         private readonly EnqueueService $enqueueService,
+        private readonly ElementServiceInterface $elementService,
     ) {
     }
 
-    public function updateIndexQueue(ElementInterface $element, string $operation, bool $doIndexElement = false): IndexQueueService
-    {
+    public function updateIndexQueue(
+        ElementInterface $element,
+        string $operation,
+        bool $doIndexElement = false
+    ): IndexQueueService {
         try {
             $this->checkOperationValid($operation);
 
@@ -70,7 +70,13 @@ final class IndexQueueService
 
             $this->pathService->rewriteChildrenIndexPaths($element);
         } catch (Exception $e) {
-            $this->logger->warning('Update indexQueue in database-table' . IndexQueue::TABLE . ' failed! Error: ' . $e->getMessage());
+            $this->logger->warning(
+                sprintf(
+                    'Update indexQueue in database-table %s failed! Error: %s',
+                    IndexQueue::TABLE,
+                    $e->getMessage()
+                )
+            );
         }
 
         return $this;
@@ -80,14 +86,19 @@ final class IndexQueueService
      * @param IndexQueue[] $entries
      *
      */
-    public function handleIndexQueueEntries(array $entries): IndexQueueService
+    public function handleIndexQueueEntries(array $entries): void
     {
         try {
 
             foreach ($entries as $entry) {
-                $this->logger->debug(IndexQueue::TABLE . ' updating index for element ' . $entry->getElementId() . ' and type ' . $entry->getElementType());
-
-                $element = $this->getElement($entry->getElementId(), $entry->getElementType());
+                $this->logger->debug(
+                    sprintf(
+                        '%s updating index for element %s and type %s',
+                        IndexQueue::TABLE,
+                        $entry->getElementId(),
+                        $entry->getElementType()
+                    ));
+                $element = $this->elementService->getElementByType($entry->getElementId(), $entry->getElementType());
                 if ($element) {
                     $this->doHandleIndexData($element, $entry->getOperation());
                 }
@@ -99,37 +110,11 @@ final class IndexQueueService
         } catch (Exception $e) {
             $this->logger->warning('handleIndexQueueEntry failed! Error: ' . $e->getMessage());
         }
-
-        return $this;
     }
 
-    /**
-     * @throws InvalidElementTypeException
-     */
-    public function getElement(int $id, string $type): Asset|AbstractObject|null
-    {
-        return match($type) {
-            ElementType::ASSET->value => Asset::getById($id),
-            ElementType::DATA_OBJECT->value => AbstractObject::getById($id),
-            default => throw new InvalidElementTypeException('Invalid element type: ' . $type)
-        };
-    }
-
-    public function isPerformIndexRefresh(): bool
+    private function isPerformIndexRefresh(): bool
     {
         return $this->performIndexRefresh;
-    }
-
-    public function setPerformIndexRefresh(bool $performIndexRefresh): IndexQueueService
-    {
-        $this->performIndexRefresh = $performIndexRefresh;
-
-        return $this;
-    }
-
-    public function dispatchQueueMessages(bool $synchronously = false): void
-    {
-        $this->queueMessagesDispatcher->dispatchQueueMessages($synchronously);
     }
 
     public function commit(): IndexQueueService
@@ -139,7 +124,7 @@ final class IndexQueueService
         return $this;
     }
 
-    private function updateAssetDependencies(Asset $asset): IndexQueueService
+    private function updateAssetDependencies(Asset $asset): void
     {
         foreach ($asset->getDependencies()->getRequiredBy() as $requiredByEntry) {
 
@@ -156,19 +141,12 @@ final class IndexQueueService
                 $this->updateIndexQueue($element, IndexQueueOperation::UPDATE->value);
             }
         }
-
-        return $this;
     }
 
     /**
-     * @param ElementInterface $element
-     * @param string $operation
-     *
-     * @return $this
-     *
      * @throws IndexDataException
      */
-    private function doHandleIndexData(ElementInterface $element, string $operation): IndexQueueService
+    private function doHandleIndexData(ElementInterface $element, string $operation): void
     {
         $performIndexRefreshBackup = $this->indexService->isPerformIndexRefresh();
 
@@ -186,12 +164,10 @@ final class IndexQueueService
         }
 
         $this->indexService->setPerformIndexRefresh($performIndexRefreshBackup);
-
-        return $this;
     }
 
     /**
-     * @throws InvalidArgumentException
+     * @throws IndexDataException
      */
     private function checkOperationValid(string $operation): void
     {
@@ -199,7 +175,7 @@ final class IndexQueueService
             IndexQueueOperation::UPDATE->value,
             IndexQueueOperation::DELETE->value,
         ], true)) {
-            throw new InvalidArgumentException(sprintf('Operation %s not valid', $operation));
+            throw new IndexDataException(sprintf('Operation %s not valid', $operation));
         }
     }
 }
