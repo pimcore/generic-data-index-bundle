@@ -84,7 +84,6 @@ final class IndexQueueService implements IndexQueueServiceInterface
 
     /**
      * @param IndexQueue[] $entries
-     *
      */
     public function handleIndexQueueEntries(array $entries): void
     {

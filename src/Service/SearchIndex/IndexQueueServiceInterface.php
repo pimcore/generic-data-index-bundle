@@ -29,7 +29,6 @@ interface IndexQueueServiceInterface
 
     /**
      * @param IndexQueue[] $entries
-     *
      */
     public function handleIndexQueueEntries(array $entries): void;
 
