@@ -33,7 +33,7 @@ final class TextKeywordAdapter extends AbstractAdapter
                         'type' => AttributeType::KEYWORD->value,
                     ],
                 ]
-            )
+            ),
         ];
     }
 }

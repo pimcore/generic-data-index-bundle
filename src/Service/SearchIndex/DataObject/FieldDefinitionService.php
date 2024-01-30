@@ -25,7 +25,7 @@ final class FieldDefinitionService
 {
     public function __construct(
         private readonly ServiceLocator $adapterLocator
-    ){
+    ) {
     }
 
     public function getFieldDefinitionAdapter(ClassDefinition\Data $fieldDefinition): ?FieldDefinitionAdapterInterface

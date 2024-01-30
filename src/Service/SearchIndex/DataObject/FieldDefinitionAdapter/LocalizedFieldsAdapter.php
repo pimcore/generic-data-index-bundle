@@ -15,7 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService;
-use Pimcore\Localization\LocaleServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Symfony\Contracts\Service\Attribute\Required;
 
