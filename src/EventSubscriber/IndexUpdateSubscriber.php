@@ -18,9 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Event\AssetEvents;
 use Pimcore\Event\DataObjectClassDefinitionEvents;
@@ -46,8 +44,6 @@ final class IndexUpdateSubscriber implements EventSubscriberInterface
         private readonly IndexQueueService $indexQueueService,
         private readonly EnqueueService $enqueueService,
         private readonly DataObjectIndexHandler $dataObjectMappingHandler,
-        private readonly AssetIndexHandler $assetMappingHandler,
-        private readonly OpenSearchService $openSearchService,
         private readonly Installer $installer,
     ) {
     }
