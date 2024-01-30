@@ -109,7 +109,7 @@ final class OpenSearchService implements OpenSearchServiceInterface
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
     }
 
-    public function createIndex(string $indexName, array $mappings = null): void
+    public function createIndex(string $indexName, array $mappings = null): OpenSearchService
     {
         $this->deleteIndex($indexName, true);
 
