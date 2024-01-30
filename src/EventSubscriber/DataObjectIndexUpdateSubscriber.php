@@ -7,10 +7,9 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
-
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
@@ -40,8 +39,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         private readonly IndexQueueService $indexQueueService,
         private readonly DataObjectIndexHandler $dataObjectMappingHandler,
         private readonly EnqueueService $enqueueService,
-    )
-    {
+    ) {
     }
 
     public static function getSubscribedEvents(): array

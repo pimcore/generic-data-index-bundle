@@ -7,10 +7,9 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
-
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
@@ -29,11 +28,10 @@ final class AssetIndexUpdateSubscriber implements EventSubscriberInterface
     public function __construct(
         private readonly IndexQueueService $indexQueueService,
         private readonly Installer $installer,
-    )
-    {
+    ) {
     }
 
-    public static function getSubscribedEvents() : array
+    public static function getSubscribedEvents(): array
     {
         return [
             AssetEvents::POST_UPDATE => 'updateAsset',

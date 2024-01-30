@@ -7,10 +7,9 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
-
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
@@ -35,8 +34,7 @@ final class TagIndexUpdateSubscriber implements EventSubscriberInterface
         private readonly Installer $installer,
         private readonly EnqueueService $enqueueService,
         private readonly IndexQueueService $indexQueueService,
-    )
-    {
+    ) {
     }
 
     public static function getSubscribedEvents(): array
