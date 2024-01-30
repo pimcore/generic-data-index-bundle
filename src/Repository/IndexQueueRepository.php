@@ -36,7 +36,6 @@ final class IndexQueueRepository extends ServiceEntityRepository
         private readonly TimeServiceInterface $timeService,
         private readonly Connection $connection,
         private readonly DenormalizerInterface $denormalizer,
-        private readonly ManagerRegistry $doctrine,
     ) {
         parent::__construct($registry, IndexQueue::class);
     }
