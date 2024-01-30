@@ -18,7 +18,10 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Reference;
 
-class SearchIndexFieldDefinitionPass implements CompilerPassInterface
+/**
+ * @internal
+ */
+final class SearchIndexFieldDefinitionPass implements CompilerPassInterface
 {
     /**
      * @param ContainerBuilder $container

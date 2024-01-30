@@ -23,7 +23,10 @@ use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
-class AssetTypeAdapter extends AbstractElementTypeAdapter
+/**
+ * @internal
+ */
+final class AssetTypeAdapter extends AbstractElementTypeAdapter
 {
     public function __construct(
         private readonly AssetNormalizer $normalizer,

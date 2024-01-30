@@ -13,6 +13,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\Messenger;
 
+/**
+ * @internal
+ */
 enum TransportName: string
 {
     case INDEX_QUEUE = 'pimcore_generic_data_index_queue';

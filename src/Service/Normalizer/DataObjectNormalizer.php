@@ -16,14 +16,20 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Folder;
 use Pimcore\Model\DataObject\Localizedfield;
-use Pimcore\Normalizer\NormalizerInterface;
+use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
-final class DataObjectNormalizer extends AbstractElementNormalizer
+/**
+ * @internal
+ */
+final class DataObjectNormalizer implements NormalizerInterface
 {
+    use ElementNormalizerTrait;
+
     /**
      * @param AbstractObject $object
      *
@@ -68,7 +74,7 @@ final class DataObjectNormalizer extends AbstractElementNormalizer
         ];
     }
 
-    protected function normalizeSystemFields(AbstractObject $dataObject): array
+    private function normalizeSystemFields(AbstractObject $dataObject): array
     {
         $result = [
             SystemField::ID->value => $dataObject->getId(),

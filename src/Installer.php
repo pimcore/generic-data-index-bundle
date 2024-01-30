@@ -15,6 +15,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle;
 
 use Pimcore;
 
-class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller
+/**
+ * @internal
+ */
+final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller
 {
 }

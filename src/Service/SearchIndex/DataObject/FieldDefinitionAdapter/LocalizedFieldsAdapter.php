@@ -19,28 +19,14 @@ use Pimcore\Localization\LocaleServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Symfony\Contracts\Service\Attribute\Required;
 
-class LocalizedFieldsAdapter extends AbstractAdapter
+/**
+ * @internal
+ */
+final class LocalizedFieldsAdapter extends AbstractAdapter
 {
-    protected LocaleServiceInterface $localeService;
+    private FieldDefinitionService $fieldDefinitionService;
 
-    /** @var Data\Localizedfields */
-    protected Data $fieldDefinition;
-
-    protected FieldDefinitionService $fieldDefinitionService;
-
-    protected LanguageService $languageService;
-
-    /**
-     * @param LocaleServiceInterface $localeService
-     *
-     * @required
-     *
-     * @throws \Exception
-     */
-    public function setLocaleService(LocaleServiceInterface $localeService): void
-    {
-        $this->localeService = $localeService;
-    }
+    private LanguageService $languageService;
 
     public function getOpenSearchMapping(): array
     {
@@ -48,7 +34,9 @@ class LocalizedFieldsAdapter extends AbstractAdapter
             'properties' => [],
         ];
         $languages = $this->languageService->getValidLanguages();
-        $childFieldDefinitions = $this->fieldDefinition->getFieldDefinitions();
+        /** @var Data\Localizedfields $fieldDefinition */
+        $fieldDefinition = $this->getFieldDefinition();
+        $childFieldDefinitions = $fieldDefinition->getFieldDefinitions();
 
         foreach ($languages as $language) {
             $languageProperties = [];

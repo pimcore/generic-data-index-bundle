@@ -35,17 +35,20 @@ use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Element\Service;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
-class IndexUpdateSubscriber implements EventSubscriberInterface
+/**
+ * @internal
+ */
+final class IndexUpdateSubscriber implements EventSubscriberInterface
 {
     use LoggerAwareTrait;
 
     public function __construct(
-        protected readonly IndexQueueService $indexQueueService,
-        protected readonly EnqueueService $enqueueService,
-        protected readonly DataObjectIndexHandler $dataObjectMappingHandler,
-        protected readonly AssetIndexHandler $assetMappingHandler,
-        protected readonly OpenSearchService $openSearchService,
-        protected readonly Installer $installer,
+        private readonly IndexQueueService $indexQueueService,
+        private readonly EnqueueService $enqueueService,
+        private readonly DataObjectIndexHandler $dataObjectMappingHandler,
+        private readonly AssetIndexHandler $assetMappingHandler,
+        private readonly OpenSearchService $openSearchService,
+        private readonly Installer $installer,
     ) {
     }
 

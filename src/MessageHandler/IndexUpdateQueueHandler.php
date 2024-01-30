@@ -19,12 +19,15 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 
+/**
+ * @internal
+ */
 #[AsMessageHandler]
-class IndexUpdateQueueHandler
+final class IndexUpdateQueueHandler
 {
     public function __construct(
-        protected readonly IndexQueueService $indexQueueService,
-        protected readonly IndexQueueRepository $indexQueueRepository,
+        private readonly IndexQueueService $indexQueueService,
+        private readonly IndexQueueRepository $indexQueueRepository,
     ) {
     }
 

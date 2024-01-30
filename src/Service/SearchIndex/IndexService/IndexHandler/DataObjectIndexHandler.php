@@ -21,7 +21,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Contracts\Service\Attribute\Required;
 
-class DataObjectIndexHandler extends AbstractIndexHandler
+/**
+ * @internal
+ */
+final class DataObjectIndexHandler extends AbstractIndexHandler
 {
     public const DATA_OBJECT_INDEX_ALIAS = 'data-object';
 
@@ -29,7 +32,7 @@ class DataObjectIndexHandler extends AbstractIndexHandler
 
     private DataObjectTypeAdapter $dataObjectTypeAdapter;
 
-    public function extractMappingProperties(mixed $context = null): array
+    protected function extractMappingProperties(mixed $context = null): array
     {
         if (!$context instanceof ClassDefinition) {
             return [];

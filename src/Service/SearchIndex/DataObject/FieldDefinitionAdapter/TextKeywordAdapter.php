@@ -15,18 +15,25 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 
-class TextKeywordAdapter extends TextAdapter
+/**
+ * @internal
+ */
+final class TextKeywordAdapter extends AbstractAdapter
 {
     public function getOpenSearchMapping(): array
     {
-        $mapping = parent::getOpenSearchMapping();
+        $searchAnalyzerAttributes = $this->searchIndexConfigService->getSearchAnalyzerAttributes();
 
-        $mapping['fields'] = array_merge($mapping['fields'], [
-            'raw' => [
-                'type' => AttributeType::KEYWORD->value,
-            ],
-        ]);
-
-        return $mapping;
+        return [
+            'type' => AttributeType::TEXT->value,
+            'fields' => array_merge(
+                $searchAnalyzerAttributes[AttributeType::TEXT->value]['fields'] ?? [],
+                [
+                    'raw' => [
+                        'type' => AttributeType::KEYWORD->value,
+                    ],
+                ]
+            )
+        ];
     }
 }

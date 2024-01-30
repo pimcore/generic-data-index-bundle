@@ -26,7 +26,10 @@ use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
-class DataObjectTypeAdapter extends AbstractElementTypeAdapter
+/**
+ * @internal
+ */
+final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
 {
     public function __construct(
         private readonly DataObjectNormalizer $normalizer,

@@ -13,6 +13,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex;
 
+/**
+ * @internal
+ */
 enum FieldCategory: string
 {
     case SYSTEM_FIELDS = 'system_fields';

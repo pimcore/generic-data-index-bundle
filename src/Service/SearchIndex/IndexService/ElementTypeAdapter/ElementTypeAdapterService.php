@@ -16,7 +16,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 use InvalidArgumentException;
 use Pimcore\Model\Element\ElementInterface;
 
-class ElementTypeAdapterService
+/**
+ * @internal
+ */
+final class ElementTypeAdapterService
 {
     /**
      * @var AbstractElementTypeAdapter[]
