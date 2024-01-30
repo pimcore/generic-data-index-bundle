@@ -166,8 +166,6 @@ final class IndexQueueRepository
 
     private function createQueryBuilder(string $alias): QueryBuilder
     {
-        p_r(get_parent_class($this->entityManager));
-
         return $this->entityManager->getRepository(IndexQueue::class)
             ->createQueryBuilder($alias);
     }
