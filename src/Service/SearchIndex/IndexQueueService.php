@@ -16,11 +16,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidElementTypeException;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexService;
@@ -47,6 +46,7 @@ final class IndexQueueService
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
         private readonly IndexQueueRepository $indexQueueRepository,
         private readonly EnqueueService $enqueueService,
+        private readonly ElementServiceInterface $elementService,
     ) {
     }
 
@@ -101,7 +101,7 @@ final class IndexQueueService
                         $entry->getElementId(),
                         $entry->getElementType()
                     ));
-                $element = $this->getElement($entry->getElementId(), $entry->getElementType());
+                $element = $this->elementService->getElementByType($entry->getElementId(), $entry->getElementType());
                 if ($element) {
                     $this->doHandleIndexData($element, $entry->getOperation());
                 }
@@ -115,18 +115,6 @@ final class IndexQueueService
         }
 
         return $this;
-    }
-
-    /**
-     * @throws InvalidElementTypeException
-     */
-    public function getElement(int $id, string $type): Asset|AbstractObject|null
-    {
-        return match($type) {
-            ElementType::ASSET->value => Asset::getById($id),
-            ElementType::DATA_OBJECT->value => AbstractObject::getById($id),
-            default => throw new InvalidElementTypeException('Invalid element type: ' . $type)
-        };
     }
 
     public function isPerformIndexRefresh(): bool
