@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Exception;
-use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
@@ -193,7 +192,7 @@ final class IndexQueueService
     }
 
     /**
-     * @throws InvalidArgumentException
+     * @throws IndexDataException
      */
     private function checkOperationValid(string $operation): void
     {
@@ -201,7 +200,7 @@ final class IndexQueueService
             IndexQueueOperation::UPDATE->value,
             IndexQueueOperation::DELETE->value,
         ], true)) {
-            throw new InvalidArgumentException(sprintf('Operation %s not valid', $operation));
+            throw new IndexDataException(sprintf('Operation %s not valid', $operation));
         }
     }
 }
