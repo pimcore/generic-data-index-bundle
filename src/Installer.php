@@ -91,7 +91,7 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
             $jobRunTable->addColumn('dispatched', 'bigint', [
                 'notnull' => true,
                 'unsigned' => true,
-                'default' => 0
+                'default' => 0,
             ]);
 
             $jobRunTable->setPrimaryKey(['elementId', 'elementType']);
