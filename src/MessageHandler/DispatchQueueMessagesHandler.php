@@ -65,5 +65,4 @@ final class DispatchQueueMessagesHandler
             $this->queueMessagesDispatcher->clearPendingState();
         }
     }
-
 }

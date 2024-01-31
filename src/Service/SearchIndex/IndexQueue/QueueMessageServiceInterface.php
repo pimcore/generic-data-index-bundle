@@ -13,12 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue;
 
-use Doctrine\DBAL\Exception;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\EnqueueAssetsException;
-use Pimcore\Model\DataObject\ClassDefinition;
-use Pimcore\Model\Element\ElementInterface;
-use Pimcore\Model\Element\Tag;
-
 /**
  * @internal
  */

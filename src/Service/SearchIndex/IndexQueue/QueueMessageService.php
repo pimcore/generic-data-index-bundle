@@ -36,8 +36,7 @@ final class QueueMessageService implements QueueMessageServiceInterface
         int $entriesCount,
         int $maxBatchSize,
         array $entries
-    ): void
-    {
+    ): void {
         if ($entriesCount > $maxBatchSize) {
             $chunks = array_chunk($entries, $maxBatchSize);
             foreach($chunks as $chunk) {
@@ -53,8 +52,7 @@ final class QueueMessageService implements QueueMessageServiceInterface
         int $workerCount,
         int $minBatchSize,
         int $maxBatchSize
-    ): int
-    {
+    ): int {
         if ($workerCount === 1) {
             return $maxBatchSize;
         }
