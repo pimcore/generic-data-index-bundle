@@ -37,7 +37,7 @@ abstract class AbstractElementTypeAdapter
         );
     }
 
-    public function getAliasIndexName(mixed $context): string
+    public function getAliasIndexName(mixed $context = null): string
     {
         return $this->searchIndexConfigService->getIndexName(
             $this->getIndexNameShort($context)
