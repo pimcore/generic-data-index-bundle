@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 enum SystemField: string
 {
     case ID = 'id';
+    case PARENT_ID = 'parentId';
     case CREATION_DATE = 'creationDate';
     case MODIFICATION_DATE = 'modificationDate';
     case PUBLISHED = 'published';

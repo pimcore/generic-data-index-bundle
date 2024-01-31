@@ -80,6 +80,7 @@ final class DataObjectNormalizer implements NormalizerInterface
     {
         $result = [
             SystemField::ID->value => $dataObject->getId(),
+            SystemField::PARENT_ID->value => $dataObject->getParentId(),
             SystemField::CREATION_DATE->value => $this->formatTimestamp($dataObject->getCreationDate()),
             SystemField::MODIFICATION_DATE->value => $this->formatTimestamp($dataObject->getModificationDate()),
             SystemField::TYPE->value => $dataObject->getType(),

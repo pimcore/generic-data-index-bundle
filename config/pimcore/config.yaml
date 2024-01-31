@@ -57,6 +57,8 @@ pimcore_generic_data_index:
       general:
         id:
           type: long
+        parentId:
+          type: long
         creationDate:
           type: date
         modificationDate:
