@@ -12,7 +12,8 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
-use Pimcore\Bundle\PortalEngineBundle\Enum\Search\QueryType;
+
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\QueryType;
 
 interface QueryInterface
 {

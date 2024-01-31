@@ -18,8 +18,5 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Tree\AssetTreeItemList;
 
 interface AssetTreeServiceInterface
 {
-    /**
-     * @return AssetTreeItem[]
-     */
     public function fetchTreeItems(int $parentId = 1, int $page = 1, int $pageSize = 50): AssetTreeItemList;
 }
