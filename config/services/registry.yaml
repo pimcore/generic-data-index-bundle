@@ -4,4 +4,7 @@ services:
         autoconfigure: true
         public: false
 
-    Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository:
+        arguments:
+            - "@doctrine.orm.pimcore_generic_data_index_entity_manager"
+
