@@ -49,6 +49,10 @@ final class OpenSearchService implements OpenSearchServiceInterface
 
     public function deleteIndex($indexName, bool $silent = false): void
     {
+        if (!$this->existsIndex($indexName)) {
+            return;
+        }
+
         try {
             $this->logger->log($silent ? LogLevel::DEBUG : LogLevel::INFO, "Deleting index $indexName");
             $response = $this->openSearchClient->indices()->delete(['index' => $indexName]);
@@ -60,6 +64,10 @@ final class OpenSearchService implements OpenSearchServiceInterface
 
     public function getCurrentIndexVersion(string $indexName): string
     {
+        if (!$this->existsAlias($indexName)) {
+            return '';
+        }
+
         $result = $this->openSearchClient->indices()->getAlias([
             'name' => $indexName,
         ]);
@@ -170,6 +178,13 @@ final class OpenSearchService implements OpenSearchServiceInterface
     {
         return $this->openSearchClient->indices()->existsAlias([
             'name' => $aliasName,
+            'index' => $indexName,
+        ]);
+    }
+
+    public function existsIndex(string $indexName): bool
+    {
+        return $this->openSearchClient->indices()->exists([
             'index' => $indexName,
         ]);
     }
