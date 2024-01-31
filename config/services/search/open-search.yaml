@@ -19,6 +19,12 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Factory\OpenSearchClientFactory: ~
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Tree\AssetTreeServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\Tree\AssetTreeService
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Pagination\PaginationInfoServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\Pagination\PaginationInfoService
+
     generic-data-index-bundle.opensearch-client:
         class: OpenSearch\Client
         factory: ['@Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Factory\OpenSearchClientFactory', 'createOpenSearchClient']
