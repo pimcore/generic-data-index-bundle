@@ -29,15 +29,16 @@ class QueryList
 
     public function addQuery(QueryInterface $query = null): QueryList
     {
-        if ($query !== null && !$query->isEmpty()) {
-            if ($query instanceof BoolQuery) {
-                if($this->boolQuery !== null) {
-                    $this->boolQuery->merge($query);
+        if ($query instanceof BoolQuery && !$query->isEmpty()) {
+            if($this->boolQuery !== null) {
+                $this->boolQuery->merge($query);
 
-                    return $this;
-                }
-                $this->boolQuery = $query;
+                return $this;
             }
+            $this->boolQuery = $query;
+        }
+
+        if ($query !== null && !$query->isEmpty()) {
             $this->queries[] = $query;
         }
 

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -14,9 +15,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort;
 
 class FieldSort
 {
-    public const ASC = 'asc';
+    public const ORDER_ASC = 'asc';
 
-    public const DESC = 'desc';
+    public const ORDER_DESC = 'desc';
 
     public function __construct(
         private string $field,

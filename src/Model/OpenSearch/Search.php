@@ -28,7 +28,7 @@ class Search
         private array|bool|string|null $source = null,
         private readonly QueryList $queryList = new QueryList(),
         private readonly AggregationList $aggregationList = new AggregationList(),
-        private ?FieldSortList $sortList = new FieldSortList(),
+        private readonly FieldSortList $sortList = new FieldSortList(),
     ) {
     }
 
@@ -91,17 +91,15 @@ class Search
 
     public function toArray(): array
     {
-        $result = [];
-
-        $params = [
-            'from' => 'from',
-            'size' => 'size',
-            'source' => '_source',
+        $result = [
+            'from' => $this->from,
+            'size' => $this->size,
+            '_source' => $this->source,
         ];
 
-        foreach ($params as $field => $param) {
-            if ($this->$field !== null) {
-                $result[$param] = $this->$field;
+        foreach ($result as $key => $value) {
+            if (empty($value)) {
+                unset($result[$key]);
             }
         }
 
