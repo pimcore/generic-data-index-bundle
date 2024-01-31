@@ -78,8 +78,11 @@ final class IndexService implements IndexServiceInterface
 
         if ($indexData[FieldCategory::SYSTEM_FIELDS->value][SystemField::CHECKSUM->value] !== $originalChecksum) {
 
-            $this->bulkOperationService->add(['update' => ['_index' => $indexName, '_id' => $element->getId()]]);
-            $this->bulkOperationService->add(['doc' => $indexData, 'doc_as_upsert' => true]);
+            $this->bulkOperationService->addUpdate(
+                $indexName,
+                $element->getId(),
+                $indexData
+            );
 
             $this->logger->info(
                 sprintf(
@@ -109,12 +112,10 @@ final class IndexService implements IndexServiceInterface
 
         $elementId = $element->getId();
 
-        $this->bulkOperationService->add([
-            'delete' => [
-                '_index' => $indexName,
-                '_id' => $elementId,
-            ],
-        ]);
+        $this->bulkOperationService->addDeletion(
+            $indexName,
+            $elementId
+        );
 
         $this->logger->info('Add deletion of item ID ' . $elementId . ' from ' . $indexName . ' index to bulk.');
 
