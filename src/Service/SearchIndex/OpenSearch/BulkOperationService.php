@@ -36,8 +36,7 @@ final class BulkOperationService implements BulkOperationServiceInterface
         int $id,
         array $indexData,
         bool $upsert = true
-    ): void
-    {
+    ): void {
         $this->bulkOperationData[] = [
             'update' => [
                 '_index' => $indexName,
@@ -47,15 +46,14 @@ final class BulkOperationService implements BulkOperationServiceInterface
 
         $this->bulkOperationData[] = [
             'doc' => $indexData,
-            'doc_as_upsert' => $upsert
+            'doc_as_upsert' => $upsert,
         ];
     }
 
     public function addDeletion(
         string $indexName,
         int $id
-    ): void
-    {
+    ): void {
         $this->bulkOperationData[] = [
             'delete' => [
                 '_index' => $indexName,
