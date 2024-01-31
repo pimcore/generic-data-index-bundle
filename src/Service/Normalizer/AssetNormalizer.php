@@ -75,6 +75,7 @@ final class AssetNormalizer implements NormalizerInterface
     {
         return [
             SystemField::ID->value => $asset->getId(),
+            SystemField::PARENT_ID->value => $asset->getParentId(),
             SystemField::CREATION_DATE->value => $this->formatTimestamp($asset->getCreationDate()),
             SystemField::MODIFICATION_DATE->value => $this->formatTimestamp($asset->getModificationDate()),
             SystemField::TYPE->value => $asset->getType(),
