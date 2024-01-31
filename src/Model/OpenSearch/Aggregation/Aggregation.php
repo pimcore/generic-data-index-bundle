@@ -1,17 +1,24 @@
 <?php
 declare(strict_types=1);
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation;
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
 
-use Pimcore\Bundle\PortalEngineBundle\Enum\Search\AggregationType;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation;
 
 class Aggregation
 {
     public function __construct(
-        private readonly string          $name,
-        private readonly array           $params,
-    )
-    {
+        private readonly string $name,
+        private readonly array $params,
+    ) {
     }
 
     public function getName(): string
@@ -23,5 +30,4 @@ class Aggregation
     {
         return $this->params;
     }
-
 }

@@ -1,12 +1,13 @@
 <?php
 
-/*
- * This file is part of the ONGR package.
+/**
+ * Pimcore
  *
- * (c) NFQ Technologies UAB <info@nfq.com>
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
  *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort;
@@ -14,14 +15,14 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort;
 class FieldSort
 {
     public const ASC = 'asc';
+
     public const DESC = 'desc';
 
     public function __construct(
         private string $field,
         private ?string $order = null,
         private array $params = []
-    )
-    {
+    ) {
     }
 
     public function getField(): string
@@ -32,6 +33,7 @@ class FieldSort
     public function setField(string $field): FieldSort
     {
         $this->field = $field;
+
         return $this;
     }
 
@@ -43,6 +45,7 @@ class FieldSort
     public function setOrder(?string $order): FieldSort
     {
         $this->order = $order;
+
         return $this;
     }
 
@@ -54,6 +57,7 @@ class FieldSort
     public function setParams(array $params): FieldSort
     {
         $this->params = $params;
+
         return $this;
     }
 

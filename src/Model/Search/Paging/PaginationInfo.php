@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Paging;
 
 final class PaginationInfo
@@ -10,8 +20,7 @@ final class PaginationInfo
         private readonly int $page,
         private readonly int $pageSize,
         private readonly int $totalPages,
-    )
-    {
+    ) {
     }
 
     public function getTotalItems(): int

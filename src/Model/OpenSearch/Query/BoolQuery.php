@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Traits\SimplifySingleTypesTrait;
@@ -10,11 +20,9 @@ class BoolQuery implements QueryInterface
 {
     use SimplifySingleTypesTrait;
 
-
     public function __construct(
         private array $params = [],
-    )
-    {
+    ) {
     }
 
     public function getType(): QueryType
@@ -26,7 +34,6 @@ class BoolQuery implements QueryInterface
     {
         return empty($this->toArray());
     }
-
 
     public function getParams(): array
     {
@@ -53,6 +60,7 @@ class BoolQuery implements QueryInterface
         foreach ($boolQuery->toArray() as $type => $params) {
             $this->addCondition($type, $params);
         }
+
         return $this;
     }
 

@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation\Aggregation;
@@ -13,14 +23,13 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSortList;
 class Search
 {
     public function __construct(
-        private ?int                     $from = null,
-        private ?int                     $size = null,
-        private array|bool|string|null   $source = null,
-        private readonly QueryList       $queryList = new QueryList(),
+        private ?int $from = null,
+        private ?int $size = null,
+        private array|bool|string|null $source = null,
+        private readonly QueryList $queryList = new QueryList(),
         private readonly AggregationList $aggregationList = new AggregationList(),
-        private ?FieldSortList           $sortList = new FieldSortList(),
-    )
-    {
+        private ?FieldSortList $sortList = new FieldSortList(),
+    ) {
     }
 
     public function getFrom(): ?int
@@ -31,6 +40,7 @@ class Search
     public function setFrom(?int $from): Search
     {
         $this->from = $from;
+
         return $this;
     }
 
@@ -42,6 +52,7 @@ class Search
     public function setSize(?int $size): Search
     {
         $this->size = $size;
+
         return $this;
     }
 
@@ -53,12 +64,14 @@ class Search
     public function setSource(bool|array|string|null $source): Search
     {
         $this->source = $source;
+
         return $this;
     }
 
     public function addQuery(QueryInterface $query = null): Search
     {
         $this->queryList->addQuery($query);
+
         return $this;
     }
 

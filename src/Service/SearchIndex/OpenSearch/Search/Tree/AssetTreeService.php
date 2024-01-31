@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\Tree;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
@@ -23,8 +33,7 @@ final class AssetTreeService implements AssetTreeServiceInterface
         private readonly OpenSearchServiceInterface $openSearchService,
         private readonly AssetTypeAdapter $assetTypeAdapter,
         private readonly PaginationInfoServiceInterface $paginationInfoService,
-    )
-    {
+    ) {
 
     }
 
@@ -88,7 +97,7 @@ final class AssetTreeService implements AssetTreeServiceInterface
                 'terms' => [
                     'field' => $parentIdAttribute,
                     'size' => count($parentIds),
-                ]
+                ],
 
             ]
         ));
@@ -142,9 +151,8 @@ final class AssetTreeService implements AssetTreeServiceInterface
             ->getOpenSearchClient()
             ->search([
                 'index' => $this->assetTypeAdapter->getAliasIndexName(),
-                'body' => $search->toArray()
+                'body' => $search->toArray(),
             ]);
-
 
         return $openSearchResult['hits'];
     }
@@ -156,6 +164,7 @@ final class AssetTreeService implements AssetTreeServiceInterface
             $id = $hit['_source'][FieldCategory::SYSTEM_FIELDS->value][FieldCategory\SystemField::ID->value];
             $result[$id] = $hit['_source'];
         }
+
         return $result;
     }
 }
