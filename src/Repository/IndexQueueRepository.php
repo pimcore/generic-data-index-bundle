@@ -142,7 +142,7 @@ final class IndexQueueRepository
     /**
      * @throws \Doctrine\DBAL\Exception
      */
-    private function dispatchItems(int $limit): int
+    public function dispatchItems(int $limit): int
     {
         $dispatchId = $this->timeService->getCurrentMillisecondTimestamp();
 

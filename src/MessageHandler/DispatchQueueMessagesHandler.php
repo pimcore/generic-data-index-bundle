@@ -13,12 +13,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\MessageHandler;
 
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\DispatchQueueMessagesMessage;
-use Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessageServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * @internal
@@ -26,29 +27,43 @@ use Symfony\Component\Messenger\MessageBusInterface;
 #[AsMessageHandler]
 final class DispatchQueueMessagesHandler
 {
+    use LoggerAwareTrait;
+
     public function __construct(
         private readonly IndexQueueRepository $indexQueueRepository,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
-        private readonly MessageBusInterface $messageBus
+        private readonly QueueMessageServiceInterface $queueMessageService,
+        private readonly array $queueSettings,
     ) {
     }
 
     public function __invoke(DispatchQueueMessagesMessage $message): void
     {
-        $batchSize = 400;
-        while (true) {
-            $entries = $this->indexQueueRepository->getUnhandledIndexQueueEntries(true, $batchSize);
-            $amountOfEntries = count($entries);
+        try {
+            $entries = $this->indexQueueRepository->getUnhandledIndexQueueEntries();
+            $entriesCount = count($entries);
 
-            if ($amountOfEntries > 0) {
-                $this->messageBus->dispatch(new IndexUpdateQueueMessage($entries));
+            if ($entriesCount === 0) {
+                return;
             }
 
-            if ($amountOfEntries < $batchSize) {
-                break;
-            }
+            $realMaxBatchSize = $this->queueMessageService->getMaxBatchSize(
+                $entriesCount,
+                $this->queueSettings['worker_count'],
+                $this->queueSettings['min_batch_size'],
+                $this->queueSettings['max_batch_size']
+            );
+
+            $this->queueMessageService->handleMessage(
+                $entriesCount,
+                $realMaxBatchSize,
+                $entries
+            );
+        } catch (Exception $e) {
+            $this->logger->warning('Dispatching Queue Message failed: ' . $e);
+        } finally {
+            $this->queueMessagesDispatcher->clearPendingState();
         }
-
-        $this->queueMessagesDispatcher->clearPendingState();
     }
+
 }
