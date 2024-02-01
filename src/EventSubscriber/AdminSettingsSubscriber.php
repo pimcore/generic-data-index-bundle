@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Pimcore
  *
@@ -66,8 +67,7 @@ final class AdminSettingsSubscriber implements EventSubscriberInterface
      */
     private function setLanguagesAndUpdate(
         array $newLanguages
-    ): void
-    {
+    ): void {
         $this->languageService->setValidLanguages($newLanguages);
         $this->indexUpdateService->updateAll();
     }
