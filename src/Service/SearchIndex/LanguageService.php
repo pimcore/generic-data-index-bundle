@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
+use Pimcore\Localization\LocaleServiceInterface;
 use Pimcore\Tool;
 
 /**
@@ -20,6 +21,11 @@ use Pimcore\Tool;
  */
 final class LanguageService implements LanguageServiceInterface
 {
+    public function __construct(
+        private readonly LocaleServiceInterface $localeService,
+    ) {
+    }
+
     private array $validLanguages = [];
 
     public function setValidLanguages(array $argLanguages): void
@@ -34,5 +40,18 @@ final class LanguageService implements LanguageServiceInterface
         }
 
         return $this->validLanguages;
+    }
+
+    public function getNewLanguages(array $validLanguages): array
+    {
+        $newLanguages = [];
+
+        foreach ($validLanguages as $language) {
+            if ($this->localeService->isLocale($language)) {
+                $newLanguages[] = $language;
+            }
+        }
+
+        return $newLanguages;
     }
 }
