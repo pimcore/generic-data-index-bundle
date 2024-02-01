@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue;
 
-use Doctrine\DBAL\Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -29,21 +28,19 @@ final class QueueMessageService implements QueueMessageServiceInterface
     ) {
     }
 
-    /**
-     * @throws Exception
-     */
     public function handleMessage(
         int $entriesCount,
-        int $maxBatchSize,
-        array $entries
+        int $maxBatchSize
     ): void {
-        if ($entriesCount > $maxBatchSize) {
-            $chunks = array_chunk($entries, $maxBatchSize);
-            foreach($chunks as $chunk) {
-                $this->dispatchMessage($chunk, $maxBatchSize);
+        while(true) {
+            $entries = $this->indexQueueRepository->getUnhandledIndexQueueEntries(true, $maxBatchSize);
+            $amountOfEntries = count($entries);
+            if ($amountOfEntries > 0) {
+                $this->messageBus->dispatch(new IndexUpdateQueueMessage($entries));
             }
-        } else {
-            $this->dispatchMessage($entries, $maxBatchSize);
+            if ($amountOfEntries < $maxBatchSize) {
+                break;
+            }
         }
     }
 
@@ -64,14 +61,5 @@ final class QueueMessageService implements QueueMessageServiceInterface
             $itemsPerWorker < $maxBatchSize => $itemsPerWorker,
             default => $maxBatchSize,
         };
-    }
-
-    /**
-     * @throws Exception
-     */
-    private function dispatchMessage(array $items, int $limit): void
-    {
-        $this->messageBus->dispatch(new IndexUpdateQueueMessage($items));
-        $this->indexQueueRepository->dispatchItems($limit);
     }
 }

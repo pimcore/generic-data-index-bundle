@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Repository;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\NonUniqueResultException;
+use Doctrine\ORM\NoResultException;
 use Doctrine\ORM\QueryBuilder;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
@@ -50,6 +51,18 @@ final class IndexQueueRepository
         } catch(NonUniqueResultException) {
             return true;
         }
+    }
+
+    /**
+     * @throws NonUniqueResultException
+     * @throws NoResultException
+     */
+    public function countIndexQueueEntries(): int
+    {
+        return (int)$this->createQueryBuilder('q')
+            ->select('count(q)')
+            ->getQuery()
+            ->getSingleScalarResult();
     }
 
     public function getUnhandledIndexQueueEntries(bool $dispatch = false, int $limit = 100000): array

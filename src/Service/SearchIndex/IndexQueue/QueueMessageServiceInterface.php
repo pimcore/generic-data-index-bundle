@@ -20,8 +20,7 @@ interface QueueMessageServiceInterface
 {
     public function handleMessage(
         int $entriesCount,
-        int $maxBatchSize,
-        array $entries
+        int $maxBatchSize
     ): void;
 
     public function getMaxBatchSize(
