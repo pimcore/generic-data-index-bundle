@@ -40,9 +40,7 @@ final class DispatchQueueMessagesHandler
     public function __invoke(DispatchQueueMessagesMessage $message): void
     {
         try {
-            $entries = $this->indexQueueRepository->getUnhandledIndexQueueEntries();
-            $entriesCount = count($entries);
-
+            $entriesCount = $this->indexQueueRepository->countUnhandledIndexQueueEntries();
             if ($entriesCount === 0) {
                 return;
             }
@@ -56,8 +54,7 @@ final class DispatchQueueMessagesHandler
 
             $this->queueMessageService->handleMessage(
                 $entriesCount,
-                $realMaxBatchSize,
-                $entries
+                $realMaxBatchSize
             );
         } catch (Exception $e) {
             $this->logger->warning('Dispatching Queue Message failed: ' . $e);

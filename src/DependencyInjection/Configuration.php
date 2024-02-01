@@ -98,7 +98,7 @@ class Configuration implements ConfigurationInterface
                             ->addDefaultsIfNotSet()
                             ->children()
                                 ->scalarNode('worker_count')
-                                    ->defaultValue(1)
+                                    ->defaultValue(5)
                                     ->validate()
                                         ->ifTrue(function ($value) {
                                             return $value < 1;
