@@ -40,7 +40,7 @@ final class DispatchQueueMessagesHandler
     public function __invoke(DispatchQueueMessagesMessage $message): void
     {
         try {
-            $entriesCount = $this->indexQueueRepository->countUnhandledIndexQueueEntries();
+            $entriesCount = $this->indexQueueRepository->countIndexQueueEntries();
             if ($entriesCount === 0) {
                 return;
             }

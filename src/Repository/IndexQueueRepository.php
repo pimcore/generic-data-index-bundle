@@ -57,7 +57,7 @@ final class IndexQueueRepository
      * @throws NonUniqueResultException
      * @throws NoResultException
      */
-    public function countUnhandledIndexQueueEntries(): int
+    public function countIndexQueueEntries(): int
     {
         return (int)$this->createQueryBuilder('q')
             ->select('count(q)')
