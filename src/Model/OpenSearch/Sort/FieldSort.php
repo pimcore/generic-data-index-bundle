@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort;
 
-class FieldSort
+final class FieldSort
 {
     public const ORDER_ASC = 'asc';
 

@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation;
 
-class Aggregation
+final class Aggregation
 {
     public function __construct(
         private readonly string $name,
