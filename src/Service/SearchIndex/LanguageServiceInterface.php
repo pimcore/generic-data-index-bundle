@@ -21,4 +21,6 @@ interface LanguageServiceInterface
     public function setValidLanguages(array $argLanguages): void;
 
     public function getValidLanguages(): array;
+
+    public function getNewLanguages(array $validLanguages): array;
 }
