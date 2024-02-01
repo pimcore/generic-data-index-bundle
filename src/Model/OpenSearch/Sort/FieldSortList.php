@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort;
 
-class FieldSortList
+final class FieldSortList
 {
     public function __construct(
         /** @var FieldSort[] */

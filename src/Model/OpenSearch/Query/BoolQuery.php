@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\QueryType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Traits\SimplifySingleTypesTrait;
 
-class BoolQuery implements QueryInterface
+final class BoolQuery implements QueryInterface
 {
     use SimplifySingleTypesTrait;
 

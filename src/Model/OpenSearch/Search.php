@@ -20,7 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\QueryList;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSort;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSortList;
 
-class Search
+final class Search
 {
     public function __construct(
         private ?int $from = null,

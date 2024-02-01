@@ -15,7 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Traits\SimplifySingleTypesTrait;
 
-class QueryList
+final class QueryList
 {
     use SimplifySingleTypesTrait;
 
