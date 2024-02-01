@@ -61,7 +61,6 @@ final class IndexQueueRepository
     {
         return (int)$this->createQueryBuilder('q')
             ->select('count(q)')
-            ->orderBy('q.operationTime')
             ->getQuery()
             ->getSingleScalarResult();
     }
