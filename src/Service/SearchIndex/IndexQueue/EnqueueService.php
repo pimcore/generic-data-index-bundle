@@ -44,30 +44,44 @@ final class EnqueueService implements EnqueueServiceInterface
      */
     public function enqueueByTag(Tag $tag): EnqueueService
     {
-        $tagCondition = "WHERE id IN (SELECT cid FROM tags_assignment WHERE ctype='%s' AND tagid = %s)";
+        $tagCondition = $this->indexQueueRepository->generateSelectQuery(
+            'tags_assignment',
+            [],
+            'cid',
+            [],
+            ['ctype', IndexQueueRepository::AND_OPERATOR => 'tagid']
+        );
 
         //assets
-        $this->indexQueueRepository->enqueueBySelectQuery(
-            sprintf("SELECT id, '%s', '%s', '%s', '%s', 0 FROM assets " . $tagCondition,
+        $assetQuery = $this->indexQueueRepository->generateSelectQuery(
+            'assets',
+            [
                 ElementType::ASSET->value,
                 IndexName::ASSET->value,
                 IndexQueueOperation::UPDATE->value,
                 $this->timeService->getCurrentMillisecondTimestamp(),
-                $tag->getId(),
-                'asset'
-            )
+                0,
+            ],
+            'id',
+            ['ctype' => ElementType::ASSET->value, 'tagid' => $tag->getId()],
         );
+        $assetQuery->where($assetQuery->expr()->in('id', $tagCondition->getSQL()));
+        $this->indexQueueRepository->enqueueBySelectQuery($assetQuery);
 
         //data objects
-        $this->indexQueueRepository->enqueueBySelectQuery(
-            sprintf("SELECT id, className, '%s', '%s', '%s', 0 FROM objects " . $tagCondition,
+        $dataObjectQuery = $this->indexQueueRepository->generateSelectQuery(
+            'objects',
+            [
                 ElementType::DATA_OBJECT->value,
                 IndexQueueOperation::UPDATE->value,
                 $this->timeService->getCurrentMillisecondTimestamp(),
-                $tag->getId(),
-                'object'
-            )
+                0,
+            ],
+            'id, className',
+            ['ctype' => ElementType::DATA_OBJECT->value, 'tagid' => $tag->getId()],
         );
+        $dataObjectQuery->where($dataObjectQuery->expr()->in('id', $tagCondition->getSQL()));
+        $this->indexQueueRepository->enqueueBySelectQuery($dataObjectQuery);
 
         return $this;
     }
@@ -78,15 +92,19 @@ final class EnqueueService implements EnqueueServiceInterface
     public function enqueueByClassDefinition(ClassDefinition $classDefinition): EnqueueService
     {
         $dataObjectTableName = 'object_' . $classDefinition->getId();
-
-        $this->indexQueueRepository->enqueueBySelectQuery(
-            sprintf("SELECT oo_id, '%s', '%s', '%s', '%s', 0 FROM %s",
+        $selectQuery = $this->indexQueueRepository->generateSelectQuery(
+            $dataObjectTableName,
+            [
                 ElementType::DATA_OBJECT->value,
                 $classDefinition->getName(),
                 IndexQueueOperation::UPDATE->value,
                 $this->timeService->getCurrentMillisecondTimestamp(),
-                $dataObjectTableName
-            )
+                0,
+            ],
+            'oo_id'
+        );
+        $this->indexQueueRepository->enqueueBySelectQuery(
+            $selectQuery
         );
 
         return $this;
@@ -98,15 +116,17 @@ final class EnqueueService implements EnqueueServiceInterface
     public function enqueueAssets(): EnqueueService
     {
         try {
-            $this->indexQueueRepository->enqueueBySelectQuery(
-                sprintf("SELECT id, '%s', '%s', '%s', '%s', 0 FROM %s",
+            $selectQuery = $this->indexQueueRepository->generateSelectQuery(
+                'assets',
+                [
                     ElementType::ASSET->value,
                     IndexName::ASSET->value,
                     IndexQueueOperation::UPDATE->value,
                     $this->timeService->getCurrentMillisecondTimestamp(),
-                    'assets'
-                )
+                    0,
+                ]
             );
+            $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
         } catch (Exception $e) {
             throw new EnqueueAssetsException(
                 $e->getMessage()
@@ -133,7 +153,7 @@ final class EnqueueService implements EnqueueServiceInterface
             );
 
         if ($subQuery) {
-            $this->indexQueueRepository->enqueueBySelectQuery($subQuery->getSQL(), $subQuery->getParameters());
+            $this->indexQueueRepository->enqueueBySelectQuery($subQuery);
         }
     }
 
