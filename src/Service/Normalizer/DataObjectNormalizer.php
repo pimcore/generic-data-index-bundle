@@ -22,7 +22,6 @@ use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Folder;
 use Pimcore\Model\DataObject\Localizedfield;
-use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 /**
@@ -118,7 +117,7 @@ final class DataObjectNormalizer implements NormalizerInterface
             foreach ($dataObject->getClass()->getFieldDefinitions() as $key => $fieldDefinition) {
 
                 $value = $dataObject->get($key);
-                if($fieldDefinition instanceof NormalizerInterface) {
+                if($fieldDefinition instanceof \Pimcore\Normalizer\NormalizerInterface) {
                     $value = $fieldDefinition->normalize($value);
                 }
 
@@ -129,7 +128,7 @@ final class DataObjectNormalizer implements NormalizerInterface
             Localizedfield::setGetFallbackValues($fallbackLanguagesBackup);
 
             return $result;
-        } catch (Exception|ExceptionInterface $e) {
+        } catch (Exception $e) {
             throw new DataObjectNormalizerException($e->getMessage());
         }
     }
