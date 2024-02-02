@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Repository;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Query\QueryBuilder as DBALQueryBuilder;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\ORM\NoResultException;
@@ -28,6 +29,10 @@ use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 final class IndexQueueRepository
 {
     use LoggerAwareTrait;
+
+   public const AND_OPERATOR = 'and';
+
+   public const OR_OPERATOR = 'or';
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
@@ -131,10 +136,39 @@ final class IndexQueueRepository
         return $this->denormalizer->denormalize($entry, IndexQueue::class);
     }
 
+    public function generateSelectQuery(
+        string $tableName,
+        array $fields,
+        string $idField = 'id',
+        array $params = [],
+        array $whereParameters = []
+    ): DBALQueryBuilder
+    {
+        $fields = $this->quoteParameters($fields);
+        array_unshift($fields, $idField);
+
+        $qb = $this->connection->createQueryBuilder()
+            ->select($fields)
+            ->from($tableName);
+
+        foreach ($whereParameters as $parameter) {
+            $qb->andWhere($parameter . ' = :' . $parameter);
+        }
+
+        $this->addWhereStatements($qb, $whereParameters);
+
+        if (!empty($params)) {
+            $params = $this->quoteParameters($params);
+            $qb->setParameters($params);
+        }
+
+        return $qb;
+    }
+
     /**
      * @throws \Doctrine\DBAL\Exception
      */
-    public function enqueueBySelectQuery(string $selectQuery, array $params = []): void
+    public function enqueueBySelectQuery(DBALQueryBuilder $queryBuilder): void
     {
         $sql = <<<SQL
             INSERT INTO 
@@ -147,9 +181,8 @@ final class IndexQueueRepository
                     dispatched = VALUES(dispatched)
         SQL;
 
-        $sql = sprintf($sql, IndexQueue::TABLE, $selectQuery);
-
-        $this->connection->executeQuery($sql, $params);
+        $sql = sprintf($sql, IndexQueue::TABLE, $queryBuilder->getSQL());
+        $this->connection->executeQuery($sql, $queryBuilder->getParameters());
     }
 
     /**
@@ -176,5 +209,32 @@ final class IndexQueueRepository
     {
         return $this->entityManager->getRepository(IndexQueue::class)
             ->createQueryBuilder($alias);
+    }
+
+    private function quoteParameters(array $parameters): array
+    {
+        return array_map(
+            function ($parameter) {
+                if (is_string($parameter)) {
+                    return $this->connection->quote($parameter);
+                }
+                return $parameter;
+            },
+            $parameters
+        );
+    }
+
+    private function addWhereStatements(DBALQueryBuilder $queryBuilder, array $whereParameters): DBALQueryBuilder
+    {
+        foreach ($whereParameters as $operator => $parameter) {
+            $predicate = $parameter . ' = :' . $parameter;
+            match (true) {
+                $operator === self::AND_OPERATOR => $queryBuilder->andWhere($predicate),
+                $operator === self::OR_OPERATOR => $queryBuilder->orWhere($predicate),
+                default => $queryBuilder->where($predicate),
+            };
+        }
+
+        return $queryBuilder;
     }
 }
