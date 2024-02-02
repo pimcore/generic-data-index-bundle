@@ -23,7 +23,9 @@ use Pimcore\HttpKernel\Bundle\DependentBundleInterface;
 use Pimcore\HttpKernel\BundleCollection\BundleCollection;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
-class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements PimcoreBundleAdminClassicInterface, DependentBundleInterface
+class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements
+    PimcoreBundleAdminClassicInterface,
+    DependentBundleInterface
 {
     use BundleAdminClassicTrait;
 
