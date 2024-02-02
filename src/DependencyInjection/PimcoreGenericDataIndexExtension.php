@@ -15,7 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection;
 
 use Exception;
 use InvalidArgumentException;
-use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Factory\OpenSearchClientFactory;
 use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\DispatchQueueMessagesHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Symfony\Component\Config\FileLocator;
@@ -73,12 +72,6 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $definition->setArgument('$indexSettings', $indexSettings['index_settings']);
         $definition->setArgument('$searchSettings', $indexSettings['search_settings']);
         $definition->setArgument('$systemFieldsSettings', $indexSettings['system_fields_settings']);
-
-        $definition = $container->getDefinition(OpenSearchClientFactory::class);
-        $definition->setArgument('$hosts', $indexSettings['client_params']['hosts']);
-        $definition->setArgument('$username', $indexSettings['client_params']['username']);
-        $definition->setArgument('$password', $indexSettings['client_params']['password']);
-        $definition->setArgument('$sslVerification', $indexSettings['client_params']['ssl_verification']);
 
         $definition = $container->getDefinition(DispatchQueueMessagesHandler::class);
         $definition->setArgument('$queueSettings', $indexSettings['queue_settings']);

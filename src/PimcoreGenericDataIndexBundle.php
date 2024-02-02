@@ -14,13 +14,16 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle;
 
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\SearchIndexFieldDefinitionPass;
+use Pimcore\Bundle\OpenSearchClientBundle\PimcoreOpenSearchClientBundle;
 use Pimcore\Extension\Bundle\AbstractPimcoreBundle;
 use Pimcore\Extension\Bundle\Installer\InstallerInterface;
 use Pimcore\Extension\Bundle\PimcoreBundleAdminClassicInterface;
 use Pimcore\Extension\Bundle\Traits\BundleAdminClassicTrait;
+use Pimcore\HttpKernel\Bundle\DependentBundleInterface;
+use Pimcore\HttpKernel\BundleCollection\BundleCollection;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
-class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements PimcoreBundleAdminClassicInterface
+class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements PimcoreBundleAdminClassicInterface, DependentBundleInterface
 {
     use BundleAdminClassicTrait;
 
@@ -39,5 +42,10 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements Pim
     {
         /** @var InstallerInterface|null */
         return $this->container->get(Installer::class);
+    }
+
+    public static function registerDependentBundles(BundleCollection $collection): void
+    {
+        $collection->addBundle(new PimcoreOpenSearchClientBundle());
     }
 }
