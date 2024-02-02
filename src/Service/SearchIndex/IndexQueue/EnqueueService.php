@@ -60,7 +60,7 @@ final class EnqueueService implements EnqueueServiceInterface
                 IndexName::ASSET->value,
                 IndexQueueOperation::UPDATE->value,
                 $this->timeService->getCurrentMillisecondTimestamp(),
-                0
+                0,
             ],
             'id',
             ['ctype' => ElementType::ASSET->value, 'tagid' => $tag->getId()],
@@ -76,7 +76,7 @@ final class EnqueueService implements EnqueueServiceInterface
                 ElementType::DATA_OBJECT->value,
                 IndexQueueOperation::UPDATE->value,
                 $this->timeService->getCurrentMillisecondTimestamp(),
-                0
+                0,
             ],
             'id',
             ['ctype' => ElementType::DATA_OBJECT->value, 'tagid' => $tag->getId()],
@@ -100,7 +100,7 @@ final class EnqueueService implements EnqueueServiceInterface
                 $classDefinition->getName(),
                 IndexQueueOperation::UPDATE->value,
                 $this->timeService->getCurrentMillisecondTimestamp(),
-                0
+                0,
             ],
             'oo_id'
         );
@@ -124,7 +124,7 @@ final class EnqueueService implements EnqueueServiceInterface
                     IndexName::ASSET->value,
                     IndexQueueOperation::UPDATE->value,
                     $this->timeService->getCurrentMillisecondTimestamp(),
-                    0
+                    0,
                 ]
             );
             $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);

@@ -30,9 +30,9 @@ final class IndexQueueRepository
 {
     use LoggerAwareTrait;
 
-   public const AND_OPERATOR = 'and';
+    public const AND_OPERATOR = 'and';
 
-   public const OR_OPERATOR = 'or';
+    public const OR_OPERATOR = 'or';
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
@@ -142,8 +142,7 @@ final class IndexQueueRepository
         string $idField = 'id',
         array $params = [],
         array $whereParameters = []
-    ): DBALQueryBuilder
-    {
+    ): DBALQueryBuilder {
         $fields = $this->quoteParameters($fields);
         array_unshift($fields, $idField);
 
@@ -218,6 +217,7 @@ final class IndexQueueRepository
                 if (is_string($parameter)) {
                     return $this->connection->quote($parameter);
                 }
+
                 return $parameter;
             },
             $parameters
