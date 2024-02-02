@@ -49,7 +49,7 @@ final class EnqueueService implements EnqueueServiceInterface
             [],
             'cid',
             [],
-            ['ctype', 'tagid' => IndexQueueRepository::AND_OPERATOR]
+            ['ctype', IndexQueueRepository::AND_OPERATOR => 'tagid']
         );
 
         //assets
@@ -72,13 +72,12 @@ final class EnqueueService implements EnqueueServiceInterface
         $dataObjectQuery = $this->indexQueueRepository->generateSelectQuery(
             'objects',
             [
-                'className',
                 ElementType::DATA_OBJECT->value,
                 IndexQueueOperation::UPDATE->value,
                 $this->timeService->getCurrentMillisecondTimestamp(),
                 0,
             ],
-            'id',
+            'id, className',
             ['ctype' => ElementType::DATA_OBJECT->value, 'tagid' => $tag->getId()],
         );
         $dataObjectQuery->where($dataObjectQuery->expr()->in('id', $tagCondition->getSQL()));

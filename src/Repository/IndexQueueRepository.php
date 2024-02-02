@@ -150,10 +150,6 @@ final class IndexQueueRepository
             ->select($fields)
             ->from($tableName);
 
-        foreach ($whereParameters as $parameter) {
-            $qb->andWhere($parameter . ' = :' . $parameter);
-        }
-
         $this->addWhereStatements($qb, $whereParameters);
 
         if (!empty($params)) {
