@@ -22,3 +22,6 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Pagination\PaginationInfoServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\Pagination\PaginationInfoService
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexStatsServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\IndexStatsService
