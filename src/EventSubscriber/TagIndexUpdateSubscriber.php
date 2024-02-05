@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Event\Model\TagEvent;
 use Pimcore\Event\TagEvents;
@@ -36,6 +37,7 @@ final class TagIndexUpdateSubscriber implements EventSubscriberInterface
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly IndexQueueServiceInterface $indexQueueService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
+        private readonly SynchronousProcessingServiceInterface $synchronousProcessing
     ) {
     }
 
@@ -76,7 +78,7 @@ final class TagIndexUpdateSubscriber implements EventSubscriberInterface
                 ->updateIndexQueue(
                     element: $element,
                     operation: IndexQueueOperation::UPDATE->value,
-                    doIndexElement: true
+                    processSynchronously: $this->synchronousProcessing->isEnabled()
                 )
                 ->commit();
 

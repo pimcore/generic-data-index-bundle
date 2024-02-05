@@ -34,26 +34,12 @@ final class IndexService implements IndexServiceInterface
 {
     use LoggerAwareTrait;
 
-    private bool $performIndexRefresh = false;
-
     public function __construct(
         private readonly AdapterServiceInterface $typeAdapterService,
         private readonly OpenSearchServiceInterface $openSearchService,
         private readonly BulkOperationServiceInterface $bulkOperationService,
         private readonly EventDispatcherInterface $eventDispatcher
     ) {
-    }
-
-    public function isPerformIndexRefresh(): bool
-    {
-        return $this->performIndexRefresh;
-    }
-
-    public function setPerformIndexRefresh(bool $performIndexRefresh): IndexService
-    {
-        $this->performIndexRefresh = $performIndexRefresh;
-
-        return $this;
     }
 
     /**
