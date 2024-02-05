@@ -33,8 +33,7 @@ final class BulkOperationService implements BulkOperationServiceInterface
     public function __construct(
         private readonly OpenSearchServiceInterface $openSearchService,
         private readonly SynchronousProcessingServiceInterface $synchronousProcessingService
-    )
-    {
+    ) {
     }
 
     public function addUpdate(
