@@ -34,8 +34,6 @@ final class IndexQueueService implements IndexQueueServiceInterface
 {
     use LoggerAwareTrait;
 
-    private bool $performIndexRefresh = false;
-
     public function __construct(
         private readonly IndexServiceInterface $indexService,
         private readonly PathServiceInterface $pathService,
