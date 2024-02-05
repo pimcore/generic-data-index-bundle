@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -41,6 +42,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         private readonly DataObjectIndexHandler $dataObjectMappingHandler,
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
+        private readonly SynchronousProcessingServiceInterface $synchronousProcessing
     ) {
     }
 
@@ -77,7 +79,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
             ->updateIndexQueue(
                 element: $event->getObject(),
                 operation: IndexQueueOperation::UPDATE->value,
-                doIndexElement: true
+                processSynchronously: $this->synchronousProcessing->isEnabled()
             )
             ->commit();
         $this->queueMessagesDispatcher->dispatchQueueMessages();
@@ -95,7 +97,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
             ->updateIndexQueue(
                 element: $event->getObject(),
                 operation: IndexQueueOperation::DELETE->value,
-                doIndexElement: true
+                processSynchronously: $this->synchronousProcessing->isEnabled()
             )
             ->commit();
     }

@@ -35,5 +35,5 @@ interface BulkOperationServiceInterface
     /**
      * @throws BulkOperationException
      */
-    public function commit(): void;
+    public function commit(?string $refreshIndex = null): void;
 }

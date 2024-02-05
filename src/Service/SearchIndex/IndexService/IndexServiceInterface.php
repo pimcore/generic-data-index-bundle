@@ -22,10 +22,6 @@ use Pimcore\Model\Element\ElementInterface;
  */
 interface IndexServiceInterface
 {
-    public function isPerformIndexRefresh(): bool;
-
-    public function setPerformIndexRefresh(bool $performIndexRefresh): IndexService;
-
     /**
      * @throws IndexDataException
      */

@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Event\AssetEvents;
 use Pimcore\Event\Model\AssetEvent;
@@ -30,6 +31,7 @@ final class AssetIndexUpdateSubscriber implements EventSubscriberInterface
         private readonly IndexQueueServiceInterface $indexQueueService,
         private readonly Installer $installer,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
+        private readonly SynchronousProcessingServiceInterface $synchronousProcessing
     ) {
     }
 
@@ -52,7 +54,7 @@ final class AssetIndexUpdateSubscriber implements EventSubscriberInterface
             ->updateIndexQueue(
                 element: $event->getAsset(),
                 operation: IndexQueueOperation::UPDATE->value,
-                doIndexElement: true
+                processSynchronously: $this->synchronousProcessing->isEnabled()
             )
             ->commit();
 
@@ -69,7 +71,7 @@ final class AssetIndexUpdateSubscriber implements EventSubscriberInterface
             ->updateIndexQueue(
                 element: $event->getAsset(),
                 operation: IndexQueueOperation::DELETE->value,
-                doIndexElement: true
+                processSynchronously: $this->synchronousProcessing->isEnabled()
             )
             ->commit();
 
