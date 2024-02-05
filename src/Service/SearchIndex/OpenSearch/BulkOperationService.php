@@ -17,7 +17,6 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\RefreshIndexMode;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\BulkOperationException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexModeException;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use RuntimeException;
 
@@ -31,8 +30,7 @@ final class BulkOperationService implements BulkOperationServiceInterface
     private array $bulkOperationData = [];
 
     public function __construct(
-        private readonly OpenSearchServiceInterface $openSearchService,
-        private readonly SynchronousProcessingServiceInterface $synchronousProcessingService
+        private readonly OpenSearchServiceInterface $openSearchService
     ) {
     }
 
