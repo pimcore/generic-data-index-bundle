@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Stats;
 
 final class IndexStatsIndex
@@ -9,8 +19,7 @@ final class IndexStatsIndex
         private readonly string $indexName,
         private readonly int $itemsCount,
         private readonly float $sizeInKb
-    )
-    {
+    ) {
     }
 
     public function getIndexName(): string
@@ -27,6 +36,4 @@ final class IndexStatsIndex
     {
         return $this->sizeInKb;
     }
-
-
 }
