@@ -179,6 +179,9 @@ final class OpenSearchService implements OpenSearchServiceInterface
         return $this->openSearchClient->indices()->existsAlias([
             'name' => $aliasName,
             'index' => $indexName,
+            'client' => [
+                'ignore' => [404],
+            ],
         ]);
     }
 
@@ -186,6 +189,9 @@ final class OpenSearchService implements OpenSearchServiceInterface
     {
         return $this->openSearchClient->indices()->exists([
             'index' => $indexName,
+            'client' => [
+                'ignore' => [404],
+            ],
         ]);
     }
 
@@ -197,12 +203,18 @@ final class OpenSearchService implements OpenSearchServiceInterface
         ]);
     }
 
-    public function getDocument(string $index, int $id): array
+    public function getDocument(string $index, int $id, bool $ignore404 = false): array
     {
         $params = [
             'index' => $index,
             'id' => $id,
         ];
+
+        if ($ignore404) {
+            $params['client'] = [
+                'ignore' => [404],
+            ];
+        }
 
         return $this->openSearchClient->get($params);
     }
