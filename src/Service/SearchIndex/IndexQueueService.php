@@ -34,8 +34,6 @@ final class IndexQueueService implements IndexQueueServiceInterface
 {
     use LoggerAwareTrait;
 
-    private bool $performIndexRefresh = false;
-
     public function __construct(
         private readonly IndexServiceInterface $indexService,
         private readonly PathServiceInterface $pathService,
@@ -49,18 +47,18 @@ final class IndexQueueService implements IndexQueueServiceInterface
     public function updateIndexQueue(
         ElementInterface $element,
         string $operation,
-        bool $doIndexElement = false
+        bool $processSynchronously = false
     ): IndexQueueService {
         try {
             $this->checkOperationValid($operation);
 
-            if ($doIndexElement) {
+            if ($processSynchronously) {
                 $this->doHandleIndexData($element, $operation);
             }
 
             $this->enqueueService->enqueueRelatedItemsOnUpdate(
                 element: $element,
-                includeElement: !$doIndexElement
+                includeElement: !$processSynchronously
             );
 
             if ($element instanceof Asset) {
@@ -112,16 +110,11 @@ final class IndexQueueService implements IndexQueueServiceInterface
         }
     }
 
-    public function commit(): IndexQueueService
+    public function commit(?string $refreshIndex = null): IndexQueueService
     {
-        $this->bulkOperationService->commit();
+        $this->bulkOperationService->commit($refreshIndex);
 
         return $this;
-    }
-
-    private function isPerformIndexRefresh(): bool
-    {
-        return $this->performIndexRefresh;
     }
 
     /**
@@ -129,10 +122,6 @@ final class IndexQueueService implements IndexQueueServiceInterface
      */
     private function doHandleIndexData(ElementInterface $element, string $operation): void
     {
-        $performIndexRefreshBackup = $this->indexService->isPerformIndexRefresh();
-
-        $this->indexService->setPerformIndexRefresh($this->isPerformIndexRefresh());
-
         switch ($operation) {
             case IndexQueueOperation::UPDATE->value:
                 $this->indexService->updateIndexData($element);
@@ -143,8 +132,6 @@ final class IndexQueueService implements IndexQueueServiceInterface
 
                 break;
         }
-
-        $this->indexService->setPerformIndexRefresh($performIndexRefreshBackup);
     }
 
     /**

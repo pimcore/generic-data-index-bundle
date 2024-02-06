@@ -7,7 +7,7 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService
         arguments:
-            $openSearchClient: '@pimcore.open_search_client.data_index'
+            $openSearchClient: '@generic-data-index.opensearch-client'
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationService
@@ -15,10 +15,13 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\PathService
         arguments:
-            $openSearchClient: '@pimcore.open_search_client.data_index'
+            $openSearchClient: '@generic-data-index.opensearch-client'
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Tree\AssetTreeServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\Tree\AssetTreeService
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Pagination\PaginationInfoServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\Pagination\PaginationInfoService
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexStatsServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\IndexStatsService

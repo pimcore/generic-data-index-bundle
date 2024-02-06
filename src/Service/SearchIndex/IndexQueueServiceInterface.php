@@ -24,7 +24,7 @@ interface IndexQueueServiceInterface
     public function updateIndexQueue(
         ElementInterface $element,
         string $operation,
-        bool $doIndexElement = false
+        bool $processSynchronously = false
     ): IndexQueueService;
 
     /**
@@ -32,5 +32,5 @@ interface IndexQueueServiceInterface
      */
     public function handleIndexQueueEntries(array $entries): void;
 
-    public function commit(): IndexQueueService;
+    public function commit(?string $refreshIndex = null): IndexQueueService;
 }

@@ -16,3 +16,12 @@ pimcore_generic_data_index:
             min_batch_size: 5
             max_batch_size: 400
 ```
+
+## Refreshing of the index
+By default, the index is refreshed after each bulk operation as the items are processed Asynchronously.
+If you want to perform index refresh immediately you can use enable synchronous processing by injecting the `SynchronousProcessingServiceInterface` and calling `enable()` method.
+
+Available methods:
+- `enable()`: enable synchronous processing
+- `disable()`: disable synchronous processing
+- `isEnabled()`: check if synchronous processing is enabled
