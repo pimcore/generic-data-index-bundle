@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
+use Pimcore\Model\DataObject\ClassDefinition\Data\AdvancedManyToManyObjectRelation;
 use Pimcore\Model\DataObject\ClassDefinition\Data\AdvancedManyToManyRelation;
 
 /**
@@ -26,8 +27,11 @@ final class AdvancedManyToManyRelationAdapter extends AbstractAdapter
     {
         $fieldDefinition = $this->getFieldDefinition();
 
-        if (!$fieldDefinition instanceof AdvancedManyToManyRelation) {
-            throw new InvalidArgumentException('FieldDefinition must be of type AdvancedManyToManyRelation');
+        if (!$fieldDefinition instanceof AdvancedManyToManyRelation &&
+            !$fieldDefinition instanceof AdvancedManyToManyObjectRelation) {
+            throw new InvalidArgumentException(
+                'FieldDefinition must be of type AdvancedManyToManyRelation or AdvancedManyToManyObjectRelation'
+            );
         }
 
         $columnDefinition = $this->getColumnDefinition($fieldDefinition->getColumns());
