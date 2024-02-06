@@ -58,7 +58,7 @@ final class AdvancedManyToManyRelationAdapterTest extends Unit
                             'type' => AttributeType::LONG,
                         ],
                         'type' => [
-                            'type' => AttributeType::TEXT,
+                            'type' => AttributeType::KEYWORD,
                         ],
                     ],
                 ],

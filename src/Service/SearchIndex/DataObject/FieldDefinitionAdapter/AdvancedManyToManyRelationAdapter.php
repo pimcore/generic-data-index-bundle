@@ -46,7 +46,7 @@ final class AdvancedManyToManyRelationAdapter extends AbstractAdapter
                             'type' => AttributeType::LONG,
                         ],
                         'type' => [
-                            'type' => AttributeType::TEXT,
+                            'type' => AttributeType::KEYWORD,
                         ],
                     ],
                 ],
