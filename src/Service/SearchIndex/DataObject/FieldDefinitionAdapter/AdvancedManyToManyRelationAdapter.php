@@ -7,10 +7,9 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
-
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
@@ -23,7 +22,6 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\AdvancedManyToManyRelation;
  */
 final class AdvancedManyToManyRelationAdapter extends AbstractAdapter
 {
-
     public function getOpenSearchMapping(): array
     {
         $fieldDefinition = $this->getFieldDefinition();
@@ -53,22 +51,23 @@ final class AdvancedManyToManyRelationAdapter extends AbstractAdapter
                     ],
                 ],
                 'data' => [
-                    'properties' => $columnDefinition
+                    'properties' => $columnDefinition,
                 ],
             ],
         ];
     }
 
-    private function getColumnDefinition(array $columns): array {
+    private function getColumnDefinition(array $columns): array
+    {
         $type = [];
         foreach ($columns as $column) {
             if (isset($column['type']) && isset($column['key'])) {
                 match ($column['type']) {
                     'number' => $type[$column['key']] = [
-                        'type' => AttributeType::LONG
+                        'type' => AttributeType::LONG,
                     ],
                     default => $type[$column['key']] = [
-                        'type' => AttributeType::KEYWORD
+                        'type' => AttributeType::KEYWORD,
                     ]
                 };
             }

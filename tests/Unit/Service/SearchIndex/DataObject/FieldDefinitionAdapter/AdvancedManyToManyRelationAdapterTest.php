@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
@@ -41,7 +41,7 @@ final class AdvancedManyToManyRelationAdapterTest extends Unit
                 'type' => 'select',
                 'key' => 'key2',
                 'position' => 1,
-            ],]);
+            ], ]);
         $adapter->setFieldDefinition($relation);
 
         $this->assertSame([
@@ -71,7 +71,7 @@ final class AdvancedManyToManyRelationAdapterTest extends Unit
                             'type' => AttributeType::KEYWORD,
                         ],
                     ],
-                    ]
+                    ],
                 ],
             ], $adapter->getOpenSearchMapping());
     }
