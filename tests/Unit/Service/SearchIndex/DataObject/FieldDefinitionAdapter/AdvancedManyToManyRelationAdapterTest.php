@@ -83,7 +83,9 @@ final class AdvancedManyToManyRelationAdapterTest extends Unit
         $relation = new Checkbox();
         $adapter->setFieldDefinition($relation);
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('FieldDefinition must be of type AdvancedManyToManyRelation');
+        $this->expectExceptionMessage(
+            'FieldDefinition must be of type AdvancedManyToManyRelation or AdvancedManyToManyObjectRelation'
+        );
         $adapter->getOpenSearchMapping();
     }
 }
