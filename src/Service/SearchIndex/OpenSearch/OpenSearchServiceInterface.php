@@ -42,7 +42,7 @@ interface OpenSearchServiceInterface
 
     public function deleteAlias(string $indexName, string $aliasName): array;
 
-    public function getDocument(string $index, int $id): array;
+    public function getDocument(string $index, int $id, bool $ignore404 = false): array;
 
     public function putMapping(array $params): array;
 

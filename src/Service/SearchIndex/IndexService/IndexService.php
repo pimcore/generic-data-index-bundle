@@ -52,11 +52,15 @@ final class IndexService implements IndexServiceInterface
             ->getAliasIndexNameByElement($element);
 
         try {
-            $indexDocument = $this->openSearchService->getDocument($indexName, $element->getId());
+            $indexDocument = $this->openSearchService->getDocument(
+                index: $indexName,
+                id: $element->getId(),
+                ignore404: true
+            );
             $originalChecksum =
                 $indexDocument['_source'][FieldCategory::SYSTEM_FIELDS->value][SystemField::CHECKSUM->value] ?? -1;
         } catch (Exception $e) {
-            $this->logger->debug($e->getMessage());
+            $this->logger->error($e->getMessage());
             $originalChecksum = -1;
         }
 
@@ -103,7 +107,7 @@ final class IndexService implements IndexServiceInterface
             $elementId
         );
 
-        $this->logger->info('Add deletion of item ID ' . $elementId . ' from ' . $indexName . ' index to bulk.');
+        $this->logger->notice('Add deletion of item ID ' . $elementId . ' from ' . $indexName . ' index to bulk.');
 
         return $this;
     }
