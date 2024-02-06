@@ -117,6 +117,11 @@ final class DataObjectNormalizer implements NormalizerInterface
             foreach ($dataObject->getClass()->getFieldDefinitions() as $key => $fieldDefinition) {
 
                 $value = $dataObject->get($key);
+
+                if($value instanceof Localizedfield) {
+                    $value->loadLazyData();
+                }
+
                 if($fieldDefinition instanceof \Pimcore\Normalizer\NormalizerInterface) {
                     $value = $fieldDefinition->normalize($value);
                 }
