@@ -61,7 +61,7 @@ final class AdvancedManyToManyRelationAdapter extends AbstractAdapter
     {
         $type = [];
         foreach ($columns as $column) {
-            if (isset($column['type']) && isset($column['key'])) {
+            if (isset($column['type'], $column['key'])) {
                 match ($column['type']) {
                     'number' => $type[$column['key']] = [
                         'type' => AttributeType::LONG,
