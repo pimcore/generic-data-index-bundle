@@ -76,6 +76,8 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $openSearchClientId = 'pimcore.open_search_client.' . $indexSettings['client_params']['client_name'];
         $container->setAlias('generic-data-index.opensearch-client', $openSearchClientId);
 
+        $container->setParameter('generic-data-index.index-prefix', $indexSettings['client_params']['index_prefix']);
+
         $definition = $container->getDefinition(DispatchQueueMessagesHandler::class);
         $definition->setArgument('$queueSettings', $indexSettings['queue_settings']);
     }
