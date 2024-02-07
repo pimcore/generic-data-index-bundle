@@ -23,8 +23,6 @@ use Symfony\Contracts\Service\Attribute\Required;
  */
 final class LocalizedFieldsAdapter extends AbstractAdapter
 {
-    private FieldDefinitionServiceInterface $fieldDefinitionService;
-
     private LanguageServiceInterface $languageService;
 
     public function getOpenSearchMapping(): array
@@ -41,7 +39,7 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
             $languageProperties = [];
 
             foreach ($childFieldDefinitions as $childFieldDefinition) {
-                $fieldDefinitionAdapter = $this->fieldDefinitionService->getFieldDefinitionAdapter(
+                $fieldDefinitionAdapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter(
                     $childFieldDefinition
                 );
                 if ($fieldDefinitionAdapter) {
@@ -57,12 +55,6 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         }
 
         return $mapping;
-    }
-
-    #[Required]
-    public function setFieldDefinitionService(FieldDefinitionServiceInterface $fieldDefinitionService): void
-    {
-        $this->fieldDefinitionService = $fieldDefinitionService;
     }
 
     #[Required]
