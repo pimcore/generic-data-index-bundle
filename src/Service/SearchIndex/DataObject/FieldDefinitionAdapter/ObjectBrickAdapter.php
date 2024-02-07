@@ -28,7 +28,7 @@ final class ObjectBrickAdapter extends AbstractAdapter
         $mapping = [];
         if (!$objectBricks instanceof Objectbricks) {
             throw new InvalidArgumentException(
-                'FieldDefinition must be of type Objectbricks'
+                'FieldDefinition must be of type Data\Objectbricks'
             );
         }
 
