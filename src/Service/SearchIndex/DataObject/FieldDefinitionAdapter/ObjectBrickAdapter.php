@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
+use InvalidArgumentException;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Objectbricks;
 use Pimcore\Model\DataObject\Objectbrick;
 
@@ -26,7 +27,7 @@ final class ObjectBrickAdapter extends AbstractAdapter
         $objectBricks = $this->getFieldDefinition();
         $mapping = [];
         if (!$objectBricks instanceof Objectbricks) {
-            throw new \InvalidArgumentException(
+            throw new InvalidArgumentException(
                 'FieldDefinition must be of type Objectbricks'
             );
         }
@@ -42,7 +43,7 @@ final class ObjectBrickAdapter extends AbstractAdapter
 
     private function getMappingForObjectBrick(string $objectBrickType): array
     {
-        $fieldDefinitions = Objectbrick\Definition::getByKey($objectBrickType)->getFieldDefinitions();
+        $fieldDefinitions = Objectbrick\Definition::getByKey($objectBrickType)?->getFieldDefinitions();
         $mapping = [];
         foreach ($fieldDefinitions as $fieldDefinition) {
             $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($fieldDefinition);
