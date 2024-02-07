@@ -59,3 +59,8 @@ services:
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "advancedManyToManyRelation" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "advancedManyToManyObjectRelation" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\ObjectBrickAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "objectbricks" }
