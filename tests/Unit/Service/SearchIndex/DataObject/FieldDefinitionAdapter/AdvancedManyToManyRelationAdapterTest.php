@@ -17,6 +17,7 @@ use Codeception\Test\Unit;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\AdvancedManyToManyRelationAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\AdvancedManyToManyRelation;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox;
@@ -29,7 +30,11 @@ final class AdvancedManyToManyRelationAdapterTest extends Unit
     public function testGetOpenSearchMapping(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $adapter = new AdvancedManyToManyRelationAdapter($searchIndexConfigServiceInterfaceMock);
+        $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
+        $adapter = new AdvancedManyToManyRelationAdapter(
+            $searchIndexConfigServiceInterfaceMock,
+            $fieldDefinitionServiceInterfaceMock
+        );
         $relation = new AdvancedManyToManyRelation();
         $relation->setColumns([
             [
@@ -79,7 +84,11 @@ final class AdvancedManyToManyRelationAdapterTest extends Unit
     public function testGetOpenSearchMappingException(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $adapter = new AdvancedManyToManyRelationAdapter($searchIndexConfigServiceInterfaceMock);
+        $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
+        $adapter = new AdvancedManyToManyRelationAdapter(
+            $searchIndexConfigServiceInterfaceMock,
+            $fieldDefinitionServiceInterfaceMock
+        );
         $relation = new Checkbox();
         $adapter->setFieldDefinition($relation);
         $this->expectException(InvalidArgumentException::class);
