@@ -89,6 +89,11 @@ final class Search
         return $this;
     }
 
+    public function getQueryList(): QueryList
+    {
+        return $this->queryList;
+    }
+
     public function toArray(): array
     {
         $result = [
