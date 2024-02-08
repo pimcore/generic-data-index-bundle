@@ -14,4 +14,5 @@ This bundle can be extended and customized to fit your specific needs, for examp
 - default implementation with OpenSearch
 
 ## Documentation Overview
-- [Installation](./doc/01_Installation.md)
+- [Installation](./doc/01_Installation/README.md)
+- [Configuration](./doc/02_Configuration/README.md)

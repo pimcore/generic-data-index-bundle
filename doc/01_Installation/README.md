@@ -32,3 +32,10 @@ return [
 ```bash
 bin/console pimcore:bundle:install PimcoreGenericDataIndexBundle
 ```
+
+## Commands after Installation
+
+It is recommended to run following command after installation (at least) once:
+```bash
+./bin/console generic-data-index:update:index -r
+```
