@@ -96,18 +96,11 @@ final class IndexService implements IndexServiceInterface
 
     public function deleteFromIndex(ElementInterface $element): IndexService
     {
-        $indexName = $this->typeAdapterService
-            ->getTypeAdapter($element)
-            ->getAliasIndexNameByElement($element);
+        $typeAdapter = $this->typeAdapterService->getTypeAdapter($element);
+        $typeAdapter->deleteElement($element);
 
-        $elementId = $element->getId();
-
-        $this->bulkOperationService->addDeletion(
-            $indexName,
-            $elementId
-        );
-
-        $this->logger->notice('Add deletion of item ID ' . $elementId . ' from ' . $indexName . ' index to bulk.');
+        $this->logger->notice('Deleting item with ID ' . $element->getId() . ' from ' .
+            $typeAdapter->getAliasIndexNameByElement($element) . ' index.');
 
         return $this;
     }

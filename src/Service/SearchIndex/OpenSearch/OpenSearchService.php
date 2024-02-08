@@ -16,9 +16,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch;
 use Exception;
 use JsonException;
 use OpenSearch\Client;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
+use Pimcore\Model\Element\ElementInterface;
 use Psr\Log\LogLevel;
 
 /**
@@ -26,6 +30,8 @@ use Psr\Log\LogLevel;
  */
 final class OpenSearchService implements OpenSearchServiceInterface
 {
+    public const CACHE_KEY = 'generic_bundle_delete_by_query_cache';
+
     private const INDEX_VERSION_ODD = 'odd';
 
     private const INDEX_VERSION_EVEN = 'even';
@@ -33,8 +39,9 @@ final class OpenSearchService implements OpenSearchServiceInterface
     use LoggerAwareTrait;
 
     public function __construct(
-        private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly Client $openSearchClient,
+        private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
+        private readonly RuntimeCacheResolverInterface $runtimeCacheResolver
     ) {
     }
 
@@ -248,6 +255,41 @@ final class OpenSearchService implements OpenSearchServiceInterface
         return $this->openSearchClient;
     }
 
+    public function deleteByQuery(
+        string $indexName,
+        ElementInterface $element
+    ): void
+    {
+        $elementPath = $element->getRealFullPath();
+        $this->handleDeleteByQueryCache($elementPath);
+        $params = [
+            'index' => $indexName,
+            'body' => [
+                'query' => [
+                    'term' => [
+                        FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::FULL_PATH->value
+                        => $elementPath
+                    ]
+                ]
+            ],
+            'ignore' => 404,
+        ];
+
+        $this->getOpenSearchClient()->deleteByQuery($params);
+    }
+
+    private function handleDeleteByQueryCache(string $elementPath): void
+    {
+        $cache = $this->runtimeCacheResolver->isRegistered(self::CACHE_KEY) ?
+            $this->runtimeCacheResolver->load(self::CACHE_KEY) :
+            ['paths' => [], 'lifetime_date' => 0];
+
+        if (!in_array($elementPath, $cache['paths'], true)) {
+            $cache['paths'][] = $elementPath;
+            $cache['lifetime_date'] = time();
+            $this->runtimeCacheResolver->save($cache, self::CACHE_KEY);
+        }
+    }
     /**
      * @throws SwitchIndexAliasException
      */

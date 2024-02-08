@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle;
 
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\SearchIndexFieldDefinitionPass;
 use Pimcore\Bundle\OpenSearchClientBundle\PimcoreOpenSearchClientBundle;
+use Pimcore\Bundle\StaticResolverBundle\PimcoreStaticResolverBundle;
 use Pimcore\Extension\Bundle\AbstractPimcoreBundle;
 use Pimcore\Extension\Bundle\Installer\InstallerInterface;
 use Pimcore\Extension\Bundle\PimcoreBundleAdminClassicInterface;
@@ -48,6 +49,7 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements
 
     public static function registerDependentBundles(BundleCollection $collection): void
     {
+        $collection->addBundle(new PimcoreStaticResolverBundle());
         $collection->addBundle(new PimcoreOpenSearchClientBundle());
     }
 }

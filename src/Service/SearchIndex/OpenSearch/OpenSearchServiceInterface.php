@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch;
 
 use Exception;
 use OpenSearch\Client;
+use Pimcore\Model\Element\ElementInterface;
 
 /**
  * @internal
@@ -49,4 +50,9 @@ interface OpenSearchServiceInterface
     public function countByAttributeValue(string $indexName, string $attribute, string $value): int;
 
     public function getOpenSearchClient(): Client;
+
+    public function deleteByQuery(
+        string $indexName,
+        ElementInterface $element
+    ): void;
 }

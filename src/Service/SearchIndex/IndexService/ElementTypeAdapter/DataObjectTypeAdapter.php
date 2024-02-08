@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer\DataObjectNormalizer;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchServiceInterface;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\Concrete;
@@ -33,14 +34,21 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
 {
     public function __construct(
-        private readonly DataObjectNormalizer $normalizer,
         private readonly Connection $dbConnection,
+        private readonly DataObjectNormalizer $normalizer,
+        private readonly OpenSearchServiceInterface $openSearchService
     ) {
     }
 
     public function supports(ElementInterface $element): bool
     {
         return $element instanceof AbstractObject;
+    }
+
+    public function deleteElement(ElementInterface $element): void
+    {
+        $indexName = $this->getAliasIndexNameByElement($element);
+        $this->openSearchService->deleteByQuery($indexName, $element);
     }
 
     /**
