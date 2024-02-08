@@ -277,6 +277,22 @@ final class OpenSearchService implements OpenSearchServiceInterface
         $this->getOpenSearchClient()->deleteByQuery($params);
     }
 
+    public function validateDeleteByQueryCache(): mixed
+    {
+        if (!$this->runtimeCacheResolver->isRegistered(self::CACHE_KEY)) {
+            return null;
+        }
+
+        $cache = $this->runtimeCacheResolver->load(self::CACHE_KEY);
+        if (time() - $cache['lifetime_date'] >= 10) {
+            $this->runtimeCacheResolver->save(['paths' => []], self::CACHE_KEY);
+
+            return null;
+        }
+
+        return $cache;
+    }
+
     private function handleDeleteByQueryCache(string $elementPath): void
     {
         $cache = $this->runtimeCacheResolver->isRegistered(self::CACHE_KEY) ?

@@ -30,4 +30,6 @@ interface IndexServiceInterface
     public function deleteFromIndex(ElementInterface $element): IndexService;
 
     public function updateAssetDependencies(Asset $asset): array;
+
+    public function validateDeleteByQueryCache(): mixed;
 }

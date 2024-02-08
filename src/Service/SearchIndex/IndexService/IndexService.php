@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
@@ -97,10 +98,21 @@ final class IndexService implements IndexServiceInterface
     public function deleteFromIndex(ElementInterface $element): IndexService
     {
         $typeAdapter = $this->typeAdapterService->getTypeAdapter($element);
-        $typeAdapter->deleteElement($element);
+        $indexName = $typeAdapter->getAliasIndexNameByElement($element);
 
-        $this->logger->notice('Deleting item with ID ' . $element->getId() . ' from ' .
-            $typeAdapter->getAliasIndexNameByElement($element) . ' index.');
+        match (true) {
+            $typeAdapter->getElementType() === ElementType::DATA_OBJECT->value =>
+            $this->openSearchService->deleteByQuery(
+                $indexName,
+                $element
+            ),
+            default => $this->bulkOperationService->addDeletion(
+                $indexName,
+                $element->getId()
+            )
+        };
+
+        $this->logger->notice('Deleting item with ID ' . $element->getId() . ' from ' . $indexName. ' index.');
 
         return $this;
     }
@@ -122,6 +134,11 @@ final class IndexService implements IndexServiceInterface
         }
 
         return $elementsToUpdate;
+    }
+
+    public function validateDeleteByQueryCache(): mixed
+    {
+        return $this->openSearchService->validateDeleteByQueryCache();
     }
 
     /**

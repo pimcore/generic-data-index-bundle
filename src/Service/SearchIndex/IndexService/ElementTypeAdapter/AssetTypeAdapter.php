@@ -19,7 +19,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\UpdateIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer\AssetNormalizer;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationServiceInterface;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -30,20 +29,13 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 final class AssetTypeAdapter extends AbstractElementTypeAdapter
 {
     public function __construct(
-        private readonly AssetNormalizer $normalizer,
-        private readonly BulkOperationServiceInterface $bulkOperationService
+        private readonly AssetNormalizer $normalizer
     ) {
     }
 
     public function supports(ElementInterface $element): bool
     {
         return $element instanceof Asset;
-    }
-
-    public function deleteElement(ElementInterface $element): void
-    {
-        $indexName = $this->getAliasIndexNameByElement($element);
-        $this->bulkOperationService->addDeletion($indexName, $element->getId());
     }
 
     public function getIndexNameShortByElement(ElementInterface $element): string

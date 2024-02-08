@@ -21,9 +21,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMe
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
-use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Event\DataObjectClassDefinitionEvents;
 use Pimcore\Event\DataObjectEvents;
 use Pimcore\Event\Model\DataObject\ClassDefinitionEvent;
@@ -45,7 +44,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
         private readonly SynchronousProcessingServiceInterface $synchronousProcessing,
-        private readonly RuntimeCacheResolverInterface $runtimeCacheResolver
+        private readonly IndexServiceInterface $indexService,
     ) {
     }
 
@@ -96,18 +95,16 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
             return;
         }
 
-        if ($this->runtimeCacheResolver->isRegistered(OpenSearchService::CACHE_KEY)) {
-            $cache = $this->handleCache();
-            if ($cache && !empty($cache['paths'])) {
-                return;
-            }
+        $cache = $this->indexService->validateDeleteByQueryCache();
+        if ($cache && !empty($cache['paths'])) {
+            return;
         }
 
         $this->indexQueueService
             ->updateIndexQueue(
                 element: $event->getObject(),
                 operation: IndexQueueOperation::DELETE->value,
-                processSynchronously: $this->synchronousProcessing->isEnabled()
+                processSynchronously: true
             )
             ->commit();
     }
@@ -166,18 +163,5 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         } catch (Exception $e) {
             $this->logger->error($e->getMessage());
         }
-    }
-
-    private function handleCache(): mixed
-    {
-        $cache = $this->runtimeCacheResolver->load(OpenSearchService::CACHE_KEY);
-
-        if (time() - $cache['lifetime_date'] >= 10) {
-            $this->runtimeCacheResolver->save([], OpenSearchService::CACHE_KEY);
-
-            return null;
-        }
-
-        return $cache;
     }
 }

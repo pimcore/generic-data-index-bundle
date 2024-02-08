@@ -13,15 +13,14 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter;
 
-use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Query\QueryBuilder;
 use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer\DataObjectNormalizer;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchServiceInterface;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\Concrete;
@@ -34,9 +33,8 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
 {
     public function __construct(
-        private readonly Connection $dbConnection,
         private readonly DataObjectNormalizer $normalizer,
-        private readonly OpenSearchServiceInterface $openSearchService
+        private readonly IndexQueueRepository $indexQueueRepository
     ) {
     }
 
@@ -45,19 +43,13 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         return $element instanceof AbstractObject;
     }
 
-    public function deleteElement(ElementInterface $element): void
-    {
-        $indexName = $this->getAliasIndexNameByElement($element);
-        $this->openSearchService->deleteByQuery($indexName, $element);
-    }
-
     /**
      * @throws Exception
      */
     public function getIndexNameShortByElement(ElementInterface $element): string
     {
         $classDefinition = null;
-        if($element instanceof Concrete) {
+        if ($element instanceof Concrete) {
             $classDefinition = $element->getClass();
         }
 
@@ -110,30 +102,12 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
             return null;
         }
 
-        $select = $this->dbConnection->createQueryBuilder()
-            ->select([
-                'id',
-                "'" . ElementType::DATA_OBJECT->value . "'",
-                'className',
-                "'$operation'",
-                "'$operationTime'",
-                '0',
-            ])
-            ->from('objects')
-            ->where('classId = :classId')
-            ->andWhere('path LIKE :path')
-            ->setParameters([
-                'classId' => $element->getClassId(),
-                'path' => $element->getRealFullPath() . '/%',
-            ]);
-
-        if ($includeElement) {
-            $select
-                ->orWhere('id = :id')
-                ->setParameter('id', $element->getId());
-        }
-
-        return $select;
+        return $this->indexQueueRepository->getRelatedItemsOnUpdateQuery(
+            $element,
+            $operation,
+            $operationTime,
+            $includeElement
+        );
     }
 
     public function getUpdateIndexDataEvent(

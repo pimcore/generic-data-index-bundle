@@ -30,8 +30,6 @@ abstract class AbstractElementTypeAdapter
 
     abstract public function supports(ElementInterface $element): bool;
 
-    abstract public function deleteElement(ElementInterface $element): void;
-
     public function getAliasIndexNameByElement(ElementInterface $element): string
     {
         return $this->searchIndexConfigService->getIndexName(

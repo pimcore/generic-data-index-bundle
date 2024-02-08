@@ -55,4 +55,6 @@ interface OpenSearchServiceInterface
         string $indexName,
         ElementInterface $element
     ): void;
+
+    public function validateDeleteByQueryCache(): mixed;
 }

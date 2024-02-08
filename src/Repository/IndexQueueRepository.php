@@ -21,8 +21,10 @@ use Doctrine\ORM\NoResultException;
 use Doctrine\ORM\QueryBuilder;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Pimcore\Model\DataObject\Concrete;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
@@ -198,6 +200,38 @@ final class IndexQueueRepository
         );
 
         return $dispatchId;
+    }
+
+    public function getRelatedItemsOnUpdateQuery(
+        Concrete $element,
+        string $operation,
+        int $operationTime,
+        bool $includeElement = false
+    ): ?DBALQueryBuilder {
+        $select = $this->connection->createQueryBuilder()
+            ->select([
+                'id',
+                "'" . ElementType::DATA_OBJECT->value . "'",
+                'className',
+                "'$operation'",
+                "'$operationTime'",
+                '0',
+            ])
+            ->from('objects')
+            ->where('classId = :classId')
+            ->andWhere('path LIKE :path')
+            ->setParameters([
+                'classId' => $element->getClassId(),
+                'path' => $element->getRealFullPath() . '/%',
+            ]);
+
+        if ($includeElement) {
+            $select
+                ->orWhere('id = :id')
+                ->setParameter('id', $element->getId());
+        }
+
+        return $select;
     }
 
     private function createQueryBuilder(string $alias): QueryBuilder
