@@ -258,8 +258,7 @@ final class OpenSearchService implements OpenSearchServiceInterface
     public function deleteByQuery(
         string $indexName,
         ElementInterface $element
-    ): void
-    {
+    ): void {
         $elementPath = $element->getRealFullPath();
         $this->handleDeleteByQueryCache($elementPath);
         $params = [
@@ -268,9 +267,9 @@ final class OpenSearchService implements OpenSearchServiceInterface
                 'query' => [
                     'term' => [
                         FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::FULL_PATH->value
-                        => $elementPath
-                    ]
-                ]
+                        => $elementPath,
+                    ],
+                ],
             ],
             'ignore' => 404,
         ];
@@ -290,6 +289,7 @@ final class OpenSearchService implements OpenSearchServiceInterface
             $this->runtimeCacheResolver->save($cache, self::CACHE_KEY);
         }
     }
+
     /**
      * @throws SwitchIndexAliasException
      */
