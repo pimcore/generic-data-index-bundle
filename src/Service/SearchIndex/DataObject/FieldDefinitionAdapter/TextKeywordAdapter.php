@@ -29,7 +29,7 @@ final class TextKeywordAdapter extends AbstractAdapter
             'fields' => array_merge(
                 $searchAnalyzerAttributes[AttributeType::TEXT->value]['fields'] ?? [],
                 [
-                    'raw' => [
+                    'keyword' => [
                         'type' => AttributeType::KEYWORD->value,
                     ],
                 ]
