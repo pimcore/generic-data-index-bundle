@@ -4,7 +4,7 @@ It is important to index all assets and data object in Pimcore in order to be ab
 
 ## Define Index Prefix
 
-To avoid duplicate names or index interferences in OpenSearch, it is necessary to define an index name prefix, which is added to all OpenSearch indices created by Generic Data Index. 
+To avoid duplicate names or index interferences in your search engine, it is necessary to define an index name prefix, which is added to all indices created by Generic Data Index. 
 Default one is `pimcore_`.
 
 This can be done by defining following configuration:
@@ -60,7 +60,7 @@ The indexing queue considers the following options:
 Sample configuration:
 
 ```yaml
-your_bundle:
+pimcore_generic_data_index:
     index_service:
         queue_settings:
             worker_count: 1
