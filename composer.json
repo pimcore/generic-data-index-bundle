@@ -21,6 +21,7 @@
     "pimcore/enterprise-subscription-tools": "^1.3",
     "pimcore/pimcore": "^11.1",
     "pimcore/opensearch-client": "^1.x-dev",
+    "pimcore/static-resolver-bundle": "^1.2",
     "doctrine/orm": "^2.17.2",
     "symfony/scheduler": "^6.4",
     "symfony/messenger": "^6.4"
