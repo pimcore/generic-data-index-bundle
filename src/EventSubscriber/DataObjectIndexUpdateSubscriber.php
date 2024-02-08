@@ -104,7 +104,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
             ->updateIndexQueue(
                 element: $event->getObject(),
                 operation: IndexQueueOperation::DELETE->value,
-                processSynchronously: true
+                processSynchronously: $this->synchronousProcessing->isEnabled()
             )
             ->commit();
     }

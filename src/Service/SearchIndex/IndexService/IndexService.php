@@ -99,6 +99,7 @@ final class IndexService implements IndexServiceInterface
     {
         $typeAdapter = $this->typeAdapterService->getTypeAdapter($element);
         $indexName = $typeAdapter->getAliasIndexNameByElement($element);
+        $elementId = $element->getId();
 
         match (true) {
             $typeAdapter->getElementType() === ElementType::DATA_OBJECT->value =>
@@ -108,11 +109,11 @@ final class IndexService implements IndexServiceInterface
             ),
             default => $this->bulkOperationService->addDeletion(
                 $indexName,
-                $element->getId()
+                $elementId
             )
         };
 
-        $this->logger->notice('Deleting item with ID ' . $element->getId() . ' from ' . $indexName. ' index.');
+        $this->logger->notice('Deleting item with ID ' . $elementId . ' from ' . $indexName. ' index.');
 
         return $this;
     }
