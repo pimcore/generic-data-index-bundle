@@ -77,7 +77,12 @@ final class AssetTypeAdapter extends AbstractElementTypeAdapter
         return new UpdateIndexDataEvent($element, $customFields);
     }
 
-    public function getRelatedItemsOnUpdateQuery(ElementInterface $element, string $operation, int $operationTime, bool $includeElement = false): ?QueryBuilder
+    public function getRelatedItemsOnUpdateQuery(
+        ElementInterface $element,
+        string $operation,
+        int $operationTime,
+        bool $includeElement = false
+    ): ?QueryBuilder
     {
         return $this->dbConnection->createQueryBuilder()
             ->select([
