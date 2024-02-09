@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter;
 
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Query\QueryBuilder;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
@@ -30,6 +32,7 @@ final class AssetTypeAdapter extends AbstractElementTypeAdapter
 {
     public function __construct(
         private readonly AssetNormalizer $normalizer,
+        private readonly Connection $dbConnection,
     ) {
     }
 
@@ -72,5 +75,24 @@ final class AssetTypeAdapter extends AbstractElementTypeAdapter
         }
 
         return new UpdateIndexDataEvent($element, $customFields);
+    }
+
+    public function getRelatedItemsOnUpdateQuery(
+        ElementInterface $element,
+        string $operation,
+        int $operationTime,
+        bool $includeElement = false
+    ): ?QueryBuilder {
+        return $this->dbConnection->createQueryBuilder()
+            ->select([
+                $element->getId(),
+                "'" . ElementType::ASSET->value . "'",
+                "'" . IndexName::ASSET->value . "'",
+                "'$operation'",
+                "'$operationTime'",
+                '0',
+            ])
+            ->from('DUAL') // just a dummy query to fit into the query builder interface
+            ->setMaxResults(1);
     }
 }
