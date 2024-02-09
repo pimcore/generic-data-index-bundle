@@ -91,6 +91,4 @@ final class AssetTypeAdapter extends AbstractElementTypeAdapter
             ->from('DUAL') // just a dummy query to fit into the query builder interface
             ->setMaxResults(1);
     }
-
-
 }
