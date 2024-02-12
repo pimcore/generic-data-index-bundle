@@ -22,12 +22,11 @@ use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Folder;
 use Pimcore\Model\DataObject\Localizedfield;
-use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 /**
  * @internal
  */
-final class DataObjectNormalizer implements NormalizerInterface
+final class DataObjectNormalizer extends \Pimcore\Serializer\Normalizer\DataObjectNormalizer
 {
     use ElementNormalizerTrait;
 
@@ -51,11 +50,6 @@ final class DataObjectNormalizer implements NormalizerInterface
         return [];
     }
 
-    public function supportsNormalization(mixed $data, string $format = null): bool
-    {
-        return $data instanceof AbstractObject;
-    }
-
     private function normalizeFolder(Folder $folder): array
     {
         return [
@@ -77,26 +71,30 @@ final class DataObjectNormalizer implements NormalizerInterface
 
     private function normalizeSystemFields(AbstractObject $dataObject): array
     {
-        $result = [
-            SystemField::ID->value => $dataObject->getId(),
-            SystemField::PARENT_ID->value => $dataObject->getParentId(),
-            SystemField::CREATION_DATE->value => $this->formatTimestamp($dataObject->getCreationDate()),
-            SystemField::MODIFICATION_DATE->value => $this->formatTimestamp($dataObject->getModificationDate()),
-            SystemField::TYPE->value => $dataObject->getType(),
-            SystemField::KEY->value => $dataObject->getKey(),
-            SystemField::PATH->value => $dataObject->getPath(),
-            SystemField::FULL_PATH->value => $dataObject->getRealFullPath(),
-            SystemField::PATH_LEVELS->value => $this->extractPathLevels($dataObject),
-            SystemField::TAGS->value => $this->extractTagIds($dataObject),
-            SystemField::USER_OWNER->value => $dataObject->getUserOwner(),
-        ];
+        $generalAttributes = $this->normalizeGeneralAttributes($dataObject);
 
-        if ($dataObject instanceof Concrete) {
-            $result = array_merge($result, [
-                SystemField::CLASS_NAME->value => $dataObject->getClassName(),
-                SystemField::PUBLISHED->value => $dataObject->getPublished(),
-            ]);
+        $result = [];
+
+        foreach ([
+            SystemField::ID->value,
+            SystemField::PARENT_ID->value,
+            SystemField::CREATION_DATE->value,
+            SystemField::MODIFICATION_DATE->value,
+            SystemField::TYPE->value,
+            SystemField::KEY->value,
+            SystemField::PATH->value,
+            SystemField::FULL_PATH->value,
+            SystemField::USER_OWNER->value,
+            SystemField::CLASS_NAME->value,
+            SystemField::PUBLISHED->value,
+        ] as $field) {
+            if (isset($generalAttributes[$field])) {
+                $result[$field] = $generalAttributes[$field];
+            }
         }
+
+        $result[SystemField::PATH_LEVELS->value] = $this->extractPathLevels($dataObject);
+        $result[SystemField::TAGS->value] = $this->extractTagIds($dataObject);
 
         return $result;
     }
@@ -112,22 +110,7 @@ final class DataObjectNormalizer implements NormalizerInterface
             AbstractObject::setGetInheritedValues(true);
             Localizedfield::setGetFallbackValues(true);
 
-            $result = [];
-
-            foreach ($dataObject->getClass()->getFieldDefinitions() as $key => $fieldDefinition) {
-
-                $value = $dataObject->get($key);
-
-                if($value instanceof Localizedfield) {
-                    $value->loadLazyData();
-                }
-
-                if($fieldDefinition instanceof \Pimcore\Normalizer\NormalizerInterface) {
-                    $value = $fieldDefinition->normalize($value);
-                }
-
-                $result[$key] = $value;
-            }
+            $result = $this->normalizeFieldDefinitions($dataObject);
 
             AbstractObject::setGetInheritedValues($inheritedValuesBackup);
             Localizedfield::setGetFallbackValues($fallbackLanguagesBackup);
