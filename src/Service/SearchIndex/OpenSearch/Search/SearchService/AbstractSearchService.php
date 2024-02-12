@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\SearchService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ValidationFailedException;
@@ -16,8 +26,8 @@ use Symfony\Contracts\Service\Attribute\Required;
  */
 abstract class AbstractSearchService implements SearchServiceInterface
 {
-
     protected ValidatorInterface $validator;
+
     protected PaginationInfoServiceInterface $paginationInfoService;
 
     /**
@@ -39,8 +49,6 @@ abstract class AbstractSearchService implements SearchServiceInterface
         return $this;
     }
 
-
-
     protected function createPaginatedSearch(int $page, int $pageSize): Search
     {
         return new Search(
@@ -53,6 +61,7 @@ abstract class AbstractSearchService implements SearchServiceInterface
     public function setValidator(ValidatorInterface $validator): AbstractSearchService
     {
         $this->validator = $validator;
+
         return $this;
     }
 
@@ -60,8 +69,7 @@ abstract class AbstractSearchService implements SearchServiceInterface
     public function setPaginationInfoService(PaginationInfoServiceInterface $paginationInfoService): AbstractSearchService
     {
         $this->paginationInfoService = $paginationInfoService;
+
         return $this;
     }
-
-
 }

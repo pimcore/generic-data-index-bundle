@@ -1,11 +1,20 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\CompilerPassTag;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\ModifierService\SearchModifierServiceInterface;
@@ -89,12 +98,11 @@ class SearchModifierHandlerPass implements CompilerPassInterface
             throw new RuntimeException(sprintf('Invalid handler service "%s": argument "$%s" of method "%s::%s()" must have a type-hint on SearchModifierContextInterface.', $serviceId, $parameters[1]->getName(), $handlerClass->getName(), $methodName));
         }
 
-//        try ($parameters[0]->getType()->getTypes()) {
-//            throw new RuntimeException(sprintf('Invalid handler service "%s": argument "$%s" of method "%s::%s()" must have a type-hint corresponding to the search modifier model class it handles.', $serviceId, $parameters[0]->getName(), $handlerClass->getName(), $methodName));
-//        } catch (\ReflectionException) {
-//            // noop
-//        }
-
+        //        try ($parameters[0]->getType()->getTypes()) {
+        //            throw new RuntimeException(sprintf('Invalid handler service "%s": argument "$%s" of method "%s::%s()" must have a type-hint corresponding to the search modifier model class it handles.', $serviceId, $parameters[0]->getName(), $handlerClass->getName(), $methodName));
+        //        } catch (\ReflectionException) {
+        //            // noop
+        //        }
 
         if ($searchModifierType instanceof ReflectionUnionType) {
             $types = [];
@@ -125,14 +133,14 @@ class SearchModifierHandlerPass implements CompilerPassInterface
         ReflectionNamedType|ReflectionUnionType|null $type,
         string $classOrInterface,
         bool $interfaceAllowed = false
-    ): bool
-    {
+    ): bool {
         try {
             $searchModifierValid = $type instanceof ReflectionNamedType
                 && (
                     ($interfaceAllowed && $classOrInterface === $type->getName())
                     || in_array($classOrInterface, class_implements($type->getName()), true)
                 );
+
             //@todo check for ReflectionUnionType if !$searchModifierValid
             return $searchModifierValid;
         } catch(Exception $e) {

@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
@@ -16,6 +26,7 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
     public function denormalize(mixed $data, string $type, string $format = null, array $context = []): AssetSearchResultItem
     {
         $systemFields = $data[FieldCategory::SYSTEM_FIELDS->value];
+
         return new AssetSearchResultItem(
             id: $systemFields[SystemField::ID->value],
             parentId: $systemFields[SystemField::PARENT_ID->value],
@@ -30,7 +41,7 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
             modificationDate: strtotime($systemFields[SystemField::MODIFICATION_DATE->value]),
             lock: $systemFields[SystemField::LOCKED->value],
             isLocked: $systemFields[SystemField::IS_LOCKED->value],
-           # metaData: $this->denormalizeMetadata($data[FieldCategory::STANDARD_FIELDS->value]),
+            // metaData: $this->denormalizeMetadata($data[FieldCategory::STANDARD_FIELDS->value]),
             children: false,
             searchIndexData: $data
         );

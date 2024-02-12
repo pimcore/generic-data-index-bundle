@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\SearchService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
@@ -19,8 +29,7 @@ final class AssetSearchService extends AbstractSearchService implements AssetSea
         private readonly AssetTypeAdapter $assetTypeAdapter,
         private readonly SearchModifierServiceInterface $searchModifierService,
         private readonly AssetSearchResultDenormalizer $denormalizer,
-    )
-    {
+    ) {
 
     }
 
@@ -61,6 +70,7 @@ final class AssetSearchService extends AbstractSearchService implements AssetSea
 
     /**
      * @param array $hits
+     *
      * @return AssetSearchResultItem[]
      */
     private function hydrateSearchResultHits(array $hits): array

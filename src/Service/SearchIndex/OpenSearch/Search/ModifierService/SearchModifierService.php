@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\ModifierService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContext;
@@ -27,8 +37,7 @@ final class SearchModifierService implements SearchModifierServiceInterface
         string $modifierClass,
         object $searchModifierHandlerClass,
         string $method
-    ): void
-    {
+    ): void {
         $this->searchModifierHandlers[$modifierClass] = $this->searchModifierHandlers[$modifierClass] ?? [];
         $this->searchModifierHandlers[$modifierClass][] = [
             'class' => $searchModifierHandlerClass,
@@ -39,8 +48,7 @@ final class SearchModifierService implements SearchModifierServiceInterface
     public function applyModifier(
         SearchModifierInterface $modifier,
         SearchModifierContextInterface $modifierContext
-    ): void
-    {
+    ): void {
         foreach ($this->searchModifierHandlers as $modifierClass => $handlers) {
             if ($modifier instanceof $modifierClass) {
                 foreach ($handlers as $handler) {
@@ -62,8 +70,7 @@ final class SearchModifierService implements SearchModifierServiceInterface
         SearchServiceInterface $searchService,
         SearchInterface $search,
         Search $openSearchSearch
-    ): void
-    {
+    ): void {
         $context = new SearchModifierContext($openSearchSearch, $searchService);
 
         foreach ($search->getModifiers() as $modifier) {

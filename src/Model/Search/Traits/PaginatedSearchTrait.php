@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Traits;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
@@ -10,6 +20,7 @@ trait PaginatedSearchTrait
 {
     #[Assert\Positive]
     private int $page = 1;
+
     #[Assert\Positive]
     private int $pageSize = PaginatedSearchInterface::DEFAULT_PAGE_SIZE;
 
@@ -21,6 +32,7 @@ trait PaginatedSearchTrait
     public function setPage(int $page): self
     {
         $this->page = $page;
+
         return $this;
     }
 
@@ -32,6 +44,7 @@ trait PaginatedSearchTrait
     public function setPageSize(int $pageSize): self
     {
         $this->pageSize = $pageSize;
+
         return $this;
     }
 }
