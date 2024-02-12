@@ -95,6 +95,12 @@ pimcore_generic_data_index:
           type: keyword
         userOwner:
           type: integer
+        userModification:
+          type: integer
+        lock:
+          type: keyword
+        isLocked:
+          type: boolean
       data_object:
         published:
           type: boolean

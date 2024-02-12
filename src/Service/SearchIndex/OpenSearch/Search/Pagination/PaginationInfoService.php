@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\Pagination;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Paging\PaginationInfo;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Pagination\PaginationInfoServiceInterface;
 
@@ -27,7 +28,12 @@ final class PaginationInfoService implements PaginationInfoServiceInterface
             totalItems: $searchResult['total']['value'],
             page: $page,
             pageSize: $pageSize,
-            totalPages: (int)ceil($searchResult['total']['value'] / $pageSize)
+            totalPages: $pageSize > 0 ? (int)ceil($searchResult['total']['value'] / $pageSize) : 0
         );
+    }
+
+    public function calculateFrom(int $page, int $pageSize): int
+    {
+        return $pageSize * ($page - 1);
     }
 }

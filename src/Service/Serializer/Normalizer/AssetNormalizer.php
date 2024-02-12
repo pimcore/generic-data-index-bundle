@@ -11,7 +11,7 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
@@ -86,6 +86,9 @@ final class AssetNormalizer implements NormalizerInterface
             SystemField::TAGS->value => $this->extractTagIds($asset),
             SystemField::MIME_TYPE->value => $asset->getMimeType(),
             SystemField::USER_OWNER->value => $asset->getUserOwner(),
+            SystemField::USER_MODIFICATION->value => $asset->getUserModification(),
+            SystemField::LOCKED->value => $asset->getLocked(),
+            SystemField::IS_LOCKED->value => $asset->isLocked(),
             SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
                 $this->workflowService->hasWorkflowWithPermissions($asset),
             SystemField::FILE_SIZE->value => $asset->getFileSize(),
@@ -102,7 +105,10 @@ final class AssetNormalizer implements NormalizerInterface
                 $language = $metadata['language'] ?? null;
                 $language = $language ?: self::NOT_LOCALIZED_KEY;
                 $result[$language] = $result[$language] ?? [];
-                $result[$language][$metadata['name']] = $this->transformMetadata($data);
+                $result[$language][$metadata['name']] = [
+                    'type' => $metadata['type'],
+                    'data' => $this->transformMetadata($data),
+                ];
             }
         }
 

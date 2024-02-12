@@ -25,7 +25,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Pagination\
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Tree\AssetTreeServiceInterface;
 
 /**
- * @internal
+ * @deprecated
  */
 final class AssetTreeService implements AssetTreeServiceInterface
 {

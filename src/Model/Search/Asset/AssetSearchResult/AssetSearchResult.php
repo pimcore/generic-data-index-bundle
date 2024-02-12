@@ -11,17 +11,14 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Tree;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Paging\PaginationInfo;
 
-/**
- * @deprecated
- */
-final class AssetTreeItemList
+final class AssetSearchResult
 {
     public function __construct(
-        /** @var AssetTreeItem[] */
+        /** @var AssetSearchResultItem[] */
         private readonly array $items,
         private readonly PaginationInfo $pagination,
     ) {

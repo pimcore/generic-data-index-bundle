@@ -15,6 +15,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Tree;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Tree\AssetTreeItemList;
 
+/**
+ * @deprecated
+ */
 interface AssetTreeServiceInterface
 {
     public function fetchTreeItems(int $parentId = 1, int $page = 1, int $pageSize = 50): AssetTreeItemList;
