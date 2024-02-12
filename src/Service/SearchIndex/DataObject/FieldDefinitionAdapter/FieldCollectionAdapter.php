@@ -11,7 +11,6 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 use Exception;
@@ -24,7 +23,6 @@ use Pimcore\Model\DataObject\Fieldcollection\Definition as FieldCollectionDefini
  */
 final class FieldCollectionAdapter extends AbstractAdapter
 {
-
     /**
      * @throws Exception
      */
@@ -58,7 +56,7 @@ final class FieldCollectionAdapter extends AbstractAdapter
 
         return [
                 'type' => 'nested',
-                'properties' => $mapping
+                'properties' => $mapping,
             ];
     }
 }
