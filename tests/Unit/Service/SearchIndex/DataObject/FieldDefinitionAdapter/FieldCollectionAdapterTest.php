@@ -26,13 +26,12 @@ use Pimcore\Model\DataObject\Fieldcollection;
 
 class FieldCollectionAdapterTest extends Unit
 {
-
     public function testOpenSearchMapping(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
         $definitionResolverMock = $this->makeEmpty(DefinitionResolverInterface::class, [
-            'getByKey' => $this->makeEmpty(Fieldcollection::class)
+            'getByKey' => $this->makeEmpty(Fieldcollection::class),
         ]);
         $adapter = new FieldCollectionAdapter(
             $searchIndexConfigServiceInterfaceMock,
@@ -50,11 +49,11 @@ class FieldCollectionAdapterTest extends Unit
                 'properties' => [
                     'type' => [
                         'type' => AttributeType::TEXT,
-                    ]
+                    ],
                 ],
             ], $mapping
         );
-        
+
     }
 
     public function testExceptionIsThrownWhenFieldDefinitionIsNotSet(): void

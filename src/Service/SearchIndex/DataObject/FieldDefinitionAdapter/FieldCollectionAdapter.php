@@ -26,6 +26,7 @@ use Symfony\Contracts\Service\Attribute\Required;
 final class FieldCollectionAdapter extends AbstractAdapter
 {
     private DefinitionResolverInterface $fieldCollectionDefinitionResolver;
+
     /**
      * @throws Exception
      */
