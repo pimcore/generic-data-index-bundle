@@ -41,7 +41,7 @@ class FieldCollectionAdapterTest extends Unit
         $fieldCollection = new Fieldcollections();
         $fieldCollection->setAllowedTypes(['my-type']);
         $adapter->setFieldDefinition($fieldCollection);
-        $adapter->setFieldCollectionDefinitionResolver($definitionResolverMock);
+        $adapter->setFieldCollectionDefinition($definitionResolverMock);
         $mapping = $adapter->getOpenSearchMapping();
 
         $this->assertSame([

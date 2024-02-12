@@ -25,7 +25,7 @@ use Symfony\Contracts\Service\Attribute\Required;
  */
 final class FieldCollectionAdapter extends AbstractAdapter
 {
-    private DefinitionResolverInterface $fieldCollectionDefinitionResolver;
+    private DefinitionResolverInterface $fieldCollectionDefinition;
 
     /**
      * @throws Exception
@@ -41,7 +41,7 @@ final class FieldCollectionAdapter extends AbstractAdapter
         $allowedTypes = $fieldDefinition->getAllowedTypes();
 
         foreach ($allowedTypes as $allowedType) {
-            $fieldCollectionDefinition = $this->fieldCollectionDefinitionResolver->getByKey($allowedType);
+            $fieldCollectionDefinition = $this->fieldCollectionDefinition->getByKey($allowedType);
             if (!$fieldCollectionDefinition) {
                 continue;
             }
@@ -66,8 +66,8 @@ final class FieldCollectionAdapter extends AbstractAdapter
     }
 
     #[Required]
-    public function setFieldCollectionDefinitionResolver(DefinitionResolverInterface $definitionResolver): void
+    public function setFieldCollectionDefinition(DefinitionResolverInterface $definitionResolver): void
     {
-        $this->fieldCollectionDefinitionResolver = $definitionResolver;
+        $this->fieldCollectionDefinition = $definitionResolver;
     }
 }
