@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 use Exception;
+use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Fieldcollections;
 use Pimcore\Model\DataObject\Fieldcollection\Definition as FieldCollectionDefinition;
@@ -30,7 +31,7 @@ final class FieldCollectionAdapter extends AbstractAdapter
     {
         $fieldDefinition = $this->getFieldDefinition();
         if (!$fieldDefinition instanceof Fieldcollections) {
-            throw new \InvalidArgumentException('FieldDefinition must be of type Fieldcollections');
+            throw new InvalidArgumentException('FieldDefinition must be of type Fieldcollections');
         }
 
         $mapping = [];
@@ -42,7 +43,8 @@ final class FieldCollectionAdapter extends AbstractAdapter
                 continue;
             }
             foreach ($fieldCollectionDefinition->getFieldDefinitions() as $fieldDefinition) {
-                $fieldDefinitionAdapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($fieldDefinition);
+                $fieldDefinitionAdapter = $this->getFieldDefinitionService()
+                    ->getFieldDefinitionAdapter($fieldDefinition);
                 if ($fieldDefinitionAdapter) {
                     $mapping[$fieldDefinition->getName()] = $fieldDefinitionAdapter->getOpenSearchMapping();
                 }
