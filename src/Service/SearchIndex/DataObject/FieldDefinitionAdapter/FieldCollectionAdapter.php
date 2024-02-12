@@ -16,14 +16,16 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
+use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\FieldCollection\DefinitionResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Fieldcollections;
-use Pimcore\Model\DataObject\Fieldcollection\Definition as FieldCollectionDefinition;
+use Symfony\Contracts\Service\Attribute\Required;
 
 /**
  * @internal
  */
 final class FieldCollectionAdapter extends AbstractAdapter
 {
+    private DefinitionResolverInterface $fieldCollectionDefinitionResolver;
     /**
      * @throws Exception
      */
@@ -38,7 +40,7 @@ final class FieldCollectionAdapter extends AbstractAdapter
         $allowedTypes = $fieldDefinition->getAllowedTypes();
 
         foreach ($allowedTypes as $allowedType) {
-            $fieldCollectionDefinition = FieldCollectionDefinition::getByKey($allowedType);
+            $fieldCollectionDefinition = $this->fieldCollectionDefinitionResolver->getByKey($allowedType);
             if (!$fieldCollectionDefinition) {
                 continue;
             }
@@ -57,8 +59,14 @@ final class FieldCollectionAdapter extends AbstractAdapter
         ];
 
         return [
-                'type' => 'nested',
+                'type' => AttributeType::NESTED,
                 'properties' => $mapping,
             ];
+    }
+
+    #[Required]
+    public function setFieldCollectionDefinitionResolver(DefinitionResolverInterface $definitionResolver): void
+    {
+        $this->fieldCollectionDefinitionResolver = $definitionResolver;
     }
 }
