@@ -83,10 +83,8 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
             }
         }
 
-
         $mappingProperties[FieldCategory::STANDARD_FIELDS->value]['properties']
             = $this->transformLocalizedfields($mappingProperties[FieldCategory::STANDARD_FIELDS->value]['properties']);
-
 
         $mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] =
             $this->fireEventAndGetCustomFieldsMapping(
@@ -116,7 +114,6 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
 
         return $extractMappingEvent->getCustomFieldsMapping();
     }
-
 
     private function transformLocalizedfields(array $data): array
     {
