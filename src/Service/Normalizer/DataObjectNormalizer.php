@@ -132,9 +132,26 @@ final class DataObjectNormalizer implements NormalizerInterface
             AbstractObject::setGetInheritedValues($inheritedValuesBackup);
             Localizedfield::setGetFallbackValues($fallbackLanguagesBackup);
 
-            return $result;
+            return $this->transformLocalizedfields($result);
         } catch (Exception $e) {
             throw new DataObjectNormalizerException($e->getMessage());
         }
+    }
+
+    private function transformLocalizedfields(array $data): array
+    {
+        if (isset($data['localizedfields'])) {
+            $localizedFields = $data['localizedfields'];
+            unset($data['localizedfields']);
+
+            foreach ($localizedFields as $locale => $attributes) {
+                foreach ($attributes as $attributeName => $attributeData) {
+                    $data[$attributeName] = $data[$attributeName] ?? [];
+                    $data[$attributeName][$locale] = $attributeData;
+                }
+            }
+        }
+
+        return $data;
     }
 }
