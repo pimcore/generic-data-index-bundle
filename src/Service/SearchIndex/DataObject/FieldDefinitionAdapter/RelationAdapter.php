@@ -23,6 +23,7 @@ final class RelationAdapter extends AbstractAdapter
     public function getOpenSearchMapping(): array
     {
         return [
+            'type' => 'nested',
             'properties' => [
                 'id' => [
                     'type' => AttributeType::LONG,
