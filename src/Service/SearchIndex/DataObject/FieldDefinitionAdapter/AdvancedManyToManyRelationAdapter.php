@@ -37,6 +37,7 @@ final class AdvancedManyToManyRelationAdapter extends AbstractAdapter
         $columnDefinition = $this->getColumnDefinition($fieldDefinition->getColumns());
 
         return [
+            'type' => AttributeType::NESTED,
             'properties' => [
                 'fieldname' => [
                     'type' => AttributeType::KEYWORD,
