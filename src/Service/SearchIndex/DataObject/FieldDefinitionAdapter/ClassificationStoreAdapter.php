@@ -29,12 +29,12 @@ use Symfony\Contracts\Service\Attribute\Required;
  */
 final class ClassificationStoreAdapter extends AbstractAdapter
 {
-    private ServiceResolverInterface $classificationStoreService;
+    private ServiceResolverInterface $classificationService;
 
     #[Required]
-    public function setClassificationStoreService(ServiceResolverInterface $serviceResolver): void
+    public function setClassificationService(ServiceResolverInterface $serviceResolver): void
     {
-        $this->classificationStoreService = $serviceResolver;
+        $this->classificationService = $serviceResolver;
     }
 
     public function getOpenSearchMapping(): array
@@ -66,7 +66,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     {
         $groupMapping = [];
         foreach ($groupConfigs as $key) {
-            $definition = $this->classificationStoreService->getFieldDefinitionFromKeyConfig($key);
+            $definition = $this->classificationService->getFieldDefinitionFromKeyConfig($key);
             if ($definition instanceof Data) {
                 $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($definition);
 
