@@ -21,7 +21,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
 
-class ClassificationStoreAdapterTest extends Unit
+/**
+ * @internal
+ */
+final class ClassificationStoreAdapterTest extends Unit
 {
     public function testExceptionIsThrownWhenWrongFieldDefinition()
     {
