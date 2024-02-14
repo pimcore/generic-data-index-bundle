@@ -62,7 +62,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     /**
      * @param KeyGroupRelation[] $groupConfigs
      */
-    private function getMappingForGroupConfig(array $groupConfigs) : array
+    private function getMappingForGroupConfig(array $groupConfigs): array
     {
         $groupMapping = [];
         foreach ($groupConfigs as $key) {
@@ -75,6 +75,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 }
             }
         }
+
         return $groupMapping;
     }
 
