@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
+use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig\Listing as GroupListing;
@@ -49,22 +50,32 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $groups = $this->getClassificationStoreGroups($classificationStore->getStoreId());
         foreach ($groups as $group) {
             $keys = $this->getClassificationStoreKeysFromGroup($group);
-            $groupMapping = [];
-            foreach ($keys as $key) {
-                $definition = $this->classificationStoreService->getFieldDefinitionFromKeyConfig($key);
-
-                $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($definition);
-                if ($adapter) {
-                    $groupMapping['default']['properties'][$key->getName()] = $adapter->getOpenSearchMapping();
-                }
-            }
-            $mapping[$group->getName()]['properties'] = $groupMapping;
+            $mapping[$group->getName()]['properties'] = $this->getMappingForGroupConfig($keys);
         }
 
         return [
             'type' => AttributeType::NESTED,
             'properties' => $mapping,
         ];
+    }
+
+    /**
+     * @param KeyGroupRelation[] $groupConfigs
+     */
+    private function getMappingForGroupConfig(array $groupConfigs) : array
+    {
+        $groupMapping = [];
+        foreach ($groupConfigs as $key) {
+            $definition = $this->classificationStoreService->getFieldDefinitionFromKeyConfig($key);
+            if ($definition instanceof Data) {
+                $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($definition);
+
+                if ($adapter) {
+                    $groupMapping['default']['properties'][$key->getName()] = $adapter->getOpenSearchMapping();
+                }
+            }
+        }
+        return $groupMapping;
     }
 
     /**
