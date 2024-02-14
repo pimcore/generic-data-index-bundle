@@ -54,6 +54,7 @@ final class IndexQueueService implements IndexQueueServiceInterface
 
             if ($processSynchronously) {
                 $this->doHandleIndexData($element, $operation);
+                $this->commit();
             }
 
             $this->enqueueService->enqueueRelatedItemsOnUpdate(
@@ -102,7 +103,7 @@ final class IndexQueueService implements IndexQueueServiceInterface
                 }
             }
 
-            $this->bulkOperationService->commit();
+            $this->commit();
             $this->indexQueueRepository->deleteQueueEntries($entries);
 
         } catch (Exception $e) {
