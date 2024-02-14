@@ -27,7 +27,7 @@ final class QuantityValueAdapter extends AbstractAdapter
                 'value' => [
                     'type' => AttributeType::FLOAT->value,
                 ],
-                'unitAbbrevation' => [
+                'unitId' => [
                     'type' => AttributeType::TEXT->value,
                 ],
             ],
