@@ -17,6 +17,7 @@ services:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "countrymultiselect" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "language" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "languagemultiselect" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "table" }
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\NumericAdapter:
         shared: false
