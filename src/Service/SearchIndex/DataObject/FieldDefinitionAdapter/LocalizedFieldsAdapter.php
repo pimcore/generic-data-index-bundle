@@ -92,7 +92,6 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         return $result;
     }
 
-
     #[Required]
     public function setLanguageService(LanguageServiceInterface $languageService): void
     {
