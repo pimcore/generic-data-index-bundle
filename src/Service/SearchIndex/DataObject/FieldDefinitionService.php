@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\AdapterInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
+use Pimcore\Normalizer\NormalizerInterface;
 use Psr\Container\ContainerExceptionInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
@@ -42,5 +43,22 @@ final class FieldDefinitionService implements FieldDefinitionServiceInterface
         }
 
         return $adapter;
+    }
+
+    public function normalizeValue(?ClassDefinition\Data $fieldDefinition, mixed $value): mixed
+    {
+        if ($fieldDefinition === null) {
+            return $value;
+        }
+
+        if ($adapter = $this->getFieldDefinitionAdapter($fieldDefinition)) {
+            return $adapter->normalize($value);
+        }
+
+        if($fieldDefinition instanceof NormalizerInterface) {
+            return $fieldDefinition->normalize($value);
+        }
+
+        return $value;
     }
 }
