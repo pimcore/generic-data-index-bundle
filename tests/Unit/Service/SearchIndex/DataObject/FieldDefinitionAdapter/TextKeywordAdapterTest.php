@@ -11,7 +11,6 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 use Codeception\Test\Unit;
