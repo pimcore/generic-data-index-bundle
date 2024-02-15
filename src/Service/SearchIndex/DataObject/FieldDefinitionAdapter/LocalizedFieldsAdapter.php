@@ -60,7 +60,9 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
 
     /**
      * @param mixed $value
+     *
      * @return array|null
+     *
      * @throws Exception
      */
     public function normalize(mixed $value): ?array
