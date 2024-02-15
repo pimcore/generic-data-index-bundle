@@ -34,8 +34,7 @@ final class DataObjectNormalizer implements NormalizerInterface
 
     public function __construct(
         private readonly FieldDefinitionServiceInterface $fieldDefinitionService,
-    )
-    {
+    ) {
     }
 
     /**

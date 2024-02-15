@@ -59,6 +59,4 @@ abstract class AbstractAdapter implements AdapterInterface
 
         return $value;
     }
-
-
 }
