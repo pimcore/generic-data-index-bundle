@@ -31,6 +31,12 @@ final class DataObjectNormalizer implements NormalizerInterface
 {
     use ElementNormalizerTrait;
 
+    public function __construct(
+        private readonly FieldDefinitionServiceInterface $fieldDefinitionService,
+    )
+    {
+    }
+
     /**
      * @param AbstractObject $object
      *
@@ -118,13 +124,7 @@ final class DataObjectNormalizer implements NormalizerInterface
 
                 $value = $dataObject->get($key);
 
-                if($value instanceof Localizedfield) {
-                    $value->loadLazyData();
-                }
-
-                if($fieldDefinition instanceof \Pimcore\Normalizer\NormalizerInterface) {
-                    $value = $fieldDefinition->normalize($value);
-                }
+                $value = $this->fieldDefinitionService->normalizeValue($fieldDefinition, $value);
 
                 $result[$key] = $value;
             }
@@ -132,26 +132,9 @@ final class DataObjectNormalizer implements NormalizerInterface
             AbstractObject::setGetInheritedValues($inheritedValuesBackup);
             Localizedfield::setGetFallbackValues($fallbackLanguagesBackup);
 
-            return $this->transformLocalizedfields($result);
+            return $result;
         } catch (Exception $e) {
             throw new DataObjectNormalizerException($e->getMessage());
         }
-    }
-
-    private function transformLocalizedfields(array $data): array
-    {
-        if (isset($data['localizedfields'])) {
-            $localizedFields = $data['localizedfields'];
-            unset($data['localizedfields']);
-
-            foreach ($localizedFields as $locale => $attributes) {
-                foreach ($attributes as $attributeName => $attributeData) {
-                    $data[$attributeName] = $data[$attributeName] ?? [];
-                    $data[$attributeName][$locale] = $attributeData;
-                }
-            }
-        }
-
-        return $data;
     }
 }

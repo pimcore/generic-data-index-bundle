@@ -23,7 +23,7 @@ abstract class AbstractAdapter implements AdapterInterface
 
     public function __construct(
         protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
-        private readonly FieldDefinitionServiceInterface $fieldDefinitionService
+        protected readonly FieldDefinitionServiceInterface $fieldDefinitionService,
     ) {
     }
 
@@ -50,4 +50,15 @@ abstract class AbstractAdapter implements AdapterInterface
     {
         return $this->fieldDefinitionService;
     }
+
+    public function normalize(mixed $value): mixed
+    {
+        if($this->fieldDefinition instanceof \Pimcore\Normalizer\NormalizerInterface) {
+            return $this->fieldDefinition->normalize($value);
+        }
+
+        return $value;
+    }
+
+
 }

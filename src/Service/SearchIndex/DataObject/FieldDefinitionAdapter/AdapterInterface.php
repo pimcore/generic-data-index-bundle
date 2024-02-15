@@ -27,4 +27,9 @@ interface AdapterInterface
     public function getOpenSearchMapping(): array;
 
     public function getOpenSearchAttributeName(): string;
+
+    /**
+     * Used to normalize the data for the search index
+     */
+    public function normalize(mixed $value): mixed;
 }
