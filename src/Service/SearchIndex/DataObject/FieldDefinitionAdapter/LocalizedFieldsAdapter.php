@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\Localizedfield;
@@ -57,7 +58,12 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         return $mapping;
     }
 
-    public function normalize(mixed $value): mixed
+    /**
+     * @param mixed $value
+     * @return array|null
+     * @throws Exception
+     */
+    public function normalize(mixed $value): ?array
     {
         if (!$value instanceof Localizedfield) {
             return null;

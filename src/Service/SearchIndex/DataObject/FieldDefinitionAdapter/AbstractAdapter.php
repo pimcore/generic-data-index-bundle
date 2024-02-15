@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
+use Pimcore\Normalizer\NormalizerInterface;
 
 abstract class AbstractAdapter implements AdapterInterface
 {
@@ -53,7 +54,7 @@ abstract class AbstractAdapter implements AdapterInterface
 
     public function normalize(mixed $value): mixed
     {
-        if($this->fieldDefinition instanceof \Pimcore\Normalizer\NormalizerInterface) {
+        if($this->fieldDefinition instanceof NormalizerInterface) {
             return $this->fieldDefinition->normalize($value);
         }
 
