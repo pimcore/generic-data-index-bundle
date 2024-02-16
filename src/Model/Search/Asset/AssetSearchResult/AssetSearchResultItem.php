@@ -16,21 +16,24 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchRe
 final class AssetSearchResultItem
 {
     public function __construct(
-        private readonly int $id,
-        private readonly int $parentId,
-        private readonly string $type,
-        private readonly string $filename,
-        private readonly string $path,
-        private readonly string $fullPath,
+        private readonly int     $id,
+        private readonly int     $parentId,
+        private readonly string  $type,
+        private readonly string  $key,
+        private readonly string  $path,
+        private readonly string  $fullPath,
         private readonly ?string $mimeType,
-        private readonly bool $children,
-        private readonly int $userOwner,
-        private readonly int $userModification,
-        private readonly ?int $creationDate,
-        private readonly ?int $modificationDate,
-        private readonly ?string $lock,
-        private readonly bool $isLocked,
-        private readonly array $searchIndexData,
+        private readonly int     $userOwner,
+        private readonly int     $userModification,
+        private readonly ?string $locked,
+        private readonly bool    $isLocked,
+        /** @var AssetMetaData[] */
+        private readonly array   $metaData,
+        private readonly ?int    $creationDate,
+        private readonly ?int    $modificationDate,
+        private readonly bool    $hasWorkflowWithPermissions,
+        private readonly bool    $hasChildren,
+        private readonly array   $searchIndexData,
     ) {
     }
 
@@ -49,9 +52,14 @@ final class AssetSearchResultItem
         return $this->type;
     }
 
+    public function getKey(): string
+    {
+        return $this->key;
+    }
+
     public function getFilename(): string
     {
-        return $this->filename;
+        return $this->getKey();
     }
 
     public function getPath(): string
@@ -69,11 +77,6 @@ final class AssetSearchResultItem
         return $this->mimeType;
     }
 
-    public function hasChildren(): bool
-    {
-        return $this->children;
-    }
-
     public function getUserOwner(): int
     {
         return $this->userOwner;
@@ -82,6 +85,21 @@ final class AssetSearchResultItem
     public function getUserModification(): int
     {
         return $this->userModification;
+    }
+    public function getLocked(): ?string
+    {
+        return $this->locked;
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->isLocked;
+    }
+
+    /** @var AssetMetaData[] */
+    public function getMetaData(): array
+    {
+        return $this->metaData;
     }
 
     public function getCreationDate(): ?int
@@ -94,14 +112,14 @@ final class AssetSearchResultItem
         return $this->modificationDate;
     }
 
-    public function getLock(): ?string
+    public function hasWorkflowWithPermissions(): bool
     {
-        return $this->lock;
+        return $this->hasWorkflowWithPermissions;
     }
 
-    public function isLocked(): bool
+    public function hasChildren(): bool
     {
-        return $this->isLocked;
+        return $this->hasChildren;
     }
 
     /**

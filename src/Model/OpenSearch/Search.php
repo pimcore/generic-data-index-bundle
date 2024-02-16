@@ -104,7 +104,7 @@ final class Search implements AdapterSearchInterface
         ];
 
         foreach ($result as $key => $value) {
-            if (empty($value)) {
+            if ($value === null) {
                 unset($result[$key]);
             }
         }

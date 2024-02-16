@@ -6,13 +6,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter;
 class SearchResultAggregationBucket
 {
     public function __construct(
-        private readonly string $key,
-        private readonly int    $docCount,
+        private readonly string|int $key,
+        private readonly int        $docCount,
     )
     {
     }
 
-    public function getKey(): string
+    public function getKey(): string|int
     {
         return $this->key;
     }

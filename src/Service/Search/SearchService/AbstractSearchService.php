@@ -14,9 +14,11 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ValidationFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree\ChildrenCountAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
@@ -56,7 +58,7 @@ abstract class AbstractSearchService implements SearchServiceInterface
     /**
      * @throws ValidationFailedException
      */
-    protected function searchWithPagination(PaginatedSearchInterface $search, string $indexName): SearchResult
+    protected function performSearch(PaginatedSearchInterface $search, string $indexName): SearchResult
     {
         $this->validateSearchModel($search);
         $adapterSearch = $this->searchIndexService->createPaginatedSearch($search->getPage(), $search->getPageSize());
@@ -65,6 +67,41 @@ abstract class AbstractSearchService implements SearchServiceInterface
         return $this
             ->searchIndexService
             ->search($adapterSearch, $indexName);
+    }
+
+    /**
+     * @return int[]
+     */
+    protected function getChildrenCounts(
+        SearchResult $searchResult,
+        string $indexName
+    ): array
+    {
+        $parentIds = $searchResult->getIds();
+
+        if (empty($parentIds)) {
+            return [];
+        }
+
+        $childrenCountAggregation = new ChildrenCountAggregation($parentIds);
+
+        $search = (new AssetSearch())
+            ->addModifier($childrenCountAggregation);
+
+        $searchResult = $this->performSearch($search, $indexName);
+
+        $childrenCounts = [];
+        foreach($parentIds as $parentId) {
+            $childrenCounts[$parentId] = 0;
+        }
+
+        if ($aggregation = $searchResult->getAggregation($childrenCountAggregation->getAggregationName())) {
+            foreach($aggregation->getBuckets() as $bucket) {
+                $childrenCounts[$bucket->getKey()] = $bucket->getDocCount();
+            }
+        }
+
+        return $childrenCounts;
     }
 
     protected function applyModifiersFromSearch(

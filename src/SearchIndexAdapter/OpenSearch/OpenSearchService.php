@@ -16,8 +16,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 use Exception;
 use JsonException;
 use OpenSearch\Client;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSort;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -266,7 +268,12 @@ final class OpenSearchService implements SearchIndexServiceInterface
                 'body' => $search->toArray(),
             ]);
 
-        return $this->searchResultDenormalizer->denormalize($openSearchResult, SearchResult::class);
+        return $this->searchResultDenormalizer->denormalize(
+            $openSearchResult,
+            SearchResult::class,
+            null ,
+            ['search' => $search]
+        );
     }
 
     public function getOpenSearchClient(): Client

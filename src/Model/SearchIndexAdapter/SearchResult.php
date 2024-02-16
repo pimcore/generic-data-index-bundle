@@ -3,15 +3,18 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
+
 final class SearchResult
 {
     public function __construct(
         /** SearchResultHit[] */
-        private readonly array $hits,
+        private readonly array  $hits,
         /** SearchResultAggregation[] */
-        private readonly array $aggregations,
-        private readonly int   $totalHits,
-        private readonly float $maxScore,
+        private readonly array  $aggregations,
+        private readonly int    $totalHits,
+        private readonly ?float $maxScore,
+        private readonly AdapterSearchInterface $search,
     )
     {
     }
@@ -37,10 +40,35 @@ final class SearchResult
         return $this->totalHits;
     }
 
-    public function getMaxScore(): float
+    public function getMaxScore(): ?float
     {
         return $this->maxScore;
     }
 
+    /**
+     * @return int[]
+     */
+    public function getIds(): array
+    {
+        $result = [];
+        foreach ($this->getHits() as $hit) {
+            $result[] = (int) $hit->getId();
+        }
+        return $result;
+    }
 
+    public function getAggregation(string $aggregationName): ?SearchResultAggregation
+    {
+        foreach ($this->aggregations as $aggregation) {
+            if ($aggregation->getName() === $aggregationName) {
+                return $aggregation;
+            }
+        }
+        return null;
+    }
+
+    public function getSearch(): AdapterSearchInterface
+    {
+        return $this->search;
+    }
 }

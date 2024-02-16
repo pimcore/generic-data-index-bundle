@@ -79,9 +79,15 @@ pimcore_generic_data_index:
         path:
           type: text
           analyzer: generic_data_index_path_analyzer
+          fields:
+            keyword:
+              type: keyword
         fullPath:
           type: text
           analyzer: generic_data_index_path_analyzer
+          fields:
+            keyword:
+              type: keyword
         pathLevels:
           type: nested
           properties:

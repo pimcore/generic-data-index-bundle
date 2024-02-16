@@ -8,7 +8,7 @@ class SearchResultHit
     public function __construct(
         private readonly string $id,
         private readonly string $index,
-        private readonly float  $score,
+        private readonly ?float  $score,
         private readonly array  $source,
     )
     {
@@ -24,7 +24,7 @@ class SearchResultHit
         return $this->index;
     }
 
-    public function getScore(): float
+    public function getScore(): ?float
     {
         return $this->score;
     }

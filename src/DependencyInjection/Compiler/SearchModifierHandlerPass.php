@@ -158,9 +158,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
             );
         }
 
-        return ($methodName === '__invoke')
-            ? [$searchModifierType->getName()]
-            : [$searchModifierType->getName() => $methodName];
+        return [$searchModifierType->getName()];
     }
 
     private function checkArgumentInstanceOf(

@@ -15,7 +15,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetMetaData;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
 class AssetSearchResultDenormalizer implements DenormalizerInterface
@@ -30,24 +32,23 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
         array $context = []
     ): AssetSearchResultItem
     {
-        $systemFields = $data[FieldCategory::SYSTEM_FIELDS->value];
-
         return new AssetSearchResultItem(
-            id: $systemFields[SystemField::ID->value],
-            parentId: $systemFields[SystemField::PARENT_ID->value],
-            type: $systemFields[SystemField::TYPE->value],
-            filename: $systemFields[SystemField::KEY->value],
-            path: $systemFields[SystemField::PATH->value],
-            fullPath: $systemFields[SystemField::FULL_PATH->value],
-            mimeType: $systemFields[SystemField::MIME_TYPE->value],
-            children: false,
-            userOwner: $systemFields[SystemField::USER_OWNER->value],
-            userModification: $systemFields[SystemField::USER_MODIFICATION->value],
-            creationDate: strtotime($systemFields[SystemField::CREATION_DATE->value]),
-            modificationDate: strtotime($systemFields[SystemField::MODIFICATION_DATE->value]),
-            lock: $systemFields[SystemField::LOCKED->value],
-            // metaData: $this->denormalizeMetadata($data[FieldCategory::STANDARD_FIELDS->value]),
-            isLocked: $systemFields[SystemField::IS_LOCKED->value],
+            id: SystemField::ID->getData($data),
+            parentId: SystemField::PARENT_ID->getData($data),
+            type: SystemField::TYPE->getData($data),
+            key: SystemField::KEY->getData($data),
+            path: SystemField::PATH->getData($data),
+            fullPath: SystemField::FULL_PATH->getData($data),
+            mimeType: SystemField::MIME_TYPE->getData($data),
+            userOwner: SystemField::USER_OWNER->getData($data),
+            userModification: SystemField::USER_MODIFICATION->getData($data),
+            locked: SystemField::LOCKED->getData($data),
+            isLocked: SystemField::IS_LOCKED->getData($data),
+            metaData: $this->hydrateMetadata($data[FieldCategory::STANDARD_FIELDS->value]),
+            creationDate: strtotime(SystemField::CREATION_DATE->getData($data)),
+            modificationDate: strtotime(SystemField::MODIFICATION_DATE->getData($data)),
+            hasWorkflowWithPermissions: SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data),
+            hasChildren: SystemField::HAS_CHILDREN->getData($data),
             searchIndexData: $data
         );
     }
@@ -57,8 +58,21 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
         return is_array($data) && is_subclass_of($type, AssetSearchResultItem::class);
     }
 
-    private function denormalizeMetadata(array $standardFields): array
+    /** @var AssetMetaData[] $standardFields */
+    private function hydrateMetadata(array $standardFields): array
     {
-        return [];
+        $result = [];
+
+        foreach($standardFields as $language => $fields) {
+            foreach($fields as $fieldName => $fieldData) {
+                $result[] = new AssetMetaData(
+                    name: $fieldName,
+                    language: $language !== AssetNormalizer::NOT_LOCALIZED_KEY ? $language : null,
+                    type: $fieldData['type'],
+                    data: $fieldData['data'],
+                );
+            }
+        }
+        return $result;
     }
 }

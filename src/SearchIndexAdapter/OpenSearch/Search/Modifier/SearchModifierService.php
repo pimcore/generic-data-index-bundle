@@ -50,7 +50,6 @@ final class SearchModifierService implements SearchModifierServiceInterface
         SearchModifierInterface $modifier,
         SearchModifierContextInterface $modifierContext
     ): void {
-
         foreach ($this->searchModifierHandlers as $modifierClass => $handlers) {
             if ($modifier instanceof $modifierClass) {
                 foreach ($handlers as $handler) {

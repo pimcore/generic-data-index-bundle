@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tre
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 use Symfony\Component\Validator\Constraints as Assert;
 
-class ParentIdFilter implements SearchModifierInterface
+final class ParentIdFilter implements SearchModifierInterface
 {
     public function __construct(
         #[Assert\Positive]

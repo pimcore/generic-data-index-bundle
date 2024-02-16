@@ -20,9 +20,10 @@ class SearchResultDenormalizer implements DenormalizerInterface
 
         return new SearchResult(
             hits: $this->hydrateHits($searchResult['hits']['hits']),
-            aggregations: $this->hydrateAggregations($searchResult['hits']['aggregations'] ?? []),
+            aggregations: $this->hydrateAggregations($searchResult['aggregations'] ?? []),
             totalHits: $searchResult['hits']['total']['value'],
             maxScore: $searchResult['hits']['max_score'],
+            search: $context['search'],
         );
     }
 

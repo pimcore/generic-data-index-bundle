@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+
 /**
  * @internal
  */
@@ -38,4 +40,25 @@ enum SystemField: string
     case IS_LOCKED = 'isLocked';
     case HAS_WORKFLOW_WITH_PERMISSIONS = 'hasWorkflowWithPermissions';
     case FILE_SIZE = 'fileSize';
+
+    /**
+     * Not persisted in search index but dynamically calculated
+     */
+    case HAS_CHILDREN = 'hasChildren';
+
+    public function getPath(string $subField = null): string
+    {
+        $path = FieldCategory::SYSTEM_FIELDS->value . '.' . $this->value;
+
+        if($subField) {
+            $path .= '.' . $subField;
+        }
+
+        return $path;
+    }
+
+    public function getData(array $searchResultHit): mixed
+    {
+        return $searchResultHit[FieldCategory::SYSTEM_FIELDS->value][$this->value] ?? null;
+    }
 }
