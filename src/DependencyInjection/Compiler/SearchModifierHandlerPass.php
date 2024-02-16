@@ -120,6 +120,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
             );
         }
 
+        /** @var ReflectionNamedType|ReflectionUnionType|null $searchModifierType */
         $contextType = $parameters[1]->getType();
         $contextTypeValid = $this->checkArgumentInstanceOf(
             $contextType,
