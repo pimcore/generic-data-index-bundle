@@ -36,7 +36,7 @@ final class IndexService implements IndexServiceInterface
 
     public function __construct(
         private readonly AdapterServiceInterface       $typeAdapterService,
-        private readonly SearchIndexServiceInterface   $openSearchService,
+        private readonly SearchIndexServiceInterface   $searchIndexService,
         private readonly BulkOperationServiceInterface $bulkOperationService,
         private readonly EventDispatcherInterface      $eventDispatcher
     ) {
@@ -52,7 +52,7 @@ final class IndexService implements IndexServiceInterface
             ->getAliasIndexNameByElement($element);
 
         try {
-            $indexDocument = $this->openSearchService->getDocument(
+            $indexDocument = $this->searchIndexService->getDocument(
                 index: $indexName,
                 id: $element->getId(),
                 ignore404: true

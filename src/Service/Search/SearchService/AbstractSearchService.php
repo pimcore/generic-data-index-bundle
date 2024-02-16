@@ -69,13 +69,13 @@ abstract class AbstractSearchService implements SearchServiceInterface
 
     protected function applyModifiersFromSearch(
         SearchInterface $search,
-        AdapterSearchInterface $openSearchSearch
+        AdapterSearchInterface $adapterSearch
     ): self
     {
         $this->searchModifierService->applyModifiersFromSearch(
             $this,
             $search,
-            $openSearchSearch
+            $adapterSearch
         );
 
         return $this;

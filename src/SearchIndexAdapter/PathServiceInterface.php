@@ -22,7 +22,7 @@ use Pimcore\Model\Element\ElementInterface;
 interface PathServiceInterface
 {
     /**
-     * Directly update children paths in OpenSearch for assets as otherwise you might get strange results
+     * Directly update children paths in search index for assets as otherwise you might get strange results
      * if you rename a folder in the portal engine frontend.
      *
      * @throws Exception

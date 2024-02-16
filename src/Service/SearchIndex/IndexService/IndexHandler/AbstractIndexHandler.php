@@ -25,7 +25,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     use LoggerAwareTrait;
 
     public function __construct(
-        protected readonly SearchIndexServiceInterface       $openSearchService,
+        protected readonly SearchIndexServiceInterface       $searchIndexService,
         protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         protected readonly EventDispatcherInterface          $eventDispatcher
     ) {
@@ -35,7 +35,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     {
         $aliasName = $this->getAliasIndexName($context);
 
-        if ($forceCreateIndex || !$this->openSearchService->existsAlias($aliasName)) {
+        if ($forceCreateIndex || !$this->searchIndexService->existsAlias($aliasName)) {
             $this->createIndex($context, $aliasName);
         }
 
@@ -45,13 +45,13 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         } catch (Exception $e) {
             $this->logger->info($e);
             //try recreating index
-            $this->openSearchService->reindex($aliasName, $this->extractMappingProperties($context));
+            $this->searchIndexService->reindex($aliasName, $this->extractMappingProperties($context));
         }
     }
 
     public function deleteIndex(mixed $context = null): void
     {
-        $this->openSearchService->deleteIndex(
+        $this->searchIndexService->deleteIndex(
             $this->getCurrentFullIndexName($context)
         );
     }
@@ -59,7 +59,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     public function getCurrentFullIndexName(mixed $context = null): string
     {
         $indexName = $this->getAliasIndexName($context);
-        $currentIndexVersion = $this->openSearchService->getCurrentIndexVersion($indexName);
+        $currentIndexVersion = $this->searchIndexService->getCurrentIndexVersion($indexName);
 
         return $indexName . '-' . ($currentIndexVersion === 'even' ? 'even' : 'odd');
     }
@@ -73,7 +73,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
      */
     private function doUpdateMapping(mixed $context): void
     {
-        $response = $this->openSearchService->putMapping(
+        $response = $this->searchIndexService->putMapping(
             [
                 'index' => $this->getCurrentFullIndexName($context),
                 'body' => [
@@ -92,7 +92,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         $fullIndexName = $this->getCurrentFullIndexName($context);
 
         $this
-            ->openSearchService
+            ->searchIndexService
             ->createIndex($fullIndexName)
             ->addAlias($aliasName, $fullIndexName)
         ;
