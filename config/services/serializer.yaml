@@ -7,4 +7,5 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\DataObjectNormalizer: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer: ~
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\AssetSearchResultDenormalizer: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer: ~

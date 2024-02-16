@@ -18,7 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\A
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\AssetSearchResultDenormalizer;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer;
 
 /**
  * @internal

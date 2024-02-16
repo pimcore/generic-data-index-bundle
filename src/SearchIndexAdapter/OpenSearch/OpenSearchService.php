@@ -20,11 +20,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultAggregation;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultAggregationBucket;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultHit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Psr\Log\LogLevel;
 
@@ -41,6 +39,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
 
     public function __construct(
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
+        private readonly SearchResultDenormalizer $searchResultDenormalizer,
         private readonly Client $openSearchClient,
     ) {
     }
@@ -267,63 +266,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
                 'body' => $search->toArray(),
             ]);
 
-        return new SearchResult(
-            hits: $this->hydrateHits($openSearchResult['hits']['hits']),
-            aggregations: $this->hydrateAggregations($openSearchResult['hits']['aggregations'] ?? []),
-            totalHits: $openSearchResult['hits']['total']['value'],
-            maxScore: $openSearchResult['hits']['max_score'],
-        );
-    }
-
-    /**
-     * @return SearchResultHit[]
-     */
-    private function hydrateHits(array $hits): array
-    {
-        $result = [];
-
-        foreach ($hits as $hit) {
-            $result[] = new SearchResultHit(
-                id: $hit['_id'],
-                index: $hit['_index'],
-                score: $hit['_score'],
-                source: $hit['_source'],
-            );
-        }
-        return $result;
-    }
-
-    /**
-     * @return SearchResultAggregation[]
-     */
-    private function hydrateAggregations(array $aggregations): array
-    {
-        $result = [];
-        foreach ($aggregations as $name => $aggregation) {
-            $result[] = new SearchResultAggregation(
-                name: $name,
-                buckets: $this->hydrateAggregationBuckets($aggregation['buckets'] ?? []),
-                otherDocCount: $aggregation['sum_other_doc_count'] ?? 0,
-                docCountErrorUpperBound: $aggregation['doc_count_error_upper_bound'] ?? 0,
-            );
-        }
-
-        return $result;
-    }
-
-    /**
-     * @return SearchResultAggregationBucket[]
-     */
-    private function hydrateAggregationBuckets(array $buckets): array
-    {
-        $result = [];
-        foreach ($buckets as $bucket) {
-            $result[] = new SearchResultAggregationBucket(
-                key: $bucket['key'],
-                docCount: $bucket['doc_count'],
-            );
-        }
-        return $result;
+        return $this->searchResultDenormalizer->denormalize($openSearchResult, SearchResult::class);
     }
 
     public function getOpenSearchClient(): Client
