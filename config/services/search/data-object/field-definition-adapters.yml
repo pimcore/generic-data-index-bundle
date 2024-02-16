@@ -18,6 +18,7 @@ services:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "language" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "languagemultiselect" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "table" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "password" }
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\NumericAdapter:
         shared: false
@@ -81,3 +82,8 @@ services:
         shared: false
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "rgbaColor" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\QuantityValueRangeAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "quantityValueRange" }
