@@ -26,7 +26,7 @@ class SearchResultDenormalizer implements DenormalizerInterface
         );
     }
 
-    public function supportsDenormalization(mixed $data, string $type, ?string $format = null)
+    public function supportsDenormalization(mixed $data, string $type, ?string $format = null): bool
     {
         return is_array($data) && is_subclass_of($type, SearchResult::class);
     }
