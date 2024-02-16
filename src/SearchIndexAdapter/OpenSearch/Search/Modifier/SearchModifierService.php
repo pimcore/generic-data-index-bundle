@@ -18,8 +18,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifi
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 
 /**

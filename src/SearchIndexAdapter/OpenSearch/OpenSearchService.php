@@ -269,7 +269,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
         return $this->searchResultDenormalizer->denormalize(
             $openSearchResult,
             SearchResult::class,
-            null ,
+            null,
             ['search' => $search]
         );
     }

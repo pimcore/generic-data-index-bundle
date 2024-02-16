@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
@@ -32,7 +42,6 @@ class SearchResultDenormalizer implements DenormalizerInterface
         return is_array($data) && is_subclass_of($type, SearchResult::class);
     }
 
-
     /**
      * @return SearchResultHit[]
      */
@@ -48,6 +57,7 @@ class SearchResultDenormalizer implements DenormalizerInterface
                 source: $hit['_source'],
             );
         }
+
         return $result;
     }
 
@@ -81,6 +91,7 @@ class SearchResultDenormalizer implements DenormalizerInterface
                 docCount: $bucket['doc_count'],
             );
         }
+
         return $result;
     }
 }

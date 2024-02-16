@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
@@ -9,14 +19,13 @@ final class SearchResult
 {
     public function __construct(
         /** SearchResultHit[] */
-        private readonly array  $hits,
+        private readonly array $hits,
         /** SearchResultAggregation[] */
-        private readonly array  $aggregations,
-        private readonly int    $totalHits,
+        private readonly array $aggregations,
+        private readonly int $totalHits,
         private readonly ?float $maxScore,
         private readonly AdapterSearchInterface $search,
-    )
-    {
+    ) {
     }
 
     /**
@@ -54,6 +63,7 @@ final class SearchResult
         foreach ($this->getHits() as $hit) {
             $result[] = (int) $hit->getId();
         }
+
         return $result;
     }
 
@@ -64,6 +74,7 @@ final class SearchResult
                 return $aggregation;
             }
         }
+
         return null;
     }
 

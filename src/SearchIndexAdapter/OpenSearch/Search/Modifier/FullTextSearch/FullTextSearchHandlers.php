@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\Modifier\FullTextSearch;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch\AsSearchModifierHandler;
@@ -15,8 +25,7 @@ class FullTextSearchHandlers
     public function handleElementKeySearch(
         ElementKeySearch $elementKeySearch,
         SearchModifierContextInterface $context
-    ): void
-    {
+    ): void {
         if (empty($elementKeySearch->getSearchTerm())) {
             return;
         }
@@ -34,9 +43,9 @@ class FullTextSearchHandlers
                         'wildcard' => [
                             SystemField::KEY->getPath() => [
                                 'value' => $searchTerm,
-                                'case_insensitive' => false
-                            ]
-                        ]
+                                'case_insensitive' => false,
+                            ],
+                        ],
                     ],
                 ])
             );

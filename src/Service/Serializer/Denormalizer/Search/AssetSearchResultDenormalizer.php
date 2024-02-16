@@ -30,8 +30,7 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
         string $type,
         string $format = null,
         array $context = []
-    ): AssetSearchResultItem
-    {
+    ): AssetSearchResultItem {
         return new AssetSearchResultItem(
             id: SystemField::ID->getData($data),
             parentId: SystemField::PARENT_ID->getData($data),
@@ -73,6 +72,7 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
                 );
             }
         }
+
         return $result;
     }
 }

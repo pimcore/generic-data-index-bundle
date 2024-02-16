@@ -17,8 +17,8 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Stats\IndexStats;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Stats\IndexStatsIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 
@@ -28,8 +28,8 @@ final class IndexStatsService implements IndexStatsServiceInterface
 
     public function __construct(
         protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
-        protected readonly IndexQueueRepository              $indexQueueRepository,
-        protected readonly SearchIndexServiceInterface       $openSearchService,
+        protected readonly IndexQueueRepository $indexQueueRepository,
+        protected readonly SearchIndexServiceInterface $openSearchService,
     ) {
     }
 

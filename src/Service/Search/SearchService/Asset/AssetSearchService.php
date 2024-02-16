@@ -30,8 +30,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search
 final class AssetSearchService extends AbstractSearchService implements AssetSearchServiceInterface
 {
     public function __construct(
-        private readonly AssetTypeAdapter               $assetTypeAdapter,
-        private readonly AssetSearchResultDenormalizer  $denormalizer,
+        private readonly AssetTypeAdapter $assetTypeAdapter,
+        private readonly AssetSearchResultDenormalizer $denormalizer,
     ) {
 
     }
@@ -47,7 +47,6 @@ final class AssetSearchService extends AbstractSearchService implements AssetSea
             searchResult: $searchResult,
             indexName: $this->assetTypeAdapter->getAliasIndexName()
         );
-
 
         return new AssetSearchResult(
             items: $this->hydrateSearchResultHits($searchResult, $childrenCounts),

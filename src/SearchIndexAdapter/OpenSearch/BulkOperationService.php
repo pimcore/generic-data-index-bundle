@@ -33,7 +33,7 @@ final class BulkOperationService implements BulkOperationServiceInterface
     private array $bulkOperationData = [];
 
     public function __construct(
-        private readonly SearchIndexServiceInterface           $openSearchService,
+        private readonly SearchIndexServiceInterface $openSearchService,
         private readonly SynchronousProcessingServiceInterface $synchronousProcessing
     ) {
     }

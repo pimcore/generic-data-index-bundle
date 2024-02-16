@@ -32,8 +32,11 @@ use Symfony\Contracts\Service\Attribute\Required;
 abstract class AbstractSearchService implements SearchServiceInterface
 {
     protected ValidatorInterface $validator;
+
     protected PaginationInfoServiceInterface $paginationInfoService;
+
     protected SearchIndexServiceInterface $searchIndexService;
+
     protected SearchModifierServiceInterface $searchModifierService;
 
     /**
@@ -75,8 +78,7 @@ abstract class AbstractSearchService implements SearchServiceInterface
     protected function getChildrenCounts(
         SearchResult $searchResult,
         string $indexName
-    ): array
-    {
+    ): array {
         $parentIds = $searchResult->getIds();
 
         if (empty($parentIds)) {
@@ -107,8 +109,7 @@ abstract class AbstractSearchService implements SearchServiceInterface
     protected function applyModifiersFromSearch(
         SearchInterface $search,
         AdapterSearchInterface $adapterSearch
-    ): self
-    {
+    ): self {
         $this->searchModifierService->applyModifiersFromSearch(
             $this,
             $search,
@@ -118,15 +119,13 @@ abstract class AbstractSearchService implements SearchServiceInterface
         return $this;
     }
 
-
     #[Required]
     public function setServices(
         PaginationInfoServiceInterface $paginationInfoService,
         ValidatorInterface $validator,
         SearchIndexServiceInterface $searchIndexService,
         SearchModifierServiceInterface $searchModifierService,
-    ): AbstractSearchService
-    {
+    ): AbstractSearchService {
         $this->paginationInfoService = $paginationInfoService;
         $this->validator = $validator;
         $this->searchIndexService = $searchIndexService;

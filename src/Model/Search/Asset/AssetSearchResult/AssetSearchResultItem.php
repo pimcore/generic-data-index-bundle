@@ -16,24 +16,24 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchRe
 final class AssetSearchResultItem
 {
     public function __construct(
-        private readonly int     $id,
-        private readonly int     $parentId,
-        private readonly string  $type,
-        private readonly string  $key,
-        private readonly string  $path,
-        private readonly string  $fullPath,
+        private readonly int $id,
+        private readonly int $parentId,
+        private readonly string $type,
+        private readonly string $key,
+        private readonly string $path,
+        private readonly string $fullPath,
         private readonly ?string $mimeType,
-        private readonly int     $userOwner,
-        private readonly int     $userModification,
+        private readonly int $userOwner,
+        private readonly int $userModification,
         private readonly ?string $locked,
-        private readonly bool    $isLocked,
+        private readonly bool $isLocked,
         /** @var AssetMetaData[] */
-        private readonly array   $metaData,
-        private readonly ?int    $creationDate,
-        private readonly ?int    $modificationDate,
-        private readonly bool    $hasWorkflowWithPermissions,
-        private readonly bool    $hasChildren,
-        private readonly array   $searchIndexData,
+        private readonly array $metaData,
+        private readonly ?int $creationDate,
+        private readonly ?int $modificationDate,
+        private readonly bool $hasWorkflowWithPermissions,
+        private readonly bool $hasChildren,
+        private readonly array $searchIndexData,
     ) {
     }
 
@@ -86,6 +86,7 @@ final class AssetSearchResultItem
     {
         return $this->userModification;
     }
+
     public function getLocked(): ?string
     {
         return $this->locked;

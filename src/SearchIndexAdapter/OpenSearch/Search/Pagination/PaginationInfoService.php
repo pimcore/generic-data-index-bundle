@@ -26,8 +26,7 @@ final class PaginationInfoService implements PaginationInfoServiceInterface
         SearchResult $searchResult,
         int $page,
         int $pageSize
-    ): PaginationInfo
-    {
+    ): PaginationInfo {
         return new PaginationInfo(
             totalItems: $searchResult->getTotalHits(),
             page: $page,

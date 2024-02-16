@@ -25,9 +25,9 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     use LoggerAwareTrait;
 
     public function __construct(
-        protected readonly SearchIndexServiceInterface       $searchIndexService,
+        protected readonly SearchIndexServiceInterface $searchIndexService,
         protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
-        protected readonly EventDispatcherInterface          $eventDispatcher
+        protected readonly EventDispatcherInterface $eventDispatcher
     ) {
     }
 
