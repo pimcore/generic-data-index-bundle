@@ -27,6 +27,7 @@ use Pimcore\HttpKernel\Bundle\DependentBundleInterface;
 use Pimcore\HttpKernel\BundleCollection\BundleCollection;
 use ReflectionClass;
 use ReflectionMethod;
+use Reflector;
 use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
@@ -69,7 +70,7 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements
             static function (
                 ChildDefinition $definition,
                 AsSearchModifierHandler $attribute,
-                ReflectionClass | ReflectionMethod $reflector
+                Reflector $reflector
             ): void {
 
                 $method = ($reflector instanceof ReflectionMethod)

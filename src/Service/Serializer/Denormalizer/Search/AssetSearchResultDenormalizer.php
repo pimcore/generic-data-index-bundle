@@ -57,7 +57,9 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
         return is_array($data) && is_subclass_of($type, AssetSearchResultItem::class);
     }
 
-    /** @var AssetMetaData[] $standardFields */
+    /**
+     * @var AssetMetaData[] $standardFields
+     */
     private function hydrateMetadata(array $standardFields): array
     {
         $result = [];

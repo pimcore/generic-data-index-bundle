@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Se
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
@@ -67,6 +68,9 @@ final class SearchModifierService implements SearchModifierServiceInterface
         }
     }
 
+    /**
+     * @param Search $adapterSearch
+     */
     public function applyModifiersFromSearch(
         SearchServiceInterface $searchService,
         SearchInterface $search,

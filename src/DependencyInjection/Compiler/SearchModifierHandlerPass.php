@@ -113,7 +113,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
                     'a type-hint corresponding to the search modifier model class it handles ' .
                     '(implementing SearchModifierInterface).',
                     $serviceId,
-                    $parameters[0]->getName(),
+                    $searchModifierType instanceof ReflectionNamedType ? $searchModifierType->getName() : '',
                     $handlerClass->getName(),
                     $methodName
                 )
@@ -133,7 +133,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
                     'Invalid handler service "%s": argument "$%s" of method "%s::%s()" must have ' .
                     'a type-hint on SearchModifierContextInterface.',
                     $serviceId,
-                    $contextType?->getName(),
+                    $contextType instanceof ReflectionNamedType ? $contextType->getName() : '',
                     $handlerClass->getName(),
                     $methodName
                 )
