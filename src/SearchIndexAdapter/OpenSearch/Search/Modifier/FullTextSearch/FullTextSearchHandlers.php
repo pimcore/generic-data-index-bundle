@@ -12,7 +12,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\E
 class FullTextSearchHandlers
 {
     #[AsSearchModifierHandler]
-    public function handleElementKeySearch(ElementKeySearch $elementKeySearch, SearchModifierContextInterface $context): void
+    public function handleElementKeySearch(
+        ElementKeySearch $elementKeySearch,
+        SearchModifierContextInterface $context
+    ): void
     {
         if (empty($elementKeySearch->getSearchTerm())) {
             return;

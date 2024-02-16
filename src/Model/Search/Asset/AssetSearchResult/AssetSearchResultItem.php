@@ -96,7 +96,7 @@ final class AssetSearchResultItem
         return $this->isLocked;
     }
 
-    /** @var AssetMetaData[] */
+    /** @return AssetMetaData[] */
     public function getMetaData(): array
     {
         return $this->metaData;
