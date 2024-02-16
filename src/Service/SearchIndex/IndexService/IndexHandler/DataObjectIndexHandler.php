@@ -47,7 +47,7 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
     {
         parent::createIndex($context, $aliasName);
 
-        $this->openSearchService->putAlias(
+        $this->searchIndexService->putAlias(
             $this->searchIndexConfigService->getIndexName(self::DATA_OBJECT_INDEX_ALIAS),
             $this->getCurrentFullIndexName($context)
         );

@@ -17,9 +17,9 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
@@ -36,7 +36,7 @@ final class IndexService implements IndexServiceInterface
 
     public function __construct(
         private readonly AdapterServiceInterface $typeAdapterService,
-        private readonly OpenSearchServiceInterface $openSearchService,
+        private readonly SearchIndexServiceInterface $searchIndexService,
         private readonly BulkOperationServiceInterface $bulkOperationService,
         private readonly EventDispatcherInterface $eventDispatcher
     ) {
@@ -52,7 +52,7 @@ final class IndexService implements IndexServiceInterface
             ->getAliasIndexNameByElement($element);
 
         try {
-            $indexDocument = $this->openSearchService->getDocument(
+            $indexDocument = $this->searchIndexService->getDocument(
                 index: $indexName,
                 id: $element->getId(),
                 ignore404: true

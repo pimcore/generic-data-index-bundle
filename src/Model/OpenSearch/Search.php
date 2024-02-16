@@ -19,8 +19,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\QueryInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\QueryList;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSort;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSortList;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 
-final class Search
+final class Search implements AdapterSearchInterface
 {
     public function __construct(
         private ?int $from = null,
@@ -103,7 +104,7 @@ final class Search
         ];
 
         foreach ($result as $key => $value) {
-            if (empty($value)) {
+            if ($value === null) {
                 unset($result[$key]);
             }
         }
