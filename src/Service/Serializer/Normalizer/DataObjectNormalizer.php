@@ -17,6 +17,7 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectNormalizerException;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\Concrete;
@@ -30,6 +31,11 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 final class DataObjectNormalizer implements NormalizerInterface
 {
     use ElementNormalizerTrait;
+
+    public function __construct(
+        private readonly FieldDefinitionServiceInterface $fieldDefinitionService,
+    ) {
+    }
 
     /**
      * @param AbstractObject $object
@@ -118,19 +124,18 @@ final class DataObjectNormalizer implements NormalizerInterface
 
                 $value = $dataObject->get($key);
 
-                if($value instanceof Localizedfield) {
-                    $value->loadLazyData();
-                }
-
-                if($fieldDefinition instanceof \Pimcore\Normalizer\NormalizerInterface) {
-                    $value = $fieldDefinition->normalize($value);
-                }
+                $value = $this->fieldDefinitionService->normalizeValue($fieldDefinition, $value);
 
                 $result[$key] = $value;
             }
 
             AbstractObject::setGetInheritedValues($inheritedValuesBackup);
             Localizedfield::setGetFallbackValues($fallbackLanguagesBackup);
+
+            if(isset($result['localizedfields'])) {
+                $result = array_merge($result['localizedfields'], $result);
+                unset($result['localizedfields']);
+            }
 
             return $result;
         } catch (Exception $e) {

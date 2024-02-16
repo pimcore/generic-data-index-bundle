@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\SearchInd
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\SearchModifierHandlerPass;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\CompilerPassTag;
 use Pimcore\Bundle\OpenSearchClientBundle\PimcoreOpenSearchClientBundle;
+use Pimcore\Bundle\StaticResolverBundle\PimcoreStaticResolverBundle;
 use Pimcore\Extension\Bundle\AbstractPimcoreBundle;
 use Pimcore\Extension\Bundle\Installer\InstallerInterface;
 use Pimcore\Extension\Bundle\PimcoreBundleAdminClassicInterface;
@@ -58,6 +59,7 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements
     public static function registerDependentBundles(BundleCollection $collection): void
     {
         $collection->addBundle(new PimcoreOpenSearchClientBundle());
+        $collection->addBundle(new PimcoreStaticResolverBundle());
     }
 
     private function registerSearchModifierAttribute(ContainerBuilder $container): void

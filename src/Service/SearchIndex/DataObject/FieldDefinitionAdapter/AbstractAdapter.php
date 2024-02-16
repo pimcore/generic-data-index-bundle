@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\F
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
+use Pimcore\Normalizer\NormalizerInterface;
 
 abstract class AbstractAdapter implements AdapterInterface
 {
@@ -23,7 +24,7 @@ abstract class AbstractAdapter implements AdapterInterface
 
     public function __construct(
         protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
-        private readonly FieldDefinitionServiceInterface $fieldDefinitionService
+        protected readonly FieldDefinitionServiceInterface $fieldDefinitionService,
     ) {
     }
 
@@ -49,5 +50,14 @@ abstract class AbstractAdapter implements AdapterInterface
     public function getFieldDefinitionService(): FieldDefinitionServiceInterface
     {
         return $this->fieldDefinitionService;
+    }
+
+    public function normalize(mixed $value): mixed
+    {
+        if($this->fieldDefinition instanceof NormalizerInterface) {
+            return $this->fieldDefinition->normalize($value);
+        }
+
+        return $value;
     }
 }

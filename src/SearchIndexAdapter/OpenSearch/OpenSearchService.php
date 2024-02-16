@@ -288,7 +288,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
             'actions' => [
                 [
                     'remove' => [
-                        'index' => '*',
+                        'index' => $aliasName . '*',
                         'alias' => $aliasName,
                     ],
                 ],
