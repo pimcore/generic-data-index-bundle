@@ -255,7 +255,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
     public function createPaginatedSearch(int $page, int $pageSize): AdapterSearchInterface
     {
         return new Search(
-            from: $this->paginationInfoService->calculateFrom($page, $pageSize),
+            from: $pageSize * ($page - 1),
             size: $pageSize
         );
     }

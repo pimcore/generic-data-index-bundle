@@ -22,7 +22,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\P
  */
 final class PaginationInfoService implements PaginationInfoServiceInterface
 {
-    public function getPaginationInfoFromSearchResult(SearchResult $searchResult, int $page, int $pageSize): PaginationInfo
+    public function getPaginationInfoFromSearchResult(
+        SearchResult $searchResult,
+        int $page,
+        int $pageSize
+    ): PaginationInfo
     {
         return new PaginationInfo(
             totalItems: $searchResult->getTotalHits(),
@@ -30,10 +34,5 @@ final class PaginationInfoService implements PaginationInfoServiceInterface
             pageSize: $pageSize,
             totalPages: $pageSize > 0 ? (int)ceil($searchResult->getTotalHits() / $pageSize) : 0
         );
-    }
-
-    public function calculateFrom(int $page, int $pageSize): int
-    {
-        return $pageSize * ($page - 1);
     }
 }

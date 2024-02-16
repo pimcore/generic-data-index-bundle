@@ -17,12 +17,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation\Aggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Paging\PaginationInfo;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Tree\AssetTreeItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Tree\AssetTreeItemList;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Tree\AssetTreeServiceInterface;
 
 final class AssetTreeService implements AssetTreeServiceInterface
@@ -30,7 +29,6 @@ final class AssetTreeService implements AssetTreeServiceInterface
     public function __construct(
         private readonly SearchIndexServiceInterface $openSearchService,
         private readonly AssetTypeAdapter $assetTypeAdapter,
-        private readonly PaginationInfoServiceInterface $paginationInfoService,
     ) {
 
     }
@@ -41,13 +39,16 @@ final class AssetTreeService implements AssetTreeServiceInterface
         $treeItems = $this->listHitsById($openSearchResult['hits']);
         $childrenCounts = $this->fetchChildrenCounts(array_keys($treeItems));
 
+        $pagination = new PaginationInfo(
+            totalItems: $openSearchResult['total']['value'],
+            page: $page,
+            pageSize: $pageSize,
+            totalPages: $pageSize > 0 ? (int)ceil($openSearchResult['total']['value'] / $pageSize) : 0
+        );
+
         return new AssetTreeItemList(
             items: $this->hydrateTreeItems($treeItems, $childrenCounts),
-            pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
-                searchResult: $openSearchResult,
-                page: $page,
-                pageSize: $pageSize
-            ),
+            pagination: $pagination,
         );
     }
 

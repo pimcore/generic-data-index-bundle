@@ -7,11 +7,11 @@ final class SearchResult
 {
     public function __construct(
         /** SearchResultHit[] */
-        private array          $hits,
+        private readonly array $hits,
         /** SearchResultAggregation[] */
         private readonly array $aggregations,
-        private int            $totalHits,
-        private float          $maxScore,
+        private readonly int   $totalHits,
+        private readonly float $maxScore,
     )
     {
     }

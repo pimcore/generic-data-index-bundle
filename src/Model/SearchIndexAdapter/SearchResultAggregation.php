@@ -6,11 +6,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter;
 class SearchResultAggregation
 {
     public function __construct(
-        private string       $name,
+        private readonly string $name,
         /** SearchResultAggregationBucket[] */
-        private array        $buckets,
-        private readonly int $otherDocCount,
-        private int          $docCountErrorUpperBound,
+        private readonly array  $buckets,
+        private readonly int    $otherDocCount,
+        private readonly int    $docCountErrorUpperBound,
     )
     {
     }

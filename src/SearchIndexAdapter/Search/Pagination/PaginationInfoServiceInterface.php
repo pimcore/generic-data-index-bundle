@@ -18,7 +18,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 
 interface PaginationInfoServiceInterface
 {
-    public function getPaginationInfoFromSearchResult(SearchResult $searchResult, int $page, int $pageSize): PaginationInfo;
-
-    public function calculateFrom(int $page, int $pageSize): int;
+    public function getPaginationInfoFromSearchResult(
+        SearchResult $searchResult,
+        int $page,
+        int $pageSize
+    ): PaginationInfo;
 }
