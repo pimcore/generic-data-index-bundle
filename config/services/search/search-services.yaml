@@ -4,5 +4,5 @@ services:
     autoconfigure: true
     public: false
 
-  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\AssetSearchServiceInterface:
-      class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\AssetSearchService
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface:
+      class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchService
