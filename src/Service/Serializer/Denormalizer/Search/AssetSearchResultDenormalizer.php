@@ -58,7 +58,7 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
     }
 
     /**
-     * @param AssetMetaData[] $standardFields
+     * @return AssetMetaData[]
      */
     private function hydrateMetadata(array $standardFields): array
     {
