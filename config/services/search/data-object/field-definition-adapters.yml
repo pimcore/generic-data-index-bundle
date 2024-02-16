@@ -31,6 +31,7 @@ services:
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "date" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "datetime" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "dateRange" }
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\LocalizedFieldsAdapter:
         shared: false
