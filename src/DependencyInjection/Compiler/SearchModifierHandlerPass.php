@@ -63,7 +63,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
     {
         try {
             $method = $handlerClass->getMethod($methodName);
-        } catch (\ReflectionException) {
+        } catch (ReflectionException) {
             throw new RuntimeException(
                 sprintf(
                     'Invalid handler service "%s": class "%s" must have an "%s()" method.',

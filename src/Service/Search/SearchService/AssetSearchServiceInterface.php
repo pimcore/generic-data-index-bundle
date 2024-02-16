@@ -16,7 +16,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ValidationFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResult;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchServiceInterface;
 
 interface AssetSearchServiceInterface extends SearchServiceInterface
 {
