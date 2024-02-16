@@ -11,7 +11,6 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
@@ -21,7 +20,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeT
  */
 final class RgbaColorAdapter extends AbstractAdapter
 {
-
     public function getOpenSearchMapping(): array
     {
         return [
@@ -38,7 +36,7 @@ final class RgbaColorAdapter extends AbstractAdapter
                 'a' => [
                     'type' => AttributeType::INTEGER->value,
                 ],
-            ]
+            ],
         ];
     }
 }
