@@ -18,8 +18,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\BulkOperationServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
@@ -35,10 +35,10 @@ final class IndexService implements IndexServiceInterface
     use LoggerAwareTrait;
 
     public function __construct(
-        private readonly AdapterServiceInterface $typeAdapterService,
-        private readonly OpenSearchServiceInterface $openSearchService,
+        private readonly AdapterServiceInterface       $typeAdapterService,
+        private readonly SearchIndexServiceInterface   $openSearchService,
         private readonly BulkOperationServiceInterface $bulkOperationService,
-        private readonly EventDispatcherInterface $eventDispatcher
+        private readonly EventDispatcherInterface      $eventDispatcher
     ) {
     }
 

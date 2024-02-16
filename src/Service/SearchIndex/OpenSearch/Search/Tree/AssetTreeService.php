@@ -19,15 +19,16 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Tree\AssetTreeItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Tree\AssetTreeItemList;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Pagination\PaginationInfoServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Tree\AssetTreeServiceInterface;
 
 final class AssetTreeService implements AssetTreeServiceInterface
 {
     public function __construct(
-        private readonly OpenSearchServiceInterface $openSearchService,
+        private readonly SearchIndexServiceInterface $openSearchService,
         private readonly AssetTypeAdapter $assetTypeAdapter,
         private readonly PaginationInfoServiceInterface $paginationInfoService,
     ) {

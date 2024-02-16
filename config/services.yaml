@@ -1,5 +1,6 @@
 imports:
     - { resource: 'services/search/*' }
+    - { resource: 'services/search-index-adapter/*' }
     - { resource: 'services/search/data-object/*' }
     - { resource: 'services/*' }
 services:
