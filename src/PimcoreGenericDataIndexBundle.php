@@ -25,7 +25,6 @@ use Pimcore\Extension\Bundle\PimcoreBundleAdminClassicInterface;
 use Pimcore\Extension\Bundle\Traits\BundleAdminClassicTrait;
 use Pimcore\HttpKernel\Bundle\DependentBundleInterface;
 use Pimcore\HttpKernel\BundleCollection\BundleCollection;
-use ReflectionClass;
 use ReflectionMethod;
 use Reflector;
 use Symfony\Component\DependencyInjection\ChildDefinition;
