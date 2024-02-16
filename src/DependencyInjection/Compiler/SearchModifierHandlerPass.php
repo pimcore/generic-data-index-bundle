@@ -1,23 +1,14 @@
 <?php
 declare(strict_types=1);
 
-/**
- * Pimcore
- *
- * This source file is available under following license:
- * - Pimcore Commercial License (PCL)
- *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     PCL
- */
-
 namespace Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\CompilerPassTag;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\ModifierService\SearchModifierServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\Modifier\SearchModifierServiceInterface;
+use ReflectionClass;
 use ReflectionException;
 use ReflectionNamedType;
 use ReflectionUnionType;
@@ -54,28 +45,51 @@ class SearchModifierHandlerPass implements CompilerPassInterface
                 $handles = $this->guessHandledClasses($r, $serviceId, $method);
 
                 foreach($handles as $handledClass) {
-                    $searchModifierServiceDefinition->addMethodCall('addSearchModifierHandler', [$handledClass, new Reference($serviceId), $method]);
+                    $searchModifierServiceDefinition->addMethodCall(
+                        method: 'addSearchModifierHandler',
+                        arguments: [$handledClass, new Reference($serviceId), $method]
+                    );
                 }
 
             }
         }
     }
 
-    private function guessHandledClasses(\ReflectionClass $handlerClass, string $serviceId, string $methodName): iterable
+    private function guessHandledClasses(
+        ReflectionClass $handlerClass,
+        string $serviceId,
+        string $methodName
+    ): iterable
     {
         try {
             $method = $handlerClass->getMethod($methodName);
         } catch (\ReflectionException) {
-            throw new RuntimeException(sprintf('Invalid handler service "%s": class "%s" must have an "%s()" method.', $serviceId, $handlerClass->getName(), $methodName));
+            throw new RuntimeException(
+                sprintf(
+                    'Invalid handler service "%s": class "%s" must have an "%s()" method.',
+                    $serviceId,
+                    $handlerClass->getName(),
+                    $methodName
+                )
+            );
         }
 
         if ($method->getNumberOfRequiredParameters() !== 2) {
-            throw new RuntimeException(sprintf('Invalid handler service "%s": method "%s::%s()" requires exactly two arguments, first one being the search modifier model it handles and second one the SearchModifierContext object.', $serviceId, $handlerClass->getName(), $methodName));
+            throw new RuntimeException(
+                sprintf(
+                    'Invalid handler service "%s": method "%s::%s()" requires exactly two arguments, ' .
+                    'first one being the search modifier model it handles and ' .
+                    'second one the SearchModifierContext object.',
+                    $serviceId,
+                    $handlerClass->getName(),
+                    $methodName
+                )
+            );
         }
 
         $parameters = $method->getParameters();
 
-        /** @var ReflectionNamedType|ReflectionUnionType|null */
+        /** @var ReflectionNamedType|ReflectionUnionType|null $searchModifierType */
         $searchModifierType = $parameters[0]->getType();
         $searchModifierValid = $this->checkArgumentInstanceOf(
             $searchModifierType,
@@ -84,7 +98,17 @@ class SearchModifierHandlerPass implements CompilerPassInterface
         //@todo check for ReflectionUnionType if !$searchModifierValid
 
         if(!$searchModifierValid) {
-            throw new RuntimeException(sprintf('Invalid handler service "%s": argument "$%s" of method "%s::%s()" must have a type-hint corresponding to the search modifier model class it handles (implementing SearchModifierInterface).', $serviceId, $parameters[0]->getName(), $handlerClass->getName(), $methodName));
+            throw new RuntimeException(
+                sprintf(
+                    'Invalid handler service "%s": argument "$%s" of method "%s::%s()" must have ' .
+                    'a type-hint corresponding to the search modifier model class it handles ' .
+                    '(implementing SearchModifierInterface).',
+                    $serviceId,
+                    $parameters[0]->getName(),
+                    $handlerClass->getName(),
+                    $methodName
+                )
+            );
         }
 
         $contextType = $parameters[1]->getType();
@@ -95,14 +119,17 @@ class SearchModifierHandlerPass implements CompilerPassInterface
         );
 
         if(!$contextTypeValid) {
-            throw new RuntimeException(sprintf('Invalid handler service "%s": argument "$%s" of method "%s::%s()" must have a type-hint on SearchModifierContextInterface.', $serviceId, $parameters[1]->getName(), $handlerClass->getName(), $methodName));
+            throw new RuntimeException(
+                sprintf(
+                    'Invalid handler service "%s": argument "$%s" of method "%s::%s()" must have ' .
+                    'a type-hint on SearchModifierContextInterface.',
+                    $serviceId,
+                    $contextType?->getName(),
+                    $handlerClass->getName(),
+                    $methodName
+                )
+            );
         }
-
-        //        try ($parameters[0]->getType()->getTypes()) {
-        //            throw new RuntimeException(sprintf('Invalid handler service "%s": argument "$%s" of method "%s::%s()" must have a type-hint corresponding to the search modifier model class it handles.', $serviceId, $parameters[0]->getName(), $handlerClass->getName(), $methodName));
-        //        } catch (\ReflectionException) {
-        //            // noop
-        //        }
 
         if ($searchModifierType instanceof ReflectionUnionType) {
             $types = [];
@@ -119,11 +146,16 @@ class SearchModifierHandlerPass implements CompilerPassInterface
                 return ('__invoke' === $methodName) ? $types : array_fill_keys($types, $methodName);
             }
 
-            throw new RuntimeException(sprintf('Invalid handler service "%s": type-hint of argument "$%s" in method "%s::__invoke()" must be a class , "%s" given.', $serviceId, $parameters[0]->getName(), $handlerClass->getName(), implode('|', $invalidTypes)));
-        }
-
-        if ($searchModifierType->isBuiltin()) {
-            throw new RuntimeException(sprintf('Invalid handler service "%s": type-hint of argument "$%s" in method "%s::%s()" must be a class , "%s" given.', $serviceId, $parameters[0]->getName(), $handlerClass->getName(), $methodName, $type instanceof ReflectionNamedType ? $type->getName() : (string) $type));
+            throw new RuntimeException(
+                sprintf(
+                    'Invalid handler service "%s": type-hint of argument "$%s" in method "%s::__invoke()" ' .
+                    'must be a class , "%s" given.',
+                    $serviceId,
+                    $parameters[0]->getName(),
+                    $handlerClass->getName(),
+                    implode('|', $invalidTypes)
+                )
+            );
         }
 
         return ('__invoke' === $methodName) ? [$searchModifierType->getName()] : [$searchModifierType->getName() => $methodName];
@@ -143,7 +175,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
 
             //@todo check for ReflectionUnionType if !$searchModifierValid
             return $searchModifierValid;
-        } catch(Exception $e) {
+        } catch(Exception) {
             return false;
         }
     }

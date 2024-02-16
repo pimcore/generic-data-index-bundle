@@ -13,9 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Tree;
 
-/**
- * @deprecated
- */
 final class AssetTreeItem
 {
     public function __construct(

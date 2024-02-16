@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 /**
  * Pimcore
@@ -13,7 +14,7 @@
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\SearchService\SearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchServiceInterface;
 
 interface SearchModifierContextInterface
 {

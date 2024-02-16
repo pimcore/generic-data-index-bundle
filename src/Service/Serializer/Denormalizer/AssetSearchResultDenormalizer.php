@@ -54,6 +54,6 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
 
     private function denormalizeMetadata(array $standardFields): array
     {
-
+        return [];
     }
 }

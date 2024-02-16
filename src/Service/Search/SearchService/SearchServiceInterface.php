@@ -11,7 +11,7 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\SearchService;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
 interface SearchServiceInterface
 {

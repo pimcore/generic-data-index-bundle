@@ -4,5 +4,5 @@ services:
     autoconfigure: true
     public: false
 
-  Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\ModifierService\SearchModifierServiceInterface:
-    class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\ModifierService\SearchModifierService
+  Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\Modifier\SearchModifierServiceInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\Modifier\SearchModifierService

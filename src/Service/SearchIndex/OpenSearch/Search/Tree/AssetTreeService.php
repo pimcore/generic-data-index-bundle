@@ -24,9 +24,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSea
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Pagination\PaginationInfoServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Tree\AssetTreeServiceInterface;
 
-/**
- * @deprecated
- */
 final class AssetTreeService implements AssetTreeServiceInterface
 {
     public function __construct(

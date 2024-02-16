@@ -17,7 +17,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\ValidationFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Pagination\PaginationInfoServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\SearchService\SearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchServiceInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Service\Attribute\Required;
 
@@ -57,18 +57,16 @@ abstract class AbstractSearchService implements SearchServiceInterface
         );
     }
 
-    #[Required]
-    public function setValidator(ValidatorInterface $validator): AbstractSearchService
-    {
-        $this->validator = $validator;
 
-        return $this;
-    }
 
     #[Required]
-    public function setPaginationInfoService(PaginationInfoServiceInterface $paginationInfoService): AbstractSearchService
+    public function setServices(
+        PaginationInfoServiceInterface $paginationInfoService,
+        ValidatorInterface $validator,
+    ): AbstractSearchService
     {
         $this->paginationInfoService = $paginationInfoService;
+        $this->validator = $validator;
 
         return $this;
     }

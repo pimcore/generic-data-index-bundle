@@ -18,10 +18,13 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\A
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\OpenSearchServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\ModifierService\SearchModifierServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\SearchService\AssetSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\Modifier\SearchModifierServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\AssetSearchResultDenormalizer;
 
+/**
+ * @internal
+ */
 final class AssetSearchService extends AbstractSearchService implements AssetSearchServiceInterface
 {
     public function __construct(

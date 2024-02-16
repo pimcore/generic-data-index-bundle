@@ -15,9 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Tree;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Paging\PaginationInfo;
 
-/**
- * @deprecated
- */
 final class AssetTreeItemList
 {
     public function __construct(
