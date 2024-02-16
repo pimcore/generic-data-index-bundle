@@ -23,7 +23,12 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
     /**
      * @param array $data
      */
-    public function denormalize(mixed $data, string $type, string $format = null, array $context = []): AssetSearchResultItem
+    public function denormalize(
+        mixed $data,
+        string $type,
+        string $format = null,
+        array $context = []
+    ): AssetSearchResultItem
     {
         $systemFields = $data[FieldCategory::SYSTEM_FIELDS->value];
 
@@ -35,14 +40,14 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
             path: $systemFields[SystemField::PATH->value],
             fullPath: $systemFields[SystemField::FULL_PATH->value],
             mimeType: $systemFields[SystemField::MIME_TYPE->value],
+            children: false,
             userOwner: $systemFields[SystemField::USER_OWNER->value],
             userModification: $systemFields[SystemField::USER_MODIFICATION->value],
             creationDate: strtotime($systemFields[SystemField::CREATION_DATE->value]),
             modificationDate: strtotime($systemFields[SystemField::MODIFICATION_DATE->value]),
             lock: $systemFields[SystemField::LOCKED->value],
-            isLocked: $systemFields[SystemField::IS_LOCKED->value],
             // metaData: $this->denormalizeMetadata($data[FieldCategory::STANDARD_FIELDS->value]),
-            children: false,
+            isLocked: $systemFields[SystemField::IS_LOCKED->value],
             searchIndexData: $data
         );
     }

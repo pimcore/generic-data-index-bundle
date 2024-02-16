@@ -143,7 +143,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
             }
 
             if ($types) {
-                return ('__invoke' === $methodName) ? $types : array_fill_keys($types, $methodName);
+                return ($methodName === '__invoke') ? $types : array_fill_keys($types, $methodName);
             }
 
             throw new RuntimeException(
@@ -158,7 +158,9 @@ class SearchModifierHandlerPass implements CompilerPassInterface
             );
         }
 
-        return ('__invoke' === $methodName) ? [$searchModifierType->getName()] : [$searchModifierType->getName() => $methodName];
+        return ($methodName === '__invoke')
+            ? [$searchModifierType->getName()]
+            : [$searchModifierType->getName() => $methodName];
     }
 
     private function checkArgumentInstanceOf(
@@ -167,14 +169,13 @@ class SearchModifierHandlerPass implements CompilerPassInterface
         bool $interfaceAllowed = false
     ): bool {
         try {
-            $searchModifierValid = $type instanceof ReflectionNamedType
+            //@todo check for ReflectionUnionType if !$searchModifierValid
+            return $type instanceof ReflectionNamedType
                 && (
                     ($interfaceAllowed && $classOrInterface === $type->getName())
                     || in_array($classOrInterface, class_implements($type->getName()), true)
                 );
 
-            //@todo check for ReflectionUnionType if !$searchModifierValid
-            return $searchModifierValid;
         } catch(Exception) {
             return false;
         }
