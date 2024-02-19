@@ -21,7 +21,7 @@ use Symfony\Component\DependencyInjection\Reference;
 /**
  * @internal
  */
-final class SearchIndexFieldDefinitionPass implements CompilerPassInterface
+final class ServiceLocatorPass implements CompilerPassInterface
 {
     /**
      * @param ContainerBuilder $container
@@ -33,6 +33,8 @@ final class SearchIndexFieldDefinitionPass implements CompilerPassInterface
                 CompilerPassTag::DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION->value,
             //'pimcore.generic_data_index.asset.search_index_field_definition_locator' =>
             //  CompilerPassTag::DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION->value
+            'pimcore.generic_data_index.asset.type_serialization_handler_locator' =>
+                CompilerPassTag::ASSET_TYPE_SERIALIZATION_HANDLER->value,
         ];
 
         foreach ($definitionList as $definitionId => $serviceTagName) {

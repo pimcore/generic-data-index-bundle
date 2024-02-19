@@ -20,6 +20,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
  */
 enum SystemField: string
 {
+    use FieldCategory\SystemField\SystemFieldTrait;
+
     case ID = 'id';
     case PARENT_ID = 'parentId';
     case CREATION_DATE = 'creationDate';
@@ -45,20 +47,4 @@ enum SystemField: string
      * Not persisted in search index but dynamically calculated
      */
     case HAS_CHILDREN = 'hasChildren';
-
-    public function getPath(string $subField = null): string
-    {
-        $path = FieldCategory::SYSTEM_FIELDS->value . '.' . $this->value;
-
-        if($subField) {
-            $path .= '.' . $subField;
-        }
-
-        return $path;
-    }
-
-    public function getData(array $searchResultHit): mixed
-    {
-        return $searchResultHit[FieldCategory::SYSTEM_FIELDS->value][$this->value] ?? null;
-    }
 }
