@@ -42,7 +42,7 @@ services:
         tags:
             - { name: pimcore.generic_data_index.asset_type_serialization_handler, type: video }
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler\AssetTypeSerializationHandlerService:
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandlerService:
         arguments:
             - '@pimcore.generic_data_index.asset.type_serialization_handler_locator'
 
