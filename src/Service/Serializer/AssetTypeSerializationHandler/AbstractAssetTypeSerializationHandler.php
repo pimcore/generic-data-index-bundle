@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Service\AssetTypeSerializationHandler\AssetTypeSerializationHandlerInterface;
 use Pimcore\Model\Asset;
 
 abstract class AbstractAssetTypeSerializationHandler implements AssetTypeSerializationHandlerInterface

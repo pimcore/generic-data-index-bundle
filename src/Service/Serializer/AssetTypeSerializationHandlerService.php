@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler\AssetTypeSerializationHandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\AssetTypeSerializationHandler\AssetTypeSerializationHandlerInterface;
 use Psr\Container\ContainerExceptionInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
