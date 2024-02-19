@@ -13,8 +13,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue;
 
+use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
@@ -22,7 +25,10 @@ use Symfony\Component\Messenger\MessageBusInterface;
  */
 final class QueueMessageService implements QueueMessageServiceInterface
 {
+    use LoggerAwareTrait;
+
     public function __construct(
+        private readonly EntityManagerInterface $entityManager,
         private readonly IndexQueueRepository $indexQueueRepository,
         private readonly MessageBusInterface $messageBus
     ) {
@@ -33,10 +39,24 @@ final class QueueMessageService implements QueueMessageServiceInterface
         int $maxBatchSize
     ): void {
         while(true) {
-            $entries = $this->indexQueueRepository->getUnhandledIndexQueueEntries(true, $maxBatchSize);
+            $this->entityManager->beginTransaction();
+            $entries = $this->indexQueueRepository->getUnhandledIndexQueueEntries(
+                true,
+                $maxBatchSize
+            );
             $amountOfEntries = count($entries);
             if ($amountOfEntries > 0) {
-                $this->messageBus->dispatch(new IndexUpdateQueueMessage($entries));
+                try {
+                    $this->messageBus->dispatch(new IndexUpdateQueueMessage($entries));
+                    $this->entityManager->commit();
+                } catch (Exception $exception) {
+                    $this->entityManager->rollback();
+                    $this->logger->error(
+                        'Dispatching IndexUpdateQueueMessage failed! ' .
+                        get_class($exception) . ': ' . $exception->getMessage()
+                    );
+                    break;
+                }
             }
             if ($amountOfEntries < $maxBatchSize) {
                 break;

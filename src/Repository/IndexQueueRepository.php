@@ -70,7 +70,10 @@ final class IndexQueueRepository
             ->getSingleScalarResult();
     }
 
-    public function getUnhandledIndexQueueEntries(bool $dispatch = false, int $limit = 100000): array
+    public function getUnhandledIndexQueueEntries(
+        bool $dispatch = false,
+        int $limit = 100000
+    ): array
     {
         try {
             if ($dispatch) {
@@ -180,22 +183,25 @@ final class IndexQueueRepository
         $this->connection->executeQuery($sql, $queryBuilder->getParameters());
     }
 
-    /**
-     * @throws \Doctrine\DBAL\Exception
-     */
-    public function dispatchItems(int $limit): int
+    public function dispatchItems(
+        int $limit
+    ): int
     {
         $dispatchId = $this->timeService->getCurrentMillisecondTimestamp();
+        $dispatchedTime = $dispatchId - 60*60*24*1000;
 
-        $this->connection->executeQuery(
-            sql: 'UPDATE ' . IndexQueue::TABLE .
-            ' SET dispatched = :dispatchId WHERE dispatched < :dispatched LIMIT ' . $limit,
+        $qb = $this->createQueryBuilder('iq')
+            ->update(IndexQueue::class, 'iq')
+            ->set('iq.dispatched', ':dispatchId')
+            ->where('iq.dispatched < :dispatched')
+            ->setMaxResults($limit);
 
-            params: [
-                'dispatchId' => $dispatchId,
-                'dispatched' => $dispatchId - 60*60*24*1000,
-            ]
-        );
+        $query = $qb->getQuery();
+        $query->setParameter('dispatchId', $dispatchId)
+            ->setParameter('dispatched', $dispatchedTime)
+            ->execute();
+
+        $this->entityManager->flush();
 
         return $dispatchId;
     }
