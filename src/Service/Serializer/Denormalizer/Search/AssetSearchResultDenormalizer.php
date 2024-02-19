@@ -26,8 +26,7 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
 {
     public function __construct(
         private readonly AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService,
-    )
-    {
+    ) {
     }
 
     /**

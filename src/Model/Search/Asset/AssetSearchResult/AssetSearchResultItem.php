@@ -16,24 +16,40 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchRe
 class AssetSearchResultItem
 {
     private int $id;
+
     private int $parentId;
+
     private string $type;
+
     private string $key;
+
     private string $path;
+
     private string $fullPath;
+
     private ?string $mimeType;
+
     private ?int $fileSize;
+
     private int $userOwner;
+
     private int $userModification;
+
     private ?string $locked;
+
     private bool $isLocked;
+
     /** @var AssetMetaData[] */
     private array $metaData;
+
     private ?int $creationDate;
+
     private ?int $modificationDate;
     private bool $workflowWithPermissions;
     private bool $hasChildren;
+
     private array $searchIndexData;
+
     private AssetPermissions $permissions;
 
     public function __construct(
@@ -48,6 +64,7 @@ class AssetSearchResultItem
     public function setId(int $id): AssetSearchResultItem
     {
         $this->id = $id;
+
         return $this;
     }
 
@@ -59,6 +76,7 @@ class AssetSearchResultItem
     public function setParentId(int $parentId): AssetSearchResultItem
     {
         $this->parentId = $parentId;
+
         return $this;
     }
 
@@ -70,6 +88,7 @@ class AssetSearchResultItem
     public function setType(string $type): AssetSearchResultItem
     {
         $this->type = $type;
+
         return $this;
     }
 
@@ -81,6 +100,7 @@ class AssetSearchResultItem
     public function setKey(string $key): AssetSearchResultItem
     {
         $this->key = $key;
+
         return $this;
     }
 
@@ -92,6 +112,7 @@ class AssetSearchResultItem
     public function setPath(string $path): AssetSearchResultItem
     {
         $this->path = $path;
+
         return $this;
     }
 
@@ -103,6 +124,7 @@ class AssetSearchResultItem
     public function setFullPath(string $fullPath): AssetSearchResultItem
     {
         $this->fullPath = $fullPath;
+
         return $this;
     }
 
@@ -114,6 +136,7 @@ class AssetSearchResultItem
     public function setMimeType(?string $mimeType): AssetSearchResultItem
     {
         $this->mimeType = $mimeType;
+
         return $this;
     }
 
@@ -125,6 +148,7 @@ class AssetSearchResultItem
     public function setFileSize(?int $fileSize): AssetSearchResultItem
     {
         $this->fileSize = $fileSize;
+
         return $this;
     }
 
@@ -136,6 +160,7 @@ class AssetSearchResultItem
     public function setUserOwner(int $userOwner): AssetSearchResultItem
     {
         $this->userOwner = $userOwner;
+
         return $this;
     }
 
@@ -147,6 +172,7 @@ class AssetSearchResultItem
     public function setUserModification(int $userModification): AssetSearchResultItem
     {
         $this->userModification = $userModification;
+
         return $this;
     }
 
@@ -158,6 +184,7 @@ class AssetSearchResultItem
     public function setLocked(?string $locked): AssetSearchResultItem
     {
         $this->locked = $locked;
+
         return $this;
     }
 
@@ -169,6 +196,7 @@ class AssetSearchResultItem
     public function setIsLocked(bool $isLocked): AssetSearchResultItem
     {
         $this->isLocked = $isLocked;
+
         return $this;
     }
 
@@ -180,6 +208,7 @@ class AssetSearchResultItem
     public function setMetaData(array $metaData): AssetSearchResultItem
     {
         $this->metaData = $metaData;
+
         return $this;
     }
 
@@ -191,6 +220,7 @@ class AssetSearchResultItem
     public function setCreationDate(?int $creationDate): AssetSearchResultItem
     {
         $this->creationDate = $creationDate;
+
         return $this;
     }
 
@@ -202,6 +232,7 @@ class AssetSearchResultItem
     public function setModificationDate(?int $modificationDate): AssetSearchResultItem
     {
         $this->modificationDate = $modificationDate;
+
         return $this;
     }
 
@@ -224,6 +255,7 @@ class AssetSearchResultItem
     public function setHasChildren(bool $hasChildren): AssetSearchResultItem
     {
         $this->hasChildren = $hasChildren;
+
         return $this;
     }
 
@@ -235,6 +267,7 @@ class AssetSearchResultItem
     public function setSearchIndexData(array $searchIndexData): AssetSearchResultItem
     {
         $this->searchIndexData = $searchIndexData;
+
         return $this;
     }
 
@@ -246,6 +279,7 @@ class AssetSearchResultItem
     public function setPermissions(AssetPermissions $permissions): AssetSearchResultItem
     {
         $this->permissions = $permissions;
+
         return $this;
     }
 }
