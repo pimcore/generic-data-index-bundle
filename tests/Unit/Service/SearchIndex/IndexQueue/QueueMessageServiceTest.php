@@ -32,6 +32,7 @@ final class QueueMessageServiceTest extends Unit
     public function _before(): void
     {
         $this->queueMessageService = new QueueMessageService(
+            $this->makeEmpty(EntityManagerInterface::class),
             $this->getEmptyQueueRepository(),
             $this->makeEmpty(MessageBusInterface::class)
         );
