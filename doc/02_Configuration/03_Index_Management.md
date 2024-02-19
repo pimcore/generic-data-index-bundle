@@ -78,3 +78,14 @@ Do this with the index update command and pass -r option.
 # delete index and recreate it
 bin/console generic-data-index:update:index -r
 ```
+
+### Handling failed messages
+
+By default, the messenger will retry failed messages 3 times and then send them into the failed queue `pimcore_generic_data_index_failed`.
+If you want to retry failed messages, you can use the following command:
+
+```
+php bin/console messenger:failed:retry -vv
+```
+
+For the further commands please refer to the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html#saving-retrying-failed-messages).
