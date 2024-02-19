@@ -32,42 +32,38 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
         string $format = null,
         array $context = []
     ): AssetSearchResultItem {
-        $searchResultItem = new AssetSearchResultItem(
-            id: SystemField::ID->getData($data),
-            parentId: SystemField::PARENT_ID->getData($data),
-            type: SystemField::TYPE->getData($data),
-            key: SystemField::KEY->getData($data),
-            path: SystemField::PATH->getData($data),
-            fullPath: SystemField::FULL_PATH->getData($data),
-            mimeType: SystemField::MIME_TYPE->getData($data),
-            userOwner: SystemField::USER_OWNER->getData($data),
-            userModification: SystemField::USER_MODIFICATION->getData($data),
-            locked: SystemField::LOCKED->getData($data),
-            isLocked: SystemField::IS_LOCKED->getData($data),
-            metaData: $this->hydrateMetadata($data[FieldCategory::STANDARD_FIELDS->value]),
-            creationDate: strtotime(SystemField::CREATION_DATE->getData($data)),
-            modificationDate: strtotime(SystemField::MODIFICATION_DATE->getData($data)),
-            hasWorkflowWithPermissions: SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data),
-            hasChildren: SystemField::HAS_CHILDREN->getData($data),
-            searchIndexData: $data
-        );
-
-        $searchResultItem->setPermissions(
-            // allow all until permission system is implemented
-            new AssetPermissions(
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-            )
-        );
-
-        return $searchResultItem;
+        return (new AssetSearchResultItem())
+            ->setId(SystemField::ID->getData($data))
+            ->setParentId(SystemField::PARENT_ID->getData($data))
+            ->setType(SystemField::TYPE->getData($data))
+            ->setKey(SystemField::KEY->getData($data))
+            ->setPath(SystemField::PATH->getData($data))
+            ->setFullPath(SystemField::FULL_PATH->getData($data))
+            ->setMimeType(SystemField::MIME_TYPE->getData($data))
+            ->setUserOwner(SystemField::USER_OWNER->getData($data))
+            ->setUserModification(SystemField::USER_MODIFICATION->getData($data))
+            ->setLocked(SystemField::LOCKED->getData($data))
+            ->setIsLocked(SystemField::IS_LOCKED->getData($data))
+            ->setMetaData($this->hydrateMetadata($data[FieldCategory::STANDARD_FIELDS->value]))
+            ->setCreationDate(strtotime(SystemField::CREATION_DATE->getData($data)))
+            ->setModificationDate(strtotime(SystemField::MODIFICATION_DATE->getData($data)))
+            ->setHasWorkflowWithPermissions(SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data))
+            ->setHasChildren(SystemField::HAS_CHILDREN->getData($data))
+            ->setSearchIndexData($data)
+            ->setPermissions(
+                // allow all until permission system is implemented
+                new AssetPermissions(
+                    true,
+                    true,
+                    true,
+                    true,
+                    true,
+                    true,
+                    true,
+                    true,
+                    true,
+                )
+            );
     }
 
     public function supportsDenormalization(mixed $data, string $type, string $format = null): bool

@@ -15,27 +15,27 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchRe
 
 final class AssetSearchResultItem
 {
+    private int $id;
+    private int $parentId;
+    private string $type;
+    private string $key;
+    private string $path;
+    private string $fullPath;
+    private ?string $mimeType;
+    private int $userOwner;
+    private int $userModification;
+    private ?string $locked;
+    private bool $isLocked;
+    /** @var AssetMetaData[] */
+    private array $metaData;
+    private ?int $creationDate;
+    private ?int $modificationDate;
+    private bool $hasWorkflowWithPermissions;
+    private bool $hasChildren;
+    private array $searchIndexData;
     private AssetPermissions $permissions;
 
     public function __construct(
-        private int $id,
-        private int $parentId,
-        private string $type,
-        private string $key,
-        private string $path,
-        private string $fullPath,
-        private ?string $mimeType,
-        private int $userOwner,
-        private int $userModification,
-        private ?string $locked,
-        private bool $isLocked,
-        /** @var AssetMetaData[] */
-        private array $metaData,
-        private ?int $creationDate,
-        private ?int $modificationDate,
-        private bool $hasWorkflowWithPermissions,
-        private bool $hasChildren,
-        private array $searchIndexData,
     ) {
     }
 
