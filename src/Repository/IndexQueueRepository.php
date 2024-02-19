@@ -188,15 +188,14 @@ final class IndexQueueRepository
         $dispatchId = $this->timeService->getCurrentMillisecondTimestamp();
         $dispatchedTime = $dispatchId - 60*60*24*1000;
 
-        $qb = $this->createQueryBuilder('iq')
+        $this->createQueryBuilder('iq')
             ->update(IndexQueue::class, 'iq')
             ->set('iq.dispatched', ':dispatchId')
             ->where('iq.dispatched < :dispatched')
-            ->setMaxResults($limit);
-
-        $query = $qb->getQuery();
-        $query->setParameter('dispatchId', $dispatchId)
+            ->setParameter('dispatchId', $dispatchId)
             ->setParameter('dispatched', $dispatchedTime)
+            ->setMaxResults($limit)
+            ->getQuery()
             ->execute();
 
         $this->entityManager->flush();
