@@ -45,7 +45,9 @@ class AssetSearchResultItem
     private ?int $creationDate;
 
     private ?int $modificationDate;
+
     private bool $workflowWithPermissions;
+
     private bool $hasChildren;
 
     private array $searchIndexData;
@@ -244,6 +246,7 @@ class AssetSearchResultItem
     public function setHasWorkflowWithPermissions(bool $workflowWithPermissions): AssetSearchResultItem
     {
         $this->workflowWithPermissions = $workflowWithPermissions;
+
         return $this;
     }
 
