@@ -115,6 +115,22 @@ pimcore_generic_data_index:
       asset:
         mimetype:
           type: keyword
+        fileSize:
+          type: long
+        hasWorkflowWithPermissions:
+          type: boolean
+        thumbnail:
+          type: keyword
+        imageThumbnail:
+          type: keyword
+        width:
+          type: integer
+        height:
+          type: integer
+        duration:
+          type: float
+        text:
+          type: keyword
           fields:
             analyzed_ngram:
               type: text
@@ -124,7 +140,3 @@ pimcore_generic_data_index:
               type: text
               analyzer: standard
               search_analyzer: generic_data_index_whitespace_analyzer
-        fileSize:
-          type: long
-        hasWorkflowWithPermissions:
-          type: boolean
