@@ -77,7 +77,7 @@ final class IndexUpdateCommand extends AbstractCommand
                 self::OPTION_RECREATE_INDEX,
                 'r',
                 InputOption::VALUE_NONE,
-                'Delete OpenSearch index and recreate it',
+                'Delete and recreate search indices',
                 null
             )
             ->setDescription(

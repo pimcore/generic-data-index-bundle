@@ -1,0 +1,30 @@
+imports:
+    - { resource: 'services/search-index-adapter/open-search/modifiers/*' }
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+        
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\OpenSearchService
+        arguments:
+            $openSearchClient: '@generic-data-index.opensearch-client'
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\BulkOperationService
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\PathService
+        arguments:
+            $openSearchClient: '@generic-data-index.opensearch-client'
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Search\Tree\AssetTreeServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\Tree\AssetTreeService
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\Pagination\PaginationInfoService
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\IndexStatsService

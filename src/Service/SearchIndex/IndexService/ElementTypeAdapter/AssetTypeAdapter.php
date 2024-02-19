@@ -13,12 +13,14 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter;
 
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Query\QueryBuilder;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\UpdateIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Normalizer\AssetNormalizer;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -30,6 +32,7 @@ final class AssetTypeAdapter extends AbstractElementTypeAdapter
 {
     public function __construct(
         private readonly AssetNormalizer $normalizer,
+        private readonly Connection $dbConnection,
     ) {
     }
 
@@ -72,5 +75,24 @@ final class AssetTypeAdapter extends AbstractElementTypeAdapter
         }
 
         return new UpdateIndexDataEvent($element, $customFields);
+    }
+
+    public function getRelatedItemsOnUpdateQuery(
+        ElementInterface $element,
+        string $operation,
+        int $operationTime,
+        bool $includeElement = false
+    ): ?QueryBuilder {
+        return $this->dbConnection->createQueryBuilder()
+            ->select([
+                $element->getId(),
+                "'" . ElementType::ASSET->value . "'",
+                "'" . IndexName::ASSET->value . "'",
+                "'$operation'",
+                "'$operationTime'",
+                '0',
+            ])
+            ->from('DUAL') // just a dummy query to fit into the query builder interface
+            ->setMaxResults(1);
     }
 }

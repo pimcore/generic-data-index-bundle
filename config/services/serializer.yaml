@@ -1,0 +1,53 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: false
+        public: false
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\DataObjectNormalizer: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer: ~
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer: ~
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler\ImageSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.asset_type_serialization_handler, type: image }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler\FolderSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.asset_type_serialization_handler, type: folder }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler\ArchiveSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.asset_type_serialization_handler, type: archive }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler\AudioSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.asset_type_serialization_handler, type: audio }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler\DocumentSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.asset_type_serialization_handler, type: document }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler\TextSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.asset_type_serialization_handler, type: text }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler\UnknownSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.asset_type_serialization_handler, type: unknown }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler\VideoSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.asset_type_serialization_handler, type: video }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandlerService:
+        arguments:
+            - '@pimcore.generic_data_index.asset.type_serialization_handler_locator'
+
+    pimcore.generic_data_index.asset.type_serialization_handler_locator:
+        class: Symfony\Component\DependencyInjection\ServiceLocator
+        tags: [ 'container.service_locator' ]
+        arguments:
+            - [ ]

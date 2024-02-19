@@ -13,11 +13,15 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+
 /**
  * @internal
  */
 enum SystemField: string
 {
+    use FieldCategory\SystemField\SystemFieldTrait;
+
     case ID = 'id';
     case PARENT_ID = 'parentId';
     case CREATION_DATE = 'creationDate';
@@ -31,14 +35,16 @@ enum SystemField: string
     case TAGS = 'tags';
     case MIME_TYPE = 'mimetype';
     case CLASS_NAME = 'className';
-
-    //case NAME = 'name';
-    //case THUMBNAIL = 'thumbnail';
     case CHECKSUM = 'checksum';
-
-    //case COLLECTIONS = 'collections';
-    //case PUBLIC_SHARES = 'publicShares';
     case USER_OWNER = 'userOwner';
+    case USER_MODIFICATION = 'userModification';
+    case LOCKED = 'locked';
+    case IS_LOCKED = 'isLocked';
     case HAS_WORKFLOW_WITH_PERMISSIONS = 'hasWorkflowWithPermissions';
     case FILE_SIZE = 'fileSize';
+
+    /**
+     * Not persisted in search index but dynamically calculated
+     */
+    case HAS_CHILDREN = 'hasChildren';
 }

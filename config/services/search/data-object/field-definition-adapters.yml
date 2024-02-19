@@ -17,6 +17,8 @@ services:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "countrymultiselect" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "language" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "languagemultiselect" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "table" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "password" }
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\NumericAdapter:
         shared: false
@@ -29,6 +31,7 @@ services:
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "date" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "datetime" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "dateRange" }
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\LocalizedFieldsAdapter:
         shared: false
@@ -45,6 +48,7 @@ services:
         shared: false
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "checkbox" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "booleanSelect" }
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\RelationAdapter:
         shared: false
@@ -59,3 +63,33 @@ services:
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "advancedManyToManyRelation" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "advancedManyToManyObjectRelation" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\ObjectBrickAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "objectbricks" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\FieldCollectionAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "fieldcollections" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\ClassificationStoreAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "classificationstore" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\RgbaColorAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "rgbaColor" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\QuantityValueRangeAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "quantityValueRange" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\NumericRangeAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "numericRange" }

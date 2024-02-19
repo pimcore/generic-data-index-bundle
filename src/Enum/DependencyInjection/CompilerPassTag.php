@@ -20,4 +20,6 @@ enum CompilerPassTag: string
 {
     case DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION =
     'pimcore.generic_data_index.data-object.search_index_field_definition';
+    case SEARCH_MODIFIER_HANDLER = 'pimcore.generic_data_index.search_modifier_handler';
+    case ASSET_TYPE_SERIALIZATION_HANDLER = 'pimcore.generic_data_index.asset_type_serialization_handler';
 }

@@ -82,20 +82,20 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
     private function installIndexQueueTable(Schema $schema): void
     {
         if (!$schema->hasTable(IndexQueue::TABLE)) {
-            $jobRunTable = $schema->createTable(IndexQueue::TABLE);
-            $jobRunTable->addColumn('elementId', 'integer', ['notnull' => true, 'unsigned' => true]);
-            $jobRunTable->addColumn('elementType', 'string', ['notnull' => true, 'length' => 20]);
-            $jobRunTable->addColumn('elementIndexName', 'string', ['notnull' => true, 'length' => 10]);
-            $jobRunTable->addColumn('operation', 'string', ['notnull' => true, 'length' => 20]);
-            $jobRunTable->addColumn('operationTime', 'bigint', ['notnull' => true, 'unsigned' => true]);
-            $jobRunTable->addColumn('dispatched', 'bigint', [
+            $queueTable = $schema->createTable(IndexQueue::TABLE);
+            $queueTable->addColumn('elementId', 'integer', ['notnull' => true, 'unsigned' => true]);
+            $queueTable->addColumn('elementType', 'string', ['notnull' => true, 'length' => 20]);
+            $queueTable->addColumn('elementIndexName', 'string', ['notnull' => true, 'length' => 10]);
+            $queueTable->addColumn('operation', 'string', ['notnull' => true, 'length' => 20]);
+            $queueTable->addColumn('operationTime', 'bigint', ['notnull' => true, 'unsigned' => true]);
+            $queueTable->addColumn('dispatched', 'bigint', [
                 'notnull' => true,
                 'unsigned' => true,
                 'default' => 0,
             ]);
 
-            $jobRunTable->setPrimaryKey(['elementId', 'elementType']);
-            $jobRunTable->addIndex(['dispatched'], IndexQueue::TABLE . '_dispatched');
+            $queueTable->setPrimaryKey(['elementId', 'elementType']);
+            $queueTable->addIndex(['dispatched'], IndexQueue::TABLE . '_dispatched');
         }
     }
 

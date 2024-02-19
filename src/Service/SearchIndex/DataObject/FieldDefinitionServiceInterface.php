@@ -22,4 +22,6 @@ use Pimcore\Model\DataObject\ClassDefinition;
 interface FieldDefinitionServiceInterface
 {
     public function getFieldDefinitionAdapter(ClassDefinition\Data $fieldDefinition): ?AdapterInterface;
+
+    public function normalizeValue(?ClassDefinition\Data $fieldDefinition, mixed $value): mixed;
 }

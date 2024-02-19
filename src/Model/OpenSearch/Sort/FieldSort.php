@@ -21,7 +21,7 @@ final class FieldSort
 
     public function __construct(
         private string $field,
-        private ?string $order = null,
+        private string $order = self::ORDER_ASC,
         private array $params = []
     ) {
     }
@@ -38,7 +38,7 @@ final class FieldSort
         return $this;
     }
 
-    public function getOrder(): ?string
+    public function getOrder(): string
     {
         return $this->order;
     }
