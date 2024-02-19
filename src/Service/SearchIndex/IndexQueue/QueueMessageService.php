@@ -55,6 +55,7 @@ final class QueueMessageService implements QueueMessageServiceInterface
                         'Dispatching IndexUpdateQueueMessage failed! ' .
                         get_class($exception) . ': ' . $exception->getMessage()
                     );
+
                     break;
                 }
             }

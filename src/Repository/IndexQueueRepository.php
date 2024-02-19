@@ -73,8 +73,7 @@ final class IndexQueueRepository
     public function getUnhandledIndexQueueEntries(
         bool $dispatch = false,
         int $limit = 100000
-    ): array
-    {
+    ): array {
         try {
             if ($dispatch) {
 
@@ -185,8 +184,7 @@ final class IndexQueueRepository
 
     public function dispatchItems(
         int $limit
-    ): int
-    {
+    ): int {
         $dispatchId = $this->timeService->getCurrentMillisecondTimestamp();
         $dispatchedTime = $dispatchId - 60*60*24*1000;
 
