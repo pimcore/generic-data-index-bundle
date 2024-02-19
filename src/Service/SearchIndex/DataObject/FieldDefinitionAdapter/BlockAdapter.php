@@ -34,7 +34,9 @@ final class BlockAdapter extends AbstractAdapter
 
         foreach ($items as $item) {
             $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($item);
-            $properties[$item->getName()] = $adapter->getOpenSearchMapping();
+            if ($adapter) {
+                $properties[$item->getName()] = $adapter->getOpenSearchMapping();
+            }
         }
 
         return [
