@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetMetaData;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
@@ -31,7 +32,7 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
         string $format = null,
         array $context = []
     ): AssetSearchResultItem {
-        return new AssetSearchResultItem(
+        $searchResultItem = new AssetSearchResultItem(
             id: SystemField::ID->getData($data),
             parentId: SystemField::PARENT_ID->getData($data),
             type: SystemField::TYPE->getData($data),
@@ -50,6 +51,23 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
             hasChildren: SystemField::HAS_CHILDREN->getData($data),
             searchIndexData: $data
         );
+
+        $searchResultItem->setPermissions(
+            // allow all until permission system is implemented
+            new AssetPermissions(
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+            )
+        );
+
+        return $searchResultItem;
     }
 
     public function supportsDenormalization(mixed $data, string $type, string $format = null): bool
