@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
@@ -8,8 +18,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\A
 class Video extends AssetSearchResultItem
 {
     private ?string $imageThumbnail;
+
     private ?float $duration;
+
     private ?int $width;
+
     private ?int $height;
 
     public function getImageThumbnail(): ?string
@@ -20,6 +33,7 @@ class Video extends AssetSearchResultItem
     public function setImageThumbnail(?string $imageThumbnail): Video
     {
         $this->imageThumbnail = $imageThumbnail;
+
         return $this;
     }
 
@@ -31,6 +45,7 @@ class Video extends AssetSearchResultItem
     public function setDuration(?float $duration): Video
     {
         $this->duration = $duration;
+
         return $this;
     }
 
@@ -42,6 +57,7 @@ class Video extends AssetSearchResultItem
     public function setWidth(?int $width): Video
     {
         $this->width = $width;
+
         return $this;
     }
 
@@ -53,8 +69,7 @@ class Video extends AssetSearchResultItem
     public function setHeight(?int $height): Video
     {
         $this->height = $height;
+
         return $this;
     }
-
-
 }

@@ -35,8 +35,7 @@ final class AssetNormalizer implements NormalizerInterface
     public function __construct(
         private readonly WorkflowServiceInterface $workflowService,
         private readonly AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService,
-    )
-    {
+    ) {
     }
 
     public function normalize(mixed $object, string $format = null, array $context = []): array

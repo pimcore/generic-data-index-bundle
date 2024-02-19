@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField\Asset\ImageSystemField;
@@ -19,7 +29,7 @@ class ImageSerializationHandler extends AbstractAssetTypeSerializationHandler
         return [
             ImageSystemField::THUMBNAIL->value => $this->getThumbnail($asset),
             ImageSystemField::WIDTH->value => $asset->getWidth(),
-            ImageSystemField::HEIGHT->value => $asset->getHeight()
+            ImageSystemField::HEIGHT->value => $asset->getHeight(),
         ];
     }
 
