@@ -11,7 +11,6 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 /**
@@ -26,8 +25,8 @@ final class GeographicBoundsAdapter extends AbstractAdapter
         return [
             'properties' => [
                 'northEast' => $this->getLatAndLongMapping(),
-                'southWest' => $this->getLatAndLongMapping()
-            ]
+                'southWest' => $this->getLatAndLongMapping(),
+            ],
         ];
     }
 }

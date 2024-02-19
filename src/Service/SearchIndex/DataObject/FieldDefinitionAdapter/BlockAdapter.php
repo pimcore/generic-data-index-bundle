@@ -7,10 +7,9 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
-
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
@@ -23,7 +22,6 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\Block;
  */
 final class BlockAdapter extends AbstractAdapter
 {
-
     public function getOpenSearchMapping(): array
     {
         $fieldDefinitions = $this->getFieldDefinition();
@@ -38,9 +36,10 @@ final class BlockAdapter extends AbstractAdapter
             $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($item);
             $properties[$item->getName()] = $adapter->getOpenSearchMapping();
         }
+
         return [
             'type' => 'nested',
-            'properties' => $properties
+            'properties' => $properties,
         ];
     }
 }

@@ -43,7 +43,7 @@ final class LinkAdapterTest extends Unit
                     'type' => 'keyword',
                 ],
                 'internal' => [
-                    'type' => 'long'
+                    'type' => 'long',
                 ],
                 'direct' => [
                     'type' => 'keyword',

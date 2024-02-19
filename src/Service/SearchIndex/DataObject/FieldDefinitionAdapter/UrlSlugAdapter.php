@@ -11,7 +11,6 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
@@ -21,7 +20,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeT
  */
 final class UrlSlugAdapter extends AbstractAdapter
 {
-
     public function getOpenSearchMapping(): array
     {
         return [
@@ -33,7 +31,7 @@ final class UrlSlugAdapter extends AbstractAdapter
                 'slug' => [
                     'type' => AttributeType::TEXT->value,
                 ],
-            ]
+            ],
         ];
     }
 }

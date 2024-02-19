@@ -43,7 +43,7 @@ final class UrlSlugAdapterTest extends Unit
                 'slug' => [
                     'type' => 'text',
                 ],
-            ]
+            ],
         ], $mapping);
     }
 }
