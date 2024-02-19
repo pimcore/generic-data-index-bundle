@@ -4,7 +4,7 @@ Generic Data Index bundle adds standardized and flexible services to search data
 
 ## Asset Search Service
 
-Assets can be searched with the [AssetSearchServiceInterface](../../src/Service/Search/SearchService/Asset/AssetSearchServiceInterface.php).
+Assets can be searched with the [AssetSearchServiceInterface](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Service/Search/SearchService/Asset/AssetSearchServiceInterface.php).
 
 ### Example usage
 
