@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler\AssetTypeSerializationHandlerService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
 use Pimcore\Model\Asset;
@@ -31,7 +32,10 @@ final class AssetNormalizer implements NormalizerInterface
 
     public const NOT_LOCALIZED_KEY = 'default';
 
-    public function __construct(private readonly WorkflowServiceInterface $workflowService)
+    public function __construct(
+        private readonly WorkflowServiceInterface $workflowService,
+        private readonly AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService,
+    )
     {
     }
 
@@ -73,7 +77,7 @@ final class AssetNormalizer implements NormalizerInterface
 
     private function normalizeSystemFields(Asset $asset): array
     {
-        return [
+        $systemFields = [
             SystemField::ID->value => $asset->getId(),
             SystemField::PARENT_ID->value => $asset->getParentId(),
             SystemField::CREATION_DATE->value => $this->formatTimestamp($asset->getCreationDate()),
@@ -93,6 +97,12 @@ final class AssetNormalizer implements NormalizerInterface
                 $this->workflowService->hasWorkflowWithPermissions($asset),
             SystemField::FILE_SIZE->value => $asset->getFileSize(),
         ];
+
+        if ($handler = $this->assetTypeSerializationHandlerService->getSerializationHandler($asset->getType())) {
+            $systemFields = array_merge($systemFields, $handler->getAdditionalSystemFields($asset));
+        }
+
+        return $systemFields;
     }
 
     private function normalizeStandardFields(Asset $asset): array

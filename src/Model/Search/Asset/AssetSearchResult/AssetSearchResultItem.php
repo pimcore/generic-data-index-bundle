@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult;
 
-final class AssetSearchResultItem
+class AssetSearchResultItem
 {
     private int $id;
     private int $parentId;
@@ -22,6 +22,7 @@ final class AssetSearchResultItem
     private string $path;
     private string $fullPath;
     private ?string $mimeType;
+    private ?int $fileSize;
     private int $userOwner;
     private int $userModification;
     private ?string $locked;
@@ -113,6 +114,17 @@ final class AssetSearchResultItem
     public function setMimeType(?string $mimeType): AssetSearchResultItem
     {
         $this->mimeType = $mimeType;
+        return $this;
+    }
+
+    public function getFileSize(): ?int
+    {
+        return $this->fileSize;
+    }
+
+    public function setFileSize(?int $fileSize): AssetSearchResultItem
+    {
+        $this->fileSize = $fileSize;
         return $this;
     }
 

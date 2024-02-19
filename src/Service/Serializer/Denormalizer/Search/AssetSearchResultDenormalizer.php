@@ -18,11 +18,18 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemF
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetMetaData;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler\AssetTypeSerializationHandlerService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
 class AssetSearchResultDenormalizer implements DenormalizerInterface
 {
+    public function __construct(
+        private readonly AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService,
+    )
+    {
+    }
+
     /**
      * @param array $data
      */
@@ -32,7 +39,18 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
         string $format = null,
         array $context = []
     ): AssetSearchResultItem {
-        return (new AssetSearchResultItem())
+
+        $serializationHandler = $this->assetTypeSerializationHandlerService->getSerializationHandler(
+            SystemField::TYPE->getData($data)
+        );
+
+        if ($serializationHandler) {
+            $searchResultItem = $serializationHandler->createSearchResultModel($data);
+        } else {
+            $searchResultItem = new AssetSearchResultItem();
+        }
+
+        return $searchResultItem
             ->setId(SystemField::ID->getData($data))
             ->setParentId(SystemField::PARENT_ID->getData($data))
             ->setType(SystemField::TYPE->getData($data))
@@ -40,6 +58,7 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
             ->setPath(SystemField::PATH->getData($data))
             ->setFullPath(SystemField::FULL_PATH->getData($data))
             ->setMimeType(SystemField::MIME_TYPE->getData($data))
+            ->setFileSize(SystemField::FILE_SIZE->getData($data))
             ->setUserOwner(SystemField::USER_OWNER->getData($data))
             ->setUserModification(SystemField::USER_MODIFICATION->getData($data))
             ->setLocked(SystemField::LOCKED->getData($data))
