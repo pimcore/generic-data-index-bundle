@@ -19,6 +19,8 @@ services:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "languagemultiselect" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "table" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "password" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "time" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "user" }
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\NumericAdapter:
         shared: false
@@ -93,3 +95,31 @@ services:
         shared: false
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "numericRange" }
+
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\GeographicPointAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "geopoint" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "geopolygon" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "geopolyline" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\GeographicBoundsAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "geobounds" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\UrlSlugAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "urlSlug" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\LinkAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "link" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\BlockAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "block" }
