@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 use InvalidArgumentException;
-use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Block;
 
 /**
@@ -24,14 +23,13 @@ final class BlockAdapter extends AbstractAdapter
 {
     public function getOpenSearchMapping(): array
     {
-        $fieldDefinitions = $this->getFieldDefinition();
-        if(!$fieldDefinitions instanceof Block) {
+        $fieldDefinition = $this->getFieldDefinition();
+        if(!$fieldDefinition instanceof Block) {
             throw new InvalidArgumentException('FieldDefinition must be an instance of ' . Block::class);
         }
-        /** @var Data[] $items */
-        $items = $fieldDefinitions->getChildren();
-        $properties = [];
 
+        $items = $fieldDefinition->getFieldDefinitions();
+        $properties = [];
         foreach ($items as $item) {
             $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($item);
             if ($adapter) {
