@@ -13,19 +13,27 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Symfony\Component\Validator\Constraints as Assert;
+
 
 final class IdFilter implements SearchModifierInterface
 {
     public function __construct(
-        #[Assert\Positive]
         private readonly int $id = 1
     ) {
+        $this->validate();
     }
 
     public function getId(): int
     {
         return $this->id;
+    }
+
+    private function validate(): void
+    {
+        if ($this->id < 1) {
+            throw new InvalidModifierException("ID must be a positive integer.");
+        }
     }
 }
