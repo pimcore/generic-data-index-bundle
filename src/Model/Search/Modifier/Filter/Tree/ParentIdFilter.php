@@ -13,19 +13,26 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Symfony\Component\Validator\Constraints as Assert;
 
 final class ParentIdFilter implements SearchModifierInterface
 {
     public function __construct(
-        #[Assert\Positive]
         private readonly int $parentId = 1
     ) {
+        $this->validate();
     }
 
     public function getParentId(): int
     {
         return $this->parentId;
+    }
+
+    private function validate(): void
+    {
+        if ($this->parentId < 1) {
+            throw new InvalidModifierException("Parent ID must be a positive integer.");
+        }
     }
 }
