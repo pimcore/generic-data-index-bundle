@@ -14,14 +14,16 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Symfony\Component\Validator\Constraints as Assert;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validator\HasPositiveIdTrait;
 
 final class IdFilter implements SearchModifierInterface
 {
+    use HasPositiveIdTrait;
+
     public function __construct(
-        #[Assert\Positive]
         private readonly int $id = 1
     ) {
+        $this->validatePositiveInt($this->id);
     }
 
     public function getId(): int

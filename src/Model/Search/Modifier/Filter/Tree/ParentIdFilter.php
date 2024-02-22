@@ -14,14 +14,16 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Symfony\Component\Validator\Constraints as Assert;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validator\HasPositiveIdTrait;
 
 final class ParentIdFilter implements SearchModifierInterface
 {
+    use HasPositiveIdTrait;
+
     public function __construct(
-        #[Assert\Positive]
         private readonly int $parentId = 1
     ) {
+        $this->validatePositiveInt($this->parentId);
     }
 
     public function getParentId(): int
