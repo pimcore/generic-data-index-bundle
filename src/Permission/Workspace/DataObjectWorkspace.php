@@ -13,9 +13,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidPermissionTypeException;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\BasePermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermission;
 use Pimcore\Model\User\Workspace;
 
 /**
@@ -38,12 +38,14 @@ final class DataObjectWorkspace extends AbstractWorkspace
 
     protected function setWorkspacePermissions(
         Workspace\Asset|Workspace\DataObject|Workspace\Document $userPermissions,
-        AssetPermissions|DataObjectPermission|DocumentPermission $workspacePermissions
+        BasePermissions $workspacePermissions
     ): void {
+        if (!$workspacePermissions instanceof DataObjectPermission) {
+            throw new InvalidPermissionTypeException('Invalid Permission object provided');
+        }
 
         parent::setWorkspacePermissions($userPermissions, $workspacePermissions);
         $workspacePermissions->setLocalizedEdit($userPermissions->getLEdit());
         $workspacePermissions->setLocalizedView($userPermissions->getLView());
-        $workspacePermissions->setLayouts($userPermissions->getLayouts());
     }
 }

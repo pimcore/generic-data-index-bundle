@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\BasePermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermission;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
@@ -100,7 +101,7 @@ final class PermissionService implements PermissionServiceInterface
     private function getPermissions(
         string $assetPath,
         string $permissionsType
-    ): AssetPermissions|DocumentPermission|DataObjectPermission {
+    ): BasePermissions {
         $roleWorkspace = null;
         $roleIds = $this->user->getRoles();
         if (!empty($roleIds)) {
@@ -125,7 +126,7 @@ final class PermissionService implements PermissionServiceInterface
     private function getPermissionsFromWorkspaces(
         WorkspaceInterface $workspace,
         ?WorkspaceInterface $roleWorkspace = null
-    ): AssetPermissions|DocumentPermission|DataObjectPermission {
+    ): BasePermissions {
         if (!$roleWorkspace) {
             return $workspace->getPermissions();
         }

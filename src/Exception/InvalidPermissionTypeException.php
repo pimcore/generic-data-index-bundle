@@ -11,16 +11,13 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Exception;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\BasePermissions;
+use RuntimeException;
 
 /**
  * @internal
  */
-interface WorkspaceInterface
+final class InvalidPermissionTypeException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
 {
-    public function getPath(): string;
-
-    public function getPermissions(): BasePermissions;
 }

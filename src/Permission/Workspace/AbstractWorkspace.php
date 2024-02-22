@@ -13,9 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermission;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\BasePermissions;
 use Pimcore\Model\User\Workspace;
 
 /**
@@ -37,14 +35,14 @@ abstract class AbstractWorkspace implements WorkspaceInterface
         return $this->path;
     }
 
-    public function getPermissions(): AssetPermissions|DataObjectPermission|DocumentPermission
+    public function getPermissions(): BasePermissions
     {
         return $this->permissions;
     }
 
     protected function setWorkspacePermissions(
         Workspace\Asset|Workspace\DataObject|Workspace\Document $userPermissions,
-        AssetPermissions|DataObjectPermission|DocumentPermission $workspacePermissions
+        BasePermissions $workspacePermissions
     ): void {
         $properties = $workspacePermissions->getClassProperties();
         foreach ($properties as $property => $value) {
