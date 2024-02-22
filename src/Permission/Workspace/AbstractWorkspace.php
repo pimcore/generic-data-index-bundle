@@ -18,6 +18,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermission;
 use Pimcore\Model\User\Workspace;
 
+/**
+ * @internal
+ */
 abstract class AbstractWorkspace implements WorkspaceInterface
 {
     private readonly string $path;
