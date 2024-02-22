@@ -58,16 +58,14 @@ final class AssetSearchService extends AbstractSearchService implements AssetSea
         );
     }
 
-    public function byId(int $id): ?AssetSearchResultItem
-    {
+    public function byId(
+        int $id
+    ): ?AssetSearchResultItem {
+        $assetSearch = (new AssetSearch())
+            ->setPageSize(1)
+            ->addModifier(new IdFilter($id));
 
-        $searchResult = $this->search(
-            (new AssetSearch())
-                ->setPageSize(1)
-                ->addModifier(new IdFilter($id))
-        );
-
-        return $searchResult->getItems()[0] ?? null;
+        return $this->search($assetSearch)->getItems()[0] ?? null;
     }
 
     /**
