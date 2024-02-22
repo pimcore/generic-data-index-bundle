@@ -11,33 +11,34 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Permission;
 
-final class AssetPermissions
+/**
+ * @internal
+ */
+abstract class BasePermissions
 {
-    public function __construct(
-        private bool $list = false,
-        private bool $view = false,
-        private bool $publish = false,
-        private bool $delete = false,
-        private bool $rename = false,
-        private bool $create = false,
-        private bool $settings = false,
-        private bool $versions = false,
-        private bool $properties = false,
-    ) {
-    }
+    // TODO: Change default value once development of API is finished
+    protected const DEFAULT_VALUE = true;
+
+    private bool $list = self::DEFAULT_VALUE;
+    private bool $view = self::DEFAULT_VALUE;
+    private bool $publish = self::DEFAULT_VALUE;
+    private bool $delete = self::DEFAULT_VALUE;
+    private bool $rename = self::DEFAULT_VALUE;
+    private bool $create = self::DEFAULT_VALUE;
+    private bool $settings = self::DEFAULT_VALUE;
+    private bool $versions = self::DEFAULT_VALUE;
+    private bool $properties = self::DEFAULT_VALUE;
 
     public function isList(): bool
     {
         return $this->list;
     }
 
-    public function setList(bool $list): AssetPermissions
+    public function setList(bool $list): void
     {
         $this->list = $list;
-
-        return $this;
     }
 
     public function isView(): bool
@@ -45,11 +46,9 @@ final class AssetPermissions
         return $this->view;
     }
 
-    public function setView(bool $view): AssetPermissions
+    public function setView(bool $view): void
     {
         $this->view = $view;
-
-        return $this;
     }
 
     public function isPublish(): bool
@@ -57,11 +56,9 @@ final class AssetPermissions
         return $this->publish;
     }
 
-    public function setPublish(bool $publish): AssetPermissions
+    public function setPublish(bool $publish): void
     {
         $this->publish = $publish;
-
-        return $this;
     }
 
     public function isDelete(): bool
@@ -69,11 +66,9 @@ final class AssetPermissions
         return $this->delete;
     }
 
-    public function setDelete(bool $delete): AssetPermissions
+    public function setDelete(bool $delete): void
     {
         $this->delete = $delete;
-
-        return $this;
     }
 
     public function isRename(): bool
@@ -81,11 +76,9 @@ final class AssetPermissions
         return $this->rename;
     }
 
-    public function setRename(bool $rename): AssetPermissions
+    public function setRename(bool $rename): void
     {
         $this->rename = $rename;
-
-        return $this;
     }
 
     public function isCreate(): bool
@@ -93,11 +86,9 @@ final class AssetPermissions
         return $this->create;
     }
 
-    public function setCreate(bool $create): AssetPermissions
+    public function setCreate(bool $create): void
     {
         $this->create = $create;
-
-        return $this;
     }
 
     public function isSettings(): bool
@@ -105,11 +96,9 @@ final class AssetPermissions
         return $this->settings;
     }
 
-    public function setSettings(bool $settings): AssetPermissions
+    public function setSettings(bool $settings): void
     {
         $this->settings = $settings;
-
-        return $this;
     }
 
     public function isVersions(): bool
@@ -117,11 +106,9 @@ final class AssetPermissions
         return $this->versions;
     }
 
-    public function setVersions(bool $versions): AssetPermissions
+    public function setVersions(bool $versions): void
     {
         $this->versions = $versions;
-
-        return $this;
     }
 
     public function isProperties(): bool
@@ -129,10 +116,13 @@ final class AssetPermissions
         return $this->properties;
     }
 
-    public function setProperties(bool $properties): AssetPermissions
+    public function setProperties(bool $properties): void
     {
         $this->properties = $properties;
+    }
 
-        return $this;
+    public function getClassProperties(array $properties = []): array
+    {
+        return array_merge(get_object_vars($this), $properties);
     }
 }

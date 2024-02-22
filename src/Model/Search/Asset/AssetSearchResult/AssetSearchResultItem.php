@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
+
 class AssetSearchResultItem
 {
     private int $id;
