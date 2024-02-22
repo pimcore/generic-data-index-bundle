@@ -19,7 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validater\HasPos
 class ChildrenCountAggregation implements SearchModifierInterface
 {
     use HasPositiveIntArrayTrait;
-    
+
     public function __construct(
         private readonly array $parentIds = [],
         private readonly string $aggregationName = 'children_count'

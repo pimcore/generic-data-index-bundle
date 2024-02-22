@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Model\Modifier\Filter\Tree;
@@ -25,14 +25,14 @@ final class ParentIdFilterTest extends Unit
     public function testParentIdFilterWithNegativeInteger(): void
     {
         $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage("ID must be a positive integer.");
+        $this->expectExceptionMessage('ID must be a positive integer.');
         new ParentIdFilter(-10);
     }
 
     public function testParentIdFilterWithZero(): void
     {
         $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage("ID must be a positive integer.");
+        $this->expectExceptionMessage('ID must be a positive integer.');
         new ParentIdFilter(0);
     }
 
