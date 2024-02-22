@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validater\HasPositiveIntArrayTrait;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validator\HasPositiveIntArrayTrait;
 
 final class ChildrenCountAggregation implements SearchModifierInterface
 {

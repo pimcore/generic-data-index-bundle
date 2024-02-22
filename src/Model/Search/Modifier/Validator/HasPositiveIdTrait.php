@@ -11,7 +11,7 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validater;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validator;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
 

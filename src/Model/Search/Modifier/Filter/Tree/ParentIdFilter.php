@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validater\HasPositiveIdTrait;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validator\HasPositiveIdTrait;
 
 final class ParentIdFilter implements SearchModifierInterface
 {

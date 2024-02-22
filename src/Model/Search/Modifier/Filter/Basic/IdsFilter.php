@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validater\HasPositiveIntArrayTrait;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validator\HasPositiveIntArrayTrait;
 
 final class IdsFilter implements SearchModifierInterface
 {
