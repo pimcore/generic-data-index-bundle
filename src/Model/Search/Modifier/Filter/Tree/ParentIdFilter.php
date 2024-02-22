@@ -15,24 +15,19 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tre
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validater\HasPositiveIdTrait;
 
 final class ParentIdFilter implements SearchModifierInterface
 {
+    use HasPositiveIdTrait;
     public function __construct(
         private readonly int $parentId = 1
     ) {
-        $this->validate();
+        $this->validatePositiveInt($this->parentId);
     }
 
     public function getParentId(): int
     {
         return $this->parentId;
-    }
-
-    private function validate(): void
-    {
-        if ($this->parentId < 1) {
-            throw new InvalidModifierException("Parent ID must be a positive integer.");
-        }
     }
 }

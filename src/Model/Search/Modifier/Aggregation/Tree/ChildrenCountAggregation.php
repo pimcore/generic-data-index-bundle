@@ -14,21 +14,22 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Symfony\Component\Validator\Constraints as Assert;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validater\HasPositiveIntArrayTrait;
 
 class ChildrenCountAggregation implements SearchModifierInterface
 {
+    use HasPositiveIntArrayTrait;
+    
     public function __construct(
-        /** @var int[] $parentIds */
-        #[Assert\All([
-            new Assert\Type('int'),
-            new Assert\Positive(),
-        ])]
         private readonly array $parentIds = [],
         private readonly string $aggregationName = 'children_count'
     ) {
+        $this->validatePositiveIntArray($this->parentIds);
     }
 
+    /**
+     * @return int[]
+     */
     public function getParentIds(): array
     {
         return $this->parentIds;

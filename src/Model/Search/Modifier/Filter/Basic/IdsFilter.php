@@ -15,13 +15,15 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Bas
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validater\HasPositiveIntArrayTrait;
 
 final class IdsFilter implements SearchModifierInterface
 {
+    use HasPositiveIntArrayTrait;
     public function __construct(
         private readonly array $ids = []
     ) {
-        $this->validate();
+        $this->validatePositiveIntArray($this->ids);
     }
 
     /**
@@ -30,18 +32,5 @@ final class IdsFilter implements SearchModifierInterface
     public function getIds(): array
     {
         return $this->ids;
-    }
-
-    private function validate() : void
-    {
-        foreach ($this->ids as $id) {
-            if (!is_int($id)) {
-                throw new InvalidModifierException("Id must be an integer.");
-            }
-
-            if ($id <= 0) {
-                throw new InvalidModifierException("ID must be a positive integer.");
-            }
-        }
     }
 }

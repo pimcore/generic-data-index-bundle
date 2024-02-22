@@ -24,21 +24,21 @@ final class IdsFilterTest extends Unit
     public function testIdsFilterWithNegativeInteger(): void
     {
         $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage("ID must be a positive integer.");
+        $this->expectExceptionMessage("Value must be a positive integer.");
         new IdsFilter([1,2,-10,5]);
     }
 
     public function testIdsFilterWithZero(): void
     {
         $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage("ID must be a positive integer.");
+        $this->expectExceptionMessage("Value must be a positive integer.");
         new IdsFilter([1,2,0,5]);
     }
 
     public function testIdsFilterWithString(): void
     {
         $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage("Id must be an integer.");
+        $this->expectExceptionMessage("Array must contain only integers.");
         new IdsFilter([1,2,'string',5]);
     }
 

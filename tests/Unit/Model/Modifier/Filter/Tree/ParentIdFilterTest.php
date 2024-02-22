@@ -25,14 +25,14 @@ final class ParentIdFilterTest extends Unit
     public function testParentIdFilterWithNegativeInteger(): void
     {
         $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage("Parent ID must be a positive integer.");
+        $this->expectExceptionMessage("ID must be a positive integer.");
         new ParentIdFilter(-10);
     }
 
     public function testParentIdFilterWithZero(): void
     {
         $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage("Parent ID must be a positive integer.");
+        $this->expectExceptionMessage("ID must be a positive integer.");
         new ParentIdFilter(0);
     }
 

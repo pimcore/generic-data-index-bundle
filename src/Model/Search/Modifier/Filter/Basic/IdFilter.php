@@ -15,25 +15,20 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Bas
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validater\HasPositiveIdTrait;
 
 
 final class IdFilter implements SearchModifierInterface
 {
+    use HasPositiveIdTrait;
     public function __construct(
         private readonly int $id = 1
     ) {
-        $this->validate();
+        $this->validatePositiveInt($this->id);
     }
 
     public function getId(): int
     {
         return $this->id;
-    }
-
-    private function validate(): void
-    {
-        if ($this->id < 1) {
-            throw new InvalidModifierException("ID must be a positive integer.");
-        }
     }
 }
