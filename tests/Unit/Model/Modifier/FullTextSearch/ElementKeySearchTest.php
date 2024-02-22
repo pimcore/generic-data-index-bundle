@@ -16,15 +16,18 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Model\Modifier\FullTe
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\ElementKeySearch;
 
-class ElementKeySearchTest extends Unit
+/**
+ * @internal
+ */
+final class ElementKeySearchTest extends Unit
 {
-    public function testGetSearchTermWithNull()
+    public function testGetSearchTermWithNull(): void
     {
         $filter = new ElementKeySearch(null);
         $this->assertNull($filter->getSearchTerm());
     }
 
-    public function testGetSearchTermWithString()
+    public function testGetSearchTermWithString(): void
     {
         $filter = new ElementKeySearch('my-filter');
         $this->assertSame('my-filter', $filter->getSearchTerm());

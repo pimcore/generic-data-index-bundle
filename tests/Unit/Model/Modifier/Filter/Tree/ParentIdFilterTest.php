@@ -17,23 +17,26 @@ use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
 
-class ParentIdFilterTest extends Unit
+/**
+ * @internal
+ */
+final class ParentIdFilterTest extends Unit
 {
-    public function testParentIdFilterWithNegativeInteger()
+    public function testParentIdFilterWithNegativeInteger(): void
     {
         $this->expectException(InvalidModifierException::class);
         $this->expectExceptionMessage("Parent ID must be a positive integer.");
         new ParentIdFilter(-10);
     }
 
-    public function testParentIdFilterWithZero()
+    public function testParentIdFilterWithZero(): void
     {
         $this->expectException(InvalidModifierException::class);
         $this->expectExceptionMessage("Parent ID must be a positive integer.");
         new ParentIdFilter(0);
     }
 
-    public function testGetParentId()
+    public function testGetParentId(): void
     {
         $filter = new ParentIdFilter(10);
         $this->assertSame(10, $filter->getParentId());

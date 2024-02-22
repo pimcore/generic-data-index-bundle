@@ -16,31 +16,33 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Model\Modifier\Filter
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdsFilter;
-
-class IdsFilterTest extends Unit
+/**
+ * @internal
+ */
+final class IdsFilterTest extends Unit
 {
-    public function testIdsFilterWithNegativeInteger()
+    public function testIdsFilterWithNegativeInteger(): void
     {
         $this->expectException(InvalidModifierException::class);
         $this->expectExceptionMessage("ID must be a positive integer.");
         new IdsFilter([1,2,-10,5]);
     }
 
-    public function testIdsFilterWithZero()
+    public function testIdsFilterWithZero(): void
     {
         $this->expectException(InvalidModifierException::class);
         $this->expectExceptionMessage("ID must be a positive integer.");
         new IdsFilter([1,2,0,5]);
     }
 
-    public function testIdsFilterWithString()
+    public function testIdsFilterWithString(): void
     {
         $this->expectException(InvalidModifierException::class);
         $this->expectExceptionMessage("Id must be an integer.");
         new IdsFilter([1,2,'string',5]);
     }
 
-    public function testGetIds()
+    public function testGetIds(): void
     {
         $filter = new IdsFilter([1,2,10,5]);
 
