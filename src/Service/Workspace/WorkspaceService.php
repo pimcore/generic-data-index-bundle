@@ -28,8 +28,7 @@ final class WorkspaceService implements WorkspaceServiceInterface
 {
     public function __construct(
         private readonly UserResolverInterface $userResolver
-    )
-    {
+    ) {
     }
 
     /**
@@ -38,8 +37,7 @@ final class WorkspaceService implements WorkspaceServiceInterface
     public function getRelevantWorkspaces(
         array $userWorkspaces,
         string $assetPath
-    ): array
-    {
+    ): array {
         $workspaces = [];
         foreach ($userWorkspaces as $userWorkspace) {
             if (!str_contains($assetPath, $userWorkspace->getCpath())) {

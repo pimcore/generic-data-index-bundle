@@ -35,8 +35,7 @@ final class PermissionService implements PermissionServiceInterface
     public function __construct(
         private readonly AuthenticationResolverInterface $authenticationResolver,
         private readonly WorkspaceServiceInterface $workspaceService
-    )
-    {
+    ) {
         $pimcoreUser = $this->authenticationResolver->authenticateSession();
         $this->user = $pimcoreUser;
     }
@@ -101,8 +100,7 @@ final class PermissionService implements PermissionServiceInterface
     private function getPermissions(
         string $assetPath,
         string $permissionsType
-    ): AssetPermissions|DocumentPermission|DataObjectPermission
-    {
+    ): AssetPermissions|DocumentPermission|DataObjectPermission {
         $roleWorkspace = null;
         $roleIds = $this->user->getRoles();
         if (!empty($roleIds)) {
@@ -124,12 +122,10 @@ final class PermissionService implements PermissionServiceInterface
         return $this->getPermissionsFromWorkspaces($workspace, $roleWorkspace);
     }
 
-
     private function getPermissionsFromWorkspaces(
         WorkspaceInterface $workspace,
         ?WorkspaceInterface $roleWorkspace = null
-    ): AssetPermissions|DocumentPermission|DataObjectPermission
-    {
+    ): AssetPermissions|DocumentPermission|DataObjectPermission {
         if (!$roleWorkspace) {
             return $workspace->getPermissions();
         }

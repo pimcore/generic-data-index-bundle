@@ -42,8 +42,7 @@ abstract class AbstractWorkspace implements WorkspaceInterface
     protected function setWorkspacePermissions(
         Workspace\Asset|Workspace\DataObject|Workspace\Document $userPermissions,
         AssetPermissions|DataObjectPermission|DocumentPermission $workspacePermissions
-    ): void
-    {
+    ): void {
         $properties = $workspacePermissions->getClassProperties();
         foreach ($properties as $property => $value) {
             $setter = 'set' . ucfirst($property);

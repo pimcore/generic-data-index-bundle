@@ -35,7 +35,7 @@ final class WorkspaceServiceTest extends Unit
         $workspaces = [
             $this->getUserWorkspace(Workspace\Asset::class, '/'),
             $this->getUserWorkspace(Workspace\Asset::class, '/parentFolder'),
-            $this->getUserWorkspace(Workspace\Asset::class, '/anotherParent')
+            $this->getUserWorkspace(Workspace\Asset::class, '/anotherParent'),
         ];
 
         $relevantWorkspaces = $this->getWorkspaceService()->getRelevantWorkspaces(
@@ -53,7 +53,7 @@ final class WorkspaceServiceTest extends Unit
     {
         $workspaces = [
             $this->getUserWorkspace(Workspace\Asset::class, '/'),
-            new MyTestWorkspace()
+            new MyTestWorkspace(),
         ];
 
         $this->expectException(WorkspaceNotFoundException::class);
@@ -86,7 +86,7 @@ final class WorkspaceServiceTest extends Unit
         $this->role->setWorkspacesAsset(
             [
                 $this->getUserWorkspace(Workspace\Asset::class, '/'),
-                $this->getUserWorkspace(Workspace\Asset::class, '/parentFolder')
+                $this->getUserWorkspace(Workspace\Asset::class, '/parentFolder'),
             ]
         );
 
@@ -114,7 +114,7 @@ final class WorkspaceServiceTest extends Unit
             )),
             new DocumentWorkspace($this->getUserWorkspace(
                 Workspace\Document::class, '/parentFolder/ChildFolder'
-            ))
+            )),
         ];
 
         $deepestWorkspace = $this->getWorkspaceService()->getDeepestWorkspace($workSpaces);
@@ -127,7 +127,7 @@ final class WorkspaceServiceTest extends Unit
     {
         return new WorkspaceService(
             $this->makeEmpty(UserResolverInterface::class, [
-                'getUserRoleById' => $this->role
+                'getUserRoleById' => $this->role,
             ])
         );
     }

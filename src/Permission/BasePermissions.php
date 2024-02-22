@@ -22,13 +22,21 @@ abstract class BasePermissions
     protected const DEFAULT_VALUE = true;
 
     private bool $list = self::DEFAULT_VALUE;
+
     private bool $view = self::DEFAULT_VALUE;
+
     private bool $publish = self::DEFAULT_VALUE;
+
     private bool $delete = self::DEFAULT_VALUE;
+
     private bool $rename = self::DEFAULT_VALUE;
+
     private bool $create = self::DEFAULT_VALUE;
+
     private bool $settings = self::DEFAULT_VALUE;
+
     private bool $versions = self::DEFAULT_VALUE;
+
     private bool $properties = self::DEFAULT_VALUE;
 
     public function isList(): bool

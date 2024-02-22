@@ -74,7 +74,7 @@ final class PermissionServiceTest extends Unit
                     path: '/parentFolder/childFolder',
                     permissions: ['view', 'list', 'delete'],
                     type: AssetWorkspace::WORKSPACE_TYPE
-                )
+                ),
             ]
         );
 
@@ -96,9 +96,9 @@ final class PermissionServiceTest extends Unit
             [
                 $this->getWorkspace(
                     path: '/parentFolder/childFolder/testFolder',
-                    permissions: ['view','publish', 'delete'],
+                    permissions: ['view', 'publish', 'delete'],
                     type: AssetWorkspace::WORKSPACE_TYPE
-                )
+                ),
             ]
         );
         $this->user->setRoles([$this->role->getId()]);
@@ -118,7 +118,7 @@ final class PermissionServiceTest extends Unit
                     path: '/parentFolder/childFolder',
                     permissions: ['view', 'list'],
                     type: AssetWorkspace::WORKSPACE_TYPE
-                )
+                ),
             ]
         );
 
@@ -177,7 +177,7 @@ final class PermissionServiceTest extends Unit
                     path: '/parentFolder/childFolder',
                     permissions: ['view', 'publish', 'unpublish'],
                     type: DataObjectWorkspace::WORKSPACE_TYPE
-                )
+                ),
             ]
         );
 
@@ -201,7 +201,7 @@ final class PermissionServiceTest extends Unit
                     path: '/parentFolder/childFolder',
                     permissions: ['publish', 'unpublish'],
                     type: DataObjectWorkspace::WORKSPACE_TYPE
-                )
+                ),
             ]
         );
 
@@ -222,7 +222,7 @@ final class PermissionServiceTest extends Unit
                     path: '/parentFolder/childFolder',
                     permissions: ['view', 'list'],
                     type: DataObjectWorkspace::WORKSPACE_TYPE
-                )
+                ),
             ]
         );
 
@@ -283,7 +283,7 @@ final class PermissionServiceTest extends Unit
                     path: '/parentFolder/childFolder',
                     permissions: ['view', 'delete', 'unpublish'],
                     type: DocumentWorkspace::WORKSPACE_TYPE
-                )
+                ),
             ]
         );
 
@@ -308,7 +308,7 @@ final class PermissionServiceTest extends Unit
                     path: '/parentFolder',
                     permissions: ['publish', 'unpublish'],
                     type: DocumentWorkspace::WORKSPACE_TYPE
-                )
+                ),
             ]
         );
         $this->user->setRoles([$this->role->getId()]);
@@ -328,7 +328,7 @@ final class PermissionServiceTest extends Unit
                     path: '/parentFolder/childFolder',
                     permissions: ['view', 'list'],
                     type: DocumentWorkspace::WORKSPACE_TYPE
-                )
+                ),
             ]
         );
 
@@ -362,8 +362,7 @@ final class PermissionServiceTest extends Unit
         string $path,
         array $permissions,
         string $type
-    ): Workspace\Asset|Workspace\DataObject|Workspace\Document
-    {
+    ): Workspace\Asset|Workspace\DataObject|Workspace\Document {
         $workspace = match(true) {
             $type === AssetWorkspace::WORKSPACE_TYPE => new Workspace\Asset(),
             $type === DataObjectWorkspace::WORKSPACE_TYPE => new Workspace\DataObject(),
@@ -385,7 +384,7 @@ final class PermissionServiceTest extends Unit
             $this->makeEmpty(AuthenticationResolver::class, ['authenticateSession' => $this->user]),
             new WorkspaceService(
                 $this->makeEmpty(UserResolverInterface::class, [
-                    'getUserRoleById' => $this->role
+                    'getUserRoleById' => $this->role,
                 ])
             )
         );

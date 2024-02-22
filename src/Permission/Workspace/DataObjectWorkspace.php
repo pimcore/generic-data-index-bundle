@@ -39,8 +39,7 @@ final class DataObjectWorkspace extends AbstractWorkspace
     protected function setWorkspacePermissions(
         Workspace\Asset|Workspace\DataObject|Workspace\Document $userPermissions,
         AssetPermissions|DataObjectPermission|DocumentPermission $workspacePermissions
-    ): void
-    {
+    ): void {
 
         parent::setWorkspacePermissions($userPermissions, $workspacePermissions);
         $workspacePermissions->setLocalizedEdit($userPermissions->getLEdit());

@@ -18,7 +18,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Permission;
  */
 final class AssetPermissions extends BasePermissions
 {
-
     public function getClassProperties(array $properties = []): array
     {
         return parent::getClassProperties(get_object_vars($this));

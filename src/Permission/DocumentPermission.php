@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Permission;
 final class DocumentPermission extends BasePermissions
 {
     private bool $save = self::DEFAULT_VALUE;
+
     private bool $unpublish = self::DEFAULT_VALUE;
 
     public function isSave(): bool

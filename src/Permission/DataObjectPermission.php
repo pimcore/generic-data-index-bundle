@@ -19,9 +19,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Permission;
 final class DataObjectPermission extends BasePermissions
 {
     private bool $save = self::DEFAULT_VALUE;
+
     private bool $unpublish = self::DEFAULT_VALUE;
+
     private ?string $localizedEdit = null;
+
     private ?string $localizedView = null;
+
     private ?string $layouts = null;
 
     public function isSave(): bool

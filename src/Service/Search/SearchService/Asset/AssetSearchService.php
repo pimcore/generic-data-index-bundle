@@ -60,8 +60,7 @@ final class AssetSearchService extends AbstractSearchService implements AssetSea
 
     public function byId(
         int $id
-    ): ?AssetSearchResultItem
-    {
+    ): ?AssetSearchResultItem {
         $assetSearch = (new AssetSearch())
             ->setPageSize(1)
             ->addModifier(new IdFilter($id));
