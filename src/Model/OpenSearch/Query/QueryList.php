@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\QueryType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Traits\SimplifySingleTypesTrait;
 
 final class QueryList
@@ -55,7 +56,7 @@ final class QueryList
         $result =  [];
 
         foreach ($this->queries as $query) {
-            $queryType = $query->getType()->value;
+            $queryType = $query->getType() instanceof QueryType ? $query->getType()->value : $query->getType();
             $result[$queryType] = $result[$queryType] ?? [];
             $result[$queryType][] = $query->toArray();
         }
