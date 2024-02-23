@@ -13,15 +13,18 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\QueryType;
-
-interface QueryInterface
+final class Filter extends BoolQuery
 {
-    public function getType(): QueryType|string;
+    public function __construct(
+        private readonly array $filterParams,
+    ) {
+        parent::__construct([
+            'filter' => $filterParams,
+        ]);
+    }
 
-    public function isEmpty(): bool;
-
-    public function getParams(): array;
-
-    public function toArray(): array;
+    public function getFilterParams(): array
+    {
+        return $this->filterParams;
+    }
 }
