@@ -13,6 +13,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
-interface SearchServiceInterface
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
+
+interface SearchProviderInterface
 {
+    public function createAssetSearch(): PaginatedSearchInterface;
 }

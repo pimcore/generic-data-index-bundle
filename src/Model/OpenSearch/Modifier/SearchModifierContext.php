@@ -13,24 +13,17 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
 
 class SearchModifierContext implements SearchModifierContextInterface
 {
     public function __construct(
-        private readonly Search $search,
-        private readonly SearchServiceInterface $searchService,
+        private readonly OpenSearchSearchInterface $search,
     ) {
     }
 
-    public function getSearch(): Search
+    public function getSearch(): OpenSearchSearchInterface
     {
         return $this->search;
-    }
-
-    public function getSearchService(): SearchServiceInterface
-    {
-        return $this->searchService;
     }
 }

@@ -20,7 +20,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchI
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 
 /**
@@ -72,11 +71,10 @@ final class SearchModifierService implements SearchModifierServiceInterface
      * @param Search $adapterSearch
      */
     public function applyModifiersFromSearch(
-        SearchServiceInterface $searchService,
         SearchInterface $search,
         AdapterSearchInterface $adapterSearch
     ): void {
-        $context = new SearchModifierContext($adapterSearch, $searchService);
+        $context = new SearchModifierContext($adapterSearch);
 
         foreach ($search->getModifiers() as $modifier) {
             $this->applyModifier($modifier, $context);

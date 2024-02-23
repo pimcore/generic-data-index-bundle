@@ -6,3 +6,7 @@ services:
 
   Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface:
       class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchService
+
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface:
+      class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProvider

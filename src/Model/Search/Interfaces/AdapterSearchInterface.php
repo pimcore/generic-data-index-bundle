@@ -17,7 +17,11 @@ interface AdapterSearchInterface
 {
     public function getFrom(): ?int;
 
+    public function setFrom(?int $from): AdapterSearchInterface;
+
     public function getSize(): ?int;
+
+    public function setSize(?int $size): AdapterSearchInterface;
 
     public function toArray(): array;
 }

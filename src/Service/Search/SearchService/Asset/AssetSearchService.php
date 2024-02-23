@@ -18,25 +18,31 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemF
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree\ChildrenCountAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\AbstractSearchService;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer;
 
 /**
  * @internal
  */
-final class AssetSearchService extends AbstractSearchService implements AssetSearchServiceInterface
+final class AssetSearchService implements AssetSearchServiceInterface
 {
     public function __construct(
+        private readonly SearchIndexServiceInterface $searchIndexService,
+        private readonly SearchModifierServiceInterface $searchModifierService,
+        private readonly PaginationInfoServiceInterface $paginationInfoService,
         private readonly AssetTypeAdapter $assetTypeAdapter,
         private readonly AssetSearchResultDenormalizer $denormalizer,
     ) {
-
     }
 
-    public function search(AssetSearch $assetSearch): AssetSearchResult
+    public function search(PaginatedSearchInterface $assetSearch): AssetSearchResult
     {
         $searchResult = $this->performSearch(
             search: $assetSearch,
@@ -85,5 +91,49 @@ final class AssetSearchService extends AbstractSearchService implements AssetSea
         }
 
         return $result;
+    }
+
+    private function performSearch(PaginatedSearchInterface $search, string $indexName): SearchResult
+    {
+        $adapterSearch = $this->searchIndexService->createPaginatedSearch($search->getPage(), $search->getPageSize());
+        $this->searchModifierService->applyModifiersFromSearch($search, $adapterSearch);
+
+        return $this
+            ->searchIndexService
+            ->search($adapterSearch, $indexName);
+    }
+
+    /**
+     * @return int[]
+     */
+    private function getChildrenCounts(
+        SearchResult $searchResult,
+        string $indexName
+    ): array {
+        $parentIds = $searchResult->getIds();
+
+        if (empty($parentIds)) {
+            return [];
+        }
+
+        $childrenCountAggregation = new ChildrenCountAggregation($parentIds);
+
+        $search = (new AssetSearch())
+            ->addModifier($childrenCountAggregation);
+
+        $searchResult = $this->performSearch($search, $indexName);
+
+        $childrenCounts = [];
+        foreach($parentIds as $parentId) {
+            $childrenCounts[$parentId] = 0;
+        }
+
+        if ($aggregation = $searchResult->getAggregation($childrenCountAggregation->getAggregationName())) {
+            foreach($aggregation->getBuckets() as $bucket) {
+                $childrenCounts[$bucket->getKey()] = $bucket->getDocCount();
+            }
+        }
+
+        return $childrenCounts;
     }
 }

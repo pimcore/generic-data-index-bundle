@@ -15,7 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifi
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchServiceInterface;
 
 interface SearchModifierServiceInterface
 {
@@ -26,7 +25,6 @@ interface SearchModifierServiceInterface
     ): void;
 
     public function applyModifiersFromSearch(
-        SearchServiceInterface $searchService,
         SearchInterface $search,
         AdapterSearchInterface $adapterSearch
     ): void;
