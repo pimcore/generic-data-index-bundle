@@ -19,7 +19,8 @@ class SearchModifierContext implements SearchModifierContextInterface
 {
     public function __construct(
         private readonly OpenSearchSearchInterface $search,
-    ) {}
+    ) {
+    }
 
     public function getSearch(): OpenSearchSearchInterface
     {
