@@ -38,7 +38,7 @@ final class Search implements AdapterSearchInterface
         return $this->from;
     }
 
-    public function setFrom(?int $from): Search
+    public function setFrom(?int $from): AdapterSearchInterface
     {
         $this->from = $from;
 
@@ -50,7 +50,7 @@ final class Search implements AdapterSearchInterface
         return $this->size;
     }
 
-    public function setSize(?int $size): Search
+    public function setSize(?int $size): AdapterSearchInterface
     {
         $this->size = $size;
 
@@ -62,28 +62,28 @@ final class Search implements AdapterSearchInterface
         return $this->source;
     }
 
-    public function setSource(bool|array|string|null $source): Search
+    public function setSource(bool|array|string|null $source): AdapterSearchInterface
     {
         $this->source = $source;
 
         return $this;
     }
 
-    public function addQuery(QueryInterface $query = null): Search
+    public function addQuery(QueryInterface $query = null): AdapterSearchInterface
     {
         $this->queryList->addQuery($query);
 
         return $this;
     }
 
-    public function addSort(FieldSort $sort): Search
+    public function addSort(FieldSort $sort): AdapterSearchInterface
     {
         $this->sortList->addSort($sort);
 
         return $this;
     }
 
-    public function addAggregation(Aggregation $aggregation): Search
+    public function addAggregation(Aggregation $aggregation): AdapterSearchInterface
     {
         $this->aggregationList->addAggregation($aggregation);
 
