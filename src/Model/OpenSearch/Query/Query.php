@@ -1,9 +1,17 @@
 <?php
 declare(strict_types=1);
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
 
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\QueryType;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
 final class Query implements QueryInterface
 {
@@ -15,7 +23,7 @@ final class Query implements QueryInterface
 
     public function getType(): string
     {
-       return $this->type;
+        return $this->type;
     }
 
     public function isEmpty(): bool
@@ -32,6 +40,4 @@ final class Query implements QueryInterface
     {
         return $this->params;
     }
-
-
 }
