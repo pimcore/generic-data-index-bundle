@@ -21,12 +21,14 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\A
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree\ChildrenCountAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\WorkspaceQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer;
+use Pimcore\Model\User;
 
 /**
  * @internal
@@ -44,6 +46,15 @@ final class AssetSearchService implements AssetSearchServiceInterface
 
     public function search(PaginatedSearchInterface $assetSearch): AssetSearchResult
     {
+        $user = $assetSearch->getUser();
+        if ($user && !$user->isAdmin()) {
+            $assetSearch->addModifier(new WorkspaceQuery(
+                'asset',
+                $user,
+                'view'
+            ));
+        }
+
         $searchResult = $this->performSearch(
             search: $assetSearch,
             indexName: $this->assetTypeAdapter->getAliasIndexName()
@@ -55,7 +66,7 @@ final class AssetSearchService implements AssetSearchServiceInterface
         );
 
         return new AssetSearchResult(
-            items: $this->hydrateSearchResultHits($searchResult, $childrenCounts),
+            items: $this->hydrateSearchResultHits($searchResult, $childrenCounts, $user),
             pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
                 searchResult: $searchResult,
                 page: $assetSearch->getPage(),
@@ -65,11 +76,16 @@ final class AssetSearchService implements AssetSearchServiceInterface
     }
 
     public function byId(
-        int $id
+        int $id,
+        ?User $user = null
     ): ?AssetSearchResultItem {
         $assetSearch = (new AssetSearch())
             ->setPageSize(1)
             ->addModifier(new IdFilter($id));
+
+        if ($user) {
+            $assetSearch->setUser($user);
+        }
 
         return $this->search($assetSearch)->getItems()[0] ?? null;
     }
@@ -77,7 +93,11 @@ final class AssetSearchService implements AssetSearchServiceInterface
     /**
      * @return AssetSearchResultItem[]
      */
-    private function hydrateSearchResultHits(SearchResult $searchResult, array $childrenCounts): array
+    private function hydrateSearchResultHits(
+        SearchResult $searchResult,
+        array $childrenCounts,
+        ?User $user = null
+    ): array
     {
         $result = [];
 
@@ -87,7 +107,12 @@ final class AssetSearchService implements AssetSearchServiceInterface
             $source[FieldCategory::SYSTEM_FIELDS->value][SystemField::HAS_CHILDREN->value] =
                 ($childrenCounts[$hit->getId()] ?? 0) > 0;
 
-            $result[] = $this->denormalizer->denormalize($source, AssetSearchResultItem::class);
+            $result[] = $this->denormalizer->denormalize(
+                $source,
+                AssetSearchResultItem::class,
+                null,
+                ['user' => $user]
+            );
         }
 
         return $result;

@@ -23,7 +23,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspa
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\WorkspaceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceServiceInterface;
-use Pimcore\Bundle\StaticResolverBundle\Lib\Tools\Authentication\AuthenticationResolverInterface;
 use Pimcore\Model\User;
 
 /**
@@ -31,30 +30,26 @@ use Pimcore\Model\User;
  */
 final class PermissionService implements PermissionServiceInterface
 {
-    private ?User $user;
-
     public function __construct(
-        private readonly AuthenticationResolverInterface $authenticationResolver,
         private readonly WorkspaceServiceInterface $workspaceService
     ) {
-        $pimcoreUser = $this->authenticationResolver->authenticateSession();
-        $this->user = $pimcoreUser;
     }
 
     /**
      * @throws Exception
      */
-    public function getAssetPermissions(string $assetPath): AssetPermissions
+    public function getAssetPermissions(string $assetPath, ?User $user): AssetPermissions
     {
-        if (!$this->user) {
+        if ($user && $user->isAdmin()) {
             return new AssetPermissions();
         }
 
         /** @var AssetPermissions $permissions */
         $permissions = $this->getPermissions(
             assetPath: $assetPath,
-            permissionsType: AssetWorkspace::WORKSPACE_TYPE
-        );
+            permissionsType: AssetWorkspace::WORKSPACE_TYPE,
+            user: $user
+        ) ?? new AssetPermissions();
 
         return $permissions;
     }
@@ -62,17 +57,18 @@ final class PermissionService implements PermissionServiceInterface
     /**
      * @throws Exception
      */
-    public function getDocumentPermissions(string $assetPath): DocumentPermission
+    public function getDocumentPermissions(string $assetPath, ?User $user): DocumentPermission
     {
-        if (!$this->user) {
+        if ($user && $user->isAdmin()) {
             return new DocumentPermission();
         }
 
         /** @var DocumentPermission $permissions */
         $permissions = $this->getPermissions(
             assetPath: $assetPath,
-            permissionsType: DocumentWorkspace::WORKSPACE_TYPE
-        );
+            permissionsType: DocumentWorkspace::WORKSPACE_TYPE,
+            user: $user
+        ) ?? new DocumentPermission();
 
         return $permissions;
     }
@@ -80,19 +76,34 @@ final class PermissionService implements PermissionServiceInterface
     /**
      * @throws Exception
      */
-    public function getDataObjectPermissions(string $assetPath): DataObjectPermission
+    public function getDataObjectPermissions(string $assetPath, ?User $user): DataObjectPermission
     {
-        if (!$this->user) {
+        if ($user && $user->isAdmin()) {
             return new DataObjectPermission();
         }
 
         /** @var DataObjectPermission $permissions */
         $permissions = $this->getPermissions(
             assetPath: $assetPath,
-            permissionsType: DataObjectWorkspace::WORKSPACE_TYPE
-        );
+            permissionsType: DataObjectWorkspace::WORKSPACE_TYPE,
+            user: $user
+        ) ?? new DataObjectPermission();
 
         return $permissions;
+    }
+
+    public function checkWorkspacePermission(
+        WorkspaceInterface $workspace,
+        string $permission
+    ): bool
+    {
+        $getter = 'is' . ucfirst($permission);
+        $permissions = $workspace->getPermissions();
+        if (method_exists($permissions, $getter)) {
+            return $permissions->$getter();
+        }
+
+        return false;
     }
 
     /**
@@ -100,45 +111,59 @@ final class PermissionService implements PermissionServiceInterface
      */
     private function getPermissions(
         string $assetPath,
-        string $permissionsType
-    ): BasePermissions {
-        $roleWorkspace = null;
-        $roleIds = $this->user->getRoles();
-        if (!empty($roleIds)) {
-            $roleWorkspaces = $this->workspaceService->getRelevantWorkspaces(
-                $this->workspaceService->getRoleWorkspaces($roleIds, $permissionsType),
-                $assetPath
-            );
-            if (!empty($roleWorkspaces)) {
-                $roleWorkspace = $this->workspaceService->getDeepestWorkspace($roleWorkspaces);
-            }
-        }
-        $workspaceGetter = 'getWorkspaces' . ucfirst($permissionsType);
-        $workspaces = $this->workspaceService->getRelevantWorkspaces(
-            $this->user->$workspaceGetter(),
+        string $permissionsType,
+        ?User $user
+    ): ?BasePermissions {
+        $userWorkspaces = $this->workspaceService->getRelevantWorkspaces(
+            $this->workspaceService->getUserWorkspaces($permissionsType, $user),
             $assetPath
         );
-        $workspace = $this->workspaceService->getDeepestWorkspace($workspaces);
+        $userRoleWorkspaces = [];
+        if ($user) {
+            $userRoleWorkspaces = $this->workspaceService->getUserRoleWorkspaces(
+                $user,
+                $permissionsType,
+                $assetPath
+            );
+        }
 
-        return $this->getPermissionsFromWorkspaces($workspace, $roleWorkspace);
+        return $this->getPermissionsFromWorkspaces($userWorkspaces, $userRoleWorkspaces);
     }
 
     private function getPermissionsFromWorkspaces(
-        WorkspaceInterface $workspace,
-        ?WorkspaceInterface $roleWorkspace = null
-    ): BasePermissions {
-        if (!$roleWorkspace) {
-            return $workspace->getPermissions();
+        array $userWorkspaces,
+        array $roleWorkspaces
+    ): ?BasePermissions {
+        if (empty($userWorkspaces) && empty($roleWorkspaces)) {
+            return null;
         }
 
-        if ($roleWorkspace->getPath() !== $workspace->getPath()) {
+        if (empty($roleWorkspaces)) {
+            return $this->workspaceService->getDeepestWorkspace($userWorkspaces)->getPermissions();
+        }
+
+        $userWorkspace = $this->workspaceService->getDeepestWorkspace($userWorkspaces);
+        $roleWorkspace = $this->workspaceService->getDeepestWorkspace($roleWorkspaces);
+
+        if ($roleWorkspace->getPath() !== $userWorkspace->getPath()) {
             return $this->workspaceService->getDeepestWorkspace(
-                [$workspace, $roleWorkspace]
+                [$userWorkspace, $roleWorkspace]
             )->getPermissions();
         }
 
+        return $this->addRelevantRolePermissions(
+            $userWorkspace,
+            $roleWorkspace
+        );
+    }
+
+    private function addRelevantRolePermissions(
+        WorkspaceInterface $userWorkspace,
+        WorkspaceInterface $roleWorkspace
+    ): BasePermissions
+    {
         $rolePermissions = $roleWorkspace->getPermissions();
-        $workspacePermissions = $workspace->getPermissions();
+        $workspacePermissions = $userWorkspace->getPermissions();
         $properties = $roleWorkspace->getPermissions()->getClassProperties();
         foreach ($properties as $property => $value) {
             $setter = 'set' . ucfirst($property);

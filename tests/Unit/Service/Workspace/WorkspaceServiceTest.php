@@ -16,12 +16,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\Workspace;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\WorkspaceNotFoundException;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceService;
+use Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Helper\WorkspaceHelper;
 use Pimcore\Bundle\StaticResolverBundle\Models\User\UserResolverInterface;
 use Pimcore\Model\User;
 use Pimcore\Model\User\Workspace;
-use Pimcore\Model\User\Workspace\AbstractWorkspace;
 
 /**
  * @internal
@@ -30,12 +31,160 @@ final class WorkspaceServiceTest extends Unit
 {
     private ?User\UserRole $role = null;
 
+    private readonly WorkspaceHelper $workspaceHelper;
+    
+    public function _before(): void
+    {
+        $this->workspaceHelper = WorkspaceHelper::create();
+    }
+    
+    public function testGetUserWorkspaces(): void
+    {
+        $workspaces = [
+            $this->workspaceHelper->getUserWorkspace(Workspace\Asset::class, '/'),
+            $this->workspaceHelper->getUserWorkspace(Workspace\Asset::class, '/parentFolder'),
+            $this->workspaceHelper->getUserWorkspace(Workspace\Asset::class, '/anotherParent'),
+        ];
+
+        $user = new User();
+        $user->setWorkspacesAsset($workspaces);
+        $workspaces = $this->getWorkspaceService()->getUserWorkspaces('asset', $user);
+
+        $this->assertCount(3, $workspaces);
+        $this->assertInstanceOf(AssetWorkspace::class, $workspaces[0]);
+        $this->assertInstanceOf(AssetWorkspace::class, $workspaces[1]);
+        $this->assertInstanceOf(AssetWorkspace::class, $workspaces[2]);
+    }
+
+    public function testGetUserWorkspacesWithoutUser(): void
+    {
+        $workspaces = $this->getWorkspaceService()->getUserWorkspaces('asset', null);
+        $this->assertEmpty($workspaces);
+    }
+
+    public function testGetUserRoleWorkspaces(): void
+    {
+        $this->role = new User\Role();
+        $this->role->setId(1);
+        $this->role->setWorkspacesObject(
+            [
+                $this->workspaceHelper->getUserWorkspace(Workspace\DataObject::class, '/'),
+                $this->workspaceHelper->getUserWorkspace(Workspace\DataObject::class, '/parent/'),
+                $this->workspaceHelper->getUserWorkspace(Workspace\DataObject::class, '/parent/child'),
+            ]
+        );
+
+        $user = new User();
+        $user->setRoles([1]);
+        $workspaceService = $this->getWorkspaceService();
+        $path = '/parent/child';
+        $workspaces = $workspaceService->getUserRoleWorkspaces(
+            $user,
+            DataObjectWorkspace::WORKSPACE_TYPE,
+            $path
+        );
+
+        $this->assertInstanceOf(DataObjectWorkspace::class, $workspaces[0]);
+        $this->assertInstanceOf(DataObjectWorkspace::class, $workspaces[1]);
+        $this->assertInstanceOf(DataObjectWorkspace::class, $workspaces[2]);
+        $this->assertCount(3, $workspaces);
+
+        $path = '/';
+        $workspaces = $workspaceService->getUserRoleWorkspaces(
+            $user,
+            DataObjectWorkspace::WORKSPACE_TYPE,
+            $path
+        );
+        $this->assertCount(1, $workspaces);
+    }
+
+    public function testGetUserRoleWorkspacesWithNoRole(): void
+    {
+        $user = new User();
+        $user->setRoles([]);
+        $workspaceService = $this->getWorkspaceService();
+        $path = '/parent/child';
+        $workspaces = $workspaceService->getUserRoleWorkspaces(
+            $user,
+            DataObjectWorkspace::WORKSPACE_TYPE,
+            $path
+        );
+        $this->assertEmpty($workspaces);
+    }
+
+    public function testGetUserRoleWorkspacesWithWrongType(): void
+    {
+        $this->role = new User\Role();
+        $this->role->setId(1);
+        $this->role->setWorkspacesAsset(
+            [
+                $this->workspaceHelper->getUserWorkspace(Workspace\Asset::class, '/'),
+            ]
+        );
+
+        $user = new User();
+        $user->setRoles([1]);
+        $workspaceService = $this->getWorkspaceService();
+        $path = '/parent/child';
+        $workspaces = $workspaceService->getUserRoleWorkspaces(
+            $user,
+            DataObjectWorkspace::WORKSPACE_TYPE,
+            $path
+        );
+        $this->assertEmpty($workspaces);
+    }
+
+    public function testGetRoleWorkspaces(): void
+    {
+        $this->role = new User\Role();
+        $this->role->setId(1);
+        $this->role->setWorkspacesObject(
+            [
+                $this->workspaceHelper->getUserWorkspace(Workspace\DataObject::class, '/'),
+            ]
+        );
+
+        $this->assertCount(
+            1,
+            $this->getWorkspaceService()->getRoleWorkspaces('object', $this->role->getId())
+        );
+        $this->assertCount(
+            0,
+            $this->getWorkspaceService()->getRoleWorkspaces('asset', $this->role->getId())
+        );
+
+        $this->role->setWorkspacesAsset(
+            [
+                $this->workspaceHelper->getUserWorkspace(Workspace\Asset::class, '/'),
+                $this->workspaceHelper->getUserWorkspace(Workspace\Asset::class, '/parentFolder'),
+            ]
+        );
+
+        $this->assertCount(
+            2,
+            $this->getWorkspaceService()->getRoleWorkspaces('asset', $this->role->getId())
+        );
+    }
+
+    public function testGetRoleWorkspacesWithInvalidRole(): void
+    {
+        $this->assertEmpty(
+            $this->getWorkspaceService()->getRoleWorkspaces('object', 10)
+        );
+    }
+
     public function testGetRelevantWorkspaces(): void
     {
         $workspaces = [
-            $this->getUserWorkspace(Workspace\Asset::class, '/'),
-            $this->getUserWorkspace(Workspace\Asset::class, '/parentFolder'),
-            $this->getUserWorkspace(Workspace\Asset::class, '/anotherParent'),
+            new AssetWorkspace($this->workspaceHelper->getUserWorkspace(
+                Workspace\Asset::class, '/')
+            ),
+            new AssetWorkspace($this->workspaceHelper->getUserWorkspace(
+                Workspace\Asset::class, '/parentFolder')
+            ),
+            new AssetWorkspace($this->workspaceHelper->getUserWorkspace(
+                Workspace\Asset::class, '/anotherParent')
+            ),
         ];
 
         $relevantWorkspaces = $this->getWorkspaceService()->getRelevantWorkspaces(
@@ -45,15 +194,12 @@ final class WorkspaceServiceTest extends Unit
 
         $this->assertCount(2, $relevantWorkspaces);
         $this->assertSame('/anotherParent', $relevantWorkspaces[1]->getPath());
-        $this->assertInstanceOf(AssetWorkspace::class, $relevantWorkspaces[0]);
-        $this->assertInstanceOf(AssetWorkspace::class, $relevantWorkspaces[1]);
     }
 
     public function testGetRelevantWorkspacesWithInvalidType(): void
     {
         $workspaces = [
-            $this->getUserWorkspace(Workspace\Asset::class, '/'),
-            new MyTestWorkspace(),
+            $this->workspaceHelper->getUserWorkspace(Workspace\Asset::class, '/'),
         ];
 
         $this->expectException(WorkspaceNotFoundException::class);
@@ -64,55 +210,16 @@ final class WorkspaceServiceTest extends Unit
         );
     }
 
-    public function testGetRoleWorkspaces(): void
-    {
-        $this->role = new User\Role();
-        $this->role->setId(1);
-        $this->role->setWorkspacesObject(
-            [
-                $this->getUserWorkspace(Workspace\DataObject::class, '/'),
-            ]
-        );
-
-        $this->assertCount(
-            1,
-            $this->getWorkspaceService()->getRoleWorkspaces([$this->role->getId()], 'object')
-        );
-        $this->assertCount(
-            0,
-            $this->getWorkspaceService()->getRoleWorkspaces([$this->role->getId()], 'asset')
-        );
-
-        $this->role->setWorkspacesAsset(
-            [
-                $this->getUserWorkspace(Workspace\Asset::class, '/'),
-                $this->getUserWorkspace(Workspace\Asset::class, '/parentFolder'),
-            ]
-        );
-
-        $this->assertCount(
-            2,
-            $this->getWorkspaceService()->getRoleWorkspaces([$this->role->getId()], 'asset')
-        );
-    }
-
-    public function testGetRoleWorkspacesWithNoRole(): void
-    {
-        $this->assertEmpty(
-            $this->getWorkspaceService()->getRoleWorkspaces([], 'object')
-        );
-    }
-
     public function testGetDeepestWorkspaces(): void
     {
         $workSpaces = [
-            new DocumentWorkspace($this->getUserWorkspace(
+            new DocumentWorkspace($this->workspaceHelper->getUserWorkspace(
                 Workspace\Document::class, '/'
             )),
-            new DocumentWorkspace($this->getUserWorkspace(
+            new DocumentWorkspace($this->workspaceHelper->getUserWorkspace(
                 Workspace\Document::class, '/parentFolder'
             )),
-            new DocumentWorkspace($this->getUserWorkspace(
+            new DocumentWorkspace($this->workspaceHelper->getUserWorkspace(
                 Workspace\Document::class, '/parentFolder/ChildFolder'
             )),
         ];
@@ -132,16 +239,5 @@ final class WorkspaceServiceTest extends Unit
         );
     }
 
-    private function getUserWorkspace(string $type, string $path)
-    {
-        $workspace = new $type();
-        $workspace->setCpath($path);
 
-        return $workspace;
-    }
-}
-
-class MyTestWorkspace extends AbstractWorkspace
-{
-    protected string $cpath = '/';
 }
