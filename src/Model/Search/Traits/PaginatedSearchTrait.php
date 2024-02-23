@@ -13,15 +13,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Traits;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
-use Symfony\Component\Validator\Constraints as Assert;
 
 trait PaginatedSearchTrait
 {
-    #[Assert\Positive]
     private int $page = 1;
 
-    #[Assert\Positive]
     private int $pageSize = PaginatedSearchInterface::DEFAULT_PAGE_SIZE;
 
     public function getPage(): int
@@ -31,6 +29,10 @@ trait PaginatedSearchTrait
 
     public function setPage(int $page): self
     {
+        if ($page <= 0) {
+            throw new InvalidModifierException("Page must be bigger then 0");
+        }
+
         $this->page = $page;
 
         return $this;
@@ -43,6 +45,10 @@ trait PaginatedSearchTrait
 
     public function setPageSize(int $pageSize): self
     {
+        if ($pageSize <= 0) {
+            throw new InvalidModifierException("Page Size must be bigger then 0");
+        }
+
         $this->pageSize = $pageSize;
 
         return $this;

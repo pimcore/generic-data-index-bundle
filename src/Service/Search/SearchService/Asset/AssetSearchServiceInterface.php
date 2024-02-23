@@ -14,17 +14,16 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ValidationFailedException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
 
-interface AssetSearchServiceInterface extends SearchServiceInterface
+interface AssetSearchServiceInterface
 {
     /**
      * @throws ValidationFailedException
      */
-    public function search(AssetSearch $assetSearch): AssetSearchResult;
+    public function search(PaginatedSearchInterface $assetSearch): AssetSearchResult;
 
     /**
      * @throws ValidationFailedException
