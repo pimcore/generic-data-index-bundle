@@ -17,9 +17,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearc
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Traits\PaginatedSearchTrait;
 
-/**
- * @internal
- */
 final class AssetSearch implements PaginatedSearchInterface
 {
     use PaginatedSearchTrait;
