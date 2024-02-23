@@ -23,9 +23,5 @@ interface AdapterSearchInterface
 
     public function setSize(?int $size): AdapterSearchInterface;
 
-    public function getSource(): bool|array|string|null;
-
-    public function setSource(bool|array|string|null $source): AdapterSearchInterface;
-
     public function toArray(): array;
 }

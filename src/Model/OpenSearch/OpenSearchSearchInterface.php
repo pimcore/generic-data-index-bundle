@@ -31,4 +31,8 @@ interface OpenSearchSearchInterface extends AdapterSearchInterface
     public function addAggregation(Aggregation $aggregation): OpenSearchSearchInterface;
 
     public function getQueryList(): QueryList;
+
+    public function getSource(): bool|array|string|null;
+
+    public function setSource(bool|array|string|null $source): AdapterSearchInterface;
 }
