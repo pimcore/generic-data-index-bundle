@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Model\OpenSearch\Search\Traits;
@@ -26,7 +26,7 @@ final class PaginatedSearchTraitTest extends Unit
     {
         $class = $this->getClassWithTrait();
         $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage("Page must be bigger then 0");
+        $this->expectExceptionMessage('Page must be bigger then 0');
         $class->setPage(-42);
     }
 
@@ -34,7 +34,7 @@ final class PaginatedSearchTraitTest extends Unit
     {
         $class = $this->getClassWithTrait();
         $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage("Page must be bigger then 0");
+        $this->expectExceptionMessage('Page must be bigger then 0');
         $class->setPage(0);
     }
 
@@ -42,7 +42,7 @@ final class PaginatedSearchTraitTest extends Unit
     {
         $class = $this->getClassWithTrait();
         $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage("Page Size must be bigger then 0");
+        $this->expectExceptionMessage('Page Size must be bigger then 0');
         $class->setPageSize(-42);
     }
 
@@ -50,7 +50,7 @@ final class PaginatedSearchTraitTest extends Unit
     {
         $class = $this->getClassWithTrait();
         $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage("Page Size must be bigger then 0");
+        $this->expectExceptionMessage('Page Size must be bigger then 0');
         $class->setPageSize(-50);
     }
 
@@ -58,7 +58,7 @@ final class PaginatedSearchTraitTest extends Unit
     {
         $class = $this->getClassWithTrait();
         $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage("Page Size must be bigger then 0");
+        $this->expectExceptionMessage('Page Size must be bigger then 0');
         $class->setPageSize(0);
     }
 

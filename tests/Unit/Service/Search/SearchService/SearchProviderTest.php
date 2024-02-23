@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\Search\SearchService;
@@ -22,7 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPro
  */
 final class SearchProviderTest extends Unit
 {
-    public function testCreateAssetSearch():void
+    public function testCreateAssetSearch(): void
     {
         $searchProvider = new SearchProvider();
         $assetSearch = $searchProvider->createAssetSearch();
