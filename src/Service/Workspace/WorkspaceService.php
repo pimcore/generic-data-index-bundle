@@ -82,9 +82,6 @@ final class WorkspaceService implements WorkspaceServiceInterface
         return $this->getWorkspacesObject($workspaces);
     }
 
-    /**
-     * @var WorkspaceInterface[] $userWorkspaces
-     */
     public function getRelevantWorkspaces(
         array $userWorkspaces,
         string $path

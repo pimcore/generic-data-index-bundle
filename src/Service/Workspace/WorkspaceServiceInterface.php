@@ -34,9 +34,6 @@ interface WorkspaceServiceInterface
 
     public function getRoleWorkspaces(string $type, int $roleId): array;
 
-    /**
-     * @var WorkspaceInterface[] $userWorkspaces
-     */
     public function getRelevantWorkspaces(
         array $userWorkspaces,
         string $path
