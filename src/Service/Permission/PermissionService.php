@@ -95,8 +95,7 @@ final class PermissionService implements PermissionServiceInterface
     public function checkWorkspacePermission(
         WorkspaceInterface $workspace,
         string $permission
-    ): bool
-    {
+    ): bool {
         $getter = 'is' . ucfirst($permission);
         $permissions = $workspace->getPermissions();
         if (method_exists($permissions, $getter)) {
@@ -160,8 +159,7 @@ final class PermissionService implements PermissionServiceInterface
     private function addRelevantRolePermissions(
         WorkspaceInterface $userWorkspace,
         WorkspaceInterface $roleWorkspace
-    ): BasePermissions
-    {
+    ): BasePermissions {
         $rolePermissions = $roleWorkspace->getPermissions();
         $workspacePermissions = $userWorkspace->getPermissions();
         $properties = $roleWorkspace->getPermissions()->getClassProperties();

@@ -48,7 +48,7 @@ final class QueryService implements QueryServiceInterface
             $workspacesQuery->addCondition(
                 ConditionType::SHOULD->value,
                 [
-                    'bool' => $this->createWorkspacesGroupQuery($group, $permission)->toArray()
+                    'bool' => $this->createWorkspacesGroupQuery($group, $permission)->toArray(),
                 ]
             );
         }
@@ -92,6 +92,7 @@ final class QueryService implements QueryServiceInterface
         foreach ($group as $workspace) {
             if ($this->permissionService->checkWorkspacePermission($workspace, $permission)) {
                 $hasAllowedWorkspaces = true;
+
                 break;
             }
         }
@@ -112,8 +113,8 @@ final class QueryService implements QueryServiceInterface
                     type: ConditionType::FILTER->value,
                     params: [
                         ConditionType::EXISTS->value => [
-                            'field' => $fullPathField
-                        ]
+                            'field' => $fullPathField,
+                        ],
                     ]
                 );
 
@@ -124,7 +125,7 @@ final class QueryService implements QueryServiceInterface
             $params = [
                 'term' => [
                     $fullPathField => $workspace->getPath(),
-                ]
+                ],
             ];
 
             if (!$this->permissionService->checkWorkspacePermission($workspace, $permission)) {
@@ -146,8 +147,8 @@ final class QueryService implements QueryServiceInterface
             ConditionType::FILTER->value => [
                 'term' => [
                     SystemField::FULL_PATH->getPath() => -1,
-                ]
-            ]
+                ],
+            ],
         ]);
     }
 }

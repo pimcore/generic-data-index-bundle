@@ -97,8 +97,7 @@ final class AssetSearchService implements AssetSearchServiceInterface
         SearchResult $searchResult,
         array $childrenCounts,
         ?User $user = null
-    ): array
-    {
+    ): array {
         $result = [];
 
         foreach ($searchResult->getHits() as $hit) {

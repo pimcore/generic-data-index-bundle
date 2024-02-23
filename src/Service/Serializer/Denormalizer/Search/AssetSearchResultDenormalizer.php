@@ -51,6 +51,7 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
         }
 
         $user = $context['user'] ?? null;
+
         return $searchResultItem
             ->setId(SystemField::ID->getData($data))
             ->setParentId(SystemField::PARENT_ID->getData($data))

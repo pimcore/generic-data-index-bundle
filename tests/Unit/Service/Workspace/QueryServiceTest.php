@@ -37,6 +37,7 @@ final class QueryServiceTest extends Unit
     {
         $this->workspaceHelper = WorkspaceHelper::create();
     }
+
     public function testGetWorkspaceQueryWithUser(): void
     {
         $allowedPath = '/parentFolder';
@@ -49,13 +50,13 @@ final class QueryServiceTest extends Unit
                     ),
                     new AssetWorkspace(
                         $this->workspaceHelper->getUserWorkspace(Workspace\Asset::class, $allowedPath)
-                    )
+                    ),
                 ],
                 'getRoleWorkspaces' => [
                     new AssetWorkspace(
                         $this->workspaceHelper->getUserWorkspace(Workspace\Asset::class, $allowedPath)
-                    )
-                ]
+                    ),
+                ],
             ]
         );
 
@@ -64,7 +65,7 @@ final class QueryServiceTest extends Unit
             [
                 'checkWorkspacePermission' => function ($workspace) use ($allowedPath) {
                     return $workspace->getPath() === $allowedPath;
-                }
+                },
             ]
         );
         $user = new User();
@@ -99,7 +100,7 @@ final class QueryServiceTest extends Unit
             WorkspaceServiceInterface::class,
             [
                 'getUserWorkspaces' => [],
-                'getRoleWorkspaces' => []
+                'getRoleWorkspaces' => [],
             ]
         );
 
@@ -117,8 +118,7 @@ final class QueryServiceTest extends Unit
     private function getWorkspaceQueryService(
         ?WorkspaceServiceInterface $workspaceService = null,
         ?PermissionServiceInterface $permissionService = null
-    ): QueryService
-    {
+    ): QueryService {
         if(!$permissionService) {
             $permissionService = $this->makeEmpty(PermissionServiceInterface::class);
         }
@@ -139,8 +139,8 @@ final class QueryServiceTest extends Unit
             ConditionType::FILTER->value => [
                 'term' => [
                     SystemField::FULL_PATH->getPath() => -1,
-                ]
-            ]
+                ],
+            ],
         ]);
     }
 
@@ -152,26 +152,26 @@ final class QueryServiceTest extends Unit
                         'bool' => [
                             ConditionType::MUST_NOT->value => [
                                 'term' => [
-                                    SystemField::FULL_PATH->getPath() => '/'
-                                ]
+                                    SystemField::FULL_PATH->getPath() => '/',
+                                ],
                             ],
                             ConditionType::SHOULD->value => [
                                 'term' => [
-                                    SystemField::FULL_PATH->getPath() => '/parentFolder'
-                                ]
-                            ]
-                        ]
+                                    SystemField::FULL_PATH->getPath() => '/parentFolder',
+                                ],
+                            ],
+                        ],
                     ],
                     [
                         'bool' => [
                             ConditionType::SHOULD->value => [
                                 'term' => [
-                                    SystemField::FULL_PATH->getPath() => '/parentFolder'
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
+                                    SystemField::FULL_PATH->getPath() => '/parentFolder',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
             ]
         );
     }

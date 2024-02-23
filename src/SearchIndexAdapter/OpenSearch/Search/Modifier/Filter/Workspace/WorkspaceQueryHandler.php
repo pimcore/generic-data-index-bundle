@@ -22,16 +22,14 @@ final class WorkspaceQueryHandler
 {
     public function __construct(
         private readonly QueryServiceInterface $workspaceQueryService
-    )
-    {
+    ) {
     }
 
     #[AsSearchModifierHandler]
     public function handleWorkspaceQuery(
         WorkspaceQuery $workspaceQuery,
         SearchModifierContextInterface $context
-    ): void
-    {
+    ): void {
         if (!$workspaceQuery->getUser()) {
             return;
         }

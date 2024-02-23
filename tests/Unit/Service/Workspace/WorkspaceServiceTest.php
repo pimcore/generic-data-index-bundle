@@ -32,12 +32,12 @@ final class WorkspaceServiceTest extends Unit
     private ?User\UserRole $role = null;
 
     private readonly WorkspaceHelper $workspaceHelper;
-    
+
     public function _before(): void
     {
         $this->workspaceHelper = WorkspaceHelper::create();
     }
-    
+
     public function testGetUserWorkspaces(): void
     {
         $workspaces = [
@@ -238,6 +238,4 @@ final class WorkspaceServiceTest extends Unit
             ])
         );
     }
-
-
 }

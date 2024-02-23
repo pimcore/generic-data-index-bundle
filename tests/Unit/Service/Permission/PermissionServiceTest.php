@@ -21,7 +21,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspa
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceService;
-use Pimcore\Bundle\StaticResolverBundle\Lib\Tools\Authentication\AuthenticationResolver;
 use Pimcore\Bundle\StaticResolverBundle\Models\User\UserResolver;
 use Pimcore\Bundle\StaticResolverBundle\Models\User\UserResolverInterface;
 use Pimcore\Model\User;
