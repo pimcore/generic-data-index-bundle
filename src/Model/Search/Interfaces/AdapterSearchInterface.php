@@ -13,10 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation\Aggregation;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\QueryInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\QueryList;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSort;
 
 interface AdapterSearchInterface
 {
@@ -31,14 +27,6 @@ interface AdapterSearchInterface
     public function getSource(): bool|array|string|null;
 
     public function setSource(bool|array|string|null $source): AdapterSearchInterface;
-
-    public function addQuery(QueryInterface $query = null): AdapterSearchInterface;
-
-    public function addSort(FieldSort $sort): AdapterSearchInterface;
-
-    public function addAggregation(Aggregation $aggregation): AdapterSearchInterface;
-
-    public function getQueryList(): QueryList;
 
     public function toArray(): array;
 }

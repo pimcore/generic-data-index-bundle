@@ -21,7 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSort;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSortList;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 
-final class Search implements AdapterSearchInterface
+final class Search implements OpenSearchSearchInterface
 {
     public function __construct(
         private ?int $from = null,
@@ -38,7 +38,7 @@ final class Search implements AdapterSearchInterface
         return $this->from;
     }
 
-    public function setFrom(?int $from): AdapterSearchInterface
+    public function setFrom(?int $from): OpenSearchSearchInterface
     {
         $this->from = $from;
 
@@ -50,7 +50,7 @@ final class Search implements AdapterSearchInterface
         return $this->size;
     }
 
-    public function setSize(?int $size): AdapterSearchInterface
+    public function setSize(?int $size): OpenSearchSearchInterface
     {
         $this->size = $size;
 
@@ -62,28 +62,28 @@ final class Search implements AdapterSearchInterface
         return $this->source;
     }
 
-    public function setSource(bool|array|string|null $source): AdapterSearchInterface
+    public function setSource(bool|array|string|null $source): OpenSearchSearchInterface
     {
         $this->source = $source;
 
         return $this;
     }
 
-    public function addQuery(QueryInterface $query = null): AdapterSearchInterface
+    public function addQuery(QueryInterface $query = null): OpenSearchSearchInterface
     {
         $this->queryList->addQuery($query);
 
         return $this;
     }
 
-    public function addSort(FieldSort $sort): AdapterSearchInterface
+    public function addSort(FieldSort $sort): OpenSearchSearchInterface
     {
         $this->sortList->addSort($sort);
 
         return $this;
     }
 
-    public function addAggregation(Aggregation $aggregation): AdapterSearchInterface
+    public function addAggregation(Aggregation $aggregation): OpenSearchSearchInterface
     {
         $this->aggregationList->addAggregation($aggregation);
 
