@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Traits\PaginatedSearchTrait;
+use Pimcore\Model\User;
 
 final class AssetSearch implements PaginatedSearchInterface
 {
@@ -25,6 +26,8 @@ final class AssetSearch implements PaginatedSearchInterface
      * @var SearchModifierInterface[]
      */
     private array $modifiers = [];
+
+    private ?User $user = null;
 
     public function getModifiers(): array
     {
@@ -36,5 +39,17 @@ final class AssetSearch implements PaginatedSearchInterface
         $this->modifiers[] = $modifier;
 
         return $this;
+    }
+
+    public function setUser(User $user): self
+    {
+        $this->user = $user;
+
+        return $this;
+    }
+
+    public function getUser(): ?User
+    {
+        return $this->user;
     }
 }

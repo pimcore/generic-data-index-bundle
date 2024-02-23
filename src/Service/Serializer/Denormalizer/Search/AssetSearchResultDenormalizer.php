@@ -16,8 +16,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetMetaData;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandlerService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
@@ -26,6 +26,7 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
 {
     public function __construct(
         private readonly AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService,
+        private readonly PermissionServiceInterface $permissionService,
     ) {
     }
 
@@ -68,19 +69,8 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
             ->setHasWorkflowWithPermissions(SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data))
             ->setHasChildren(SystemField::HAS_CHILDREN->getData($data))
             ->setSearchIndexData($data)
-            ->setPermissions(
-                // allow all until permission system is implemented
-                new AssetPermissions(
-                    true,
-                    true,
-                    true,
-                    true,
-                    true,
-                    true,
-                    true,
-                    true,
-                    true,
-                )
+            ->setPermissions($this->permissionService->getAssetPermissions(
+                SystemField::FULL_PATH->getData($data))
             );
     }
 
