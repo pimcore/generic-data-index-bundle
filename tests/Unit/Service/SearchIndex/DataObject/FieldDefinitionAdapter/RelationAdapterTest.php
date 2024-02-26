@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
@@ -70,7 +70,7 @@ class RelationAdapterTest extends Unit
         $this->assertSame([
             'object' => [],
             'asset' => [1],
-            'document' => [5]
+            'document' => [5],
         ], $adapter->normalize([$image, $page]));
     }
 
@@ -91,7 +91,7 @@ class RelationAdapterTest extends Unit
         $this->assertSame([
             'object' => [],
             'asset' => [1],
-            'document' => []
+            'document' => [],
         ], $adapter->normalize($image));
     }
 }

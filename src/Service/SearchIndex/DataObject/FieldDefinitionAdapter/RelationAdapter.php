@@ -38,7 +38,8 @@ final class RelationAdapter extends AbstractAdapter
         ];
     }
 
-    public function normalize(mixed $value): mixed {
+    public function normalize(mixed $value): mixed
+    {
         $fieldDefinition = $this->getFieldDefinition();
         if (!$fieldDefinition instanceof NormalizerInterface) {
             return null;
@@ -48,7 +49,7 @@ final class RelationAdapter extends AbstractAdapter
         $returnValue = [
             'object' => [],
             'asset' => [],
-            'document' => []
+            'document' => [],
         ];
 
         // Mapping For ManyToOne

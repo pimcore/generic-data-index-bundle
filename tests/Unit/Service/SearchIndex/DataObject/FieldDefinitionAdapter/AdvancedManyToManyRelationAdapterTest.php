@@ -52,13 +52,13 @@ final class AdvancedManyToManyRelationAdapterTest extends Unit
         $this->assertSame([
             'properties' => [
                 'asset' => [
-                    'type' => AttributeType::LONG
+                    'type' => AttributeType::LONG,
                 ],
                 'object' => [
-                    'type' => AttributeType::LONG
+                    'type' => AttributeType::LONG,
                 ],
                 'document' => [
-                    'type' => AttributeType::LONG
+                    'type' => AttributeType::LONG,
                 ],
                 'details' => [
                     'type' => AttributeType::NESTED,
