@@ -22,7 +22,10 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyRelation;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToOneRelation;
 use Pimcore\Model\Document\Page;
 
-class RelationAdapterTest extends Unit
+/**
+ * @internal
+ */
+final class RelationAdapterTest extends Unit
 {
     public function testOpenSearchMapping()
     {
