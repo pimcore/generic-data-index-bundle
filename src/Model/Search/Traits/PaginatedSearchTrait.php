@@ -27,15 +27,13 @@ trait PaginatedSearchTrait
         return $this->page;
     }
 
-    public function setPage(int $page): self
+    public function setPage(int $page): void
     {
         if ($page <= 0) {
             throw new InvalidModifierException('Page must be bigger then 0');
         }
 
         $this->page = $page;
-
-        return $this;
     }
 
     public function getPageSize(): int
@@ -43,14 +41,12 @@ trait PaginatedSearchTrait
         return $this->pageSize;
     }
 
-    public function setPageSize(int $pageSize): self
+    public function setPageSize(int $pageSize): void
     {
         if ($pageSize <= 0) {
             throw new InvalidModifierException('Page Size must be bigger then 0');
         }
 
         $this->pageSize = $pageSize;
-
-        return $this;
     }
 }
