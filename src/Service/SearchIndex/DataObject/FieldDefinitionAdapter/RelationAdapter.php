@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
+use Pimcore\Normalizer\NormalizerInterface;
 
 /**
  * @internal
@@ -24,13 +25,37 @@ final class RelationAdapter extends AbstractAdapter
     {
         return [
             'properties' => [
-                'id' => [
-                    'type' => AttributeType::LONG,
+                'object' => [
+                    'type' => AttributeType::LONG->value,
                 ],
-                'type' => [
-                    'type' => AttributeType::TEXT,
+                'asset' => [
+                    'type' => AttributeType::LONG->value,
+                ],
+                'document' => [
+                    'type' => AttributeType::LONG->value,
                 ],
             ],
         ];
+    }
+
+    public function normalize(mixed $value): mixed {
+        $fieldDefinition = $this->getFieldDefinition();
+        if (!$fieldDefinition instanceof NormalizerInterface) {
+            return null;
+        }
+
+        $normalizedValues = $fieldDefinition->normalize($value);
+        $returnValue = [
+            'object' => [],
+            'asset' => [],
+            'document' => []
+        ];
+        foreach ($normalizedValues as $normalizedValue) {
+            if (isset($normalizedValue['type'], $normalizedValue['id'])) {
+                $returnValue[$normalizedValue['type']][] = $normalizedValue['id'];
+            }
+        }
+
+        return $returnValue;
     }
 }
