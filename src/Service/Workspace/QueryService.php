@@ -33,6 +33,25 @@ final class QueryService implements QueryServiceInterface
 
     public function getWorkspaceQuery(string $workspaceType, ?User $user, string $permission): BoolQuery
     {
+        $workspacesQuery = new BoolQuery();
+        if ($user?->isAdmin()) {
+            return $workspacesQuery;
+        }
+
+        $workspacesQuery->addCondition(
+            ConditionType::MUST->value,
+            ['bool' => $this->getWorkspaceGroupsQuery(
+                $workspaceType,
+                $user,
+                $permission
+            )->toArray()]
+        );
+
+        return $workspacesQuery;
+    }
+
+    private function getWorkspaceGroupsQuery(string $workspaceType, ?User $user, string $permission): BoolQuery
+    {
         $workspaceGroups = $this->getGroupedWorkspaces(
             $workspaceType,
             $user

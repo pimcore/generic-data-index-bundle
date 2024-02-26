@@ -80,7 +80,21 @@ final class QueryServiceTest extends Unit
             PermissionTypes::VIEW->value
         );
 
-        $this->assertEquals($this->getExpectedWorkspaceQuery(), $query);
+        $this->assertEquals($this->getGenericWorkspaceQuery([$this, 'getExpectedWorkspaceQuery']), $query);
+    }
+
+    public function testGetWorkspaceQueryWithAdminUser(): void
+    {
+        $user = new User();
+        $user->setAdmin(true);
+
+        $query = $this->getWorkspaceQueryService()->getWorkspaceQuery(
+            AssetWorkspace::WORKSPACE_TYPE,
+            $user,
+            PermissionTypes::VIEW->value
+        );
+
+        $this->assertEquals(new BoolQuery(), $query);
     }
 
     public function testGetWorkspaceQueryWithNoUser(): void
@@ -91,7 +105,7 @@ final class QueryServiceTest extends Unit
             PermissionTypes::VIEW->value
         );
 
-        $this->assertEquals($this->getEmptyWorkspaceQuery(), $query);
+        $this->assertEquals($this->getGenericWorkspaceQuery([$this, 'getEmptyWorkspaceQuery']), $query);
     }
 
     public function testGetWorkspaceQueryWithUserWithoutWorkspaces(): void
@@ -112,7 +126,7 @@ final class QueryServiceTest extends Unit
             PermissionTypes::VIEW->value
         );
 
-        $this->assertEquals($this->getEmptyWorkspaceQuery(), $query);
+        $this->assertEquals($this->getGenericWorkspaceQuery([$this, 'getEmptyWorkspaceQuery']), $query);
     }
 
     private function getWorkspaceQueryService(
@@ -131,6 +145,15 @@ final class QueryServiceTest extends Unit
             $permissionService,
             $workspaceService
         );
+    }
+
+    private function getGenericWorkspaceQuery(callable $getMethod): BoolQuery
+    {
+        return (new BoolQuery())->addCondition(
+            ConditionType::MUST->value,
+            ['bool' => $getMethod()->toArray()]
+        );
+
     }
 
     private function getEmptyWorkspaceQuery(): BoolQuery

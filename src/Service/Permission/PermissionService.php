@@ -40,16 +40,14 @@ final class PermissionService implements PermissionServiceInterface
      */
     public function getAssetPermissions(string $assetPath, ?User $user): AssetPermissions
     {
-        if ($user && $user->isAdmin()) {
-            return new AssetPermissions();
-        }
-
+        $permissions = new AssetPermissions();
         /** @var AssetPermissions $permissions */
         $permissions = $this->getPermissions(
             assetPath: $assetPath,
             permissionsType: AssetWorkspace::WORKSPACE_TYPE,
+            defaultPermissions: $permissions,
             user: $user
-        ) ?? new AssetPermissions();
+        ) ?? $permissions;
 
         return $permissions;
     }
@@ -59,16 +57,14 @@ final class PermissionService implements PermissionServiceInterface
      */
     public function getDocumentPermissions(string $assetPath, ?User $user): DocumentPermission
     {
-        if ($user && $user->isAdmin()) {
-            return new DocumentPermission();
-        }
-
+        $permissions = new DocumentPermission();
         /** @var DocumentPermission $permissions */
         $permissions = $this->getPermissions(
             assetPath: $assetPath,
             permissionsType: DocumentWorkspace::WORKSPACE_TYPE,
+            defaultPermissions: $permissions,
             user: $user
-        ) ?? new DocumentPermission();
+        ) ?? $permissions;
 
         return $permissions;
     }
@@ -78,16 +74,14 @@ final class PermissionService implements PermissionServiceInterface
      */
     public function getDataObjectPermissions(string $assetPath, ?User $user): DataObjectPermission
     {
-        if ($user && $user->isAdmin()) {
-            return new DataObjectPermission();
-        }
-
+        $permissions = new DataObjectPermission();
         /** @var DataObjectPermission $permissions */
         $permissions = $this->getPermissions(
             assetPath: $assetPath,
             permissionsType: DataObjectWorkspace::WORKSPACE_TYPE,
-            user: $user
-        ) ?? new DataObjectPermission();
+            defaultPermissions: $permissions,
+            user: $user,
+        ) ?? $permissions;
 
         return $permissions;
     }
@@ -105,14 +99,21 @@ final class PermissionService implements PermissionServiceInterface
         return false;
     }
 
-    /**
-     * @throws Exception
-     */
     private function getPermissions(
         string $assetPath,
         string $permissionsType,
+        BasePermissions $defaultPermissions,
         ?User $user
     ): ?BasePermissions {
+        $adminPermissions = $this->getAdminUserPermissions(
+            $user,
+            $defaultPermissions
+        );
+
+        if ($adminPermissions) {
+            return $adminPermissions;
+        }
+
         $userWorkspaces = $this->workspaceService->getRelevantWorkspaces(
             $this->workspaceService->getUserWorkspaces($permissionsType, $user),
             $assetPath
@@ -127,6 +128,24 @@ final class PermissionService implements PermissionServiceInterface
         }
 
         return $this->getPermissionsFromWorkspaces($userWorkspaces, $userRoleWorkspaces);
+    }
+
+    private function getAdminUserPermissions(
+        ?User $user,
+        BasePermissions $permissions
+    ): ?BasePermissions
+    {
+        if (!$user?->isAdmin()) {
+            return null;
+        }
+
+        $properties = $permissions->getClassProperties();
+        foreach ($properties as $property => $value) {
+            $setter = 'set' . ucfirst($property);
+            $permissions->$setter(true);
+        }
+
+        return $permissions;
     }
 
     private function getPermissionsFromWorkspaces(

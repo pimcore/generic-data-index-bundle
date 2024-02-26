@@ -386,6 +386,31 @@ final class PermissionServiceTest extends Unit
         $this->assertFalse($permissionService->checkWorkspacePermission($workspace, PermissionTypes::PUBLISH->value));
     }
 
+    public function testPermissionsWithAdminUserOnRoot(): void
+    {
+        $this->user->setAdmin(true);
+        $permissionService = $this->getPermissionServiceWithUser();
+        $permission = $permissionService->getAssetPermissions('/', $this->user);
+        $properties = $permission->getClassProperties();
+        foreach ($properties as $property => $value) {
+            $getter = 'is' . ucfirst($property);
+            $this->assertTrue($permission->$getter());
+        }
+    }
+
+    public function testPermissionsWitAdminUserOnCustomPath(): void
+    {
+        $this->user->setAdmin(true);
+        $permissionService = $this->getPermissionServiceWithUser();
+        $permission = $permissionService->getAssetPermissions('/Parent/Child', $this->user);
+
+        $properties = $permission->getClassProperties();
+        foreach ($properties as $property => $value) {
+            $getter = 'is' . ucfirst($property);
+            $this->assertTrue($permission->$getter());
+        }
+    }
+
     /**
      * @throws Exception
      */

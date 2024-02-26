@@ -13,19 +13,19 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree\ChildrenCountAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\WorkspaceQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchHelperInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer;
 use Pimcore\Model\User;
@@ -36,11 +36,11 @@ use Pimcore\Model\User;
 final class AssetSearchService implements AssetSearchServiceInterface
 {
     public function __construct(
-        private readonly SearchIndexServiceInterface $searchIndexService,
-        private readonly SearchModifierServiceInterface $searchModifierService,
-        private readonly PaginationInfoServiceInterface $paginationInfoService,
         private readonly AssetTypeAdapter $assetTypeAdapter,
         private readonly AssetSearchResultDenormalizer $denormalizer,
+        private readonly PaginationInfoServiceInterface $paginationInfoService,
+        private readonly SearchHelperInterface $searchHelper,
+        private readonly SearchProviderInterface $searchProvider
     ) {
     }
 
@@ -49,20 +49,21 @@ final class AssetSearchService implements AssetSearchServiceInterface
         $user = $assetSearch->getUser();
         if ($user && !$user->isAdmin()) {
             $assetSearch->addModifier(new WorkspaceQuery(
-                'asset',
+                AssetWorkspace::WORKSPACE_TYPE,
                 $user,
-                'view'
+                PermissionTypes::VIEW->value
             ));
         }
 
-        $searchResult = $this->performSearch(
+        $searchResult = $this->searchHelper->performSearch(
             search: $assetSearch,
             indexName: $this->assetTypeAdapter->getAliasIndexName()
         );
 
-        $childrenCounts = $this->getChildrenCounts(
+        $childrenCounts = $this->searchHelper->getChildrenCounts(
             searchResult: $searchResult,
-            indexName: $this->assetTypeAdapter->getAliasIndexName()
+            indexName: $this->assetTypeAdapter->getAliasIndexName(),
+            paginatedSearch: $this->searchProvider->createAssetSearch()
         );
 
         return new AssetSearchResult(
@@ -79,7 +80,7 @@ final class AssetSearchService implements AssetSearchServiceInterface
         int $id,
         ?User $user = null
     ): ?AssetSearchResultItem {
-        $assetSearch = (new AssetSearch())
+        $assetSearch = $this->searchProvider->createAssetSearch()
             ->setPageSize(1)
             ->addModifier(new IdFilter($id));
 
@@ -115,49 +116,5 @@ final class AssetSearchService implements AssetSearchServiceInterface
         }
 
         return $result;
-    }
-
-    private function performSearch(PaginatedSearchInterface $search, string $indexName): SearchResult
-    {
-        $adapterSearch = $this->searchIndexService->createPaginatedSearch($search->getPage(), $search->getPageSize());
-        $this->searchModifierService->applyModifiersFromSearch($search, $adapterSearch);
-
-        return $this
-            ->searchIndexService
-            ->search($adapterSearch, $indexName);
-    }
-
-    /**
-     * @return int[]
-     */
-    private function getChildrenCounts(
-        SearchResult $searchResult,
-        string $indexName
-    ): array {
-        $parentIds = $searchResult->getIds();
-
-        if (empty($parentIds)) {
-            return [];
-        }
-
-        $childrenCountAggregation = new ChildrenCountAggregation($parentIds);
-
-        $search = (new AssetSearch())
-            ->addModifier($childrenCountAggregation);
-
-        $searchResult = $this->performSearch($search, $indexName);
-
-        $childrenCounts = [];
-        foreach($parentIds as $parentId) {
-            $childrenCounts[$parentId] = 0;
-        }
-
-        if ($aggregation = $searchResult->getAggregation($childrenCountAggregation->getAggregationName())) {
-            foreach($aggregation->getBuckets() as $bucket) {
-                $childrenCounts[$bucket->getKey()] = $bucket->getDocCount();
-            }
-        }
-
-        return $childrenCounts;
     }
 }
