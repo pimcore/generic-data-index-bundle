@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
-
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree\ChildrenCountAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
@@ -28,8 +27,7 @@ final class SearchHelper implements SearchHelperInterface
     public function __construct(
         private readonly SearchIndexServiceInterface $searchIndexService,
         private readonly SearchModifierServiceInterface $searchModifierService
-    )
-    {
+    ) {
     }
 
     public function performSearch(PaginatedSearchInterface $search, string $indexName): SearchResult

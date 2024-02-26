@@ -133,8 +133,7 @@ final class PermissionService implements PermissionServiceInterface
     private function getAdminUserPermissions(
         ?User $user,
         BasePermissions $permissions
-    ): ?BasePermissions
-    {
+    ): ?BasePermissions {
         if (!$user?->isAdmin()) {
             return null;
         }
