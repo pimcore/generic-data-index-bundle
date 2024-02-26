@@ -23,9 +23,9 @@ interface SearchInterface
      */
     public function getModifiers(): array;
 
-    public function addModifier(SearchModifierInterface $modifier): self;
+    public function addModifier(SearchModifierInterface $modifier);
 
-    public function setUser(User $user): self;
+    public function setUser(User $user);
 
     public function getUser(): ?User;
 }

@@ -80,9 +80,9 @@ final class AssetSearchService implements AssetSearchServiceInterface
         int $id,
         ?User $user = null
     ): ?AssetSearchResultItem {
-        $assetSearch = $this->searchProvider->createAssetSearch()
-            ->setPageSize(1)
-            ->addModifier(new IdFilter($id));
+        $assetSearch = $this->searchProvider->createAssetSearch();
+        $assetSearch->setPageSize(1);
+        $assetSearch->addModifier(new IdFilter($id));
 
         if ($user) {
             $assetSearch->setUser($user);
