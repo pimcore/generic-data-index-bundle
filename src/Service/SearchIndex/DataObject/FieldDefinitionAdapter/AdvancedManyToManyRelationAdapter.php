@@ -17,6 +17,7 @@ use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Model\DataObject\ClassDefinition\Data\AdvancedManyToManyObjectRelation;
 use Pimcore\Model\DataObject\ClassDefinition\Data\AdvancedManyToManyRelation;
+use Pimcore\Normalizer\NormalizerInterface;
 
 /**
  * @internal
@@ -38,24 +39,38 @@ final class AdvancedManyToManyRelationAdapter extends AbstractAdapter
 
         return [
             'properties' => [
-                'fieldname' => [
-                    'type' => AttributeType::KEYWORD,
+                'asset' => [
+                    'type' => AttributeType::LONG,
                 ],
-                'columns' => [
-                    'type' => AttributeType::KEYWORD, // Is actually an array of strings
+                'object' => [
+                    'type' => AttributeType::LONG,
                 ],
-                'element' => [
+                'document' => [
+                    'type' => AttributeType::LONG,
+                ],
+                'details' => [
+                    'type' => AttributeType::NESTED,
                     'properties' => [
-                        'id' => [
-                            'type' => AttributeType::LONG,
-                        ],
-                        'type' => [
+                        'fieldname' => [
                             'type' => AttributeType::KEYWORD,
                         ],
+                        'columns' => [
+                            'type' => AttributeType::KEYWORD, // Is actually an array of strings
+                        ],
+                        'element' => [
+                            'properties' => [
+                                'id' => [
+                                    'type' => AttributeType::LONG,
+                                ],
+                                'type' => [
+                                    'type' => AttributeType::KEYWORD,
+                                ],
+                            ],
+                        ],
+                        'data' => [
+                            'properties' => $columnDefinition,
+                        ],
                     ],
-                ],
-                'data' => [
-                    'properties' => $columnDefinition,
                 ],
             ],
         ];
@@ -78,5 +93,30 @@ final class AdvancedManyToManyRelationAdapter extends AbstractAdapter
         }
 
         return $type;
+    }
+
+    public function normalize(mixed $value): ?array
+    {
+        $fieldDefinition = $this->getFieldDefinition();
+        if (!$fieldDefinition instanceof NormalizerInterface) {
+            return null;
+        }
+
+        $normalizedValues = $fieldDefinition->normalize($value);
+        $returnValue = [
+            'object' => [],
+            'asset' => [],
+            'document' => [],
+        ];
+
+        foreach ($normalizedValues as $normalizedValue) {
+            if (isset($normalizedValue['element']['type'], $normalizedValue['element']['id'])) {
+                $returnValue[$normalizedValue['element']['type']][] = $normalizedValue['element']['id'];
+            }
+        }
+
+        $returnValue['details'] = $normalizedValues;
+
+        return $returnValue;
     }
 }
