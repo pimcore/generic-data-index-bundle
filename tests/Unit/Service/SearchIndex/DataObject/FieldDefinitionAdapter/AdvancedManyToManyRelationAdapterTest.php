@@ -51,33 +51,47 @@ final class AdvancedManyToManyRelationAdapterTest extends Unit
 
         $this->assertSame([
             'properties' => [
-                'fieldname' => [
-                    'type' => AttributeType::KEYWORD,
+                'asset' => [
+                    'type' => AttributeType::LONG
                 ],
-                'columns' => [
-                    'type' => AttributeType::KEYWORD,
+                'object' => [
+                    'type' => AttributeType::LONG
                 ],
-                'element' => [
+                'document' => [
+                    'type' => AttributeType::LONG
+                ],
+                'details' => [
+                    'type' => AttributeType::NESTED,
                     'properties' => [
-                        'id' => [
-                            'type' => AttributeType::LONG,
-                        ],
-                        'type' => [
+                        'fieldname' => [
                             'type' => AttributeType::KEYWORD,
                         ],
-                    ],
-                ],
-                'data' => [
-                    'properties' => [
-                        'key1' => [
-                            'type' => AttributeType::LONG,
-                        ],
-                        'key2' => [
+                        'columns' => [
                             'type' => AttributeType::KEYWORD,
                         ],
-                    ],
+                        'element' => [
+                            'properties' => [
+                                'id' => [
+                                    'type' => AttributeType::LONG,
+                                ],
+                                'type' => [
+                                    'type' => AttributeType::KEYWORD,
+                                ],
+                            ],
+                        ],
+                        'data' => [
+                            'properties' => [
+                                'key1' => [
+                                    'type' => AttributeType::LONG,
+                                ],
+                                'key2' => [
+                                    'type' => AttributeType::KEYWORD,
+                                ],
+                            ],
+                        ],
                     ],
                 ],
+            ],
             ], $adapter->getOpenSearchMapping());
     }
 
