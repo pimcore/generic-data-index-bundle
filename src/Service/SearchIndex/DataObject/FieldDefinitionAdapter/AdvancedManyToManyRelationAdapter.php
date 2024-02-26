@@ -95,7 +95,7 @@ final class AdvancedManyToManyRelationAdapter extends AbstractAdapter
         return $type;
     }
 
-    public function normalize(mixed $value): mixed
+    public function normalize(mixed $value): ?array
     {
         $fieldDefinition = $this->getFieldDefinition();
         if (!$fieldDefinition instanceof NormalizerInterface) {
