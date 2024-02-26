@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDe
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\Asset\Image;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyRelation;
+use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToOneRelation;
 use Pimcore\Model\Document\Page;
 
 class RelationAdapterTest extends Unit
@@ -71,5 +72,26 @@ class RelationAdapterTest extends Unit
             'asset' => [1],
             'document' => [5]
         ], $adapter->normalize([$image, $page]));
+    }
+
+    public function testNormalizeManyToOne()
+    {
+        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
+        $adapter = new RelationAdapter(
+            $searchIndexConfigServiceInterfaceMock,
+            $fieldDefinitionServiceInterfaceMock
+        );
+        $relation = new ManyToOneRelation();
+        $adapter->setFieldDefinition($relation);
+
+        $image = new Image();
+        $image->setId(1);
+
+        $this->assertSame([
+            'object' => [],
+            'asset' => [1],
+            'document' => []
+        ], $adapter->normalize($image));
     }
 }

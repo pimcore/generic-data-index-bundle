@@ -50,6 +50,12 @@ final class RelationAdapter extends AbstractAdapter
             'asset' => [],
             'document' => []
         ];
+
+        // Mapping For ManyToOne
+        if (isset($normalizedValues['type'], $normalizedValues['id'])) {
+            $returnValue[$normalizedValues['type']][] = $normalizedValues['id'];
+        }
+
         foreach ($normalizedValues as $normalizedValue) {
             if (isset($normalizedValue['type'], $normalizedValue['id'])) {
                 $returnValue[$normalizedValue['type']][] = $normalizedValue['id'];
