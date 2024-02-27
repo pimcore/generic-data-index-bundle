@@ -54,5 +54,5 @@ interface SearchIndexServiceInterface
 
     public function search(AdapterSearchInterface $search, string $indexName): SearchResult;
 
-    public function getOpenSearchClient(): Client;
+    public function getStats(string $indexName): array;
 }

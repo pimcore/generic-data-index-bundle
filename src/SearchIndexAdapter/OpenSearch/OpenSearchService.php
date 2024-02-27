@@ -274,9 +274,18 @@ final class OpenSearchService implements SearchIndexServiceInterface
         );
     }
 
-    public function getOpenSearchClient(): Client
+    public function getStats(string $indexName): array
     {
-        return $this->openSearchClient;
+        return $this->openSearchClient
+            ->indices()
+            ->stats(['index' => $indexName]);
+    }
+
+    public function bulk(string $indexName): array
+    {
+        return $this->openSearchClient
+            ->indices()
+            ->stats(['index' => $indexName]);
     }
 
     /**

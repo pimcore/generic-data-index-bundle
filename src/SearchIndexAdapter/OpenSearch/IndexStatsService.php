@@ -36,10 +36,9 @@ final class IndexStatsService implements IndexStatsServiceInterface
     public function getStats(): IndexStats
     {
 
-        $allStats = $this->openSearchService
-            ->getOpenSearchClient()
-            ->indices()
-            ->stats(['index' => $this->searchIndexConfigService->getIndexPrefix() . '*', ]);
+        $allStats = $this->openSearchService->getStats(
+            $this->searchIndexConfigService->getIndexPrefix() . '*'
+        );
 
         $indices = [];
         foreach ($allStats['indices'] as $indexName => $index) {

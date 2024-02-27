@@ -14,6 +14,8 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\BulkOperationService
+        arguments:
+            $openSearchClient: '@generic-data-index.opensearch-client'
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\PathService
