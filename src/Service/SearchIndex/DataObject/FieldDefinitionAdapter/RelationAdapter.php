@@ -45,21 +45,23 @@ final class RelationAdapter extends AbstractAdapter
             return null;
         }
 
-        $normalizedValues = $fieldDefinition->normalize($value);
         $returnValue = [
             'object' => [],
             'asset' => [],
             'document' => [],
         ];
+        $normalizedValues = $fieldDefinition->normalize($value);
 
-        // Mapping For ManyToOne
-        if (isset($normalizedValues['type'], $normalizedValues['id'])) {
-            $returnValue[$normalizedValues['type']][] = $normalizedValues['id'];
-        }
+        if (is_array($normalizedValues)) {
+            // Mapping For ManyToOne
+            if (isset($normalizedValues['type'], $normalizedValues['id'])) {
+                $returnValue[$normalizedValues['type']][] = $normalizedValues['id'];
+            }
 
-        foreach ($normalizedValues as $normalizedValue) {
-            if (isset($normalizedValue['type'], $normalizedValue['id'])) {
-                $returnValue[$normalizedValue['type']][] = $normalizedValue['id'];
+            foreach ($normalizedValues as $normalizedValue) {
+                if (isset($normalizedValue['type'], $normalizedValue['id'])) {
+                    $returnValue[$normalizedValue['type']][] = $normalizedValue['id'];
+                }
             }
         }
 

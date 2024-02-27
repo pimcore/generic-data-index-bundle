@@ -102,20 +102,21 @@ final class AdvancedManyToManyRelationAdapter extends AbstractAdapter
             return null;
         }
 
-        $normalizedValues = $fieldDefinition->normalize($value);
         $returnValue = [
             'object' => [],
             'asset' => [],
             'document' => [],
         ];
+        $normalizedValues = $fieldDefinition->normalize($value);
 
-        foreach ($normalizedValues as $normalizedValue) {
-            if (isset($normalizedValue['element']['type'], $normalizedValue['element']['id'])) {
-                $returnValue[$normalizedValue['element']['type']][] = $normalizedValue['element']['id'];
+        if (is_array($normalizedValues)) {
+            foreach ($normalizedValues as $normalizedValue) {
+                if (isset($normalizedValue['element']['type'], $normalizedValue['element']['id'])) {
+                    $returnValue[$normalizedValue['element']['type']][] = $normalizedValue['element']['id'];
+                }
             }
+            $returnValue['details'] = $normalizedValues;
         }
-
-        $returnValue['details'] = $normalizedValues;
 
         return $returnValue;
     }
