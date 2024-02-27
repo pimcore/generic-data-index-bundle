@@ -13,23 +13,31 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\WorkspaceNotFoundException;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\WorkspaceInterface;
+use Pimcore\Model\User;
 
 /**
  * @internal
  */
 interface WorkspaceServiceInterface
 {
-    /**
-     * @throws WorkspaceNotFoundException
-     */
-    public function getRelevantWorkspaces(
-        array $userWorkspaces,
-        string $assetPath
+    public function getUserWorkspaces(
+        string $workspaceType,
+        ?User $user
     ): array;
 
-    public function getRoleWorkspaces(array $roleIds, string $type): array;
+    public function getUserRoleWorkspaces(
+        User $user,
+        string $workspaceType,
+        string $path
+    ): array;
+
+    public function getRoleWorkspaces(string $type, int $roleId): array;
+
+    public function getRelevantWorkspaces(
+        array $userWorkspaces,
+        string $path
+    ): array;
 
     public function getDeepestWorkspace(array $workspaces): WorkspaceInterface;
 }

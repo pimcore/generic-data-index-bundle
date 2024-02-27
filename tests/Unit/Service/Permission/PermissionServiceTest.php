@@ -15,12 +15,12 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\Permission;
 
 use Codeception\Test\Unit;
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceService;
-use Pimcore\Bundle\StaticResolverBundle\Lib\Tools\Authentication\AuthenticationResolver;
 use Pimcore\Bundle\StaticResolverBundle\Models\User\UserResolver;
 use Pimcore\Bundle\StaticResolverBundle\Models\User\UserResolverInterface;
 use Pimcore\Model\User;
@@ -49,7 +49,10 @@ final class PermissionServiceTest extends Unit
             permissions: ['view', 'list'],
             type: AssetWorkspace::WORKSPACE_TYPE
         )]);
-        $assetPermission = $this->getPermissionServiceWithUser()->getAssetPermissions('/');
+        $assetPermission = $this->getPermissionServiceWithUser()->getAssetPermissions(
+            '/',
+            $this->user
+        );
 
         $this->assertTrue($assetPermission->isView());
         $this->assertTrue($assetPermission->isList());
@@ -79,7 +82,9 @@ final class PermissionServiceTest extends Unit
         );
 
         $assetPermission = $this->getPermissionServiceWithUser()->getAssetPermissions(
-            '/parentFolder/childFolder'
+            '/parentFolder/childFolder',
+            $this->user
+
         );
 
         $this->assertTrue($assetPermission->isView());
@@ -123,7 +128,8 @@ final class PermissionServiceTest extends Unit
         );
 
         $assetPermission = $this->getPermissionServiceWithUser()->getAssetPermissions(
-            '/parentFolder/childFolder/testFolder'
+            '/parentFolder/childFolder/testFolder',
+            $this->user
         );
 
         $this->assertTrue($assetPermission->isView());
@@ -136,7 +142,7 @@ final class PermissionServiceTest extends Unit
     public function testAssetPermissionWithoutUserOnRoot(): void
     {
         $permissionService = $this->getPermissionServiceWithoutUser();
-        $assetPermission = $permissionService->getAssetPermissions('/');
+        $assetPermission = $permissionService->getAssetPermissions('/', null);
 
         $this->assertSame(self::DEFAULT_VALUE, $assetPermission->isList());
         $this->assertSame(self::DEFAULT_VALUE, $assetPermission->isView());
@@ -150,7 +156,10 @@ final class PermissionServiceTest extends Unit
             permissions: ['view', 'list', 'publish', 'unpublish'],
             type: DataObjectWorkspace::WORKSPACE_TYPE
         )]);
-        $permission = $this->getPermissionServiceWithUser()->getDataObjectPermissions('/');
+        $permission = $this->getPermissionServiceWithUser()->getDataObjectPermissions(
+            '/',
+            $this->user
+        );
 
         $this->assertTrue($permission->isView());
         $this->assertTrue($permission->isList());
@@ -182,7 +191,8 @@ final class PermissionServiceTest extends Unit
         );
 
         $permissions = $this->getPermissionServiceWithUser()->getDataObjectPermissions(
-            '/parentFolder/childFolder'
+            '/parentFolder/childFolder',
+            $this->user
         );
 
         $this->assertTrue($permissions->isView());
@@ -227,7 +237,8 @@ final class PermissionServiceTest extends Unit
         );
 
         $permissions = $this->getPermissionServiceWithUser()->getDataObjectPermissions(
-            '/parentFolder/childFolder'
+            '/parentFolder/childFolder',
+            $this->user
         );
 
         $this->assertTrue($permissions->isView());
@@ -241,7 +252,7 @@ final class PermissionServiceTest extends Unit
     public function testObjectPermissionWithoutUserOnRoot(): void
     {
         $permissionService = $this->getPermissionServiceWithoutUser();
-        $permission = $permissionService->getDataObjectPermissions('/');
+        $permission = $permissionService->getDataObjectPermissions('/', null);
 
         $this->assertSame(self::DEFAULT_VALUE, $permission->isList());
         $this->assertSame(self::DEFAULT_VALUE, $permission->isView());
@@ -256,7 +267,10 @@ final class PermissionServiceTest extends Unit
             permissions: ['view', 'save', 'publish', 'unpublish'],
             type: DocumentWorkspace::WORKSPACE_TYPE
         )]);
-        $permission = $this->getPermissionServiceWithUser()->getDocumentPermissions('/');
+        $permission = $this->getPermissionServiceWithUser()->getDocumentPermissions(
+            '/',
+            $this->user
+        );
 
         $this->assertTrue($permission->isView());
         $this->assertTrue($permission->isSave());
@@ -288,7 +302,8 @@ final class PermissionServiceTest extends Unit
         );
 
         $permissions = $this->getPermissionServiceWithUser()->getDocumentPermissions(
-            '/parentFolder/testFolder'
+            '/parentFolder/testFolder',
+            $this->user
         );
 
         $this->assertTrue($permissions->isView());
@@ -333,7 +348,8 @@ final class PermissionServiceTest extends Unit
         );
 
         $permissions = $this->getPermissionServiceWithUser()->getDocumentPermissions(
-            '/parentFolder/childFolder'
+            '/parentFolder/childFolder',
+            $this->user
         );
 
         $this->assertTrue($permissions->isView());
@@ -347,12 +363,52 @@ final class PermissionServiceTest extends Unit
     public function testDocumentPermissionWithoutUserOnRoot(): void
     {
         $permissionService = $this->getPermissionServiceWithoutUser();
-        $permission = $permissionService->getDocumentPermissions('/');
+        $permission = $permissionService->getDocumentPermissions('/', null);
 
         $this->assertSame(self::DEFAULT_VALUE, $permission->isList());
         $this->assertSame(self::DEFAULT_VALUE, $permission->isView());
         $this->assertSame(self::DEFAULT_VALUE, $permission->isSave());
         $this->assertSame(self::DEFAULT_VALUE, $permission->isPublish());
+    }
+
+    public function testCheckWorkspacePermission(): void
+    {
+        $permissionService = $this->getPermissionServiceWithoutUser();
+        $workspace = new DocumentWorkspace($this->getWorkspace(
+            path: '/',
+            permissions: ['view', 'list', 'rename'],
+            type: DocumentWorkspace::WORKSPACE_TYPE
+        ));
+        $this->assertTrue($permissionService->checkWorkspacePermission($workspace, PermissionTypes::VIEW->value));
+        $this->assertTrue($permissionService->checkWorkspacePermission($workspace, PermissionTypes::LIST->value));
+        $this->assertTrue($permissionService->checkWorkspacePermission($workspace, PermissionTypes::RENAME->value));
+        $this->assertFalse($permissionService->checkWorkspacePermission($workspace, PermissionTypes::DELETE->value));
+        $this->assertFalse($permissionService->checkWorkspacePermission($workspace, PermissionTypes::PUBLISH->value));
+    }
+
+    public function testPermissionsWithAdminUserOnRoot(): void
+    {
+        $this->user->setAdmin(true);
+        $permissionService = $this->getPermissionServiceWithUser();
+        $permission = $permissionService->getAssetPermissions('/', $this->user);
+        $properties = $permission->getClassProperties();
+        foreach ($properties as $property => $value) {
+            $getter = 'is' . ucfirst($property);
+            $this->assertTrue($permission->$getter());
+        }
+    }
+
+    public function testPermissionsWitAdminUserOnCustomPath(): void
+    {
+        $this->user->setAdmin(true);
+        $permissionService = $this->getPermissionServiceWithUser();
+        $permission = $permissionService->getAssetPermissions('/Parent/Child', $this->user);
+
+        $properties = $permission->getClassProperties();
+        foreach ($properties as $property => $value) {
+            $getter = 'is' . ucfirst($property);
+            $this->assertTrue($permission->$getter());
+        }
     }
 
     /**
@@ -381,7 +437,6 @@ final class PermissionServiceTest extends Unit
     private function getPermissionServiceWithUser(): PermissionService
     {
         return new PermissionService(
-            $this->makeEmpty(AuthenticationResolver::class, ['authenticateSession' => $this->user]),
             new WorkspaceService(
                 $this->makeEmpty(UserResolverInterface::class, [
                     'getUserRoleById' => $this->role,
@@ -393,7 +448,6 @@ final class PermissionServiceTest extends Unit
     private function getPermissionServiceWithoutUser(): PermissionService
     {
         return new PermissionService(
-            $this->makeEmpty(AuthenticationResolver::class),
             new WorkspaceService(
                 new UserResolver()
             )

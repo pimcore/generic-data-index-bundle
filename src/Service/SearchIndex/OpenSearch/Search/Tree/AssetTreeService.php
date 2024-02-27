@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\OpenSearch\Search\Tree;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\ConditionType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation\Aggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
@@ -83,7 +84,7 @@ final class AssetTreeService implements AssetTreeServiceInterface
         );
 
         $search->addQuery(new BoolQuery([
-            'filter' => [
+            ConditionType::FILTER->value => [
                 'terms' => [
                     $parentIdAttribute => $parentIds,
                 ],
@@ -138,7 +139,7 @@ final class AssetTreeService implements AssetTreeServiceInterface
         );
 
         $search->addQuery(new BoolQuery([
-            'filter' => [
+            ConditionType::FILTER->value => [
                 'term' => [
                     $parentIdAttribute => $parentId,
                 ],

@@ -50,6 +50,8 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
             $searchResultItem = new AssetSearchResultItem();
         }
 
+        $user = $context['user'] ?? null;
+
         return $searchResultItem
             ->setId(SystemField::ID->getData($data))
             ->setParentId(SystemField::PARENT_ID->getData($data))
@@ -70,7 +72,7 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
             ->setHasChildren(SystemField::HAS_CHILDREN->getData($data))
             ->setSearchIndexData($data)
             ->setPermissions($this->permissionService->getAssetPermissions(
-                SystemField::FULL_PATH->getData($data))
+                SystemField::FULL_PATH->getData($data), $user)
             );
     }
 
