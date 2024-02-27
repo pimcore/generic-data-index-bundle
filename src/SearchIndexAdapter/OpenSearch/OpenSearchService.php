@@ -281,13 +281,6 @@ final class OpenSearchService implements SearchIndexServiceInterface
             ->stats(['index' => $indexName]);
     }
 
-    public function bulk(string $indexName): array
-    {
-        return $this->openSearchClient
-            ->indices()
-            ->stats(['index' => $indexName]);
-    }
-
     /**
      * @throws SwitchIndexAliasException
      */

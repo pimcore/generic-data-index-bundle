@@ -54,6 +54,4 @@ interface SearchIndexServiceInterface
     public function search(AdapterSearchInterface $search, string $indexName): SearchResult;
 
     public function getStats(string $indexName): array;
-
-    public function bulk(string $indexName): array;
 }
