@@ -104,18 +104,15 @@ final class AssetTreeService implements AssetTreeServiceInterface
 
         $openSearchResult = $this
             ->openSearchService
-            ->getOpenSearchClient()
-            ->search([
-                'index' => $this->assetTypeAdapter->getAliasIndexName(),
-                'body' => $search->toArray(),
-            ]);
+            ->search($search, $this->assetTypeAdapter->getAliasIndexName());
 
         $childrenCounts = [];
         foreach($parentIds as $parentId) {
             $childrenCounts[$parentId] = 0;
         }
 
-        foreach($openSearchResult['aggregations']['children_count']['buckets'] as $bucket) {
+        $aggregations = $openSearchResult->getAggregations();
+        foreach($aggregations['children_count']['buckets'] as $bucket) {
             $childrenCounts[$bucket['key']] = $bucket['doc_count'];
         }
 
@@ -148,13 +145,9 @@ final class AssetTreeService implements AssetTreeServiceInterface
 
         $openSearchResult = $this
             ->openSearchService
-            ->getOpenSearchClient()
-            ->search([
-                'index' => $this->assetTypeAdapter->getAliasIndexName(),
-                'body' => $search->toArray(),
-            ]);
+            ->search($search, $this->assetTypeAdapter->getAliasIndexName());
 
-        return $openSearchResult['hits'];
+        return $openSearchResult->getHits();
     }
 
     private function listHitsById(array $hits): array
