@@ -15,12 +15,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandlerService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
 use Pimcore\Model\Asset;
-use Pimcore\Model\Element\ElementInterface;
-use Pimcore\Model\Element\Service;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
 /**
@@ -35,6 +34,7 @@ final class AssetNormalizer implements NormalizerInterface
     public function __construct(
         private readonly WorkflowServiceInterface $workflowService,
         private readonly AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService,
+        private readonly FieldDefinitionServiceInterface $fieldDefinitionService,
     ) {
     }
 
@@ -113,26 +113,14 @@ final class AssetNormalizer implements NormalizerInterface
                 $data = $metadata['data'];
                 $language = $metadata['language'] ?? null;
                 $language = $language ?: self::NOT_LOCALIZED_KEY;
-                $result[$language] = $result[$language] ?? [];
-                $result[$language][$metadata['name']] = [
-                    'type' => $metadata['type'],
-                    'data' => $this->transformMetadata($data),
-                ];
+                $result[$metadata['name']] = $result[$metadata['name']] ?? [];
+                $result[$metadata['name']][$language] = $this->fieldDefinitionService->normalizeValue(
+                    $metadata['type'],
+                    $data
+                );
             }
         }
 
         return $result;
-    }
-
-    private function transformMetadata(mixed $data): mixed
-    {
-        if($data instanceof ElementInterface) {
-            return [
-                'type' => Service::getElementType($data),
-                'id' => $data->getId(),
-            ];
-        }
-
-        return $data;
     }
 }
