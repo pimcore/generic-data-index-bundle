@@ -32,6 +32,8 @@ use Pimcore\Model\User;
  */
 final class SearchHelper implements SearchHelperInterface
 {
+    public const ASSET_SEARCH = 'asset_search';
+
     public function __construct(
         private readonly AssetSearchResultDenormalizer $denormalizer,
         private readonly PermissionServiceInterface $permissionService,
@@ -106,7 +108,7 @@ final class SearchHelper implements SearchHelperInterface
                 AssetSearchResult::class
             );
 
-            $this->runtimeCacheResolver->save($result, $result->getFullPath());
+            $this->runtimeCacheResolver->save($result, self::ASSET_SEARCH . '_' . $result->getId());
             $result->setPermissions(
                 $this->permissionService->getAssetPermissions(
                     $result->getFullPath(),

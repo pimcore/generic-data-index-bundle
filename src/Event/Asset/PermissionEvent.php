@@ -25,17 +25,22 @@ final class PermissionEvent extends Event
 {
     public function __construct(
         private readonly AssetSearchResultItem $searchResultItem,
-        private readonly string $permission
+        private string $permission
     ) {
     }
 
-    public function getElementId(): int
+    public function getElement(): AssetSearchResultItem
     {
-        return $this->searchResultItem->getId();
+        return $this->searchResultItem;
     }
 
     public function getPermission(): string
     {
         return $this->permission;
+    }
+
+    public function setPermission(string $permission): void
+    {
+        $this->permission = $permission;
     }
 }

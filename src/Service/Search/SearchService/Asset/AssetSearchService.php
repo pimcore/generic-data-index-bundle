@@ -25,9 +25,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspace
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\UserPermissionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchHelper;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchHelperInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
+use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Model\User;
 
 /**
@@ -38,9 +40,10 @@ final class AssetSearchService implements AssetSearchServiceInterface
     public function __construct(
         private readonly AssetTypeAdapter $assetTypeAdapter,
         private readonly PaginationInfoServiceInterface $paginationInfoService,
-        private readonly UserPermissionServiceInterface $userPermissionService,
+        private readonly RuntimeCacheResolverInterface $runtimeCacheResolver,
         private readonly SearchHelperInterface $searchHelper,
         private readonly SearchProviderInterface $searchProvider,
+        private readonly UserPermissionServiceInterface $userPermissionService,
     ) {
     }
 
@@ -92,8 +95,29 @@ final class AssetSearchService implements AssetSearchServiceInterface
 
     public function byId(
         int $id,
-        ?User $user = null
+        ?User $user = null,
+        bool $forceReload = false
     ): ?AssetSearchResultItem {
+        $cacheKey = SearchHelper::ASSET_SEARCH . '_' . $id;
+
+        if ($forceReload) {
+            $searchResult = $this->searchAssetById($id, $user);
+            $this->runtimeCacheResolver->save($searchResult, $cacheKey);
+
+            return $searchResult;
+        }
+
+        try {
+            $searchResult = $this->runtimeCacheResolver->load($cacheKey);
+        } catch (Exception) {
+            $searchResult = $this->searchAssetById($id, $user);
+        }
+
+        return $searchResult;
+    }
+
+    private function searchAssetById(int $id, ?User $user = null): ?AssetSearchResultItem
+    {
         $assetSearch = $this->searchProvider->createAssetSearch();
         $assetSearch->setPageSize(1);
         $assetSearch->addModifier(new IdFilter($id));

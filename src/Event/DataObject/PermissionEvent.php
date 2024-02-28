@@ -24,18 +24,23 @@ final class PermissionEvent extends Event
 {
     public function __construct(
         private readonly mixed $searchResultItem,
-        private readonly string $permission
+        private string $permission
     ) {
     }
 
-    public function getElementId(): int
+    public function getElement(): mixed
     {
         // ToDo change search result item type
-        return $this->searchResultItem->getId();
+        return $this->searchResultItem;
     }
 
     public function getPermission(): string
     {
         return $this->permission;
+    }
+
+    public function setPermission(string $permission): void
+    {
+        $this->permission = $permission;
     }
 }
