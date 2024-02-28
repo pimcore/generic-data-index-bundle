@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\OpenSearch;
@@ -86,9 +86,9 @@ final class IndexMappingServiceTest extends Unit
             ['properties' => [
                 'testIndexName' => [
                     'properties' => [
-                        'test' => ['type' => 'text']
+                        'test' => ['type' => 'text'],
                     ],
-                ]
+                ],
             ]],
             $mapping
         );
@@ -123,24 +123,24 @@ final class IndexMappingServiceTest extends Unit
                 'de' => [
                     'properties' => [
                         'input1' => [
-                            'type' => 'text'
+                            'type' => 'text',
                         ],
                         'input2' => [
-                            'type' => 'text'
-                        ]
-                    ]
+                            'type' => 'text',
+                        ],
+                    ],
                 ],
                 'en' => [
                     'properties' => [
                         'input1' => [
-                            'type' => 'text'
+                            'type' => 'text',
                         ],
                         'input2' => [
-                            'type' => 'text'
-                        ]
-                    ]
-                ]
-            ]
+                            'type' => 'text',
+                        ],
+                    ],
+                ],
+            ],
         ];
     }
 
@@ -152,22 +152,22 @@ final class IndexMappingServiceTest extends Unit
                     'type' => 'object',
                     'properties' => [
                         'de' => [
-                            'type' => 'text'
+                            'type' => 'text',
                         ],
                         'en' => [
-                            'type' => 'text'
-                        ]
+                            'type' => 'text',
+                        ],
                     ],
                 ],
                 'input2' => [
                     'type' => 'object',
                     'properties' => [
                         'de' => [
-                            'type' => 'text'
+                            'type' => 'text',
                         ],
                         'en' => [
-                            'type' => 'text'
-                        ]
+                            'type' => 'text',
+                        ],
                     ],
                 ],
             ],
