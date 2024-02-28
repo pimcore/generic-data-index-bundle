@@ -47,7 +47,7 @@ final class BasicFilters
         );
     }
 
-    // noinspection .PhpUnusedParameterInspection
+    /** @noinspection .PhpUnusedParameterInspection */
     #[AsSearchModifierHandler]
     public function handleExcludeFoldersFilter(
         ExcludeFoldersFilter $excludeFoldersFilter,
