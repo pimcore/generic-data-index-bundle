@@ -14,11 +14,13 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\QueryType;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Traits\QueryObjectsToArrayTrait;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Traits\SimplifySingleTypesTrait;
 
 class BoolQuery implements QueryInterface
 {
     use SimplifySingleTypesTrait;
+    use QueryObjectsToArrayTrait;
 
     public function __construct(
         private array $params = [],
@@ -64,8 +66,15 @@ class BoolQuery implements QueryInterface
         return $this;
     }
 
-    public function toArray(): array
+    public function toArray(bool $withType = false): array
     {
-        return $this->simplifySingleTypes($this->getParams());
+        $result = $this->convertQueryObjectsToArray($this->getParams());
+        $result = $this->simplifySingleTypes($result);
+
+        if ($withType) {
+            return [$this->getType()->value => $result];
+        }
+
+        return $result;
     }
 }

@@ -23,5 +23,5 @@ interface QueryInterface
 
     public function getParams(): array;
 
-    public function toArray(): array;
+    public function toArray(bool $withType = false): array;
 }

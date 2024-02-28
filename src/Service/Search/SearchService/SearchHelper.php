@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree\ChildrenCountAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
@@ -30,7 +30,7 @@ final class SearchHelper implements SearchHelperInterface
     ) {
     }
 
-    public function performSearch(PaginatedSearchInterface $search, string $indexName): SearchResult
+    public function performSearch(SearchInterface $search, string $indexName): SearchResult
     {
         $adapterSearch = $this->searchIndexService->createPaginatedSearch($search->getPage(), $search->getPageSize());
         $this->searchModifierService->applyModifiersFromSearch($search, $adapterSearch);
@@ -46,7 +46,7 @@ final class SearchHelper implements SearchHelperInterface
     public function getChildrenCounts(
         SearchResult $searchResult,
         string $indexName,
-        PaginatedSearchInterface $paginatedSearch
+        SearchInterface $search
     ): array {
         $parentIds = $searchResult->getIds();
 
@@ -56,9 +56,9 @@ final class SearchHelper implements SearchHelperInterface
 
         $childrenCountAggregation = new ChildrenCountAggregation($parentIds);
 
-        $paginatedSearch->addModifier($childrenCountAggregation);
+        $search->addModifier($childrenCountAggregation);
 
-        $searchResult = $this->performSearch($paginatedSearch, $indexName);
+        $searchResult = $this->performSearch($search, $indexName);
 
         $childrenCounts = [];
         foreach($parentIds as $parentId) {
