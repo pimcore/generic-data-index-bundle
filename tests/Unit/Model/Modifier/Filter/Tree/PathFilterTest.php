@@ -15,7 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Model\Modifier\Filter
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\PathFilter;
 
 /**
@@ -34,7 +33,7 @@ final class PathFilterTest extends Unit
     {
         $this->expectException(InvalidModifierException::class);
         $this->expectExceptionMessage('Path must not contain consecutive slashes.');
-        new ParentIdFilter(0);
+        new PathFilter('/test//path');
     }
 
     public function testPathFilterGetters(): void
