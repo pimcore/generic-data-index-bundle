@@ -53,8 +53,7 @@ final class UserPermissionService implements UserPermissionServiceInterface
         string $permission,
         ElementInterface $element,
         User $user
-    ): bool
-    {
+    ): bool {
         return match (true) {
             $element instanceof Asset => $this->isAssetAllowed($permission, $element, $user),
             $element instanceof DataObject => $this->isDataObjectAllowed($element, $permission, $user),
@@ -69,8 +68,7 @@ final class UserPermissionService implements UserPermissionServiceInterface
         string $permission,
         Asset $asset,
         User $user
-    ): bool
-    {
+    ): bool {
         try {
             $searchResult = $this->runtimeCacheResolver->load($asset->getPath());
         } catch (Exception) {
@@ -92,9 +90,9 @@ final class UserPermissionService implements UserPermissionServiceInterface
         DataObject $dataObject,
         string $permission,
         User $user
-    ): bool
-    {
+    ): bool {
         $searchResult = null;
+
         try {
             $searchResult = $this->runtimeCacheResolver->load($dataObject->getPath());
         } catch (Exception) {

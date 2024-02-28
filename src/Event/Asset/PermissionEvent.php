@@ -26,8 +26,7 @@ final class PermissionEvent extends Event
     public function __construct(
         private readonly AssetSearchResultItem $searchResultItem,
         private readonly string $permission
-    )
-    {
+    ) {
     }
 
     public function getElementId(): int
