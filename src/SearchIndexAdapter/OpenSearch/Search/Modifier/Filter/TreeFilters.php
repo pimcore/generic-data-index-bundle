@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\Modifier\Filter;
@@ -46,6 +46,7 @@ final class TreeFilters
 
             if (!$pathFilter->isIncludeParentItem()) {
                 $context->getSearch()->addQuery($directChildrenFilter);
+
                 return;
             }
 
@@ -60,6 +61,7 @@ final class TreeFilters
                     ],
                 ])
             );
+
             return;
         }
 
@@ -82,7 +84,7 @@ final class TreeFilters
                         new TermFilter(
                             field: SystemField::FULL_PATH->getPath('keyword'),
                             term: $pathFilter->getPathWithoutTrailingSlash(),
-                        )
+                        ),
                     ],
                 ])
             );

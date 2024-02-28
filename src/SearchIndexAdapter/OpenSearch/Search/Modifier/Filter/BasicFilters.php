@@ -46,19 +46,19 @@ final class BasicFilters
             )
         );
     }
+
     #[AsSearchModifierHandler]
     public function handleExcludeFoldersFilter(
         ExcludeFoldersFilter $excludeFoldersFilter,
         SearchModifierContextInterface $context
-    ): void
-    {
+    ): void {
         $context->getSearch()->addQuery(new BoolQuery([
             'must_not' => [
                 new TermFilter(
                     field: SystemField::TYPE->getPath(),
                     term: 'folder',
-                )
-            ]
+                ),
+            ],
         ]));
     }
 }
