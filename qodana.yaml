@@ -36,6 +36,9 @@ exclude:
       - .gitignore
       - src/DependencyInjection/Configuration.php
       - placeholderReplace.sh
+  - name: PhpUnusedParameterInspection
+    paths:
+        - src/SearchIndexAdapter/Search/Modifier
 include:
   - name: PhpTaintFunctionInspection
   - name: PhpVulnerablePathsInspection
