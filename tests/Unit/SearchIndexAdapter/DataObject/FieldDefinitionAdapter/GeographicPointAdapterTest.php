@@ -11,23 +11,23 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\DataObject\FieldDefinitionAdapter;
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\GeographicBoundsAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\GeographicPointAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
 /**
  * @internal
  */
-final class GeographicBoundsAdapterTest extends Unit
+final class GeographicPointAdapterTest extends Unit
 {
     public function testGetOpenSearchMapping(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
-        $adapter = new GeographicBoundsAdapter(
+        $adapter = new GeographicPointAdapter(
             $searchIndexConfigServiceInterfaceMock,
             $fieldDefinitionServiceInterfaceMock
         );
@@ -36,25 +36,11 @@ final class GeographicBoundsAdapterTest extends Unit
 
         $this->assertSame([
             'properties' => [
-                'northEast' => [
-                    'properties' => [
-                        'latitude' => [
-                            'type' => 'float',
-                        ],
-                        'longitude' => [
-                            'type' => 'float',
-                        ],
-                    ],
+                'latitude' => [
+                    'type' => 'float',
                 ],
-                'southWest' => [
-                    'properties' => [
-                        'latitude' => [
-                            'type' => 'float',
-                        ],
-                        'longitude' => [
-                            'type' => 'float',
-                        ],
-                    ],
+                'longitude' => [
+                    'type' => 'float',
                 ],
             ],
         ], $mapping);

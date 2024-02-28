@@ -11,40 +11,30 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\DataObject\FieldDefinitionAdapter;
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\QuantityValueRangeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\BooleanAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
 /**
  * @internal
  */
-final class QuantityValueRangeAdapterTest extends Unit
+final class BooleanAdapterTest extends Unit
 {
     public function testGetOpenSearchMapping(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
-        $adapter = new QuantityValueRangeAdapter(
+        $adapter = new BooleanAdapter(
             $searchIndexConfigServiceInterfaceMock,
             $fieldDefinitionServiceInterfaceMock
         );
 
         $mapping = $adapter->getIndexMapping();
         $this->assertSame([
-            'properties' => [
-                'maximum' => [
-                    'type' => 'float',
-                ],
-                'minimum' => [
-                    'type' => 'float',
-                ],
-                'unitId' => [
-                    'type' => 'keyword',
-                ],
-            ],
+            'type' => 'boolean',
         ], $mapping);
     }
 }
