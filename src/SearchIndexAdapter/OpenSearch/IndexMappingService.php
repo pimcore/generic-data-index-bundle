@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
@@ -23,8 +23,7 @@ class IndexMappingService implements IndexMappingServiceInterface
 {
     public function __construct(
         private readonly FieldDefinitionServiceInterface $fieldDefinitionService
-    )
-    {
+    ) {
     }
 
     public function getMappingForFieldDefinitions(array $fieldDefinitions): array
@@ -34,6 +33,7 @@ class IndexMappingService implements IndexMappingServiceInterface
             if (!$fieldDefinition->getName()) {
                 continue;
             }
+
             try {
                 $fieldMapping = $this->getMapping($fieldDefinition);
                 $mapping['properties'][$fieldMapping->getMappingName()] = $fieldMapping->getMapping();
@@ -60,6 +60,7 @@ class IndexMappingService implements IndexMappingServiceInterface
         }
 
         $searchAttributeName =  $fieldDefinitionAdapter->getIndexName();
+
         return new Mapping(
             mappingName: $searchAttributeName,
             mapping: $fieldDefinitionAdapter->getIndexMapping()
