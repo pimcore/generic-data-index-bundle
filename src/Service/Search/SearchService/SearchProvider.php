@@ -14,14 +14,14 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 
 /**
  * @internal
  */
 final class SearchProvider implements SearchProviderInterface
 {
-    public function createAssetSearch(): PaginatedSearchInterface
+    public function createAssetSearch(): SearchInterface
     {
         return new AssetSearch();
     }

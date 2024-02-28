@@ -13,12 +13,12 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Traits\PaginatedSearchTrait;
 use Pimcore\Model\User;
 
-final class AssetSearch implements PaginatedSearchInterface
+final class AssetSearch implements SearchInterface
 {
     use PaginatedSearchTrait;
 
