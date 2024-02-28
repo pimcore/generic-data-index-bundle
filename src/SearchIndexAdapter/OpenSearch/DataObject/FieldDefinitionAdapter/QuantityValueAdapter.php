@@ -31,7 +31,6 @@ final class QuantityValueAdapter extends AbstractAdapter
                     'type' => AttributeType::TEXT->value,
                 ],
             ],
-
         ];
     }
 }
