@@ -17,6 +17,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\ValidationFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
+use Pimcore\Model\User;
 
 interface AssetSearchServiceInterface
 {
@@ -28,5 +29,5 @@ interface AssetSearchServiceInterface
     /**
      * @throws ValidationFailedException
      */
-    public function byId(int $id): ?AssetSearchResultItem;
+    public function byId(int $id, ?User $user = null): ?AssetSearchResultItem;
 }

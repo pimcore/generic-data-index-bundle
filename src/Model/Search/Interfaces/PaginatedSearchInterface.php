@@ -19,5 +19,9 @@ interface PaginatedSearchInterface extends SearchInterface
 
     public function getPage(): int;
 
+    public function setPage(int $page): void;
+
     public function getPageSize(): int;
+
+    public function setPageSize(int $pageSize): void;
 }

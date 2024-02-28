@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\ConditionType;
+
 final class TermsFilter extends BoolQuery
 {
     public function __construct(
@@ -21,7 +23,7 @@ final class TermsFilter extends BoolQuery
         private readonly array $terms,
     ) {
         parent::__construct([
-            'filter' => [
+            ConditionType::FILTER->value => [
                 'terms' => [
                     $this->field => $this->terms,
                 ],

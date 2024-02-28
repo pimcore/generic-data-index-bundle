@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
+use Pimcore\Model\User;
 
 interface SearchInterface
 {
@@ -22,5 +23,9 @@ interface SearchInterface
      */
     public function getModifiers(): array;
 
-    public function addModifier(SearchModifierInterface $modifier): self;
+    public function addModifier(SearchModifierInterface $modifier);
+
+    public function setUser(User $user);
+
+    public function getUser(): ?User;
 }
