@@ -42,8 +42,7 @@ final class UserPermissionService implements UserPermissionServiceInterface
         SearchInterface $search,
         string $userPermission,
         string $workspaceType
-    ): SearchInterface
-    {
+    ): SearchInterface {
         $user = $search->getUser();
         if (!$user) {
             return $search;
