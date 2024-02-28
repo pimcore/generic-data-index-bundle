@@ -14,7 +14,11 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Event;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\UserPermissionException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\WorkspaceQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchService;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
@@ -32,6 +36,32 @@ final class UserPermissionService implements UserPermissionServiceInterface
         private readonly EventDispatcherInterface $eventDispatcher,
         private readonly PermissionServiceInterface $permissionService
     ) {
+    }
+
+    public function canSearch(
+        SearchInterface $search,
+        string $userPermission,
+        string $workspaceType
+    ): SearchInterface
+    {
+        $user = $search->getUser();
+        if (!$user) {
+            return $search;
+        }
+
+        if (!$user->isAdmin()) {
+            if ($this->hasPermission($user, $userPermission)) {
+                throw new UserPermissionException('User does not have permission to view assets');
+            }
+
+            $search->addModifier(new WorkspaceQuery(
+                $workspaceType,
+                $user,
+                PermissionTypes::VIEW->value
+            ));
+        }
+
+        return $search;
     }
 
     public function hasPermission(User $user, string $permission): bool

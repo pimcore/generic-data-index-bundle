@@ -14,14 +14,12 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset;
 
 use Exception;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\UserPermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\AssetSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\WorkspaceQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\UserPermissionServiceInterface;
@@ -52,17 +50,11 @@ final class AssetSearchService implements AssetSearchServiceInterface
      */
     public function search(SearchInterface $assetSearch): AssetSearchResult
     {
-        $user = $assetSearch->getUser();
-        if ($user && !$user->isAdmin()) {
-            if ($this->userPermissionService->hasPermission($user, UserPermissionTypes::ASSETS->value)) {
-                throw new AssetSearchException('User does not have permission to view assets');
-            }
-            $assetSearch->addModifier(new WorkspaceQuery(
-                AssetWorkspace::WORKSPACE_TYPE,
-                $user,
-                PermissionTypes::VIEW->value
-            ));
-        }
+        $assetSearch = $this->userPermissionService->canSearch(
+            search: $assetSearch,
+            userPermission: UserPermissionTypes::ASSETS->value,
+            workspaceType: AssetWorkspace::WORKSPACE_TYPE
+        );
 
         $searchResult = $this->searchHelper->performSearch(
             search: $assetSearch,
@@ -80,7 +72,7 @@ final class AssetSearchService implements AssetSearchServiceInterface
                 items: $this->searchHelper->hydrateAssetSearchResultHits(
                     $searchResult,
                     $childrenCounts,
-                    $user
+                    $assetSearch->getUser()
                 ),
                 pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
                     searchResult: $searchResult,
