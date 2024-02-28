@@ -11,27 +11,24 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 
 /**
  * @internal
  */
-final class QuantityValueRangeAdapter extends AbstractAdapter
+trait HasLatitudeAnfLongitudeTrait
 {
-    public function getOpenSearchMapping(): array
+    private function getLatAndLongMapping(): array
     {
         return [
             'properties' => [
-                'maximum' => [
+                'latitude' => [
                     'type' => AttributeType::FLOAT->value,
                 ],
-                'minimum' => [
+                'longitude' => [
                     'type' => AttributeType::FLOAT->value,
-                ],
-                'unitId' => [
-                    'type' => AttributeType::KEYWORD->value,
                 ],
             ],
         ];

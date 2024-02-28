@@ -16,8 +16,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\D
 use Codeception\Test\Unit;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\FieldCollectionAdapter;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\FieldCollectionAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\FieldCollection\DefinitionResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox;
@@ -42,7 +42,7 @@ class FieldCollectionAdapterTest extends Unit
         $fieldCollection->setAllowedTypes(['my-type']);
         $adapter->setFieldDefinition($fieldCollection);
         $adapter->setFieldCollectionDefinition($definitionResolverMock);
-        $mapping = $adapter->getOpenSearchMapping();
+        $mapping = $adapter->getIndexMapping();
 
         $this->assertSame([
                 'type' => AttributeType::NESTED,
@@ -70,6 +70,6 @@ class FieldCollectionAdapterTest extends Unit
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('FieldDefinition must be of type Fieldcollections');
-        $adapter->getOpenSearchMapping();
+        $adapter->getIndexMapping();
     }
 }

@@ -15,8 +15,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\D
 
 use Codeception\Test\Unit;
 use InvalidArgumentException;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\ClassificationStoreAdapter;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\ClassificationStoreAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
@@ -41,6 +41,6 @@ final class ClassificationStoreAdapterTest extends Unit
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Field definition must be an instance of ' . Classificationstore::class);
-        $adapter->getOpenSearchMapping();
+        $adapter->getIndexMapping();
     }
 }

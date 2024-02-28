@@ -14,8 +14,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 use Codeception\Test\Unit;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\TextKeywordAdapter;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\TextKeywordAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
 /**
@@ -32,7 +32,7 @@ final class TextKeywordAdapterTest extends Unit
             $fieldDefinitionServiceInterfaceMock
         );
 
-        $mapping = $adapter->getOpenSearchMapping();
+        $mapping = $adapter->getIndexMapping();
         $this->assertSame([
             'type' => 'text',
             'fields' => [

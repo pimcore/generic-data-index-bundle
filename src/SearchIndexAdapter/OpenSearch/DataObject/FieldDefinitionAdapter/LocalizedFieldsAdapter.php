@@ -11,7 +11,7 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
@@ -26,7 +26,7 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
 {
     private LanguageServiceInterface $languageService;
 
-    public function getOpenSearchMapping(): array
+    public function getIndexMapping(): array
     {
         $mapping = [
             'properties' => [],
@@ -44,9 +44,9 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
                     $childFieldDefinition
                 );
                 if ($fieldDefinitionAdapter) {
-                    $mappingKey = $fieldDefinitionAdapter->getOpenSearchAttributeName();
+                    $mappingKey = $fieldDefinitionAdapter->getIndexName();
 
-                    $languageProperties[$mappingKey] = $fieldDefinitionAdapter->getOpenSearchMapping();
+                    $languageProperties[$mappingKey] = $fieldDefinitionAdapter->getIndexMapping();
                 }
             }
 

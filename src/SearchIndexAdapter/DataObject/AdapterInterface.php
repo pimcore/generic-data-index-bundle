@@ -11,7 +11,7 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject;
 
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 
@@ -24,9 +24,9 @@ interface AdapterInterface
 
     public function getFieldDefinition(): Data;
 
-    public function getOpenSearchMapping(): array;
+    public function getIndexMapping(): array;
 
-    public function getOpenSearchAttributeName(): string;
+    public function getIndexName(): string;
 
     /**
      * Used to normalize the data for the search index

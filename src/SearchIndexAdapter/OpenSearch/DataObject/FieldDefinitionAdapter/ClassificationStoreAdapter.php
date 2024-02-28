@@ -11,7 +11,7 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
@@ -37,7 +37,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $this->classificationService = $serviceResolver;
     }
 
-    public function getOpenSearchMapping(): array
+    public function getIndexMapping(): array
     {
         $classificationStore = $this->getFieldDefinition();
         if (!$classificationStore instanceof Classificationstore) {
@@ -71,7 +71,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($definition);
 
                 if ($adapter) {
-                    $groupMapping['default']['properties'][$key->getName()] = $adapter->getOpenSearchMapping();
+                    $groupMapping['default']['properties'][$key->getName()] = $adapter->getIndexMapping();
                 }
             }
         }

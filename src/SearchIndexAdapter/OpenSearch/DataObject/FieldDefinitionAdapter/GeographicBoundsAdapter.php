@@ -11,7 +11,7 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
 /**
  * @internal
@@ -20,7 +20,7 @@ final class GeographicBoundsAdapter extends AbstractAdapter
 {
     use HasLatitudeAnfLongitudeTrait;
 
-    public function getOpenSearchMapping(): array
+    public function getIndexMapping(): array
     {
         return [
             'properties' => [

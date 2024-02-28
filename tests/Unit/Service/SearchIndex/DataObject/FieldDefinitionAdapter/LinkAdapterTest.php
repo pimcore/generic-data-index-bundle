@@ -14,8 +14,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
 use Codeception\Test\Unit;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\LinkAdapter;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\LinkAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
 /**
@@ -32,7 +32,7 @@ final class LinkAdapterTest extends Unit
             $fieldDefinitionServiceInterfaceMock
         );
 
-        $mapping = $adapter->getOpenSearchMapping();
+        $mapping = $adapter->getIndexMapping();
 
         $this->assertSame([
             'properties' => [

@@ -16,8 +16,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\D
 use Codeception\Test\Unit;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\AdvancedManyToManyRelationAdapter;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\AdvancedManyToManyRelationAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\AdvancedManyToManyRelation;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox;
@@ -92,7 +92,7 @@ final class AdvancedManyToManyRelationAdapterTest extends Unit
                     ],
                 ],
             ],
-            ], $adapter->getOpenSearchMapping());
+            ], $adapter->getIndexMapping());
     }
 
     public function testGetOpenSearchMappingException(): void
@@ -109,6 +109,6 @@ final class AdvancedManyToManyRelationAdapterTest extends Unit
         $this->expectExceptionMessage(
             'FieldDefinition must be of type AdvancedManyToManyRelation or AdvancedManyToManyObjectRelation'
         );
-        $adapter->getOpenSearchMapping();
+        $adapter->getIndexMapping();
     }
 }

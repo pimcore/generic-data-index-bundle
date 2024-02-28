@@ -11,24 +11,25 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 
 /**
  * @internal
  */
-trait HasLatitudeAnfLongitudeTrait
+final class UrlSlugAdapter extends AbstractAdapter
 {
-    private function getLatAndLongMapping(): array
+    public function getIndexMapping(): array
     {
         return [
+            'type' => AttributeType::NESTED->value,
             'properties' => [
-                'latitude' => [
-                    'type' => AttributeType::FLOAT->value,
+                'siteId' => [
+                    'type' => AttributeType::KEYWORD->value,
                 ],
-                'longitude' => [
-                    'type' => AttributeType::FLOAT->value,
+                'slug' => [
+                    'type' => AttributeType::TEXT->value,
                 ],
             ],
         ];

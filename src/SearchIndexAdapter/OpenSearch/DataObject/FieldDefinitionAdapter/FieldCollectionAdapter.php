@@ -11,7 +11,7 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
 use Exception;
 use InvalidArgumentException;
@@ -30,7 +30,7 @@ final class FieldCollectionAdapter extends AbstractAdapter
     /**
      * @throws Exception
      */
-    public function getOpenSearchMapping(): array
+    public function getIndexMapping(): array
     {
         $fieldDefinition = $this->getFieldDefinition();
         if (!$fieldDefinition instanceof Fieldcollections) {
@@ -49,7 +49,7 @@ final class FieldCollectionAdapter extends AbstractAdapter
                 $fieldDefinitionAdapter = $this->getFieldDefinitionService()
                     ->getFieldDefinitionAdapter($fieldDefinition);
                 if ($fieldDefinitionAdapter) {
-                    $mapping[$fieldDefinition->getName()] = $fieldDefinitionAdapter->getOpenSearchMapping();
+                    $mapping[$fieldDefinition->getName()] = $fieldDefinitionAdapter->getIndexMapping();
                 }
             }
         }

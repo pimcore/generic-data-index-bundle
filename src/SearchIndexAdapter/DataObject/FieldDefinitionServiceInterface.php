@@ -11,9 +11,8 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter\AdapterInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 
 /**

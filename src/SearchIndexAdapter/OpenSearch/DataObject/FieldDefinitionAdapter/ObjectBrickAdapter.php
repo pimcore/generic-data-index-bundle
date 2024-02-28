@@ -11,7 +11,7 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
 use InvalidArgumentException;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Objectbricks;
@@ -22,7 +22,7 @@ use Pimcore\Model\DataObject\Objectbrick;
  */
 final class ObjectBrickAdapter extends AbstractAdapter
 {
-    public function getOpenSearchMapping(): array
+    public function getIndexMapping(): array
     {
         $objectBricks = $this->getFieldDefinition();
         $mapping = [];
@@ -48,7 +48,7 @@ final class ObjectBrickAdapter extends AbstractAdapter
         foreach ($fieldDefinitions as $fieldDefinition) {
             $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($fieldDefinition);
             if ($adapter) {
-                $mapping[$adapter->getOpenSearchAttributeName()] = $adapter->getOpenSearchMapping();
+                $mapping[$adapter->getIndexName()] = $adapter->getIndexMapping();
             }
         }
 

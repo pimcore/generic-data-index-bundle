@@ -11,7 +11,7 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
 use InvalidArgumentException;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Block;
@@ -21,7 +21,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\Block;
  */
 final class BlockAdapter extends AbstractAdapter
 {
-    public function getOpenSearchMapping(): array
+    public function getIndexMapping(): array
     {
         $fieldDefinition = $this->getFieldDefinition();
         if(!$fieldDefinition instanceof Block) {
@@ -33,7 +33,7 @@ final class BlockAdapter extends AbstractAdapter
         foreach ($items as $item) {
             $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($item);
             if ($adapter) {
-                $properties[$item->getName()] = $adapter->getOpenSearchMapping();
+                $properties[$item->getName()] = $adapter->getIndexMapping();
             }
         }
 

@@ -11,9 +11,10 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Normalizer\NormalizerInterface;
@@ -28,7 +29,7 @@ abstract class AbstractAdapter implements AdapterInterface
     ) {
     }
 
-    abstract public function getOpenSearchMapping(): array;
+    abstract public function getIndexMapping(): array;
 
     public function setFieldDefinition(Data $fieldDefinition): self
     {
@@ -42,7 +43,7 @@ abstract class AbstractAdapter implements AdapterInterface
         return $this->fieldDefinition;
     }
 
-    public function getOpenSearchAttributeName(): string
+    public function getIndexName(): string
     {
         return $this->fieldDefinition->getName();
     }
