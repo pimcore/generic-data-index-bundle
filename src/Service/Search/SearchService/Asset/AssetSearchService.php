@@ -18,7 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\WorkspaceQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
@@ -44,7 +44,7 @@ final class AssetSearchService implements AssetSearchServiceInterface
     ) {
     }
 
-    public function search(PaginatedSearchInterface $assetSearch): AssetSearchResult
+    public function search(SearchInterface $assetSearch): AssetSearchResult
     {
         $user = $assetSearch->getUser();
         if ($user && !$user->isAdmin()) {
@@ -63,7 +63,7 @@ final class AssetSearchService implements AssetSearchServiceInterface
         $childrenCounts = $this->searchHelper->getChildrenCounts(
             searchResult: $searchResult,
             indexName: $this->assetTypeAdapter->getAliasIndexName(),
-            paginatedSearch: $this->searchProvider->createAssetSearch()
+            search: $this->searchProvider->createAssetSearch()
         );
 
         return new AssetSearchResult(
