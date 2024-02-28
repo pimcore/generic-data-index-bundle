@@ -6,3 +6,6 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionService
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\UserPermissionServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\UserPermissionService

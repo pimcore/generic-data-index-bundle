@@ -31,7 +31,7 @@ use Pimcore\Model\User;
 final class PermissionService implements PermissionServiceInterface
 {
     public function __construct(
-        private readonly WorkspaceServiceInterface $workspaceService
+        private readonly WorkspaceServiceInterface $workspaceService,
     ) {
     }
 
@@ -90,8 +90,14 @@ final class PermissionService implements PermissionServiceInterface
         WorkspaceInterface $workspace,
         string $permission
     ): bool {
-        $getter = 'is' . ucfirst($permission);
         $permissions = $workspace->getPermissions();
+
+        return $this->getPermissionValue($permissions, $permission);
+    }
+
+    public function getPermissionValue(BasePermissions $permissions, string $permission): bool
+    {
+        $getter = 'is' . ucfirst($permission);
         if (method_exists($permissions, $getter)) {
             return $permissions->$getter();
         }

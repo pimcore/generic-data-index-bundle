@@ -13,8 +13,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
+use Pimcore\Model\User;
 
 /**
  * @internal
@@ -30,5 +32,14 @@ interface SearchHelperInterface
         SearchResult $searchResult,
         string $indexName,
         PaginatedSearchInterface $paginatedSearch
+    ): array;
+
+    /**
+     * @throws Exception
+     */
+    public function hydrateAssetSearchResultHits(
+        SearchResult $searchResult,
+        array $childrenCounts,
+        ?User $user = null
     ): array;
 }

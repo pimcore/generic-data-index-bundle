@@ -13,11 +13,19 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
+use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree\ChildrenCountAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer;
+use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
+use Pimcore\Model\User;
 
 /**
  * @internal
@@ -25,8 +33,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceI
 final class SearchHelper implements SearchHelperInterface
 {
     public function __construct(
+        private readonly AssetSearchResultDenormalizer $denormalizer,
+        private readonly PermissionServiceInterface $permissionService,
+        private readonly RuntimeCacheResolverInterface $runtimeCacheResolver,
         private readonly SearchIndexServiceInterface $searchIndexService,
-        private readonly SearchModifierServiceInterface $searchModifierService
+        private readonly SearchModifierServiceInterface $searchModifierService,
     ) {
     }
 
@@ -72,5 +83,38 @@ final class SearchHelper implements SearchHelperInterface
         }
 
         return $childrenCounts;
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function hydrateAssetSearchResultHits(
+        SearchResult $searchResult,
+        array $childrenCounts,
+        ?User $user = null
+    ): array {
+        $result = [];
+
+        foreach ($searchResult->getHits() as $hit) {
+            $source = $hit->getSource();
+
+            $source[FieldCategory::SYSTEM_FIELDS->value][SystemField::HAS_CHILDREN->value] =
+                ($childrenCounts[$hit->getId()] ?? 0) > 0;
+
+            $result = $this->denormalizer->denormalize(
+                $source,
+                AssetSearchResult::class
+            );
+
+            $this->runtimeCacheResolver->save($result, $result->getFullPath());
+            $result->setPermissions(
+                $this->permissionService->getAssetPermissions(
+                    $result->getFullPath(),
+                    $user
+                )
+            );
+        }
+
+        return $result;
     }
 }
