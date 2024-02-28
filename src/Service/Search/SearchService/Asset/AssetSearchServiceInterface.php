@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Ass
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\AssetSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Model\User;
 
 interface AssetSearchServiceInterface
@@ -24,7 +24,7 @@ interface AssetSearchServiceInterface
     /**
      * @throws AssetSearchException
      */
-    public function search(PaginatedSearchInterface $assetSearch): AssetSearchResult;
+    public function search(SearchInterface $assetSearch): AssetSearchResult;
 
     public function byId(int $id, ?User $user = null): ?AssetSearchResultItem;
 }

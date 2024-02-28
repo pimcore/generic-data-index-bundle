@@ -19,7 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\UserPermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\AssetSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\WorkspaceQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
@@ -47,7 +47,7 @@ final class AssetSearchService implements AssetSearchServiceInterface
     /**
      * @throws AssetSearchException
      */
-    public function search(PaginatedSearchInterface $assetSearch): AssetSearchResult
+    public function search(SearchInterface $assetSearch): AssetSearchResult
     {
         $user = $assetSearch->getUser();
         if ($user && !$user->isAdmin()) {
@@ -69,7 +69,7 @@ final class AssetSearchService implements AssetSearchServiceInterface
         $childrenCounts = $this->searchHelper->getChildrenCounts(
             searchResult: $searchResult,
             indexName: $this->assetTypeAdapter->getAliasIndexName(),
-            paginatedSearch: $this->searchProvider->createAssetSearch()
+            search: $this->searchProvider->createAssetSearch()
         );
 
         try {

@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
 use Exception;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Model\User;
 
@@ -23,7 +23,7 @@ use Pimcore\Model\User;
  */
 interface SearchHelperInterface
 {
-    public function performSearch(PaginatedSearchInterface $search, string $indexName): SearchResult;
+    public function performSearch(SearchInterface $search, string $indexName): SearchResult;
 
     /**
      * @return int[]
@@ -31,7 +31,7 @@ interface SearchHelperInterface
     public function getChildrenCounts(
         SearchResult $searchResult,
         string $indexName,
-        PaginatedSearchInterface $paginatedSearch
+        SearchInterface $search
     ): array;
 
     /**
