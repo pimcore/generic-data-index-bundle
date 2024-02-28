@@ -26,6 +26,9 @@ class IndexMappingService implements IndexMappingServiceInterface
     ) {
     }
 
+    /**
+     * @param Data[] $fieldDefinitions
+     */
     public function getMappingForFieldDefinitions(array $fieldDefinitions): array
     {
         $mapping['properties'] = [];
