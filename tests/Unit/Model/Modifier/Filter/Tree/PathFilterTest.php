@@ -45,7 +45,7 @@ final class PathFilterTest extends Unit
         $this->assertSame('/test/path/', $filter->getPathWithTrailingSlash());
 
         $filter = new PathFilter('/test/path/');
-        $this->assertSame('/test/path', $filter->getPath());
+        $this->assertSame('/test/path/', $filter->getPath());
         $this->assertSame('/test/path', $filter->getPathWithoutTrailingSlash());
         $this->assertSame('/test/path/', $filter->getPathWithTrailingSlash());
     }
