@@ -13,8 +13,12 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Traits\QueryObjectsToArrayTrait;
+
 final class Query implements QueryInterface
 {
+    use QueryObjectsToArrayTrait;
+
     public function __construct(
         private readonly string $type,
         private readonly array $params = [],
@@ -36,8 +40,13 @@ final class Query implements QueryInterface
         return $this->params;
     }
 
-    public function toArray(): array
+    public function toArray(bool $withType = false): array
     {
-        return $this->params;
+        $result = $this->convertQueryObjectsToArray($this->getParams());
+
+        if ($withType) {
+            return [$this->type => $result];
+        }
+        return $result;
     }
 }
