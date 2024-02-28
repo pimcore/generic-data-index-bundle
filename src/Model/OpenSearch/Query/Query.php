@@ -47,6 +47,7 @@ final class Query implements QueryInterface
         if ($withType) {
             return [$this->type => $result];
         }
+
         return $result;
     }
 }
