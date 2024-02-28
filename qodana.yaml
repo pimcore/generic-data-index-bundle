@@ -38,7 +38,7 @@ exclude:
       - placeholderReplace.sh
   - name: PhpUnusedParameterInspection
     paths:
-        - src/SearchIndexAdapter/Search/Modifier
+        - src/SearchIndexAdapter/OpenSearch/Search/Modifier
 include:
   - name: PhpTaintFunctionInspection
   - name: PhpVulnerablePathsInspection
