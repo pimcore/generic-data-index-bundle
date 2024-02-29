@@ -54,4 +54,4 @@ The implemented method needs exactly two arguments.:
 * First argument: the modifier model (see step 1).
 * Second argument: [SearchModifierContextInterface](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/OpenSearch/Modifier/SearchModifierContextInterface.php) $context
 
-Take a look at the [BasicFilters](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/SearchIndexAdapter/OpenSearch/Search/Modifier/BasicFilters.php) for an example.
+Take a look at the [BasicFilters](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/SearchIndexAdapter/OpenSearch/Search/Modifier/BasicFilters.php) for an example and the [OpenSearch search models documentation](../06_OpenSearch_Search_Models/README.md) for more details about the search models to manipulate the search.

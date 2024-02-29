@@ -42,12 +42,10 @@ final class Query implements QueryInterface
 
     public function toArray(bool $withType = false): array
     {
-        $result = $this->convertQueryObjectsToArray($this->getParams());
-
         if ($withType) {
-            return [$this->type => $result];
+            return [$this->type => $this->getParams()];
         }
 
-        return $result;
+        return $this->getParams();
     }
 }
