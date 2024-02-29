@@ -15,7 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractMappingEvent;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -27,8 +26,6 @@ use Symfony\Contracts\Service\Attribute\Required;
 final class DataObjectIndexHandler extends AbstractIndexHandler
 {
     public const DATA_OBJECT_INDEX_ALIAS = 'data-object';
-
-    private FieldDefinitionServiceInterface $fieldDefinitionService;
 
     private DataObjectTypeAdapter $dataObjectTypeAdapter;
 
@@ -65,26 +62,11 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
                 'properties' => $this->searchIndexConfigService
                     ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELD_DATA_OBJECT),
             ],
-            FieldCategory::STANDARD_FIELDS->value => [
-                'properties' => [],
-            ],
+            FieldCategory::STANDARD_FIELDS->value => $this->indexMappingService->getMappingForFieldDefinitions(
+                $classDefinition->getFieldDefinitions()
+            ),
             FieldCategory::CUSTOM_FIELDS->value => [],
         ];
-
-        foreach ($classDefinition->getFieldDefinitions() as $fieldDefinition) {
-            if (!$fieldDefinition->getName()) {
-                continue;
-            }
-            $fieldDefinitionAdapter = $this->fieldDefinitionService->getFieldDefinitionAdapter($fieldDefinition);
-            if ($fieldDefinitionAdapter) {
-                $searchAttributeName =  $fieldDefinitionAdapter->getOpenSearchAttributeName();
-                $mappingProperties[FieldCategory::STANDARD_FIELDS->value]['properties'][$searchAttributeName] =
-                        $fieldDefinitionAdapter->getOpenSearchMapping();
-            }
-        }
-
-        $mappingProperties[FieldCategory::STANDARD_FIELDS->value]['properties']
-            = $this->transformLocalizedfields($mappingProperties[FieldCategory::STANDARD_FIELDS->value]['properties']);
 
         $mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] =
             $this->fireEventAndGetCustomFieldsMapping(
@@ -93,12 +75,6 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
             );
 
         return $mappingProperties;
-    }
-
-    #[Required]
-    public function setFieldDefinitionService(FieldDefinitionServiceInterface $fieldDefinitionService): void
-    {
-        $this->fieldDefinitionService = $fieldDefinitionService;
     }
 
     #[Required]
@@ -113,22 +89,5 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
         $this->eventDispatcher->dispatch($extractMappingEvent);
 
         return $extractMappingEvent->getCustomFieldsMapping();
-    }
-
-    private function transformLocalizedfields(array $data): array
-    {
-        if (isset($data['localizedfields'])) {
-            $localizedFields = $data['localizedfields']['properties'];
-            unset($data['localizedfields']);
-
-            foreach ($localizedFields as $locale => $attributes) {
-                foreach ($attributes['properties'] as $attributeName => $attributeData) {
-                    $data[$attributeName] = $data[$attributeName] ?? ['type' => 'object', 'properties' => []];
-                    $data[$attributeName]['properties'][$locale] = $attributeData;
-                }
-            }
-        }
-
-        return $data;
     }
 }

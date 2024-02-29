@@ -4,17 +4,20 @@ Generic Data Index bundle adds standardized and flexible services to search data
 
 ## Asset Search Service
 
-Assets can be searched with the [AssetSearchServiceInterface](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Service/Search/SearchService/Asset/AssetSearchServiceInterface.php).
+Asset Search Service can be created with the [SearchProviderInterface](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Service/Search/SearchService/SearchProviderInterface.php)
+>>>>>>> 1.x
 
 ### Example usage
 
 ```php
-$assetSearch = (new AssetSearch())
-    ->addModifier(new ParentIdFilter(1))
-    ->addModifier(new OrderByFullPath())
-    ->setPageSize(50)
-    ->setPage(1)
-;
+public function searchAction(SearchProviderInterface $searchProvider)
+{
+    $assetSearch = $searchProvider->createAssetSearch()
+                ->addModifier(new ParentIdFilter(1))
+                ->addModifier(new OrderByFullPath())
+                ->setPageSize(50)
+                ->setPage(1);
+}
 ```
 
 This example loads all assets from the root folder (parent ID 1) and orders them by their full path. 
@@ -22,6 +25,7 @@ This example loads all assets from the root folder (parent ID 1) and orders them
 ### Search Modifiers
 
 To influence the data which gets fetched its possible to use so-called search modifiers.
+<<<<<<< HEAD
 Find out details about search modifiers in the [search modifiers documentation](05_Search_Modifiers/README.md).
 
 ### Permissions
