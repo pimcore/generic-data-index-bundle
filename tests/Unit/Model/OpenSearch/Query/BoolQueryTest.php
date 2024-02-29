@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Model\OpenSearch\Query;
@@ -126,7 +126,7 @@ final class BoolQueryTest extends Unit
             'should' => [
                 new TermFilter('field', 'value'),
                 new TermFilter('field2', 'value2'),
-            ]
+            ],
         ]);
 
         self::assertSame([
@@ -140,7 +140,7 @@ final class BoolQueryTest extends Unit
             'should' => [
                 new TermsFilter('field', ['value', 'value2']),
                 new TermsFilter('field2', ['value3', 'value4']),
-            ]
+            ],
         ]);
 
         self::assertSame([

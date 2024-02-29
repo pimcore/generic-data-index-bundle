@@ -25,7 +25,7 @@ trait QueryObjectsToArrayTrait
             static function (&$value) {
                 if ($value instanceof AsSubQueryInterface) {
                     $value = $value->toArrayAsSubQuery();
-                } else if ($value instanceof QueryInterface) {
+                } elseif ($value instanceof QueryInterface) {
                     $value = $value->toArray(true);
                 }
             }

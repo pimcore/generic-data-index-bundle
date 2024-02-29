@@ -48,6 +48,4 @@ final class TermFilter extends BoolQuery implements AsSubQueryInterface
             ],
         ];
     }
-
-
 }
