@@ -41,8 +41,7 @@ final class PermissionService implements PermissionServiceInterface
     public function getAssetPermissions(
         AssetSearchResultItem $asset,
         ?User $user
-    ): AssetPermissions
-    {
+    ): AssetPermissions {
         $permissions = new AssetPermissions();
         /** @var AssetPermissions $permissions */
         $permissions = $this->getPermissions(
@@ -61,8 +60,7 @@ final class PermissionService implements PermissionServiceInterface
     public function getDocumentPermissions(
         string $documentPath,
         ?User $user
-    ): DocumentPermission
-    {
+    ): DocumentPermission {
         $permissions = new DocumentPermission();
         /** @var DocumentPermission $permissions */
         $permissions = $this->getPermissions(
@@ -80,8 +78,7 @@ final class PermissionService implements PermissionServiceInterface
     public function getDataObjectPermissions(
         string $objectPath,
         ?User $user
-    ): DataObjectPermission
-    {
+    ): DataObjectPermission {
         $permissions = new DataObjectPermission();
         /** @var DataObjectPermission $permissions */
         $permissions = $this->getPermissions(

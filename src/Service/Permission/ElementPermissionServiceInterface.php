@@ -21,7 +21,6 @@ use Pimcore\Model\User;
  */
 interface ElementPermissionServiceInterface
 {
-
     public function isAllowed(
         string $permission,
         ElementInterface $element,

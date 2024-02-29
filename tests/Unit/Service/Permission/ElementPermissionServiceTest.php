@@ -14,16 +14,12 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\Permission;
 
 use Codeception\Test\Unit;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\UserPermissionException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\ElementPermissionService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\ElementPermissionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\UserPermissionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Model\Asset;
-use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\User;
 
 /**
@@ -62,11 +58,11 @@ final class ElementPermissionServiceTest extends Unit
     {
         return new ElementPermissionService(
             $this->makeEmpty(AssetSearchServiceInterface::class, [
-                'byId' => $this->assetSearchResultItem
+                'byId' => $this->assetSearchResultItem,
             ]),
             $this->makeEmpty(PermissionServiceInterface::class, [
                 'getAssetPermissions' => new AssetPermissions(),
-                'getPermissionValue' => $permissionValue
+                'getPermissionValue' => $permissionValue,
             ])
         );
     }
