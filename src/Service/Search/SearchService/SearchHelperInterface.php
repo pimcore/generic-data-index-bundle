@@ -15,12 +15,19 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
+use Pimcore\Model\User;
 
 /**
  * @internal
  */
 interface SearchHelperInterface
 {
+    public function addSearchRestrictions(
+        SearchInterface $search,
+        string $userPermission,
+        string $workspaceType
+    ): SearchInterface;
+
     public function performSearch(SearchInterface $search, string $indexName): SearchResult;
 
     /**
@@ -30,5 +37,11 @@ interface SearchHelperInterface
         SearchResult $searchResult,
         string $indexName,
         SearchInterface $search
+    ): array;
+
+    public function hydrateAssetSearchResultHits(
+        SearchResult $searchResult,
+        array $childrenCounts,
+        ?User $user = null
     ): array;
 }

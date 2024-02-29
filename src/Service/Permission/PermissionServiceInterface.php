@@ -13,7 +13,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\BasePermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermission;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\WorkspaceInterface;
@@ -24,14 +26,19 @@ use Pimcore\Model\User;
  */
 interface PermissionServiceInterface
 {
-    public function getAssetPermissions(string $assetPath, ?User $user): AssetPermissions;
+    public function getAssetPermissions(
+        AssetSearchResultItem $asset,
+        ?User $user
+    ): AssetPermissions;
 
-    public function getDocumentPermissions(string $assetPath, ?User $user): DocumentPermission;
+    public function getDocumentPermissions(string $documentPath, ?User $user): DocumentPermission;
 
-    public function getDataObjectPermissions(string $assetPath, ?User $user): DataObjectPermission;
+    public function getDataObjectPermissions(string $objectPath, ?User $user): DataObjectPermission;
 
     public function checkWorkspacePermission(
         WorkspaceInterface $workspace,
         string $permission
     ): bool;
+
+    public function getPermissionValue(BasePermissions $permissions, string $permission): bool;
 }

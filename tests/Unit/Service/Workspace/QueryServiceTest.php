@@ -31,7 +31,7 @@ use Pimcore\Model\User\Workspace;
  */
 final class QueryServiceTest extends Unit
 {
-    private readonly WorkspaceHelper $workspaceHelper;
+    private WorkspaceHelper $workspaceHelper;
 
     public function _before(): void
     {
