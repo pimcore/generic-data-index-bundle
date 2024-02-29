@@ -20,6 +20,7 @@ $search->addModifier(new ParentIdFilter(1))
 | [ParentIdsFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Tree/ParentIdsFilter.php)            | Tree related filters | Filter by parent ID                                                                                                        |
 | [PathFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Tree/PathFilter.php)                 | Tree related filters | Filter by path (depending on use case for all levels or direct children only and with or without the parent item included) |
 
+
 ### Full Text Search Queries
 
 | Modifier                                                                                   | Modifier Category | Description                                                                                                                                           |
