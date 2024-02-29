@@ -15,25 +15,12 @@ You can define your event listener and adapt the permissions as needed. In this 
 <?php
 declare(strict_types=1);
 
-/**
- * Pimcore
- *
- * This source file is available under following license:
- * - Pimcore Commercial License (PCL)
- *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     PCL
- */
-
 namespace AppBundle\EventSubscriber;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\PermissionEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
-/**
- * @internal
- */
-final class AssetPermissionSubscriber implements EventSubscriberInterface
+class AssetPermissionSubscriber implements EventSubscriberInterface
 {
     public static function getSubscribedEvents(): array
     {

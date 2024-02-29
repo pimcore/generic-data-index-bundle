@@ -29,4 +29,4 @@ Find out details about search modifiers in the [search modifiers documentation](
 ### Permissions
 
 The search service respects the user permissions and user workspaces in connection to his roles.
-Details about permissions and workspaces can be found in the [permissions and workspaces documentation](06_Permissions_Workspaces/README.md).
+Details about permissions and workspaces can be found in the [permissions and workspaces documentation](08_Permissions_Workspaces/README.md).
