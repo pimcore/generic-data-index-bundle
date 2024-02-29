@@ -27,10 +27,10 @@ final class RelationAdapter extends AbstractAdapter
         return [
             'properties' => [
                 'id' => [
-                    'type' => AttributeType::LONG,
+                    'type' => AttributeType::LONG->value,
                 ],
                 'type' => [
-                    'type' => AttributeType::TEXT,
+                    'type' => AttributeType::KEYWORD->value,
                 ],
             ],
         ];
