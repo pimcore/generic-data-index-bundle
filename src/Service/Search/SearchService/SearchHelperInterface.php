@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
-use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Model\User;
@@ -23,6 +22,12 @@ use Pimcore\Model\User;
  */
 interface SearchHelperInterface
 {
+    public function addSearchRestrictions(
+        SearchInterface $search,
+        string $userPermission,
+        string $workspaceType
+    ): SearchInterface;
+
     public function performSearch(SearchInterface $search, string $indexName): SearchResult;
 
     /**
@@ -34,9 +39,6 @@ interface SearchHelperInterface
         SearchInterface $search
     ): array;
 
-    /**
-     * @throws Exception
-     */
     public function hydrateAssetSearchResultHits(
         SearchResult $searchResult,
         array $childrenCounts,

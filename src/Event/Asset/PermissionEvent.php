@@ -14,18 +14,19 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Event\Asset;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /**
- * Fires after element search.
- * Can be used to manipulate the user permissions.
+ * Fires when element permissions are being retrieved.
+ * Can be used to manipulate the user permissions for element actions.
  * You will find a description and example on how it works in the docs.
  */
 final class PermissionEvent extends Event
 {
     public function __construct(
         private readonly AssetSearchResultItem $searchResultItem,
-        private string $permission
+        private AssetPermissions $permissions
     ) {
     }
 
@@ -34,13 +35,13 @@ final class PermissionEvent extends Event
         return $this->searchResultItem;
     }
 
-    public function getPermission(): string
+    public function getPermissions(): AssetPermissions
     {
-        return $this->permission;
+        return $this->permissions;
     }
 
-    public function setPermission(string $permission): void
+    public function setPermissions(AssetPermissions $permission): void
     {
-        $this->permission = $permission;
+        $this->permissions = $permission;
     }
 }

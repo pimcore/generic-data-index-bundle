@@ -13,17 +13,18 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
+use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\User;
 
 /**
  * @internal
  */
-interface UserPermissionServiceInterface
+interface ElementPermissionServiceInterface
 {
-    public function canSearch(
-        User $user,
-        string $userPermission
-    ): void;
 
-    public function hasPermission(User $user, string $permission): bool;
+    public function isAllowed(
+        string $permission,
+        ElementInterface $element,
+        User $user
+    ): bool;
 }

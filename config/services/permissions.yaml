@@ -4,6 +4,9 @@ services:
         autoconfigure: true
         public: false
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\ElementPermissionServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\ElementPermissionService
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionService
 

@@ -31,7 +31,7 @@ final class WorkspaceServiceTest extends Unit
 {
     private ?User\UserRole $role = null;
 
-    private readonly WorkspaceHelper $workspaceHelper;
+    private WorkspaceHelper $workspaceHelper;
 
     public function _before(): void
     {

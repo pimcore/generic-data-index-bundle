@@ -22,7 +22,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterfac
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\UserPermissionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchHelper;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchHelperInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
@@ -40,8 +39,7 @@ final class AssetSearchService implements AssetSearchServiceInterface
         private readonly PaginationInfoServiceInterface $paginationInfoService,
         private readonly RuntimeCacheResolverInterface $runtimeCacheResolver,
         private readonly SearchHelperInterface $searchHelper,
-        private readonly SearchProviderInterface $searchProvider,
-        private readonly UserPermissionServiceInterface $userPermissionService,
+        private readonly SearchProviderInterface $searchProvider
     ) {
     }
 
@@ -50,7 +48,7 @@ final class AssetSearchService implements AssetSearchServiceInterface
      */
     public function search(SearchInterface $assetSearch): AssetSearchResult
     {
-        $assetSearch = $this->userPermissionService->canSearch(
+        $assetSearch = $this->searchHelper->addSearchRestrictions(
             search: $assetSearch,
             userPermission: UserPermissionTypes::ASSETS->value,
             workspaceType: AssetWorkspace::WORKSPACE_TYPE
