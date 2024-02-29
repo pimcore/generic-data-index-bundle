@@ -32,6 +32,7 @@ use Symfony\Contracts\Service\Attribute\Required;
 final class ClassificationStoreAdapter extends AbstractAdapter
 {
     private ServiceResolverInterface $classificationService;
+
     private LoggerInterface $pimcoreLogger;
 
     #[Required]
@@ -81,6 +82,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 $this->pimcoreLogger->warning(
                     'Could not get field definition for type ' . $key->getType() . ' in group ' . $key->getGroupId()
                 );
+
                 continue;
             }
 
@@ -92,6 +94,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 }
             }
         }
+
         return $groupMapping;
     }
 
@@ -113,6 +116,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     {
         $listing = new KeyGroupRelationListing();
         $listing->addConditionParam('groupId = ?', $groupConfig->getId());
+
         return $listing->getList();
     }
 }
