@@ -69,7 +69,7 @@ final class IndexMappingServiceTest extends Unit
     {
         $adapterMock = $this->makeEmpty(AdapterInterface::class, [
             'getIndexMapping' => ['properties' => ['test' => ['type' => 'text']]],
-            'getIndexName' => 'testIndexName',
+            'getIndexAttributeName' => 'testIndexName',
         ]);
 
         $fieldDefinitionServiceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class, [
@@ -98,7 +98,7 @@ final class IndexMappingServiceTest extends Unit
     {
         $adapterMock = $this->makeEmpty(AdapterInterface::class, [
             'getIndexMapping' => $this->getLocalizedFieldsMappingMock(),
-            'getIndexName' => 'localizedfields',
+            'getIndexAttributeName' => 'localizedfields',
         ]);
 
         $fieldDefinitionServiceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class, [
