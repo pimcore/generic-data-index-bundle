@@ -51,20 +51,21 @@ final class BoolQueryTest extends Unit
     public function testMerge(): void
     {
         $boolQueryA = new BoolQuery();
-        $boolQueryA->addCondition('must', ['term' => ['field' => 'value']]);
-        $boolQueryA->addCondition('must', ['term' => ['field' => 'value2']]);
+        $boolQueryA->addCondition('must', ['term' => ['field1' => 'value']]);
+        $boolQueryA->addCondition('must', ['term' => ['field2' => 'value2']]);
 
         $boolQueryB = new BoolQuery();
-        $boolQueryB->addCondition('must', ['term' => ['field' => 'value3']]);
+        $boolQueryB->addCondition('must', ['term' => ['field3' => 'value3']]);
+        $boolQueryB->addCondition('must', ['term' => ['field4' => 'value4']]);
 
         $boolQueryA->merge($boolQueryB);
 
         self::assertSame([
             'must' => [
-                ['term' => ['field' => 'value']],
-                ['term' => ['field' => 'value2']],
-                ['term' => ['field' => 'value3']],
-                ['term' => ['field' => 'value4']],
+                ['term' => ['field1' => 'value']],
+                ['term' => ['field2' => 'value2']],
+                ['term' => ['field3' => 'value3']],
+                ['term' => ['field4' => 'value4']],
             ],
         ], $boolQueryA->getParams());
     }
