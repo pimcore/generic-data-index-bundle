@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\Metada
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
-use Pimcore\Model\MetaData\Predefined;
+use Pimcore\Model\Metadata\Predefined;
 
 /**
  * @internal
@@ -53,7 +53,7 @@ final class PredefinedAssetMetadataProvider implements MappingProviderInterface
         return $mapping;
     }
 
-    private function getTypeMapping(string $type): mixed
+    private function getTypeMapping(string $type): ?array
     {
         return $this->fieldDefinitionService
             ->getFieldDefinitionAdapter($type)

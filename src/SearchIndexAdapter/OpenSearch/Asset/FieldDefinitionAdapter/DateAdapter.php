@@ -29,7 +29,7 @@ final class DateAdapter extends AbstractAdapter
         ];
     }
 
-    public function normalize(mixed $value): mixed
+    public function normalize(mixed $value): ?string
     {
         if (!empty($value)) {
             return Carbon::createFromTimestamp($value)->format(DateTimeInterface::ATOM);

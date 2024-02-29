@@ -36,7 +36,7 @@ final class RelationAdapter extends AbstractAdapter
         ];
     }
 
-    public function normalize(mixed $value): mixed
+    public function normalize(mixed $value): ?array
     {
         if($value instanceof ElementInterface) {
             return [
