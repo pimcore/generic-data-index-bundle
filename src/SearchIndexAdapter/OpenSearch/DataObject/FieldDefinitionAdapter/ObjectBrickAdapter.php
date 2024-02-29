@@ -48,7 +48,7 @@ final class ObjectBrickAdapter extends AbstractAdapter
         foreach ($fieldDefinitions as $fieldDefinition) {
             $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($fieldDefinition);
             if ($adapter) {
-                $mapping[$adapter->getIndexName()] = $adapter->getIndexMapping();
+                $mapping[$adapter->getIndexAttributeName()] = $adapter->getIndexMapping();
             }
         }
 

@@ -44,7 +44,7 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
                     $childFieldDefinition
                 );
                 if ($fieldDefinitionAdapter) {
-                    $mappingKey = $fieldDefinitionAdapter->getIndexName();
+                    $mappingKey = $fieldDefinitionAdapter->getIndexAttributeName();
 
                     $languageProperties[$mappingKey] = $fieldDefinitionAdapter->getIndexMapping();
                 }

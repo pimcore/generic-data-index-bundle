@@ -62,7 +62,7 @@ class IndexMappingService implements IndexMappingServiceInterface
             );
         }
 
-        $searchAttributeName =  $fieldDefinitionAdapter->getIndexName();
+        $searchAttributeName =  $fieldDefinitionAdapter->getIndexAttributeName();
 
         return new Mapping(
             mappingName: $searchAttributeName,

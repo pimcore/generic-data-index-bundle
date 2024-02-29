@@ -26,7 +26,7 @@ interface AdapterInterface
 
     public function getIndexMapping(): array;
 
-    public function getIndexName(): string;
+    public function getIndexAttributeName(): string;
 
     /**
      * Used to normalize the data for the search index

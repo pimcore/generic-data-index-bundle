@@ -43,7 +43,7 @@ abstract class AbstractAdapter implements AdapterInterface
         return $this->fieldDefinition;
     }
 
-    public function getIndexName(): string
+    public function getIndexAttributeName(): string
     {
         return $this->fieldDefinition->getName();
     }
