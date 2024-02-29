@@ -13,18 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
-final class Filter extends BoolQuery
+interface AsSubQueryInterface
 {
-    public function __construct(
-        private readonly array $filterParams,
-    ) {
-        parent::__construct([
-            'filter' => $filterParams,
-        ]);
-    }
-
-    public function getFilterParams(): array
-    {
-        return $this->filterParams;
-    }
+    public function toArrayAsSubQuery(): array;
 }

@@ -15,7 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\ConditionType;
 
-final class TermsFilter extends BoolQuery
+final class TermsFilter extends BoolQuery implements AsSubQueryInterface
 {
     public function __construct(
         private readonly string $field,
@@ -40,5 +40,14 @@ final class TermsFilter extends BoolQuery
     public function getTerms(): array
     {
         return $this->terms;
+    }
+
+    public function toArrayAsSubQuery(): array
+    {
+        return [
+            'terms' => [
+                $this->field => $this->terms,
+            ],
+        ];
     }
 }
