@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Exception;
 use JsonException;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -27,7 +28,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     public function __construct(
         protected readonly SearchIndexServiceInterface $searchIndexService,
         protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
-        protected readonly EventDispatcherInterface $eventDispatcher
+        protected readonly EventDispatcherInterface $eventDispatcher,
+        protected readonly IndexMappingServiceInterface $indexMappingService,
     ) {
     }
 
