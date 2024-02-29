@@ -13,7 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
-use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Event;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\BasePermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
@@ -24,6 +25,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\WorkspaceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceServiceInterface;
 use Pimcore\Model\User;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * @internal
@@ -31,67 +33,80 @@ use Pimcore\Model\User;
 final class PermissionService implements PermissionServiceInterface
 {
     public function __construct(
-        private readonly WorkspaceServiceInterface $workspaceService
+        private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly WorkspaceServiceInterface $workspaceService,
     ) {
     }
 
-    /**
-     * @throws Exception
-     */
-    public function getAssetPermissions(string $assetPath, ?User $user): AssetPermissions
-    {
+    public function getAssetPermissions(
+        AssetSearchResultItem $asset,
+        ?User $user
+    ): AssetPermissions {
         $permissions = new AssetPermissions();
         /** @var AssetPermissions $permissions */
         $permissions = $this->getPermissions(
-            assetPath: $assetPath,
+            assetPath: $asset->getFullPath(),
             permissionsType: AssetWorkspace::WORKSPACE_TYPE,
             defaultPermissions: $permissions,
             user: $user
         ) ?? $permissions;
 
-        return $permissions;
+        $event = new Event\Asset\PermissionEvent($asset, $permissions);
+        $this->eventDispatcher->dispatch($event);
+
+        return $event->getPermissions();
     }
 
-    /**
-     * @throws Exception
-     */
-    public function getDocumentPermissions(string $assetPath, ?User $user): DocumentPermission
-    {
+    public function getDocumentPermissions(
+        string $documentPath,
+        ?User $user
+    ): DocumentPermission {
         $permissions = new DocumentPermission();
         /** @var DocumentPermission $permissions */
         $permissions = $this->getPermissions(
-            assetPath: $assetPath,
+            assetPath: $documentPath,
             permissionsType: DocumentWorkspace::WORKSPACE_TYPE,
             defaultPermissions: $permissions,
             user: $user
         ) ?? $permissions;
 
+        //ToDo - add event dispatching
+
         return $permissions;
     }
 
-    /**
-     * @throws Exception
-     */
-    public function getDataObjectPermissions(string $assetPath, ?User $user): DataObjectPermission
-    {
+    public function getDataObjectPermissions(
+        string $objectPath,
+        ?User $user
+    ): DataObjectPermission {
         $permissions = new DataObjectPermission();
         /** @var DataObjectPermission $permissions */
         $permissions = $this->getPermissions(
-            assetPath: $assetPath,
+            assetPath: $objectPath,
             permissionsType: DataObjectWorkspace::WORKSPACE_TYPE,
             defaultPermissions: $permissions,
             user: $user,
         ) ?? $permissions;
 
-        return $permissions;
+        $searchResult = null; // ToDo Change when the search service is implemented
+        $event = new Event\DataObject\PermissionEvent($searchResult, $permissions);
+        $this->eventDispatcher->dispatch($event);
+
+        return $event->getPermissions();
     }
 
     public function checkWorkspacePermission(
         WorkspaceInterface $workspace,
         string $permission
     ): bool {
-        $getter = 'is' . ucfirst($permission);
         $permissions = $workspace->getPermissions();
+
+        return $this->getPermissionValue($permissions, $permission);
+    }
+
+    public function getPermissionValue(BasePermissions $permissions, string $permission): bool
+    {
+        $getter = 'is' . ucfirst($permission);
         if (method_exists($permissions, $getter)) {
             return $permissions->$getter();
         }

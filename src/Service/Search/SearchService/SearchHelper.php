@@ -13,21 +13,63 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
+use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree\ChildrenCountAggregation;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\WorkspaceQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\UserPermissionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer;
+use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
+use Pimcore\Model\User;
 
 /**
  * @internal
  */
 final class SearchHelper implements SearchHelperInterface
 {
+    public const ASSET_SEARCH = 'asset_search';
+
     public function __construct(
+        private readonly AssetSearchResultDenormalizer $denormalizer,
+        private readonly PermissionServiceInterface $permissionService,
+        private readonly RuntimeCacheResolverInterface $runtimeCacheResolver,
         private readonly SearchIndexServiceInterface $searchIndexService,
-        private readonly SearchModifierServiceInterface $searchModifierService
+        private readonly SearchModifierServiceInterface $searchModifierService,
+        private readonly UserPermissionServiceInterface $userPermissionService,
     ) {
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function addSearchRestrictions(
+        SearchInterface $search,
+        string $userPermission,
+        string $workspaceType
+    ): SearchInterface {
+        $user = $search->getUser();
+        if (!$user) {
+            return $search;
+        }
+
+        $this->userPermissionService->canSearch($user, $userPermission);
+        if (!$user->isAdmin()) {
+            $search->addModifier(new WorkspaceQuery(
+                $workspaceType,
+                $user,
+                PermissionTypes::VIEW->value
+            ));
+        }
+
+        return $search;
     }
 
     public function performSearch(SearchInterface $search, string $indexName): SearchResult
@@ -72,5 +114,37 @@ final class SearchHelper implements SearchHelperInterface
         }
 
         return $childrenCounts;
+    }
+
+    public function hydrateAssetSearchResultHits(
+        SearchResult $searchResult,
+        array $childrenCounts,
+        ?User $user = null
+    ): array {
+        $results = [];
+
+        foreach ($searchResult->getHits() as $hit) {
+            $source = $hit->getSource();
+
+            $source[FieldCategory::SYSTEM_FIELDS->value][SystemField::HAS_CHILDREN->value] =
+                ($childrenCounts[$hit->getId()] ?? 0) > 0;
+
+            $result = $this->denormalizer->denormalize(
+                $source,
+                AssetSearchResult::class
+            );
+
+            $this->runtimeCacheResolver->save($result, self::ASSET_SEARCH . '_' . $result->getId());
+            $result->setPermissions(
+                $this->permissionService->getAssetPermissions(
+                    $result,
+                    $user
+                )
+            );
+
+            $results[] = $result;
+        }
+
+        return $results;
     }
 }

@@ -17,7 +17,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetMetaData;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandlerService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
@@ -25,8 +24,7 @@ use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 class AssetSearchResultDenormalizer implements DenormalizerInterface
 {
     public function __construct(
-        private readonly AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService,
-        private readonly PermissionServiceInterface $permissionService,
+        private readonly AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService
     ) {
     }
 
@@ -50,8 +48,6 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
             $searchResultItem = new AssetSearchResultItem();
         }
 
-        $user = $context['user'] ?? null;
-
         return $searchResultItem
             ->setId(SystemField::ID->getData($data))
             ->setParentId(SystemField::PARENT_ID->getData($data))
@@ -70,10 +66,7 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
             ->setModificationDate(strtotime(SystemField::MODIFICATION_DATE->getData($data)))
             ->setHasWorkflowWithPermissions(SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data))
             ->setHasChildren(SystemField::HAS_CHILDREN->getData($data))
-            ->setSearchIndexData($data)
-            ->setPermissions($this->permissionService->getAssetPermissions(
-                SystemField::FULL_PATH->getData($data), $user)
-            );
+            ->setSearchIndexData($data);
     }
 
     public function supportsDenormalization(mixed $data, string $type, string $format = null): bool
