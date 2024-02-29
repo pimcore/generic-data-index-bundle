@@ -14,13 +14,13 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Traits;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\PaginatedSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 
 trait PaginatedSearchTrait
 {
     private int $page = 1;
 
-    private int $pageSize = PaginatedSearchInterface::DEFAULT_PAGE_SIZE;
+    private int $pageSize = SearchInterface::DEFAULT_PAGE_SIZE;
 
     public function getPage(): int
     {

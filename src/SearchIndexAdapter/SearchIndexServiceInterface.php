@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter;
 
 use Exception;
-use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 
@@ -54,5 +53,5 @@ interface SearchIndexServiceInterface
 
     public function search(AdapterSearchInterface $search, string $indexName): SearchResult;
 
-    public function getOpenSearchClient(): Client;
+    public function getStats(string $indexName): array;
 }

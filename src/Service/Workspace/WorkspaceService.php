@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspa
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\WorkspaceInterface;
 use Pimcore\Bundle\StaticResolverBundle\Models\User\UserResolverInterface;
+use Pimcore\Model\User;
 use Pimcore\Model\User\Workspace;
 
 /**
@@ -31,19 +32,92 @@ final class WorkspaceService implements WorkspaceServiceInterface
     ) {
     }
 
-    /**
-     * @throws WorkspaceNotFoundException
-     */
+    public function getUserWorkspaces(
+        string $workspaceType,
+        ?User $user
+    ): array {
+        if (!$user) {
+            return [];
+        }
+        $workspaceGetter = 'getWorkspaces' . ucfirst($workspaceType);
+        $workspaces =  $user->$workspaceGetter();
+
+        return $this->getWorkspacesObject($workspaces);
+    }
+
+    public function getUserRoleWorkspaces(
+        User $user,
+        string $workspaceType,
+        string $path
+    ): array {
+        $userRoleWorkspaces = [];
+        $roles = $user->getRoles();
+        foreach ($roles as $roleId) {
+            $roleWorkspaces = $this->getRoleWorkspaces($workspaceType, $roleId);
+            foreach ($roleWorkspaces as $roleWorkspace) {
+                $userRoleWorkspaces[] = $roleWorkspace;
+            }
+        }
+
+        if (!empty($userRoleWorkspaces)) {
+            $userRoleWorkspaces = $this->getRelevantWorkspaces(
+                $userRoleWorkspaces,
+                $path
+            );
+        }
+
+        return $userRoleWorkspaces;
+    }
+
+    public function getRoleWorkspaces(string $type, int $roleId): array
+    {
+        $workspaces = [];
+
+        $getter = 'getWorkspaces' . ucfirst($type);
+        $roleWorkspaces = $this->userResolver->getUserRoleById($roleId)?->$getter() ?? [];
+        foreach ($roleWorkspaces as $roleWorkspace) {
+            $workspaces[] = $roleWorkspace;
+        }
+
+        return $this->getWorkspacesObject($workspaces);
+    }
+
     public function getRelevantWorkspaces(
         array $userWorkspaces,
-        string $assetPath
+        string $path
     ): array {
         $workspaces = [];
         foreach ($userWorkspaces as $userWorkspace) {
-            if (!str_contains($assetPath, $userWorkspace->getCpath())) {
-                continue;
+            if (!$userWorkspace instanceof WorkspaceInterface) {
+                throw new WorkspaceNotFoundException(
+                    'Provided workspace has unknown type!'
+                );
             }
+            if (str_contains($path, $userWorkspace->getPath())) {
+                $workspaces[] = $userWorkspace;
+            }
+        }
 
+        return $workspaces;
+    }
+
+    public function getDeepestWorkspace(array $workspaces): WorkspaceInterface
+    {
+        usort($workspaces, static function (WorkspaceInterface $a, WorkspaceInterface $b) {
+            return strcmp($b->getPath(), $a->getPath());
+        });
+
+        return $workspaces[0];
+    }
+
+    /**
+     * @throws WorkspaceNotFoundException
+     */
+    private function getWorkspacesObject(
+        array $userWorkspaces
+    ): array {
+        $workspaces = [];
+        foreach ($userWorkspaces as $userWorkspace) {
             $workspaces[] = match (true) {
                 $userWorkspace instanceof Workspace\Asset => new AssetWorkspace(
                     $userWorkspace
@@ -61,28 +135,5 @@ final class WorkspaceService implements WorkspaceServiceInterface
         }
 
         return $workspaces;
-    }
-
-    public function getRoleWorkspaces(array $roleIds, string $type): array
-    {
-        $workspaces = [];
-        $getter = 'getWorkspaces' . ucfirst($type);
-        foreach ($roleIds as $roleId) {
-            $roleWorkspaces = $this->userResolver->getUserRoleById($roleId)?->$getter();
-            foreach ($roleWorkspaces as $roleWorkspace) {
-                $workspaces[] = $roleWorkspace;
-            }
-        }
-
-        return $workspaces;
-    }
-
-    public function getDeepestWorkspace(array $workspaces): WorkspaceInterface
-    {
-        usort($workspaces, static function (WorkspaceInterface $a, WorkspaceInterface $b) {
-            return strcmp($b->getPath(), $a->getPath());
-        });
-
-        return $workspaces[0];
     }
 }

@@ -16,8 +16,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Se
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch\AsSearchModifierHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermsFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\ExcludeFoldersFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdsFilter;
 
@@ -43,5 +45,20 @@ final class BasicFilters
                 terms: $idsFilter->getIds(),
             )
         );
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleExcludeFoldersFilter(
+        ExcludeFoldersFilter $excludeFoldersFilter,
+        SearchModifierContextInterface $context
+    ): void {
+        $context->getSearch()->addQuery(new BoolQuery([
+            'must_not' => [
+                new TermFilter(
+                    field: SystemField::TYPE->getPath(),
+                    term: 'folder',
+                ),
+            ],
+        ]));
     }
 }
