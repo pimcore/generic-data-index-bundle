@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\DataObject\FieldDefinitionAdapter;
 
+use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
@@ -22,6 +23,7 @@ use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig\Listing as GroupListing;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation\Listing as KeyGroupRelationListing;
+use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Service\Attribute\Required;
 
 /**
@@ -30,11 +32,18 @@ use Symfony\Contracts\Service\Attribute\Required;
 final class ClassificationStoreAdapter extends AbstractAdapter
 {
     private ServiceResolverInterface $classificationService;
+    private LoggerInterface $pimcoreLogger;
 
     #[Required]
     public function setClassificationService(ServiceResolverInterface $serviceResolver): void
     {
         $this->classificationService = $serviceResolver;
+    }
+
+    #[Required]
+    public function setPimcoreLogger(LoggerInterface $pimcoreLogger): void
+    {
+        $this->pimcoreLogger = $pimcoreLogger;
     }
 
     public function getOpenSearchMapping(): array
@@ -66,7 +75,15 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     {
         $groupMapping = [];
         foreach ($groupConfigs as $key) {
-            $definition = $this->classificationService->getFieldDefinitionFromKeyConfig($key);
+            try {
+                $definition = $this->classificationService->getFieldDefinitionFromKeyConfig($key);
+            } catch (Exception) {
+                $this->pimcoreLogger->warning(
+                    'Could not get field definition for type ' . $key->getType() . ' in group ' . $key->getGroupId()
+                );
+                continue;
+            }
+
             if ($definition instanceof Data) {
                 $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($definition);
 
@@ -75,7 +92,6 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 }
             }
         }
-
         return $groupMapping;
     }
 
@@ -97,7 +113,6 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     {
         $listing = new KeyGroupRelationListing();
         $listing->addConditionParam('groupId = ?', $groupConfig->getId());
-
         return $listing->getList();
     }
 }
