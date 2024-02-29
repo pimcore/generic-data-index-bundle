@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Da
 use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
@@ -23,7 +24,6 @@ use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig\Listing as GroupListing;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation\Listing as KeyGroupRelationListing;
-use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Service\Attribute\Required;
 
 /**
@@ -31,20 +31,14 @@ use Symfony\Contracts\Service\Attribute\Required;
  */
 final class ClassificationStoreAdapter extends AbstractAdapter
 {
-    private ServiceResolverInterface $classificationService;
+    use LoggerAwareTrait;
 
-    private LoggerInterface $pimcoreLogger;
+    private ServiceResolverInterface $classificationService;
 
     #[Required]
     public function setClassificationService(ServiceResolverInterface $serviceResolver): void
     {
         $this->classificationService = $serviceResolver;
-    }
-
-    #[Required]
-    public function setPimcoreLogger(LoggerInterface $pimcoreLogger): void
-    {
-        $this->pimcoreLogger = $pimcoreLogger;
     }
 
     public function getIndexMapping(): array
@@ -79,7 +73,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             try {
                 $definition = $this->classificationService->getFieldDefinitionFromKeyConfig($key);
             } catch (Exception) {
-                $this->pimcoreLogger->warning(
+                $this->logger->warning(
                     'Could not get field definition for type ' . $key->getType() . ' in group ' . $key->getGroupId()
                 );
 
