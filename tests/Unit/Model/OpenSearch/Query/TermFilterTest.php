@@ -7,15 +7,13 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Model\OpenSearch\Query;
 
 use Codeception\Test\Unit;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\QueryList;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermFilter;
 
 /**
@@ -34,7 +32,6 @@ final class TermFilterTest extends Unit
             ],
         ], $termFilter->toArray(true));
 
-
         self::assertSame([
             'filter' =>
                 ['term' => ['field' => 'value']],
@@ -49,5 +46,4 @@ final class TermFilterTest extends Unit
             'term' => ['field' => 'value'],
         ], $termFilter->toArrayAsSubQuery());
     }
-
 }

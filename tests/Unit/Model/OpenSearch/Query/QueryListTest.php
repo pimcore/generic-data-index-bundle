@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Model\OpenSearch\Query;
@@ -63,17 +63,15 @@ final class QueryListTest extends Unit
                 'must' => [
                     ['term' => ['field' => 'value']],
                     ['term' => ['field2' => 'value2']],
-                ]
+                ],
             ],
         ], $queryList->toArray());
-
 
         $queryList->addQuery(new BoolQuery([
             'should' => [
                 ['term' => ['field3' => 'value3']],
             ],
         ]));
-
 
         self::assertSame([
             'bool' => [
