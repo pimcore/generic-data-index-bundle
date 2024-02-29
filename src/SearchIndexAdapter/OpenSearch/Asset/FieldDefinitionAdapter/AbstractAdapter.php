@@ -1,8 +1,9 @@
 <?php
 declare(strict_types=1);
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter;
 
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
 abstract class AbstractAdapter implements AdapterInterface
@@ -27,7 +28,7 @@ abstract class AbstractAdapter implements AdapterInterface
         return $this->type;
     }
 
-    public function getOpenSearchMapping(): array
+    public function getIndexMapping(): array
     {
         return [];
     }

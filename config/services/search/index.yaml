@@ -61,8 +61,8 @@ services:
         arguments:
             - [ ]
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\FieldDefinitionServiceInterface:
-        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\FieldDefinitionService
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefinitionServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionService
         arguments:
             - '@pimcore.generic_data_index.asset.search_index_field_definition_locator'
 

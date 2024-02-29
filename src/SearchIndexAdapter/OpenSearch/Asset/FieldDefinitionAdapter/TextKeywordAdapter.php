@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 
@@ -10,7 +10,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeT
  */
 final class TextKeywordAdapter extends AbstractAdapter
 {
-    public function getOpenSearchMapping(): array
+    public function getIndexMapping(): array
     {
         $searchAnalyzerAttributes = $this->searchIndexConfigService->getSearchAnalyzerAttributes();
 

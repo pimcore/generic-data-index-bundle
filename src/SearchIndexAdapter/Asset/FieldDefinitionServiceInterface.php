@@ -11,9 +11,9 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\FieldDefinitionAdapter\AdapterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\AdapterInterface;
 
 interface FieldDefinitionServiceInterface
 {

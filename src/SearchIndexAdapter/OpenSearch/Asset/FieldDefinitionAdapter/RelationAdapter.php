@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\FieldDefinitionAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Model\Element\ElementInterface;
@@ -12,7 +12,7 @@ use Pimcore\Model\Element\Service;
  */
 final class RelationAdapter extends AbstractAdapter
 {
-    public function getOpenSearchMapping(): array
+    public function getIndexMapping(): array
     {
         return [
             'properties' => [

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataMappingProvider;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
 use Pimcore\Model\MetaData\Predefined;
@@ -50,6 +50,6 @@ final class PredefinedAssetMetadataProvider implements MappingProviderInterface
     {
         return $this->fieldDefinitionService
             ->getFieldDefinitionAdapter($type)
-            ?->getOpenSearchMapping();
+            ?->getIndexMapping();
     }
 }
