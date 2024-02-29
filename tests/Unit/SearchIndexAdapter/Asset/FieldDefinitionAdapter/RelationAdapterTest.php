@@ -57,5 +57,4 @@ final class RelationAdapterTest extends Unit
             'id' => 1,
         ], $adapter->normalize($image));
     }
-
 }
