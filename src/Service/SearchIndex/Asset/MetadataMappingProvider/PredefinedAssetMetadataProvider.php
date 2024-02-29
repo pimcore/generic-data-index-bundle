@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataMappingProvider;
 
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefinitionServiceInterface;
@@ -16,8 +26,7 @@ final class PredefinedAssetMetadataProvider implements MappingProviderInterface
     public function __construct(
         private readonly LanguageServiceInterface $languageService,
         private readonly FieldDefinitionServiceInterface $fieldDefinitionService
-    )
-    {
+    ) {
     }
 
     public function addMapping(array $mapping): array
@@ -32,7 +41,6 @@ final class PredefinedAssetMetadataProvider implements MappingProviderInterface
                 'properties' => [],
             ];
 
-
             if ($typeMapping = $this->getTypeMapping($predefinedMetaData->getType())) {
                 foreach ($languages as $language) {
                     $languageMapping['properties'][$language] = $typeMapping;
@@ -41,7 +49,6 @@ final class PredefinedAssetMetadataProvider implements MappingProviderInterface
 
             $mapping['properties'][$predefinedMetaData->getType()] = $languageMapping;
         }
-
 
         return $mapping;
     }

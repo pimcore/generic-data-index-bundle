@@ -62,6 +62,7 @@ final class AssetIndexHandler extends AbstractIndexHandler
         foreach ($this->mappingProviderLocator->getProvidedServices() as $serviceType => $service) {
             $mappingProviders[] = $this->mappingProviderLocator->get($serviceType);
         }
+
         return $mappingProviders;
     }
 

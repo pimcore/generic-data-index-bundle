@@ -13,8 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset;
 
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\AdapterInterface;
-
 interface FieldDefinitionServiceInterface
 {
     public function getFieldDefinitionAdapter(string $type): ?AdapterInterface;
