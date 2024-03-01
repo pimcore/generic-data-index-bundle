@@ -35,7 +35,7 @@ class AssetSearchResultItem
 
     private int $userOwner;
 
-    private int $userModification;
+    private ?int $userModification;
 
     private ?string $locked;
 
@@ -168,7 +168,7 @@ class AssetSearchResultItem
         return $this;
     }
 
-    public function getUserModification(): int
+    public function getUserModification(): ?int
     {
         return $this->userModification;
     }

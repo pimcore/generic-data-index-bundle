@@ -13,43 +13,20 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Traits\PaginatedSearchTrait;
-use Pimcore\Model\User;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\BaseSearch;
+use Pimcore\Model\DataObject\ClassDefinition;
 
-final class DataObjectSearch implements SearchInterface
+final class DataObjectSearch extends BaseSearch
 {
-    use PaginatedSearchTrait;
+    private ?ClassDefinition $classDefinition = null;
 
-    /**
-     * @var SearchModifierInterface[]
-     */
-    private array $modifiers = [];
-
-    private ?User $user = null;
-
-    public function getModifiers(): array
+    public function getClassDefinition(): ?ClassDefinition
     {
-        return $this->modifiers;
+        return $this->classDefinition;
     }
 
-    public function addModifier(SearchModifierInterface $modifier): self
+    public function setClassDefinition(ClassDefinition $classDefinition): void
     {
-        $this->modifiers[] = $modifier;
-
-        return $this;
-    }
-
-    public function setUser(User $user): self
-    {
-        $this->user = $user;
-
-        return $this;
-    }
-
-    public function getUser(): ?User
-    {
-        return $this->user;
+        $this->classDefinition = $classDefinition;
     }
 }

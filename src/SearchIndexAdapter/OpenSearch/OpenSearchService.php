@@ -259,6 +259,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
 
     public function search(AdapterSearchInterface $search, string $indexName): SearchResult
     {
+        //dd($search->toArray(), $indexName);
         $openSearchResult = $this
             ->openSearchClient
             ->search([

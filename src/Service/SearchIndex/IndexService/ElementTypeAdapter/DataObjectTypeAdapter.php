@@ -20,6 +20,7 @@ use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\DataObjectNormalizer;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -32,6 +33,8 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
  */
 final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
 {
+    private const FOLDER_INDEX_NAME = 'data_object_folders';
+
     public function __construct(
         private readonly DataObjectNormalizer $normalizer,
         private readonly Connection $dbConnection,
@@ -58,11 +61,11 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
 
     public function getIndexNameShort(mixed $context): string
     {
-        if ($context instanceof ClassDefinition) {
-            return $context->getName();
-        }
-
-        return 'data_object_folders';
+        return match (true) {
+            $context instanceof ClassDefinition => $context->getName(),
+            $context === DataObjectIndexHandler::DATA_OBJECT_INDEX_ALIAS => $context,
+            default => self::FOLDER_INDEX_NAME,
+        };
     }
 
     public function getIndexNameByClassDefinition(ClassDefinition $classDefinition): string

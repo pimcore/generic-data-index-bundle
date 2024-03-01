@@ -11,21 +11,17 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset;
 
-use Exception;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResult;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree\ChildrenCountAggregation;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\WorkspaceQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\UserPermissionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\AbstractSearchHelper;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Model\User;
@@ -33,7 +29,7 @@ use Pimcore\Model\User;
 /**
  * @internal
  */
-final class SearchHelper implements SearchHelperInterface
+final class SearchHelper extends AbstractSearchHelper
 {
     public const ASSET_SEARCH = 'asset_search';
 
@@ -45,78 +41,14 @@ final class SearchHelper implements SearchHelperInterface
         private readonly SearchModifierServiceInterface $searchModifierService,
         private readonly UserPermissionServiceInterface $userPermissionService,
     ) {
+        parent::__construct(
+            $this->searchIndexService,
+            $this->searchModifierService,
+            $this->userPermissionService
+        );
     }
 
-    /**
-     * @throws Exception
-     */
-    public function addSearchRestrictions(
-        SearchInterface $search,
-        string $userPermission,
-        string $workspaceType
-    ): SearchInterface {
-        $user = $search->getUser();
-        if (!$user) {
-            return $search;
-        }
-
-        $this->userPermissionService->canSearch($user, $userPermission);
-        if (!$user->isAdmin()) {
-            $search->addModifier(new WorkspaceQuery(
-                $workspaceType,
-                $user,
-                PermissionTypes::VIEW->value
-            ));
-        }
-
-        return $search;
-    }
-
-    public function performSearch(SearchInterface $search, string $indexName): SearchResult
-    {
-        $adapterSearch = $this->searchIndexService->createPaginatedSearch($search->getPage(), $search->getPageSize());
-        $this->searchModifierService->applyModifiersFromSearch($search, $adapterSearch);
-
-        return $this
-            ->searchIndexService
-            ->search($adapterSearch, $indexName);
-    }
-
-    /**
-     * @return int[]
-     */
-    public function getChildrenCounts(
-        SearchResult $searchResult,
-        string $indexName,
-        SearchInterface $search
-    ): array {
-        $parentIds = $searchResult->getIds();
-
-        if (empty($parentIds)) {
-            return [];
-        }
-
-        $childrenCountAggregation = new ChildrenCountAggregation($parentIds);
-
-        $search->addModifier($childrenCountAggregation);
-
-        $searchResult = $this->performSearch($search, $indexName);
-
-        $childrenCounts = [];
-        foreach($parentIds as $parentId) {
-            $childrenCounts[$parentId] = 0;
-        }
-
-        if ($aggregation = $searchResult->getAggregation($childrenCountAggregation->getAggregationName())) {
-            foreach($aggregation->getBuckets() as $bucket) {
-                $childrenCounts[$bucket->getKey()] = $bucket->getDocCount();
-            }
-        }
-
-        return $childrenCounts;
-    }
-
-    public function hydrateAssetSearchResultHits(
+    public function hydrateSearchResultHits(
         SearchResult $searchResult,
         array $childrenCounts,
         ?User $user = null

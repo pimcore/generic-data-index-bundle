@@ -13,43 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Traits\PaginatedSearchTrait;
-use Pimcore\Model\User;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\BaseSearch;
 
-final class AssetSearch implements SearchInterface
+final class AssetSearch extends BaseSearch
 {
-    use PaginatedSearchTrait;
-
-    /**
-     * @var SearchModifierInterface[]
-     */
-    private array $modifiers = [];
-
-    private ?User $user = null;
-
-    public function getModifiers(): array
-    {
-        return $this->modifiers;
-    }
-
-    public function addModifier(SearchModifierInterface $modifier): self
-    {
-        $this->modifiers[] = $modifier;
-
-        return $this;
-    }
-
-    public function setUser(User $user): self
-    {
-        $this->user = $user;
-
-        return $this;
-    }
-
-    public function getUser(): ?User
-    {
-        return $this->user;
-    }
 }

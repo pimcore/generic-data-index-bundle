@@ -25,13 +25,15 @@ class DataObjectSearchResultItem
 
     private string $key;
 
+    private bool $published;
+
     private string $path;
 
     private string $fullPath;
 
     private int $userOwner;
 
-    private int $userModification;
+    private ?int $userModification;
 
     private ?string $locked;
 
@@ -40,6 +42,8 @@ class DataObjectSearchResultItem
     private ?int $creationDate;
 
     private ?int $modificationDate;
+
+    private string $className;
 
     private bool $workflowWithPermissions;
 
@@ -101,6 +105,18 @@ class DataObjectSearchResultItem
         return $this;
     }
 
+    public function isPublished(): bool
+    {
+        return $this->published;
+    }
+
+    public function setPublished(bool $published): DataObjectSearchResultItem
+    {
+        $this->published = $published;
+
+        return $this;
+    }
+
     public function getPath(): string
     {
         return $this->path;
@@ -137,12 +153,12 @@ class DataObjectSearchResultItem
         return $this;
     }
 
-    public function getUserModification(): int
+    public function getUserModification(): ?int
     {
         return $this->userModification;
     }
 
-    public function setUserModification(int $userModification): DataObjectSearchResultItem
+    public function setUserModification(?int $userModification): DataObjectSearchResultItem
     {
         $this->userModification = $userModification;
 
@@ -166,9 +182,9 @@ class DataObjectSearchResultItem
         return $this->isLocked;
     }
 
-    public function setIsLocked(bool $isLocked): DataObjectSearchResultItem
+    public function setIsLocked(?bool $isLocked): DataObjectSearchResultItem
     {
-        $this->isLocked = $isLocked;
+        $this->isLocked = (bool)$isLocked;
 
         return $this;
     }
@@ -197,14 +213,26 @@ class DataObjectSearchResultItem
         return $this;
     }
 
+    public function getClassName(): string
+    {
+        return $this->className;
+    }
+
+    public function setClassName(string $className): DataObjectSearchResultItem
+    {
+        $this->className = $className;
+
+        return $this;
+    }
+
     public function isHasWorkflowWithPermissions(): bool
     {
         return $this->workflowWithPermissions;
     }
 
-    public function setHasWorkflowWithPermissions(bool $workflowWithPermissions): DataObjectSearchResultItem
+    public function setHasWorkflowWithPermissions(?bool $workflowWithPermissions): DataObjectSearchResultItem
     {
-        $this->workflowWithPermissions = $workflowWithPermissions;
+        $this->workflowWithPermissions = (bool)$workflowWithPermissions;
 
         return $this;
     }

@@ -22,8 +22,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterfac
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchHelper;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchHelperInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
@@ -38,13 +36,13 @@ final class AssetSearchService implements AssetSearchServiceInterface
         private readonly AssetTypeAdapter $assetTypeAdapter,
         private readonly PaginationInfoServiceInterface $paginationInfoService,
         private readonly RuntimeCacheResolverInterface $runtimeCacheResolver,
-        private readonly SearchHelperInterface $searchHelper,
+        private readonly SearchHelper $searchHelper,
         private readonly SearchProviderInterface $searchProvider
     ) {
     }
 
     /**
-     * @throws AssetSearchException
+     * @throws Exception
      */
     public function search(SearchInterface $assetSearch): AssetSearchResult
     {
@@ -67,7 +65,7 @@ final class AssetSearchService implements AssetSearchServiceInterface
 
         try {
             return new AssetSearchResult(
-                items: $this->searchHelper->hydrateAssetSearchResultHits(
+                items: $this->searchHelper->hydrateSearchResultHits(
                     $searchResult,
                     $childrenCounts,
                     $assetSearch->getUser()

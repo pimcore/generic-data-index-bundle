@@ -18,10 +18,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSear
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Model\User;
 
-interface DataObjectSearchInterface
+interface DataObjectSearchServiceInterface
 {
 
-    public function search(SearchInterface $assetSearch): DataObjectSearchResult;
+    public function search(SearchInterface $dataObjectSearch): DataObjectSearchResult;
 
     public function byId(int $id, ?User $user = null): ?DataObjectSearchResultItem;
 }

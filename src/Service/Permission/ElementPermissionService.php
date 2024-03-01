@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Element\ElementInterface;
@@ -23,6 +24,7 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
 {
     public function __construct(
         private readonly AssetSearchServiceInterface $assetSearchService,
+        private readonly DataObjectSearchServiceInterface $dataObjectSearchService,
         private readonly PermissionServiceInterface $permissionService
     ) {
     }
@@ -62,11 +64,16 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
         string $permission,
         User $user
     ): bool {
-        $assetPermissions = $this->permissionService->getDataObjectPermissions(
-            $dataObject->getPath(),
+        $dataObjectResult = $this->dataObjectSearchService->byId($dataObject->getId(), $user);
+        if (!$dataObjectResult) {
+            return false;
+        }
+
+        $permissions = $this->permissionService->getDataObjectPermissions(
+            $dataObjectResult,
             $user
         );
 
-        return $this->permissionService->getPermissionValue($assetPermissions, $permission);
+        return $this->permissionService->getPermissionValue($permissions, $permission);
     }
 }

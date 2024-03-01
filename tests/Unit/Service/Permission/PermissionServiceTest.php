@@ -19,6 +19,7 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\PermissionEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchResult\DataObjectSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspace;
@@ -44,10 +45,13 @@ final class PermissionServiceTest extends Unit
 
     private AssetSearchResultItem $assetSearchResult;
 
+    private DataObjectSearchResultItem $dataObjectSearchResult;
+
     public function _before(): void
     {
         $this->user = new User();
         $this->assetSearchResult = new AssetSearchResultItem();
+        $this->dataObjectSearchResult = new DataObjectSearchResultItem();
     }
 
     public function testAssetPermissionWithUserOnRoot(): void
@@ -167,7 +171,7 @@ final class PermissionServiceTest extends Unit
             type: DataObjectWorkspace::WORKSPACE_TYPE
         )]);
         $permission = $this->getPermissionServiceWithUser()->getDataObjectPermissions(
-            '/',
+            $this->dataObjectSearchResult->setFullPath('/'),
             $this->user
         );
 
@@ -201,7 +205,7 @@ final class PermissionServiceTest extends Unit
         );
 
         $permissions = $this->getPermissionServiceWithUser()->getDataObjectPermissions(
-            '/parentFolder/childFolder',
+            $this->dataObjectSearchResult->setFullPath('/parentFolder/childFolder'),
             $this->user
         );
 
@@ -247,7 +251,7 @@ final class PermissionServiceTest extends Unit
         );
 
         $permissions = $this->getPermissionServiceWithUser()->getDataObjectPermissions(
-            '/parentFolder/childFolder',
+            $this->dataObjectSearchResult->setFullPath('/parentFolder/childFolder'),
             $this->user
         );
 
@@ -262,7 +266,10 @@ final class PermissionServiceTest extends Unit
     public function testObjectPermissionWithoutUserOnRoot(): void
     {
         $permissionService = $this->getPermissionServiceWithoutUser();
-        $permission = $permissionService->getDataObjectPermissions('/', null);
+        $permission = $permissionService->getDataObjectPermissions(
+            $this->dataObjectSearchResult->setFullPath('/'),
+            null
+        );
 
         $this->assertSame(self::DEFAULT_VALUE, $permission->isList());
         $this->assertSame(self::DEFAULT_VALUE, $permission->isView());

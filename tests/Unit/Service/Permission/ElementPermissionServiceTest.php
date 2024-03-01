@@ -19,6 +19,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\ElementPermissionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Model\Asset;
 use Pimcore\Model\User;
 
@@ -58,6 +60,9 @@ final class ElementPermissionServiceTest extends Unit
     {
         return new ElementPermissionService(
             $this->makeEmpty(AssetSearchServiceInterface::class, [
+                'byId' => $this->assetSearchResultItem,
+            ]),
+            $this->makeEmpty(DataObjectSearchServiceInterface::class, [
                 'byId' => $this->assetSearchResultItem,
             ]),
             $this->makeEmpty(PermissionServiceInterface::class, [

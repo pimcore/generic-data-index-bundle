@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Event;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchResult\DataObjectSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\BasePermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
@@ -45,7 +46,7 @@ final class PermissionService implements PermissionServiceInterface
         $permissions = new AssetPermissions();
         /** @var AssetPermissions $permissions */
         $permissions = $this->getPermissions(
-            assetPath: $asset->getFullPath(),
+            elementPath: $asset->getFullPath(),
             permissionsType: AssetWorkspace::WORKSPACE_TYPE,
             defaultPermissions: $permissions,
             user: $user
@@ -64,32 +65,31 @@ final class PermissionService implements PermissionServiceInterface
         $permissions = new DocumentPermission();
         /** @var DocumentPermission $permissions */
         $permissions = $this->getPermissions(
-            assetPath: $documentPath,
+            elementPath: $documentPath,
             permissionsType: DocumentWorkspace::WORKSPACE_TYPE,
             defaultPermissions: $permissions,
             user: $user
         ) ?? $permissions;
 
-        //ToDo - add event dispatching
+        //ToDo - add event dispatching for document permissions
 
         return $permissions;
     }
 
     public function getDataObjectPermissions(
-        string $objectPath,
+        DataObjectSearchResultItem $object,
         ?User $user
     ): DataObjectPermission {
         $permissions = new DataObjectPermission();
         /** @var DataObjectPermission $permissions */
         $permissions = $this->getPermissions(
-            assetPath: $objectPath,
+            elementPath: $object->getFullPath(),
             permissionsType: DataObjectWorkspace::WORKSPACE_TYPE,
             defaultPermissions: $permissions,
             user: $user,
         ) ?? $permissions;
 
-        $searchResult = null; // ToDo Change when the search service is implemented
-        $event = new Event\DataObject\PermissionEvent($searchResult, $permissions);
+        $event = new Event\DataObject\PermissionEvent($object, $permissions);
         $this->eventDispatcher->dispatch($event);
 
         return $event->getPermissions();
@@ -115,7 +115,7 @@ final class PermissionService implements PermissionServiceInterface
     }
 
     private function getPermissions(
-        string $assetPath,
+        string $elementPath,
         string $permissionsType,
         BasePermissions $defaultPermissions,
         ?User $user
@@ -131,14 +131,14 @@ final class PermissionService implements PermissionServiceInterface
 
         $userWorkspaces = $this->workspaceService->getRelevantWorkspaces(
             $this->workspaceService->getUserWorkspaces($permissionsType, $user),
-            $assetPath
+            $elementPath
         );
         $userRoleWorkspaces = [];
         if ($user) {
             $userRoleWorkspaces = $this->workspaceService->getUserRoleWorkspaces(
                 $user,
                 $permissionsType,
-                $assetPath
+                $elementPath
             );
         }
 
