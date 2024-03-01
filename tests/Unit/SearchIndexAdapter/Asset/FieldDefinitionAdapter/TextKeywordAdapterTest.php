@@ -59,9 +59,9 @@ final class TextKeywordAdapterTest extends Unit
     public function testApplySearchFilterWrongScalarType()
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $adapter = new TextKeywordAdapter(
+        $adapter = (new TextKeywordAdapter(
             $searchIndexConfigServiceInterfaceMock,
-        );
+        ))->setType('input');
 
         $filter = new AssetMetaDataFilter('test', 'input', 1);
         $this->expectException(InvalidValueException::class);
@@ -75,9 +75,9 @@ final class TextKeywordAdapterTest extends Unit
     public function testApplySearchFilterWrongArrayType()
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $adapter = new TextKeywordAdapter(
+        $adapter = (new TextKeywordAdapter(
             $searchIndexConfigServiceInterfaceMock,
-        );
+        ))->setType('input');
 
         $filter = new AssetMetaDataFilter('test', 'input', [1]);
         $this->expectException(InvalidValueException::class);
@@ -88,9 +88,9 @@ final class TextKeywordAdapterTest extends Unit
     {
 
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $adapter = new TextKeywordAdapter(
+        $adapter = (new TextKeywordAdapter(
             $searchIndexConfigServiceInterfaceMock,
-        );
+        ))->setType('input');
 
         $filter = new AssetMetaDataFilter('test', 'input', 'value');
         $search = new Search();
