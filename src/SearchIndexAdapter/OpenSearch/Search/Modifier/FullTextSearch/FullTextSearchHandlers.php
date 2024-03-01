@@ -20,7 +20,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifi
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\ElementKeySearch;
 
-class FullTextSearchHandlers
+/**
+ * @internal
+ */
+final class FullTextSearchHandlers
 {
     #[AsSearchModifierHandler]
     public function handleElementKeySearch(

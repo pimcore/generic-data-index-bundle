@@ -13,8 +13,17 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidValueException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermsFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\ValueObject\StringArray;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
 
 abstract class AbstractAdapter implements AdapterInterface
 {
@@ -42,5 +51,73 @@ abstract class AbstractAdapter implements AdapterInterface
     public function normalize(mixed $value): mixed
     {
         return $value;
+    }
+
+    /**
+     * @param OpenSearchSearchInterface $adapterSearch
+     * @throws InvalidValueException
+     */
+    public function applySearchFilter(AssetMetaDataFilter $filter, AdapterSearchInterface $adapterSearch): void
+    {
+        if ($filter->getType() !== $this->getType()) {
+            throw new InvalidValueException(
+                sprintf(
+                    '%s does not support filter type "%s" for filter "%s"',
+                    static::class,
+                    $filter->getType(),
+                    $filter->getName()
+                )
+            );
+        }
+
+        $value = $filter->getData();
+
+        $query = null;
+        if ($this->isValidScalar($value)) {
+            $query = new TermFilter($this->getSearchFilterFieldPath($filter), $value);
+        } elseif(is_array($value)) {
+            $this->validateArray($value);
+            $value = array_unique($value);
+            $query = new TermsFilter($this->getSearchFilterFieldPath($filter), $value);
+        }
+
+        if ($query === null) {
+            throw new InvalidValueException(
+                sprintf(
+                    'Unsupported value type "%s" for filter "%s"',
+                    gettype($value),
+                    $filter->getName()
+                )
+            );
+        }
+
+        $adapterSearch->addQuery(
+            $query
+        );
+    }
+
+    protected function isValidScalar(mixed $value): bool
+    {
+        return is_string($value);
+    }
+
+
+    /**
+     * @throws InvalidValueException
+     */
+    protected function validateArray(array $value): void
+    {
+        new StringArray($value);
+    }
+
+    protected function getSearchFilterFieldPath(AssetMetaDataFilter $filter): string
+    {
+        return implode('.',
+            [
+                FieldCategory::STANDARD_FIELDS->value,
+                $filter->getName(),
+                $filter->getLanguage() ?? AssetNormalizer::NOT_LOCALIZED_KEY
+            ]
+        );
     }
 }

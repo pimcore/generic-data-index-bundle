@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 use Exception;
 use JsonException;
 use OpenSearch\Client;
+use Pimcore;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
@@ -24,13 +25,18 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceI
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Pimcore\Http\Exception\ResponseException;
 use Psr\Log\LogLevel;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * @internal
  */
 final class OpenSearchService implements SearchIndexServiceInterface
 {
+    private const DEBUG_SEARCH_PARAM = 'debug-open-search-query';
+
     private const INDEX_VERSION_ODD = 'odd';
 
     private const INDEX_VERSION_EVEN = 'even';
@@ -41,6 +47,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly SearchResultDenormalizer $searchResultDenormalizer,
         private readonly Client $openSearchClient,
+        private readonly RequestStack $requestStack,
     ) {
     }
 
@@ -259,12 +266,18 @@ final class OpenSearchService implements SearchIndexServiceInterface
 
     public function search(AdapterSearchInterface $search, string $indexName): SearchResult
     {
+
+        if (Pimcore::inDebugMode() && $this->requestStack->getMainRequest()?->get(self::DEBUG_SEARCH_PARAM)) {
+            throw new ResponseException(new JsonResponse($search->toArray()));
+        }
+
         $openSearchResult = $this
             ->openSearchClient
             ->search([
                 'index' => $indexName,
                 'body' => $search->toArray(),
             ]);
+
 
         return $this->searchResultDenormalizer->denormalize(
             $openSearchResult,

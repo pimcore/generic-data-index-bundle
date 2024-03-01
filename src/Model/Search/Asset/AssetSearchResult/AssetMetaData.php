@@ -18,7 +18,6 @@ final class AssetMetaData
     public function __construct(
         private readonly string $name,
         private readonly ?string $language,
-        private readonly string $type,
         private readonly mixed $data,
     ) {
     }
@@ -32,14 +31,16 @@ final class AssetMetaData
     {
         return $this->language;
     }
-
-    public function getType(): string
-    {
-        return $this->type;
-    }
-
     public function getData(): mixed
     {
         return $this->data;
+    }
+
+    /**
+     * @deprecated Type is not indexed anymore as the type does not make sense from a search perspective.
+     */
+    public function getType(): string
+    {
+        return '';
     }
 }

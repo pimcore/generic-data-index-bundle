@@ -83,11 +83,11 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
 
         foreach($standardFields as $language => $fields) {
             foreach($fields as $fieldName => $fieldData) {
+
                 $result[] = new AssetMetaData(
                     name: $fieldName,
                     language: $language !== AssetNormalizer::NOT_LOCALIZED_KEY ? $language : null,
-                    type: $fieldData['type'],
-                    data: $fieldData['data'],
+                    data: $fieldData,
                 );
             }
         }

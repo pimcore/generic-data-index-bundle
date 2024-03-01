@@ -18,6 +18,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifi
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\WorkspaceQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\QueryServiceInterface;
 
+/**
+ * @internal
+ */
 final class WorkspaceQueryHandler
 {
     public function __construct(

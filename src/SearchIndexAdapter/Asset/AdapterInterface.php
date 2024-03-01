@@ -13,6 +13,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidValueException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
+
 interface AdapterInterface
 {
     public function setType(string $type): self;
@@ -25,4 +29,9 @@ interface AdapterInterface
      * Used to normalize the data for the search index
      */
     public function normalize(mixed $value): mixed;
+
+    /**
+     * @throws InvalidValueException
+     */
+    public function applySearchFilter(AssetMetaDataFilter $filter, AdapterSearchInterface $adapterSearch): void;
 }

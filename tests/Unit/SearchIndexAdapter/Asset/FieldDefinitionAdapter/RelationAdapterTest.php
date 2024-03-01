@@ -23,7 +23,7 @@ use Pimcore\Model\Asset\Image;
  */
 final class RelationAdapterTest extends Unit
 {
-    public function testOpenSearchMapping()
+    public function testGetIndexMapping()
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $adapter = new RelationAdapter(

@@ -14,7 +14,12 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\Asset\FieldDefinitionAdapter;
 
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidValueException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter\BooleanAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter\DateAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter\TextKeywordAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
 /**
@@ -22,9 +27,13 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
  */
 final class DateAdapterTest extends Unit
 {
-    public function testGetOpenSearchMapping(): void
+    public function testGetIndexMapping(): void
     {
-        $adapter = $this->getAdapter();
+        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+
+        $adapter = new DateAdapter(
+            $searchIndexConfigServiceInterfaceMock,
+        );
 
         $mapping = $adapter->getIndexMapping();
         $this->assertSame([
@@ -34,7 +43,11 @@ final class DateAdapterTest extends Unit
 
     public function testNormalize(): void
     {
-        $adapter = $this->getAdapter();
+        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+
+        $adapter = new DateAdapter(
+            $searchIndexConfigServiceInterfaceMock,
+        );
 
         $result = $adapter->normalize(null);
         $this->assertNull($result);
@@ -45,12 +58,4 @@ final class DateAdapterTest extends Unit
 
     }
 
-    private function getAdapter(): DateAdapter
-    {
-        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-
-        return new DateAdapter(
-            $searchIndexConfigServiceInterfaceMock,
-        );
-    }
 }
