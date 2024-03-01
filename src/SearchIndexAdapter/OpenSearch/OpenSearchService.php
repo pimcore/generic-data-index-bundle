@@ -36,7 +36,6 @@ final class OpenSearchService implements SearchIndexServiceInterface
 
     private const INDEX_VERSION_EVEN = 'even';
 
-
     use LoggerAwareTrait;
 
     public function __construct(
