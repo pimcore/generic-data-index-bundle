@@ -17,7 +17,9 @@ use Exception;
 use JsonException;
 use OpenSearch\Client;
 use Pimcore;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug\SearchInformation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
@@ -29,17 +31,22 @@ use Pimcore\Http\Exception\ResponseException;
 use Psr\Log\LogLevel;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Stopwatch\Stopwatch;
+use Throwable;
 
 /**
  * @internal
  */
 final class OpenSearchService implements SearchIndexServiceInterface
 {
-    private const DEBUG_SEARCH_PARAM = 'debug-open-search-query';
-
     private const INDEX_VERSION_ODD = 'odd';
 
     private const INDEX_VERSION_EVEN = 'even';
+
+    /**
+     * @var SearchInformation[]
+     */
+    private array $executedSearches = [];
 
     use LoggerAwareTrait;
 
@@ -264,19 +271,44 @@ final class OpenSearchService implements SearchIndexServiceInterface
         );
     }
 
+
     public function search(AdapterSearchInterface $search, string $indexName): SearchResult
     {
 
-        if (Pimcore::inDebugMode() && $this->requestStack->getMainRequest()?->get(self::DEBUG_SEARCH_PARAM)) {
-            throw new ResponseException(new JsonResponse($search->toArray()));
+        try {
+
+            $stopWatch = new Stopwatch();
+            $stopWatch->start('search');
+
+            $openSearchResult = $this
+                ->openSearchClient
+                ->search([
+                    'index' => $indexName,
+                    'body' => $search->toArray(),
+                ]);
+
+            $executionTime = $stopWatch->stop('search')->getDuration();
+
+        } catch (Throwable $e) {
+            $searchInformation = new SearchInformation(
+                $search,
+                false,
+                [],
+                0
+            );
+
+            $this->executedSearches[] = $searchInformation;
+
+            throw new SearchFailedException($searchInformation, 'Search failed: ' . $e->getMessage(), $e->getCode(), $e);
         }
 
-        $openSearchResult = $this
-            ->openSearchClient
-            ->search([
-                'index' => $indexName,
-                'body' => $search->toArray(),
-            ]);
+        $this->executedSearches[] = new SearchInformation(
+            $search,
+            true,
+            $openSearchResult,
+            $executionTime,
+            debug_backtrace(),
+        );
 
         return $this->searchResultDenormalizer->denormalize(
             $openSearchResult,
@@ -284,6 +316,11 @@ final class OpenSearchService implements SearchIndexServiceInterface
             null,
             ['search' => $search]
         );
+    }
+
+    public function getExecutedSearches(): array
+    {
+        return $this->executedSearches;
     }
 
     public function getStats(string $indexName): array

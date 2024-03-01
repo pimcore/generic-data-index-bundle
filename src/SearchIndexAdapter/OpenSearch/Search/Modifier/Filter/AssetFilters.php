@@ -33,7 +33,10 @@ final class AssetFilters
      * @throws InvalidModifierException
      */
     #[AsSearchModifierHandler]
-    public function handleAssetMetaDataFilter(AssetMetaDataFilter $assetMetaDataFilter, SearchModifierContextInterface $context): void
+    public function handleAssetMetaDataFilter(
+        AssetMetaDataFilter $assetMetaDataFilter,
+        SearchModifierContextInterface $context
+    ): void
     {
         $adapter = $this->fieldDefinitionService->getFieldDefinitionAdapter($assetMetaDataFilter->getType());
 
