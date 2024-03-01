@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
 use Pimcore;
@@ -18,7 +28,6 @@ use Symfony\Component\HttpKernel\KernelEvents;
 final class DebugSubscriber implements EventSubscriberInterface
 {
     private const DEBUG_SEARCH_PARAM = 'debug-open-search-queries';
-
 
     public function __construct(private readonly SearchIndexServiceInterface $searchIndexService)
     {
@@ -48,13 +57,13 @@ final class DebugSubscriber implements EventSubscriberInterface
         $searches = $this->searchIndexService->getExecutedSearches();
 
         $searches = array_map(
-            static fn(SearchInformation $searchInformation) => $searchInformation->toArray($verbosity),
+            static fn (SearchInformation $searchInformation) => $searchInformation->toArray($verbosity),
             $searches
         );
 
         return [
             'number_of_searches' => count($searches),
-            'searches' => $searches
+            'searches' => $searches,
         ];
     }
 }

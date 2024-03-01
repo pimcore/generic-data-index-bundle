@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
@@ -11,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchI
 final class SearchInformation
 {
     private const VERBOSITY_VERBOSE = 2;
+
     private const VERBOSITY_VERY_VERBOSE = 3;
 
     public function __construct(
@@ -19,8 +30,7 @@ final class SearchInformation
         private readonly array $response,
         private readonly int|float $executionTime,
         private array $stackTrace
-    )
-    {
+    ) {
     }
 
     public function getSearch(): AdapterSearchInterface
@@ -47,8 +57,6 @@ final class SearchInformation
     {
         return $this->stackTrace;
     }
-
-
 
     public function toArray(int $verbosity): array
     {

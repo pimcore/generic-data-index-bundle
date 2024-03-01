@@ -16,7 +16,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 use Exception;
 use JsonException;
 use OpenSearch\Client;
-use Pimcore;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug\SearchInformation;
@@ -27,9 +26,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceI
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
-use Pimcore\Http\Exception\ResponseException;
 use Psr\Log\LogLevel;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Stopwatch\Stopwatch;
 use Throwable;
@@ -270,7 +267,6 @@ final class OpenSearchService implements SearchIndexServiceInterface
             size: $pageSize
         );
     }
-
 
     public function search(AdapterSearchInterface $search, string $indexName): SearchResult
     {

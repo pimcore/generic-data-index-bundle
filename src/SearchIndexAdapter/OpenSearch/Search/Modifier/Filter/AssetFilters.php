@@ -36,8 +36,7 @@ final class AssetFilters
     public function handleAssetMetaDataFilter(
         AssetMetaDataFilter $assetMetaDataFilter,
         SearchModifierContextInterface $context
-    ): void
-    {
+    ): void {
         $adapter = $this->fieldDefinitionService->getFieldDefinitionAdapter($assetMetaDataFilter->getType());
 
         if ($adapter === null) {
