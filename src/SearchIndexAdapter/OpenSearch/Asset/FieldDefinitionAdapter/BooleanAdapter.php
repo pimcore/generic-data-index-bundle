@@ -42,6 +42,4 @@ final class BooleanAdapter extends AbstractAdapter
     {
         new BooleanArray($value);
     }
-
-
 }

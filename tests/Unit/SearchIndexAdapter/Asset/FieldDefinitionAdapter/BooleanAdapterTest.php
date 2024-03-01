@@ -38,7 +38,6 @@ final class BooleanAdapterTest extends Unit
         ], $mapping);
     }
 
-
     public function testApplySearchFilterWrongMetaDataType(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
@@ -62,7 +61,6 @@ final class BooleanAdapterTest extends Unit
         $this->expectException(InvalidValueException::class);
         $adapter->applySearchFilter($filter, new Search());
 
-
         $filter = new AssetMetaDataFilter('test', 'checkbox', ['test']);
         $this->expectException(InvalidValueException::class);
         $adapter->applySearchFilter($filter, new Search());
@@ -79,6 +77,7 @@ final class BooleanAdapterTest extends Unit
         $this->expectException(InvalidValueException::class);
         $adapter->applySearchFilter($filter, new Search());
     }
+
     public function testApplySearchFilter()
     {
 
@@ -99,8 +98,8 @@ final class BooleanAdapterTest extends Unit
                             'standard_fields.test.default' => true,
                         ],
                     ],
-                ]
-            ]
+                ],
+            ],
         ], $search->toArray());
 
         $filter = new AssetMetaDataFilter('test', 'checkbox', false, 'en');
@@ -115,11 +114,11 @@ final class BooleanAdapterTest extends Unit
                             'standard_fields.test.en' => false,
                         ],
                     ],
-                ]
-            ]
+                ],
+            ],
         ], $search->toArray());
 
-        $filter = new AssetMetaDataFilter('test', 'checkbox', [true,false], 'en');
+        $filter = new AssetMetaDataFilter('test', 'checkbox', [true, false], 'en');
         $search = new Search();
         $adapter->applySearchFilter($filter, $search);
 
@@ -128,13 +127,11 @@ final class BooleanAdapterTest extends Unit
                 'bool' => [
                     'filter' => [
                         'terms' => [
-                            'standard_fields.test.en' => [true,false],
+                            'standard_fields.test.en' => [true, false],
                         ],
                     ],
-                ]
-            ]
+                ],
+            ],
         ], $search->toArray());
     }
-
-
 }

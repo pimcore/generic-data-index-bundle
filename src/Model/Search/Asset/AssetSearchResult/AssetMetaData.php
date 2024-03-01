@@ -31,6 +31,7 @@ final class AssetMetaData
     {
         return $this->language;
     }
+
     public function getData(): mixed
     {
         return $this->data;

@@ -55,6 +55,7 @@ abstract class AbstractAdapter implements AdapterInterface
 
     /**
      * @param OpenSearchSearchInterface $adapterSearch
+     *
      * @throws InvalidValueException
      */
     public function applySearchFilter(AssetMetaDataFilter $filter, AdapterSearchInterface $adapterSearch): void
@@ -101,7 +102,6 @@ abstract class AbstractAdapter implements AdapterInterface
         return is_string($value);
     }
 
-
     /**
      * @throws InvalidValueException
      */
@@ -116,7 +116,7 @@ abstract class AbstractAdapter implements AdapterInterface
             [
                 FieldCategory::STANDARD_FIELDS->value,
                 $filter->getName(),
-                $filter->getLanguage() ?? AssetNormalizer::NOT_LOCALIZED_KEY
+                $filter->getLanguage() ?? AssetNormalizer::NOT_LOCALIZED_KEY,
             ]
         );
     }

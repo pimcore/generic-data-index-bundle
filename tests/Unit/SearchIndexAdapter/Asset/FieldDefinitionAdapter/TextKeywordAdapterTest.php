@@ -67,7 +67,6 @@ final class TextKeywordAdapterTest extends Unit
         $this->expectException(InvalidValueException::class);
         $adapter->applySearchFilter($filter, new Search());
 
-
         $filter = new AssetMetaDataFilter('test', 'input', ['test']);
         $this->expectException(InvalidValueException::class);
         $adapter->applySearchFilter($filter, new Search());
@@ -105,8 +104,8 @@ final class TextKeywordAdapterTest extends Unit
                             'standard_fields.test.default.keyword' => 'value',
                         ],
                     ],
-                ]
-            ]
+                ],
+            ],
         ], $search->toArray());
 
         $filter = new AssetMetaDataFilter('test', 'input', 'value', 'en');
@@ -121,11 +120,11 @@ final class TextKeywordAdapterTest extends Unit
                             'standard_fields.test.en.keyword' => 'value',
                         ],
                     ],
-                ]
-            ]
+                ],
+            ],
         ], $search->toArray());
 
-        $filter = new AssetMetaDataFilter('test', 'input', ['value','value2'], 'en');
+        $filter = new AssetMetaDataFilter('test', 'input', ['value', 'value2'], 'en');
         $search = new Search();
         $adapter->applySearchFilter($filter, $search);
 
@@ -134,11 +133,11 @@ final class TextKeywordAdapterTest extends Unit
                 'bool' => [
                     'filter' => [
                         'terms' => [
-                            'standard_fields.test.en.keyword' => ['value','value2'],
+                            'standard_fields.test.en.keyword' => ['value', 'value2'],
                         ],
                     ],
-                ]
-            ]
+                ],
+            ],
         ], $search->toArray());
     }
 }

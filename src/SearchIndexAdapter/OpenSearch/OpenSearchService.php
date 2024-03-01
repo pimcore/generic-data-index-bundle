@@ -278,7 +278,6 @@ final class OpenSearchService implements SearchIndexServiceInterface
                 'body' => $search->toArray(),
             ]);
 
-
         return $this->searchResultDenormalizer->denormalize(
             $openSearchResult,
             SearchResult::class,
