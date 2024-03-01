@@ -288,7 +288,8 @@ final class OpenSearchService implements SearchIndexServiceInterface
                 $search,
                 false,
                 [],
-                0
+                0,
+                []
             );
 
             $this->executedSearches[] = $searchInformation;
