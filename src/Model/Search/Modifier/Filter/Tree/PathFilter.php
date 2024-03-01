@@ -21,7 +21,7 @@ final class PathFilter implements SearchModifierInterface
     use ValidPathStringTrait;
 
     public function __construct(
-        private readonly string $path,
+        private readonly string $path = '/',
         private readonly bool $directChildrenOnly = false,
         private readonly bool $includeParentItem = false,
     ) {
