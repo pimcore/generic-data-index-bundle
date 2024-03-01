@@ -37,10 +37,7 @@ abstract class AbstractAdapter implements AdapterInterface
         return $this->type;
     }
 
-    public function getIndexMapping(): array
-    {
-        return [];
-    }
+    abstract public function getIndexMapping(): array;
 
     public function normalize(mixed $value): mixed
     {
