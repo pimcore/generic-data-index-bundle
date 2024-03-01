@@ -54,6 +54,10 @@ final class DebugSubscriber implements EventSubscriberInterface
 
     private function getNormalizedSearches(int $verbosity): array
     {
+        if (!$this->searchIndexService instanceof OpenSearchService) {
+            return [];
+        }
+
         $searches = $this->searchIndexService->getExecutedSearches();
 
         $searches = array_map(
