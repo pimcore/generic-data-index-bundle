@@ -50,7 +50,6 @@ final class OpenSearchService implements SearchIndexServiceInterface
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly SearchResultDenormalizer $searchResultDenormalizer,
         private readonly Client $openSearchClient,
-        private readonly RequestStack $requestStack,
     ) {
     }
 
