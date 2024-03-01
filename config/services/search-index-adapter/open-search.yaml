@@ -12,6 +12,11 @@ services:
         arguments:
             $openSearchClient: '@generic-data-index.opensearch-client'
 
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\SearchExecutionServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\SearchExecutionService
+        arguments:
+            $openSearchClient: '@generic-data-index.opensearch-client'
+
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\BulkOperationService
         arguments:

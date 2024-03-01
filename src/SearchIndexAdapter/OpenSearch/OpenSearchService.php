@@ -18,16 +18,14 @@ use JsonException;
 use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug\SearchInformation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\SearchExecutionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Psr\Log\LogLevel;
-use Symfony\Component\Stopwatch\Stopwatch;
 
 /**
  * @internal
@@ -38,17 +36,13 @@ final class OpenSearchService implements SearchIndexServiceInterface
 
     private const INDEX_VERSION_EVEN = 'even';
 
-    /**
-     * @var SearchInformation[]
-     */
-    private array $executedSearches = [];
 
     use LoggerAwareTrait;
 
     public function __construct(
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
-        private readonly SearchResultDenormalizer $searchResultDenormalizer,
         private readonly Client $openSearchClient,
+        private readonly SearchExecutionServiceInterface $searchExecutionService,
     ) {
     }
 
@@ -265,60 +259,17 @@ final class OpenSearchService implements SearchIndexServiceInterface
         );
     }
 
+    /**
+     * @throws SearchFailedException
+     */
     public function search(AdapterSearchInterface $search, string $indexName): SearchResult
     {
-
-        try {
-
-            $stopWatch = new Stopwatch();
-            $stopWatch->start('search');
-
-            $openSearchResult = $this
-                ->openSearchClient
-                ->search([
-                    'index' => $indexName,
-                    'body' => $search->toArray(),
-                ]);
-
-            $executionTime = $stopWatch->stop('search')->getDuration();
-
-        } catch (Exception $e) {
-            $searchInformation = new SearchInformation(
-                $search,
-                false,
-                [],
-                0,
-                []
-            );
-
-            $this->executedSearches[] = $searchInformation;
-
-            throw new SearchFailedException(
-                $searchInformation,
-                'Search failed: ' . $e->getMessage(),
-                $e->getCode(), $e
-            );
-        }
-
-        $this->executedSearches[] = new SearchInformation(
-            $search,
-            true,
-            $openSearchResult,
-            $executionTime,
-            debug_backtrace(),
-        );
-
-        return $this->searchResultDenormalizer->denormalize(
-            $openSearchResult,
-            SearchResult::class,
-            null,
-            ['search' => $search]
-        );
+        return $this->searchExecutionService->executeSearch($search, $indexName);
     }
 
     public function getExecutedSearches(): array
     {
-        return $this->executedSearches;
+        return $this->searchExecutionService->getExecutedSearches();
     }
 
     public function getStats(string $indexName): array
