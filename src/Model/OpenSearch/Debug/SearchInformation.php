@@ -29,7 +29,7 @@ final class SearchInformation
         private readonly bool $success,
         private readonly array $response,
         private readonly int|float $executionTime,
-        private array $stackTrace
+        private readonly array $stackTrace
     ) {
     }
 

@@ -28,7 +28,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Psr\Log\LogLevel;
 use Symfony\Component\Stopwatch\Stopwatch;
-use Throwable;
 
 /**
  * @internal
@@ -283,7 +282,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
 
             $executionTime = $stopWatch->stop('search')->getDuration();
 
-        } catch (Throwable $e) {
+        } catch (Exception $e) {
             $searchInformation = new SearchInformation(
                 $search,
                 false,
@@ -294,7 +293,11 @@ final class OpenSearchService implements SearchIndexServiceInterface
 
             $this->executedSearches[] = $searchInformation;
 
-            throw new SearchFailedException($searchInformation, 'Search failed: ' . $e->getMessage(), $e->getCode(), $e);
+            throw new SearchFailedException(
+                $searchInformation,
+                'Search failed: ' . $e->getMessage(),
+                $e->getCode(), $e
+            );
         }
 
         $this->executedSearches[] = new SearchInformation(
