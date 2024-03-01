@@ -45,7 +45,7 @@ final class BooleanAdapterTest extends Unit
             $searchIndexConfigServiceInterfaceMock,
         ))->setType('checkbox');
 
-        $filter = new AssetMetaDataFilter('test', 'input', 1);
+        $filter = new AssetMetaDataFilter('test', 'input', true);
         $this->expectException(InvalidValueException::class);
         $adapter->applySearchFilter($filter, new Search());
     }
