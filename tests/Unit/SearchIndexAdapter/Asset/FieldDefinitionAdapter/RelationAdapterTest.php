@@ -61,8 +61,6 @@ final class RelationAdapterTest extends Unit
         ], $adapter->normalize($image));
     }
 
-
-
     public function testApplySearchFilterWrongMetaDataType(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
