@@ -24,11 +24,10 @@ final class IntegerArray
      * @throws InvalidValueException
      */
     public function __construct(
-        private readonly array $values,
-        private readonly bool $nullAllowed = false
+        private readonly array $values
     ) {
         foreach($values as $value) {
-            if (!is_int($value) && !($nullAllowed && $value === null)) {
+            if (!is_int($value)) {
                 throw new InvalidValueException(
                     sprintf(
                         'Only integer values are allowed (%s given).',
@@ -42,10 +41,5 @@ final class IntegerArray
     public function getValues(): array
     {
         return $this->values;
-    }
-
-    public function isNullAllowed(): bool
-    {
-        return $this->nullAllowed;
     }
 }

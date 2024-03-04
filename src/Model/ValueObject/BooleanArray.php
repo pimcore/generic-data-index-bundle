@@ -25,10 +25,9 @@ final class BooleanArray
      */
     public function __construct(
         private readonly array $values,
-        private readonly bool $nullAllowed = false
     ) {
         foreach($values as $value) {
-            if (!is_bool($value) && !($nullAllowed && $value === null)) {
+            if (!is_bool($value)) {
                 throw new InvalidValueException(
                     sprintf(
                         'Only boolean values are allowed (%s given).',
@@ -42,10 +41,5 @@ final class BooleanArray
     public function getValues(): array
     {
         return $this->values;
-    }
-
-    public function isNullAllowed(): bool
-    {
-        return $this->nullAllowed;
     }
 }

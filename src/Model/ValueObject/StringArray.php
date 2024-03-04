@@ -25,10 +25,9 @@ final class StringArray
      */
     public function __construct(
         private readonly array $values,
-        private readonly bool $nullAllowed = false
     ) {
         foreach($values as $value) {
-            if (!is_string($value) && !($nullAllowed && $value === null)) {
+            if (!is_string($value)) {
                 throw new InvalidValueException(
                     sprintf(
                         'Only string values are allowed (%s given).',
@@ -38,14 +37,8 @@ final class StringArray
             }
         }
     }
-
     public function getValues(): array
     {
         return $this->values;
-    }
-
-    public function isNullAllowed(): bool
-    {
-        return $this->nullAllowed;
     }
 }
