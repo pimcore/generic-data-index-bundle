@@ -53,6 +53,4 @@ final class DateAdapter extends AbstractAdapter
         $dateFilter = DateFilter::createFromArray($this->getSearchFilterFieldPath($filter), $filter->getData());
         $adapterSearch->addQuery($dateFilter);
     }
-
-
 }
