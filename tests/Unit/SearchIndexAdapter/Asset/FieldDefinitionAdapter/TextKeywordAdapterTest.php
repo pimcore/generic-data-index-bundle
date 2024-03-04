@@ -91,7 +91,7 @@ final class TextKeywordAdapterTest extends Unit
                         'wildcard' => [
                             'standard_fields.test.default.keyword' => [
                                 'value' => '*value*',
-                                'case_insensitive' => false,
+                                'case_insensitive' => true,
                             ],
                         ],
                     ],
@@ -110,7 +110,7 @@ final class TextKeywordAdapterTest extends Unit
                         'wildcard' => [
                             'standard_fields.test.en.keyword' => [
                                 'value' => 'value*',
-                                'case_insensitive' => false,
+                                'case_insensitive' => true,
                             ],
                         ],
                     ],
@@ -129,7 +129,7 @@ final class TextKeywordAdapterTest extends Unit
                         'wildcard' => [
                             'standard_fields.test.en.keyword' => [
                                 'value' => 'val*ue',
-                                'case_insensitive' => false,
+                                'case_insensitive' => true,
                             ],
                         ],
                     ],
