@@ -11,29 +11,31 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\UserPermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\AssetSearchException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResult;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Model\User;
 
 /**
  * @internal
  */
-final class AssetSearchService implements AssetSearchServiceInterface
+final class DataObjectSearchService implements DataObjectSearchServiceInterface
 {
     public function __construct(
-        private readonly AssetTypeAdapter $assetTypeAdapter,
+        private readonly DataObjectTypeAdapter $dataObjectTypeAdapter,
         private readonly PaginationInfoServiceInterface $paginationInfoService,
         private readonly RuntimeCacheResolverInterface $runtimeCacheResolver,
         private readonly SearchHelper $searchHelper,
@@ -42,38 +44,40 @@ final class AssetSearchService implements AssetSearchServiceInterface
     }
 
     /**
-     * @throws Exception
+     * @throws AssetSearchException
      */
-    public function search(SearchInterface $assetSearch): AssetSearchResult
+    public function search(SearchInterface|DataObjectSearchInterface $dataObjectSearch): DataObjectSearchResult
     {
-        $assetSearch = $this->searchHelper->addSearchRestrictions(
-            search: $assetSearch,
-            userPermission: UserPermissionTypes::ASSETS->value,
-            workspaceType: AssetWorkspace::WORKSPACE_TYPE
+        $indexContext = $dataObjectSearch->getClassDefinition() ?: DataObjectIndexHandler::DATA_OBJECT_INDEX_ALIAS;
+
+        $dataObjectSearch = $this->searchHelper->addSearchRestrictions(
+            search: $dataObjectSearch,
+            userPermission: UserPermissionTypes::OBJECTS->value,
+            workspaceType: DataObjectWorkspace::WORKSPACE_TYPE
         );
 
         $searchResult = $this->searchHelper->performSearch(
-            search: $assetSearch,
-            indexName: $this->assetTypeAdapter->getAliasIndexName()
+            search: $dataObjectSearch,
+            indexName: $this->dataObjectTypeAdapter->getAliasIndexName($indexContext)
         );
 
         $childrenCounts = $this->searchHelper->getChildrenCounts(
             searchResult: $searchResult,
-            indexName: $this->assetTypeAdapter->getAliasIndexName(),
+            indexName: $this->dataObjectTypeAdapter->getAliasIndexName($indexContext),
             search: $this->searchProvider->createAssetSearch()
         );
 
         try {
-            return new AssetSearchResult(
+            return new DataObjectSearchResult(
                 items: $this->searchHelper->hydrateSearchResultHits(
                     $searchResult,
                     $childrenCounts,
-                    $assetSearch->getUser()
+                    $dataObjectSearch->getUser()
                 ),
                 pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
                     searchResult: $searchResult,
-                    page: $assetSearch->getPage(),
-                    pageSize: $assetSearch->getPageSize()
+                    page: $dataObjectSearch->getPage(),
+                    pageSize: $dataObjectSearch->getPageSize()
                 ),
             );
         } catch (Exception $e) {
@@ -81,18 +85,15 @@ final class AssetSearchService implements AssetSearchServiceInterface
         }
     }
 
-    /**
-     * @throws Exception
-     */
     public function byId(
         int $id,
         ?User $user = null,
         bool $forceReload = false
-    ): ?AssetSearchResultItem {
-        $cacheKey = SearchHelper::ASSET_SEARCH . '_' . $id;
+    ): ?DataObjectSearchResultItem {
+        $cacheKey = SearchHelper::OBJECT_SEARCH . '_' . $id;
 
         if ($forceReload) {
-            $searchResult = $this->searchAssetById($id, $user);
+            $searchResult = $this->searchObjectById($id, $user);
             $this->runtimeCacheResolver->save($searchResult, $cacheKey);
 
             return $searchResult;
@@ -101,25 +102,22 @@ final class AssetSearchService implements AssetSearchServiceInterface
         try {
             $searchResult = $this->runtimeCacheResolver->load($cacheKey);
         } catch (Exception) {
-            $searchResult = $this->searchAssetById($id, $user);
+            $searchResult = $this->searchObjectById($id, $user);
         }
 
         return $searchResult;
     }
 
-    /**
-     * @throws Exception
-     */
-    private function searchAssetById(int $id, ?User $user = null): ?AssetSearchResultItem
+    private function searchObjectById(int $id, ?User $user = null): ?DataObjectSearchResultItem
     {
-        $assetSearch = $this->searchProvider->createAssetSearch();
-        $assetSearch->setPageSize(1);
-        $assetSearch->addModifier(new IdFilter($id));
+        $dataObjectSearch = $this->searchProvider->createDataObjectSearch();
+        $dataObjectSearch->setPageSize(1);
+        $dataObjectSearch->addModifier(new IdFilter($id));
 
         if ($user) {
-            $assetSearch->setUser($user);
+            $dataObjectSearch->setUser($user);
         }
 
-        return $this->search($assetSearch)->getItems()[0] ?? null;
+        return $this->search($dataObjectSearch)->getItems()[0] ?? null;
     }
 }

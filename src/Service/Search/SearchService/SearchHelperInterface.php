@@ -39,7 +39,7 @@ interface SearchHelperInterface
         SearchInterface $search
     ): array;
 
-    public function hydrateAssetSearchResultHits(
+    public function hydrateSearchResultHits(
         SearchResult $searchResult,
         array $childrenCounts,
         ?User $user = null

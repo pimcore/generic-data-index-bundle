@@ -18,4 +18,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterfac
 interface SearchProviderInterface
 {
     public function createAssetSearch(): SearchInterface;
+
+    public function createDataObjectSearch(): SearchInterface;
 }

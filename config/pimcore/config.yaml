@@ -107,6 +107,8 @@ pimcore_generic_data_index:
           type: keyword
         isLocked:
           type: boolean
+        hasWorkflowWithPermissions:
+          type: boolean
       data_object:
         published:
           type: boolean
@@ -117,8 +119,6 @@ pimcore_generic_data_index:
           type: keyword
         fileSize:
           type: long
-        hasWorkflowWithPermissions:
-          type: boolean
         thumbnail:
           type: keyword
         imageThumbnail:

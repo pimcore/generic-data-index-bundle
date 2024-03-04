@@ -20,6 +20,7 @@ use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\DataObjectNormalizer;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -58,11 +59,11 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
 
     public function getIndexNameShort(mixed $context): string
     {
-        if ($context instanceof ClassDefinition) {
-            return $context->getName();
-        }
-
-        return 'data_object_folders';
+        return match (true) {
+            $context instanceof ClassDefinition => $context->getName(),
+            $context === DataObjectIndexHandler::DATA_OBJECT_INDEX_ALIAS => $context,
+            default => 'data_object_folders',
+        };
     }
 
     public function getIndexNameByClassDefinition(ClassDefinition $classDefinition): string

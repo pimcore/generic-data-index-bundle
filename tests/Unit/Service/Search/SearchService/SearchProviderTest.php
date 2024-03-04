@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\Search\Search
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProvider;
 
 /**
@@ -28,5 +29,13 @@ final class SearchProviderTest extends Unit
         $assetSearch = $searchProvider->createAssetSearch();
 
         $this->assertInstanceOf(AssetSearch::class, $assetSearch);
+    }
+
+    public function testCreateDataObjectSearch(): void
+    {
+        $searchProvider = new SearchProvider();
+        $assetSearch = $searchProvider->createDataObjectSearch();
+
+        $this->assertInstanceOf(DataObjectSearch::class, $assetSearch);
     }
 }

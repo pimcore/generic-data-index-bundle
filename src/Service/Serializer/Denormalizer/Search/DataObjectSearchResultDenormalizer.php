@@ -13,18 +13,15 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetMetaData;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandlerService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DataObjectTypeSerializationHandlerService;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
-class AssetSearchResultDenormalizer implements DenormalizerInterface
+class DataObjectSearchResultDenormalizer implements DenormalizerInterface
 {
     public function __construct(
-        private readonly AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService
+        private readonly DataObjectTypeSerializationHandlerService $typeHandlerService
     ) {
     }
 
@@ -36,32 +33,31 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
         string $type,
         string $format = null,
         array $context = []
-    ): AssetSearchResultItem {
+    ): DataObjectSearchResultItem {
 
-        $serializationHandler = $this->assetTypeSerializationHandlerService->getSerializationHandler(
+        $serializationHandler = $this->typeHandlerService->getSerializationHandler(
             SystemField::TYPE->getData($data)
         );
 
         if ($serializationHandler) {
             $searchResultItem = $serializationHandler->createSearchResultModel($data);
         } else {
-            $searchResultItem = new AssetSearchResultItem();
+            $searchResultItem = new DataObjectSearchResultItem();
         }
 
         return $searchResultItem
             ->setId(SystemField::ID->getData($data))
+            ->setClassName(SystemField::CLASS_NAME->getData($data))
             ->setParentId(SystemField::PARENT_ID->getData($data))
             ->setType(SystemField::TYPE->getData($data))
+            ->setPublished(SystemField::PUBLISHED->getData($data))
             ->setKey(SystemField::KEY->getData($data))
             ->setPath(SystemField::PATH->getData($data))
             ->setFullPath(SystemField::FULL_PATH->getData($data))
-            ->setMimeType(SystemField::MIME_TYPE->getData($data))
-            ->setFileSize(SystemField::FILE_SIZE->getData($data))
             ->setUserOwner(SystemField::USER_OWNER->getData($data))
             ->setUserModification(SystemField::USER_MODIFICATION->getData($data))
             ->setLocked(SystemField::LOCKED->getData($data))
             ->setIsLocked(SystemField::IS_LOCKED->getData($data))
-            ->setMetaData($this->hydrateMetadata($data[FieldCategory::STANDARD_FIELDS->value]))
             ->setCreationDate(strtotime(SystemField::CREATION_DATE->getData($data)))
             ->setModificationDate(strtotime(SystemField::MODIFICATION_DATE->getData($data)))
             ->setHasWorkflowWithPermissions(SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data))
@@ -71,27 +67,6 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
 
     public function supportsDenormalization(mixed $data, string $type, string $format = null): bool
     {
-        return is_array($data) && is_subclass_of($type, AssetSearchResultItem::class);
-    }
-
-    /**
-     * @return AssetMetaData[]
-     */
-    private function hydrateMetadata(array $standardFields): array
-    {
-        $result = [];
-
-        foreach($standardFields as $language => $fields) {
-            foreach($fields as $fieldName => $fieldData) {
-                $result[] = new AssetMetaData(
-                    name: $fieldName,
-                    language: $language !== AssetNormalizer::NOT_LOCALIZED_KEY ? $language : null,
-                    type: $fieldData['type'],
-                    data: $fieldData['data'],
-                );
-            }
-        }
-
-        return $result;
+        return is_array($data) && is_subclass_of($type, DataObjectSearchResultItem::class);
     }
 }

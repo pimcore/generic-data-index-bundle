@@ -11,10 +11,10 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\BaseSearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 
-final class AssetSearch extends BaseSearch
+class Unknown extends AssetSearchResultItem
 {
 }

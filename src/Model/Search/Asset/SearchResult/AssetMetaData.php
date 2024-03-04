@@ -11,7 +11,7 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult;
 
 final class AssetMetaData
 {
