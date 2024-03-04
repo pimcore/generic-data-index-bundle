@@ -24,7 +24,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefiniti
  */
 final class AssetAggregations
 {
-
     public function __construct(private readonly FieldDefinitionServiceInterface $fieldDefinitionService)
     {
     }

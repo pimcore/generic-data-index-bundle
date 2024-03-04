@@ -36,5 +36,6 @@ interface AdapterInterface
      * @throws InvalidValueException
      */
     public function applySearchFilter(AssetMetaDataFilter $filter, AdapterSearchInterface $adapterSearch): void;
+
     public function getSearchFilterAggregation(AssetMetaDataAggregation $aggregation): ?Aggregation;
 }

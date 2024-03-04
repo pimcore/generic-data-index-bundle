@@ -25,7 +25,7 @@ final class KeywordAdapter extends AbstractAdapter
     public function getIndexMapping(): array
     {
         return [
-            'type' => AttributeType::KEYWORD->value
+            'type' => AttributeType::KEYWORD->value,
         ];
     }
 
