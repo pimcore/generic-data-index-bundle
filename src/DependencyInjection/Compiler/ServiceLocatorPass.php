@@ -31,10 +31,12 @@ final class ServiceLocatorPass implements CompilerPassInterface
         $definitionList = [
             'pimcore.generic_data_index.object.search_index_field_definition_locator' =>
                 CompilerPassTag::DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION->value,
-            //'pimcore.generic_data_index.asset.search_index_field_definition_locator' =>
-            //  CompilerPassTag::DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION->value
+            'pimcore.generic_data_index.asset.search_index_field_definition_locator' =>
+                CompilerPassTag::ASSET_SEARCH_INDEX_FIELD_DEFINITION->value,
             'pimcore.generic_data_index.asset.type_serialization_handler_locator' =>
                 CompilerPassTag::ASSET_TYPE_SERIALIZATION_HANDLER->value,
+            'pimcore.generic_data_index.asset.mapping_provider_locator' =>
+                CompilerPassTag::ASSET_MAPPING_PROVIDER->value,
         ];
 
         foreach ($definitionList as $definitionId => $serviceTagName) {
