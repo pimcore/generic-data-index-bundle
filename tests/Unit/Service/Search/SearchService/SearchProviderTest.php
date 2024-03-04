@@ -30,6 +30,7 @@ final class SearchProviderTest extends Unit
 
         $this->assertInstanceOf(AssetSearch::class, $assetSearch);
     }
+
     public function testCreateDataObjectSearch(): void
     {
         $searchProvider = new SearchProvider();

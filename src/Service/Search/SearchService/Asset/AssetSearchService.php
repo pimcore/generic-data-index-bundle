@@ -88,8 +88,7 @@ final class AssetSearchService implements AssetSearchServiceInterface
         int $id,
         ?User $user = null,
         bool $forceReload = false
-    ): ?AssetSearchResultItem
-    {
+    ): ?AssetSearchResultItem {
         $cacheKey = SearchHelper::ASSET_SEARCH . '_' . $id;
 
         if ($forceReload) {

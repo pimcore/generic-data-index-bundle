@@ -26,6 +26,7 @@ final class SearchProvider implements SearchProviderInterface
     {
         return new AssetSearch();
     }
+
     public function createDataObjectSearch(): SearchInterface
     {
         return new DataObjectSearch();

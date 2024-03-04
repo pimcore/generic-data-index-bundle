@@ -21,7 +21,6 @@ use Pimcore\Model\User;
 
 interface DataObjectSearchServiceInterface
 {
-
     public function search(SearchInterface|DataObjectSearchInterface $dataObjectSearch): DataObjectSearchResult;
 
     public function byId(int $id, ?User $user = null): ?DataObjectSearchResultItem;

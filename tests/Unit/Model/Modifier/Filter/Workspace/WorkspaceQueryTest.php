@@ -15,8 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Model\Modifier\Filter
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\WorkspaceQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspace;
 use Pimcore\Model\User;
@@ -30,7 +28,7 @@ final class WorkspaceQueryTest extends Unit
     {
         $filter = new WorkspaceQuery(
             DataObjectWorkspace::WORKSPACE_TYPE,
-            ( new User())->setId(1),
+            (new User())->setId(1),
             PermissionTypes::VIEW->value
         );
 

@@ -15,9 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Event\DataObject;
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\PermissionEvent;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
 
 /**
