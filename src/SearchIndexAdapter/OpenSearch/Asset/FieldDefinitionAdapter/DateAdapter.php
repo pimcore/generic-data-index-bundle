@@ -16,6 +16,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\As
 use Carbon\Carbon;
 use DateTimeInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidValueException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\DateFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
 
 /**
  * @internal
@@ -37,4 +42,17 @@ final class DateAdapter extends AbstractAdapter
 
         return null;
     }
+
+    /**
+     * @param OpenSearchSearchInterface $adapterSearch
+     *
+     * @throws InvalidValueException
+     */
+    public function applySearchFilter(AssetMetaDataFilter $filter, AdapterSearchInterface $adapterSearch): void
+    {
+        $dateFilter = DateFilter::createFromArray($this->getSearchFilterFieldPath($filter), $filter->getData());
+        $adapterSearch->addQuery($dateFilter);
+    }
+
+
 }
