@@ -32,8 +32,7 @@ final class DateFilter implements QueryInterface
         private readonly ?int $endTimestamp = null,
         private readonly ?int $onTimestamp = null,
         private readonly bool $roundToDay = true,
-    )
-    {
+    ) {
     }
 
     public static function createFromArray(string $field, array $params, bool $roundToDay = true): DateFilter
