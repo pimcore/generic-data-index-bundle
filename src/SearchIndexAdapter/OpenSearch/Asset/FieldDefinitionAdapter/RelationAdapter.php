@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Asset\AssetMetaDataAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\ValueObject\IntegerArray;
 use Pimcore\Model\Element\ElementInterface;
@@ -50,7 +51,7 @@ final class RelationAdapter extends AbstractAdapter
         return null;
     }
 
-    protected function getSearchFilterFieldPath(AssetMetaDataFilter $filter): string
+    protected function getSearchFilterFieldPath(AssetMetaDataFilter|AssetMetaDataAggregation $filter): string
     {
         return parent::getSearchFilterFieldPath($filter) . '.id';
     }

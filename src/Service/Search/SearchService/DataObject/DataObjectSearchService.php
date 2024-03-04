@@ -79,6 +79,7 @@ final class DataObjectSearchService implements DataObjectSearchServiceInterface
                     page: $dataObjectSearch->getPage(),
                     pageSize: $dataObjectSearch->getPageSize()
                 ),
+                aggregations: $searchResult->getAggregations(),
             );
         } catch (Exception $e) {
             throw new AssetSearchException($e->getMessage());

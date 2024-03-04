@@ -10,6 +10,12 @@ services:
             - { name: "pimcore.generic_data_index.asset.search_index_field_definition", type: "input" }
             - { name: "pimcore.generic_data_index.asset.search_index_field_definition", type: "textarea" }
 
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter\KeywordAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.asset.search_index_field_definition", type: "select" }
+
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter\RelationAdapter:
         shared: false
         tags:

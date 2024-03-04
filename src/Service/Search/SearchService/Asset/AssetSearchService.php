@@ -75,6 +75,7 @@ final class AssetSearchService implements AssetSearchServiceInterface
                     page: $assetSearch->getPage(),
                     pageSize: $assetSearch->getPageSize()
                 ),
+                aggregations: $searchResult->getAggregations(),
             );
         } catch (Exception $e) {
             throw new AssetSearchException($e->getMessage());

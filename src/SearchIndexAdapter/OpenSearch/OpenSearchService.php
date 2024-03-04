@@ -250,8 +250,19 @@ final class OpenSearchService implements SearchIndexServiceInterface
         return $countResult['hits']['total'] ?? 0;
     }
 
-    public function createPaginatedSearch(int $page, int $pageSize): AdapterSearchInterface
+    public function createPaginatedSearch(
+        int $page,
+        int $pageSize,
+        bool $aggregationsOnly = false
+    ): AdapterSearchInterface
     {
+        if ($aggregationsOnly) {
+            return new Search(
+                from: 0,
+                size: 0
+            );
+        }
+
         return new Search(
             from: $pageSize * ($page - 1),
             size: $pageSize

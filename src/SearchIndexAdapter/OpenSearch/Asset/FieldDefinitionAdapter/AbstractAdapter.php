@@ -15,10 +15,12 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\As
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidValueException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation\Aggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Asset\AssetMetaDataAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\ValueObject\StringArray;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\AdapterInterface;
@@ -97,6 +99,11 @@ abstract class AbstractAdapter implements AdapterInterface
         );
     }
 
+    public function getSearchFilterAggregation(AssetMetaDataAggregation $aggregation): ?Aggregation
+    {
+        return null;
+    }
+
     protected function isValidScalar(mixed $value): bool
     {
         return is_string($value);
@@ -110,7 +117,7 @@ abstract class AbstractAdapter implements AdapterInterface
         new StringArray($value);
     }
 
-    protected function getSearchFilterFieldPath(AssetMetaDataFilter $filter): string
+    protected function getSearchFilterFieldPath(AssetMetaDataFilter|AssetMetaDataAggregation $filter): string
     {
         return implode('.',
             [

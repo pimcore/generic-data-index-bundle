@@ -14,7 +14,9 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidValueException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation\Aggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Asset\AssetMetaDataAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
 
 interface AdapterInterface
@@ -34,4 +36,5 @@ interface AdapterInterface
      * @throws InvalidValueException
      */
     public function applySearchFilter(AssetMetaDataFilter $filter, AdapterSearchInterface $adapterSearch): void;
+    public function getSearchFilterAggregation(AssetMetaDataAggregation $aggregation): ?Aggregation;
 }

@@ -59,7 +59,12 @@ abstract class AbstractSearchHelper implements SearchHelperInterface
 
     public function performSearch(SearchInterface $search, string $indexName): SearchResult
     {
-        $adapterSearch = $this->searchIndexService->createPaginatedSearch($search->getPage(), $search->getPageSize());
+        $adapterSearch = $this->searchIndexService->createPaginatedSearch(
+            $search->getPage(),
+            $search->getPageSize(),
+            $search->isAggregationsOnly()
+        );
+
         $this->searchModifierService->applyModifiersFromSearch($search, $adapterSearch);
 
         return $this

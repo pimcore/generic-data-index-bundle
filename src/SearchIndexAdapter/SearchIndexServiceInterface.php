@@ -49,7 +49,11 @@ interface SearchIndexServiceInterface
 
     public function countByAttributeValue(string $indexName, string $attribute, string $value): int;
 
-    public function createPaginatedSearch(int $page, int $pageSize): AdapterSearchInterface;
+    public function createPaginatedSearch(
+        int $page,
+        int $pageSize,
+        bool $aggregationsOnly = false
+    ): AdapterSearchInterface;
 
     public function search(AdapterSearchInterface $search, string $indexName): SearchResult;
 

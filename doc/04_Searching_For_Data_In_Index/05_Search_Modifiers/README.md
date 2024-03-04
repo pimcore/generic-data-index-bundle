@@ -39,9 +39,10 @@ $search->addModifier(new ParentIdFilter(1))
 ### Aggregations
 
 
-| Modifier                                                                                                     | Modifier Category        | Description                                |
-|--------------------------------------------------------------------------------------------------------------|--------------------------|--------------------------------------------|
-| [ChildrenCountAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Aggregation/Tree/ChildrenCountAggregation.php) | Tree related aggregation | Get children counts for given element IDs. |
+| Modifier                                                                                                                                                           | Modifier Category        | Description                                                                                           |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|-------------------------------------------------------------------------------------------------------|
+| [ChildrenCountAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Aggregation/Tree/ChildrenCountAggregation.php)  | Tree related aggregation | Get children counts for given element IDs.                                                            |
+| [AssetMetaDataAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Aggregation/Asset/AssetMetaDataAggregation.php) | Assets                   | Used for the filters in the asset grid to aggregate the filter options for supported meta data types. |
 
 ## Add your own search modifier
 

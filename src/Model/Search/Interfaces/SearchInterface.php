@@ -38,4 +38,11 @@ interface SearchInterface
     public function getPageSize(): int;
 
     public function setPageSize(int $pageSize): SearchInterface;
+
+    public function isAggregationsOnly(): bool;
+
+    /**
+     * Skips the result items and only returns the aggregations
+     */
+    public function setAggregationsOnly(bool $aggregationsOnly): SearchInterface;
 }

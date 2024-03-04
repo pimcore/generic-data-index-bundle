@@ -17,6 +17,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeT
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidValueException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\WildcardFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Asset\AssetMetaDataAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
 
 /**
@@ -72,7 +73,7 @@ final class TextKeywordAdapter extends AbstractAdapter
             );
     }
 
-    protected function getSearchFilterFieldPath(AssetMetaDataFilter $filter): string
+    protected function getSearchFilterFieldPath(AssetMetaDataFilter|AssetMetaDataAggregation $filter): string
     {
         return parent::getSearchFilterFieldPath($filter) . '.keyword';
     }
