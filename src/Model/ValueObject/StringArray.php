@@ -37,6 +37,7 @@ final class StringArray
             }
         }
     }
+
     public function getValues(): array
     {
         return $this->values;
