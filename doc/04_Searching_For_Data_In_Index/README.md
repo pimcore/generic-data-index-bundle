@@ -8,6 +8,7 @@ Asset Search Service can be created with the [SearchProviderInterface](https://g
 
 ### Example usage
 
+- Example 1: This example loads all assets from the root folder (parent ID 1) and orders them by their full path.
 ```php
 public function searchAction(SearchProviderInterface $searchProvider)
 {
@@ -19,7 +20,18 @@ public function searchAction(SearchProviderInterface $searchProvider)
 }
 ```
 
-This example loads all assets from the root folder (parent ID 1) and orders them by their full path. 
+
+- Example 2: This example loads all data objects from the root folder (parent ID 1) and orders them by their full path.
+```php
+public function searchAction(SearchProviderInterface $searchProvider)
+{
+    $assetSearch = $searchProvider->createDataObjectSearch()
+                ->addModifier(new ParentIdFilter(1))
+                ->addModifier(new OrderByFullPath())
+                ->setPageSize(50)
+                ->setPage(1);
+}
+```
 
 ### Search Modifiers
 

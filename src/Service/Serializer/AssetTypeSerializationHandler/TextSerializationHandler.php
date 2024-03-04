@@ -13,12 +13,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem;
 
-class TextSerializationHandler extends AbstractAssetTypeSerializationHandler
+class TextSerializationHandler extends AbstractHandler
 {
     public function createSearchResultModel(array $indexData): AssetSearchResultItem
     {
-        return new AssetSearchResultItem\Text();
+        return new SearchResultItem\Text();
     }
 }

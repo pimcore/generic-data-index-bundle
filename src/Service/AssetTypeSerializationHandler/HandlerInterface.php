@@ -13,10 +13,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\AssetTypeSerializationHandler;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Model\Asset;
 
-interface AssetTypeSerializationHandlerInterface
+interface HandlerInterface
 {
     public function getAdditionalSystemFields(Asset $asset): array;
 

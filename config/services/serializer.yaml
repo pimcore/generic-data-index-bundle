@@ -51,3 +51,21 @@ services:
         tags: [ 'container.service_locator' ]
         arguments:
             - [ ]
+
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\DataObjectSearchResultDenormalizer: ~
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DataObjectTypeSerializationHandler\FolderSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.data_object_type_serialization_handler, type: folder }
+
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DataObjectTypeSerializationHandlerService:
+        arguments:
+            - '@pimcore.generic_data_index.data_object.type_serialization_handler_locator'
+
+    pimcore.generic_data_index.data_object.type_serialization_handler_locator:
+        class: Symfony\Component\DependencyInjection\ServiceLocator
+        tags: [ 'container.service_locator' ]
+        arguments:
+            - [ ]

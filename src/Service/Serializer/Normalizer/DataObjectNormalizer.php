@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectNormalizerException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\Concrete;
@@ -34,6 +35,7 @@ final class DataObjectNormalizer implements NormalizerInterface
 
     public function __construct(
         private readonly FieldDefinitionServiceInterface $fieldDefinitionService,
+        private readonly WorkflowServiceInterface $workflowService,
     ) {
     }
 
@@ -95,6 +97,11 @@ final class DataObjectNormalizer implements NormalizerInterface
             SystemField::PATH_LEVELS->value => $this->extractPathLevels($dataObject),
             SystemField::TAGS->value => $this->extractTagIds($dataObject),
             SystemField::USER_OWNER->value => $dataObject->getUserOwner(),
+            SystemField::USER_MODIFICATION->value => $dataObject->getUserModification(),
+            SystemField::LOCKED->value => $dataObject->getLocked(),
+            SystemField::IS_LOCKED->value => $dataObject->isLocked(),
+            SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
+                $this->workflowService->hasWorkflowWithPermissions($dataObject),
         ];
 
         if ($dataObject instanceof Concrete) {

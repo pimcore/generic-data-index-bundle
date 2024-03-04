@@ -11,7 +11,7 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 
@@ -35,7 +35,7 @@ class AssetSearchResultItem
 
     private int $userOwner;
 
-    private int $userModification;
+    private ?int $userModification;
 
     private ?string $locked;
 
@@ -168,7 +168,7 @@ class AssetSearchResultItem
         return $this;
     }
 
-    public function getUserModification(): int
+    public function getUserModification(): ?int
     {
         return $this->userModification;
     }

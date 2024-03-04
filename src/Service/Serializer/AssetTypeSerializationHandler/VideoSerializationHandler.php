@@ -15,12 +15,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSeri
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField\Asset\VideoSystemField;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Asset\Image;
 use Pimcore\Model\Asset\Video;
 
-class VideoSerializationHandler extends AbstractAssetTypeSerializationHandler
+class VideoSerializationHandler extends AbstractHandler
 {
     /**
      * @throws Exception
@@ -41,7 +42,7 @@ class VideoSerializationHandler extends AbstractAssetTypeSerializationHandler
 
     public function createSearchResultModel(array $indexData): AssetSearchResultItem
     {
-        return (new AssetSearchResultItem\Video())
+        return (new SearchResultItem\Video())
             ->setImageThumbnail(VideoSystemField::IMAGE_THUMBNAIL->getData($indexData))
             ->setDuration(VideoSystemField::DURATION->getData($indexData))
             ->setWidth(VideoSystemField::WIDTH->getData($indexData))

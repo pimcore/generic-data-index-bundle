@@ -13,11 +13,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Service\AssetTypeSerializationHandler\HandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\DataObjectTypeSerializationHandler\HandlerInterface;
 use Psr\Container\ContainerExceptionInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
-final class AssetTypeSerializationHandlerService
+final class DataObjectTypeSerializationHandlerService
 {
     public function __construct(
         private readonly ServiceLocator $adapterLocator

@@ -11,14 +11,14 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Paging\PaginationInfo;
 
-final class AssetSearchResult
+final class DataObjectSearchResult
 {
     public function __construct(
-        /** @var AssetSearchResultItem[] */
+        /** @var DataObjectSearchResultItem[] */
         private readonly array $items,
         private readonly PaginationInfo $pagination,
     ) {
