@@ -15,11 +15,11 @@ final class DateFilter implements QueryInterface
     public const PARAM_ON = 'on';
 
     public function __construct(
-        private string $field,
-        private ?int $startTimestamp = null,
-        private ?int $endTimestamp = null,
-        private ?int $onTimestamp = null,
-        private bool $roundToDay = true,
+        private readonly string $field,
+        private readonly ?int $startTimestamp = null,
+        private readonly ?int $endTimestamp = null,
+        private readonly ?int $onTimestamp = null,
+        private readonly bool $roundToDay = true,
     )
     {
     }
