@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\ConditionType;
@@ -13,8 +23,7 @@ final class WildcardFilter extends BoolQuery implements AsSubQueryInterface
         private readonly string $term,
         private readonly WildcardFilterMode $defaultWildcardMode = WildcardFilterMode::BOTH,
         private readonly bool $caseInsensitive = true,
-    )
-    {
+    ) {
         parent::__construct([
             ConditionType::FILTER->value => $this->getWildcardQueryArray(),
         ]);
