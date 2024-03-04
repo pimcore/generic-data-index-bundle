@@ -42,7 +42,6 @@ final class DateFilterTest extends Unit
             ],
         ], $dateFilter->toArray());
 
-
         $dateFilter = new DateFilter('datefield', strtotime('2000-01-01'));
 
         self::assertSame([
@@ -53,7 +52,6 @@ final class DateFilterTest extends Unit
             ],
         ], $dateFilter->toArray(true));
 
-
         $dateFilter = new DateFilter('datefield', null, strtotime('2000-01-01'));
 
         self::assertSame([
@@ -63,7 +61,6 @@ final class DateFilterTest extends Unit
                 ],
             ],
         ], $dateFilter->toArray(true));
-
 
         $dateFilter = new DateFilter('datefield', null, null, strtotime('2000-01-01'));
 
@@ -103,7 +100,6 @@ final class DateFilterTest extends Unit
             ],
         ], $dateFilter->getParams());
 
-
         $dateFilter = new DateFilter('datefield', null, strtotime('2000-01-01'));
 
         self::assertSame([
@@ -111,7 +107,6 @@ final class DateFilterTest extends Unit
                 'lt' => '2000-01-01T23:59:59+00:00',
             ],
         ], $dateFilter->getParams());
-
 
         $dateFilter = new DateFilter('datefield', null, null, strtotime('2000-01-01'));
 
@@ -131,7 +126,7 @@ final class DateFilterTest extends Unit
             ],
         ], $dateFilter->getParams());
     }
-    
+
     public function testCreateFromArray(): void
     {
         $dateFilter = DateFilter::createFromArray('datefield', [
@@ -167,7 +162,7 @@ final class DateFilterTest extends Unit
             ],
         ], $dateFilter->getParams());
 
-        $dateFilter = new DateFilter('datefield', null, null, strtotime('2000-01-01 12:00:00'),false);
+        $dateFilter = new DateFilter('datefield', null, null, strtotime('2000-01-01 12:00:00'), false);
 
         self::assertSame([
             'datefield' => [

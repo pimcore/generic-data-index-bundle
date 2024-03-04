@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
 use Carbon\Carbon;
@@ -11,7 +21,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 final class DateFilter implements QueryInterface
 {
     public const PARAM_START = 'start';
+
     public const PARAM_END = 'end';
+
     public const PARAM_ON = 'on';
 
     public function __construct(
@@ -20,8 +32,7 @@ final class DateFilter implements QueryInterface
         private ?int $endTimestamp = null,
         private ?int $onTimestamp = null,
         private bool $roundToDay = true,
-    )
-    {
+    ) {
     }
 
     public static function createFromArray(string $field, array $params, bool $roundToDay = true): DateFilter
