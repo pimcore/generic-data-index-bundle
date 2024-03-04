@@ -13,12 +13,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DataObjectTypeSerializationHandler;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchResult\DataObjectSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\SearchResultItem;
 
 class FolderSerializationHandler extends AbstractSerializationHandler
 {
     public function createSearchResultModel(array $indexData): DataObjectSearchResultItem
     {
-        return new DataObjectSearchResultItem\Folder();
+        return new SearchResultItem\Folder();
     }
 }

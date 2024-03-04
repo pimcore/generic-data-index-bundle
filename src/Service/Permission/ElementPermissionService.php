@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Model\Asset;
@@ -29,6 +30,9 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
     ) {
     }
 
+    /**
+     * @throws Exception
+     */
     public function isAllowed(
         string $permission,
         ElementInterface $element,
@@ -41,6 +45,9 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
         };
     }
 
+    /**
+     * @throws Exception
+     */
     private function isAssetAllowed(
         string $permission,
         Asset $asset,

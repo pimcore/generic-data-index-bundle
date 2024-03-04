@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\BaseSearch;
 use Pimcore\Model\DataObject\ClassDefinition;
 
-final class DataObjectSearch extends BaseSearch
+final class DataObjectSearch extends BaseSearch implements DataObjectSearchInterface
 {
     private ?ClassDefinition $classDefinition = null;
 

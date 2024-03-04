@@ -14,11 +14,12 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField\Asset\ImageSystemField;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Asset\Image;
 
-class ImageSerializationHandler extends AbstractAssetTypeSerializationHandler
+class ImageSerializationHandler extends AbstractHandler
 {
     public function getAdditionalSystemFields(Asset $asset): array
     {
@@ -35,7 +36,7 @@ class ImageSerializationHandler extends AbstractAssetTypeSerializationHandler
 
     public function createSearchResultModel(array $indexData): AssetSearchResultItem
     {
-        return (new AssetSearchResultItem\Image())
+        return (new SearchResultItem\Image())
             ->setThumbnail(ImageSystemField::THUMBNAIL->getData($indexData))
             ->setWidth(ImageSystemField::WIDTH->getData($indexData))
             ->setHeight(ImageSystemField::HEIGHT->getData($indexData));

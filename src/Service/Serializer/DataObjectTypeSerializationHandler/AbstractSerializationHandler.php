@@ -13,10 +13,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DataObjectTypeSerializationHandler;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Service\DataObjectTypeSerializationHandler\DataObjectTypeSerializationHandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\DataObjectTypeSerializationHandler\HandlerInterface;
 use Pimcore\Model\DataObject;
 
-abstract class AbstractSerializationHandler implements DataObjectTypeSerializationHandlerInterface
+abstract class AbstractSerializationHandler implements HandlerInterface
 {
     public function getAdditionalSystemFields(DataObject $dataObject): array
     {

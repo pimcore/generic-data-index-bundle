@@ -11,11 +11,11 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
 
-class AssetSearchResultItem
+class DataObjectSearchResultItem
 {
     private int $id;
 
@@ -25,13 +25,11 @@ class AssetSearchResultItem
 
     private string $key;
 
+    private bool $published;
+
     private string $path;
 
     private string $fullPath;
-
-    private ?string $mimeType;
-
-    private ?int $fileSize;
 
     private int $userOwner;
 
@@ -41,12 +39,11 @@ class AssetSearchResultItem
 
     private bool $isLocked;
 
-    /** @var AssetMetaData[] */
-    private array $metaData;
-
     private ?int $creationDate;
 
     private ?int $modificationDate;
+
+    private string $className;
 
     private bool $workflowWithPermissions;
 
@@ -54,7 +51,7 @@ class AssetSearchResultItem
 
     private array $searchIndexData;
 
-    private AssetPermissions $permissions;
+    private DataObjectPermission $permissions;
 
     public function __construct(
     ) {
@@ -65,7 +62,7 @@ class AssetSearchResultItem
         return $this->id;
     }
 
-    public function setId(int $id): AssetSearchResultItem
+    public function setId(int $id): DataObjectSearchResultItem
     {
         $this->id = $id;
 
@@ -77,7 +74,7 @@ class AssetSearchResultItem
         return $this->parentId;
     }
 
-    public function setParentId(int $parentId): AssetSearchResultItem
+    public function setParentId(int $parentId): DataObjectSearchResultItem
     {
         $this->parentId = $parentId;
 
@@ -89,7 +86,7 @@ class AssetSearchResultItem
         return $this->type;
     }
 
-    public function setType(string $type): AssetSearchResultItem
+    public function setType(string $type): DataObjectSearchResultItem
     {
         $this->type = $type;
 
@@ -101,9 +98,21 @@ class AssetSearchResultItem
         return $this->key;
     }
 
-    public function setKey(string $key): AssetSearchResultItem
+    public function setKey(string $key): DataObjectSearchResultItem
     {
         $this->key = $key;
+
+        return $this;
+    }
+
+    public function isPublished(): bool
+    {
+        return $this->published;
+    }
+
+    public function setPublished(bool $published): DataObjectSearchResultItem
+    {
+        $this->published = $published;
 
         return $this;
     }
@@ -113,7 +122,7 @@ class AssetSearchResultItem
         return $this->path;
     }
 
-    public function setPath(string $path): AssetSearchResultItem
+    public function setPath(string $path): DataObjectSearchResultItem
     {
         $this->path = $path;
 
@@ -125,33 +134,9 @@ class AssetSearchResultItem
         return $this->fullPath;
     }
 
-    public function setFullPath(string $fullPath): AssetSearchResultItem
+    public function setFullPath(string $fullPath): DataObjectSearchResultItem
     {
         $this->fullPath = $fullPath;
-
-        return $this;
-    }
-
-    public function getMimeType(): ?string
-    {
-        return $this->mimeType;
-    }
-
-    public function setMimeType(?string $mimeType): AssetSearchResultItem
-    {
-        $this->mimeType = $mimeType;
-
-        return $this;
-    }
-
-    public function getFileSize(): ?int
-    {
-        return $this->fileSize;
-    }
-
-    public function setFileSize(?int $fileSize): AssetSearchResultItem
-    {
-        $this->fileSize = $fileSize;
 
         return $this;
     }
@@ -161,7 +146,7 @@ class AssetSearchResultItem
         return $this->userOwner;
     }
 
-    public function setUserOwner(int $userOwner): AssetSearchResultItem
+    public function setUserOwner(int $userOwner): DataObjectSearchResultItem
     {
         $this->userOwner = $userOwner;
 
@@ -173,7 +158,7 @@ class AssetSearchResultItem
         return $this->userModification;
     }
 
-    public function setUserModification(int $userModification): AssetSearchResultItem
+    public function setUserModification(?int $userModification): DataObjectSearchResultItem
     {
         $this->userModification = $userModification;
 
@@ -185,7 +170,7 @@ class AssetSearchResultItem
         return $this->locked;
     }
 
-    public function setLocked(?string $locked): AssetSearchResultItem
+    public function setLocked(?string $locked): DataObjectSearchResultItem
     {
         $this->locked = $locked;
 
@@ -197,21 +182,9 @@ class AssetSearchResultItem
         return $this->isLocked;
     }
 
-    public function setIsLocked(bool $isLocked): AssetSearchResultItem
+    public function setIsLocked(?bool $isLocked): DataObjectSearchResultItem
     {
-        $this->isLocked = $isLocked;
-
-        return $this;
-    }
-
-    public function getMetaData(): array
-    {
-        return $this->metaData;
-    }
-
-    public function setMetaData(array $metaData): AssetSearchResultItem
-    {
-        $this->metaData = $metaData;
+        $this->isLocked = (bool)$isLocked;
 
         return $this;
     }
@@ -221,7 +194,7 @@ class AssetSearchResultItem
         return $this->creationDate;
     }
 
-    public function setCreationDate(?int $creationDate): AssetSearchResultItem
+    public function setCreationDate(?int $creationDate): DataObjectSearchResultItem
     {
         $this->creationDate = $creationDate;
 
@@ -233,9 +206,21 @@ class AssetSearchResultItem
         return $this->modificationDate;
     }
 
-    public function setModificationDate(?int $modificationDate): AssetSearchResultItem
+    public function setModificationDate(?int $modificationDate): DataObjectSearchResultItem
     {
         $this->modificationDate = $modificationDate;
+
+        return $this;
+    }
+
+    public function getClassName(): string
+    {
+        return $this->className;
+    }
+
+    public function setClassName(string $className): DataObjectSearchResultItem
+    {
+        $this->className = $className;
 
         return $this;
     }
@@ -245,9 +230,9 @@ class AssetSearchResultItem
         return $this->workflowWithPermissions;
     }
 
-    public function setHasWorkflowWithPermissions(bool $workflowWithPermissions): AssetSearchResultItem
+    public function setHasWorkflowWithPermissions(?bool $workflowWithPermissions): DataObjectSearchResultItem
     {
-        $this->workflowWithPermissions = $workflowWithPermissions;
+        $this->workflowWithPermissions = (bool)$workflowWithPermissions;
 
         return $this;
     }
@@ -257,7 +242,7 @@ class AssetSearchResultItem
         return $this->hasChildren;
     }
 
-    public function setHasChildren(bool $hasChildren): AssetSearchResultItem
+    public function setHasChildren(bool $hasChildren): DataObjectSearchResultItem
     {
         $this->hasChildren = $hasChildren;
 
@@ -269,19 +254,19 @@ class AssetSearchResultItem
         return $this->searchIndexData;
     }
 
-    public function setSearchIndexData(array $searchIndexData): AssetSearchResultItem
+    public function setSearchIndexData(array $searchIndexData): DataObjectSearchResultItem
     {
         $this->searchIndexData = $searchIndexData;
 
         return $this;
     }
 
-    public function getPermissions(): AssetPermissions
+    public function getPermissions(): DataObjectPermission
     {
         return $this->permissions;
     }
 
-    public function setPermissions(AssetPermissions $permissions): AssetSearchResultItem
+    public function setPermissions(DataObjectPermission $permissions): DataObjectSearchResultItem
     {
         $this->permissions = $permissions;
 

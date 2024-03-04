@@ -13,15 +13,16 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchResult\DataObjectSearchResult;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchResult\DataObjectSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Model\User;
 
 interface DataObjectSearchServiceInterface
 {
 
-    public function search(SearchInterface $dataObjectSearch): DataObjectSearchResult;
+    public function search(SearchInterface|DataObjectSearchInterface $dataObjectSearch): DataObjectSearchResult;
 
     public function byId(int $id, ?User $user = null): ?DataObjectSearchResultItem;
 }

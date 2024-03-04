@@ -33,8 +33,8 @@ final class AssetNormalizer implements NormalizerInterface
     public const NOT_LOCALIZED_KEY = 'default';
 
     public function __construct(
-        private readonly WorkflowServiceInterface $workflowService,
         private readonly AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService,
+        private readonly WorkflowServiceInterface $workflowService,
     ) {
     }
 

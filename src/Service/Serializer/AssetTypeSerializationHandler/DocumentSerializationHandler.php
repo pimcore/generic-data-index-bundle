@@ -15,12 +15,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSeri
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField\Asset\DocumentSystemField;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Asset\Document;
 use Pimcore\Model\Asset\Image;
 
-class DocumentSerializationHandler extends AbstractAssetTypeSerializationHandler
+class DocumentSerializationHandler extends AbstractHandler
 {
     /**
      * @throws Exception
@@ -40,7 +41,7 @@ class DocumentSerializationHandler extends AbstractAssetTypeSerializationHandler
 
     public function createSearchResultModel(array $indexData): AssetSearchResultItem
     {
-        return (new AssetSearchResultItem\Document())
+        return (new SearchResultItem\Document())
             ->setImageThumbnail(DocumentSystemField::IMAGE_THUMBNAIL->getData($indexData))
             ->setPageCount(DocumentSystemField::PAGE_COUNT->getData($indexData));
     }

@@ -11,12 +11,14 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Event\Asset;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Event\DataObject;
 
 use Codeception\Test\Unit;
-use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\PermissionEvent;
+use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\PermissionEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
 
 /**
  * @internal
@@ -25,24 +27,26 @@ final class PermissionEventTest extends Unit
 {
     public function testGetPermissionsMapping(): void
     {
-        $permissions = new AssetPermissions();
+        $permissions = new DataObjectPermission();
         $permissions->setView(false);
-        $event = new PermissionEvent(new AssetSearchResultItem(), $permissions);
+        $permissions->setPublish(false);
+        $event = new PermissionEvent(new DataObjectSearchResultItem(), $permissions);
 
         $this->assertSame($permissions, $event->getPermissions());
         $this->assertFalse($event->getPermissions()->isView());
+        $this->assertFalse($event->getPermissions()->isPublish());
     }
 
     public function testSetPermissionsMapping(): void
     {
-        $permissions = new AssetPermissions();
-        $event = new PermissionEvent(new AssetSearchResultItem(), $permissions);
+        $permissions = new DataObjectPermission();
+        $event = new PermissionEvent(new DataObjectSearchResultItem(), $permissions);
         $permissions->setView(false);
-        $permissions->setRename(false);
+        $permissions->setPublish(false);
         $event->setPermissions($permissions);
 
         $this->assertSame($permissions, $event->getPermissions());
         $this->assertFalse($event->getPermissions()->isView());
-        $this->assertFalse($event->getPermissions()->isRename());
+        $this->assertFalse($event->getPermissions()->isPublish());
     }
 }

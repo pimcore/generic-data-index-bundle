@@ -13,10 +13,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\DataObjectTypeSerializationHandler;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchResult\DataObjectSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
 use Pimcore\Model\DataObject;
 
-interface DataObjectTypeSerializationHandlerInterface
+interface HandlerInterface
 {
     public function getAdditionalSystemFields(DataObject $dataObject): array;
 

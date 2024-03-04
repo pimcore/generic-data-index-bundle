@@ -16,8 +16,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Ass
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\UserPermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\AssetSearchException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResult;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
@@ -81,11 +81,15 @@ final class AssetSearchService implements AssetSearchServiceInterface
         }
     }
 
+    /**
+     * @throws Exception
+     */
     public function byId(
         int $id,
         ?User $user = null,
         bool $forceReload = false
-    ): ?AssetSearchResultItem {
+    ): ?AssetSearchResultItem
+    {
         $cacheKey = SearchHelper::ASSET_SEARCH . '_' . $id;
 
         if ($forceReload) {
@@ -104,6 +108,9 @@ final class AssetSearchService implements AssetSearchServiceInterface
         return $searchResult;
     }
 
+    /**
+     * @throws Exception
+     */
     private function searchAssetById(int $id, ?User $user = null): ?AssetSearchResultItem
     {
         $assetSearch = $this->searchProvider->createAssetSearch();

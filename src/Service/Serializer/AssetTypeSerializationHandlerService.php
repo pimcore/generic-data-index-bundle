@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Service\AssetTypeSerializationHandler\AssetTypeSerializationHandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\AssetTypeSerializationHandler\HandlerInterface;
 use Psr\Container\ContainerExceptionInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
@@ -24,7 +24,7 @@ final class AssetTypeSerializationHandlerService
     ) {
     }
 
-    public function getSerializationHandler(string $type): ?AssetTypeSerializationHandlerInterface
+    public function getSerializationHandler(string $type): ?HandlerInterface
     {
         if ($this->adapterLocator->has($type)) {
             try {

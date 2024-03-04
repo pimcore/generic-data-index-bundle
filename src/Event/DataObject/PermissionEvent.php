@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchResult\DataObjectSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
 use Symfony\Contracts\EventDispatcher\Event;
 
@@ -25,12 +25,12 @@ use Symfony\Contracts\EventDispatcher\Event;
 final class PermissionEvent extends Event
 {
     public function __construct(
-        private readonly DataObjectSearchResultItem $searchResultItem,
+        private readonly SearchResult\DataObjectSearchResultItem $searchResultItem,
         private DataObjectPermission $permissions
     ) {
     }
 
-    public function getElement(): DataObjectSearchResultItem
+    public function getElement(): SearchResult\DataObjectSearchResultItem
     {
         return $this->searchResultItem;
     }

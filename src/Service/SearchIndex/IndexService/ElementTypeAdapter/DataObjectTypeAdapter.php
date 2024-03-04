@@ -33,8 +33,6 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
  */
 final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
 {
-    private const FOLDER_INDEX_NAME = 'data_object_folders';
-
     public function __construct(
         private readonly DataObjectNormalizer $normalizer,
         private readonly Connection $dbConnection,
@@ -64,7 +62,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         return match (true) {
             $context instanceof ClassDefinition => $context->getName(),
             $context === DataObjectIndexHandler::DATA_OBJECT_INDEX_ALIAS => $context,
-            default => self::FOLDER_INDEX_NAME,
+            default => 'data_object_folders',
         };
     }
 
