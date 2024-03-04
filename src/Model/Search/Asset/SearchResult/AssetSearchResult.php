@@ -49,13 +49,14 @@ final class AssetSearchResult
                 return $aggregation;
             }
         }
+
         return null;
     }
 
     public function getIds(): array
     {
         return array_map(
-            static fn(AssetSearchResultItem $item) => $item->getId(),
+            static fn (AssetSearchResultItem $item) => $item->getId(),
             $this->items
         );
     }

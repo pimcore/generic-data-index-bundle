@@ -66,6 +66,7 @@ class BaseSearch implements SearchInterface
     public function setAggregationsOnly(bool $aggregationsOnly): BaseSearch
     {
         $this->aggregationsOnly = $aggregationsOnly;
+
         return $this;
     }
 }

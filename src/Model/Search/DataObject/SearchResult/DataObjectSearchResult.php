@@ -37,8 +37,6 @@ final class DataObjectSearchResult
         return $this->pagination;
     }
 
-
-
     public function getAggregations(): array
     {
         return $this->aggregations;
@@ -51,13 +49,14 @@ final class DataObjectSearchResult
                 return $aggregation;
             }
         }
+
         return null;
     }
 
     public function getIds(): array
     {
         return array_map(
-            static fn(DataObjectSearchResultItem $item) => $item->getId(),
+            static fn (DataObjectSearchResultItem $item) => $item->getId(),
             $this->items
         );
     }

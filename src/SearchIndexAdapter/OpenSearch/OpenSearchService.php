@@ -254,8 +254,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
         int $page,
         int $pageSize,
         bool $aggregationsOnly = false
-    ): AdapterSearchInterface
-    {
+    ): AdapterSearchInterface {
         if ($aggregationsOnly) {
             return new Search(
                 from: 0,
