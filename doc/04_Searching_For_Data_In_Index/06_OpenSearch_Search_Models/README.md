@@ -133,11 +133,18 @@ $termFilter = new TermFilter('field', 'value');
 
 The terms filter combines a boolean query with a terms query. It can be used to filter the search results by multiple term.
 
-```php
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermsFilter;
-$termFilter = new TermsFilter('field', ['value', 'value2']);
+#### WildcardFilter
 
-```#### DateFilter
+The wildcard filter combines a boolean query with a wildcard query. It can be used to filter the search results by terms using * as wildcard.
+
+```php
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\WildcardFilter;
+$wildcardFilter = new WildcardFilter('field', 'value*');
+```
+
+It is possible to influence the wildcard filter behaviour by setting additional options. Take a look at the constructor of the `WildcardFilter` class for more details.
+
+#### DateFilter
 
 The date filter can be used to filter the search results by a date range or exact date.
 

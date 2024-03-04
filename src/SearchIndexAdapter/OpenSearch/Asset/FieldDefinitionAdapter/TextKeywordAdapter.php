@@ -17,6 +17,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeT
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\ConditionType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidValueException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\WildcardFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
 
@@ -60,22 +61,16 @@ final class TextKeywordAdapter extends AbstractAdapter
             throw new InvalidValueException('Search term must be a string');
         }
 
-        if (!str_contains($searchTerm, '*')) {
-            $searchTerm = '*' . $searchTerm . '*';
+        if (empty($searchTerm)) {
+            return;
         }
 
         $adapterSearch
             ->addQuery(
-                new BoolQuery([
-                    ConditionType::FILTER->value => [
-                        'wildcard' => [
-                            $this->getSearchFilterFieldPath($filter) => [
-                                'value' => $searchTerm,
-                                'case_insensitive' => false,
-                            ],
-                        ],
-                    ],
-                ])
+                new WildcardFilter(
+                    $this->getSearchFilterFieldPath($filter),
+                    $searchTerm
+                )
             );
     }
 
