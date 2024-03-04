@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Model\OpenSearch\Query;
@@ -35,7 +35,7 @@ final class WildcardFilterTest extends Unit
                                 'value' => '*value*',
                                 'case_insensitive' => true,
                             ],
-                        ]
+                        ],
                     ],
                 ],
             ], $termFilter->toArray(true));
@@ -48,7 +48,7 @@ final class WildcardFilterTest extends Unit
                             'value' => '*value*',
                             'case_insensitive' => true,
                         ],
-                    ]
+                    ],
                 ],
             ], $termFilter->toArray());
     }
@@ -63,7 +63,7 @@ final class WildcardFilterTest extends Unit
                     'value' => '*value*',
                     'case_insensitive' => true,
                 ],
-            ]
+            ],
         ], $termFilter->toArrayAsSubQuery());
     }
 
@@ -77,7 +77,7 @@ final class WildcardFilterTest extends Unit
                     'value' => '*value*',
                     'case_insensitive' => false,
                 ],
-            ]
+            ],
         ], $termFilter->toArrayAsSubQuery());
     }
 
@@ -91,7 +91,7 @@ final class WildcardFilterTest extends Unit
                     'value' => '*value*',
                     'case_insensitive' => false,
                 ],
-            ]
+            ],
         ], $termFilter->toArrayAsSubQuery());
 
         $termFilter = new WildcardFilter('field', 'value', WildcardFilterMode::PREFIX, false);
@@ -102,7 +102,7 @@ final class WildcardFilterTest extends Unit
                     'value' => '*value',
                     'case_insensitive' => false,
                 ],
-            ]
+            ],
         ], $termFilter->toArrayAsSubQuery());
 
         $termFilter = new WildcardFilter('field', 'value', WildcardFilterMode::SUFFIX, false);
@@ -113,7 +113,7 @@ final class WildcardFilterTest extends Unit
                     'value' => 'value*',
                     'case_insensitive' => false,
                 ],
-            ]
+            ],
         ], $termFilter->toArrayAsSubQuery());
 
         $termFilter = new WildcardFilter('field', 'value', WildcardFilterMode::SUFFIX, false);
@@ -124,10 +124,8 @@ final class WildcardFilterTest extends Unit
                     'value' => 'value*',
                     'case_insensitive' => false,
                 ],
-            ]
+            ],
         ], $termFilter->toArrayAsSubQuery());
-
-
 
         $termFilter = new WildcardFilter('field', 'value', WildcardFilterMode::NONE, false);
 
@@ -137,7 +135,7 @@ final class WildcardFilterTest extends Unit
                     'value' => 'value',
                     'case_insensitive' => false,
                 ],
-            ]
+            ],
         ], $termFilter->toArrayAsSubQuery());
     }
 }
