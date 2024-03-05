@@ -14,6 +14,9 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\Asset\FieldDefinitionAdapter;
 
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter\TextKeywordAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
@@ -38,5 +41,99 @@ final class TextKeywordAdapterTest extends Unit
                 ],
             ],
         ], $mapping);
+    }
+
+    public function testApplySearchFilterWrongMetaDataType(): void
+    {
+        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $adapter = (new TextKeywordAdapter(
+            $searchIndexConfigServiceInterfaceMock,
+        ))->setType('input');
+
+        $filter = new AssetMetaDataFilter('test', 'checkbox', 1);
+        $this->expectException(InvalidArgumentException::class);
+        $adapter->applySearchFilter($filter, new Search());
+    }
+
+    public function testApplySearchFilterWrongType()
+    {
+        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $adapter = (new TextKeywordAdapter(
+            $searchIndexConfigServiceInterfaceMock,
+        ))->setType('input');
+
+        $filter = new AssetMetaDataFilter('test', 'input', 1);
+        $this->expectException(InvalidArgumentException::class);
+        $adapter->applySearchFilter($filter, new Search());
+
+        $filter = new AssetMetaDataFilter('test', 'input', [null]);
+        $this->expectException(InvalidArgumentException::class);
+        $adapter->applySearchFilter($filter, new Search());
+    }
+
+    public function testApplySearchFilter()
+    {
+
+        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $adapter = (new TextKeywordAdapter(
+            $searchIndexConfigServiceInterfaceMock,
+        ))->setType('input');
+
+        $filter = new AssetMetaDataFilter('test', 'input', 'value');
+        $search = new Search();
+        $adapter->applySearchFilter($filter, $search);
+
+        $this->assertSame([
+            'query' => [
+                'bool' => [
+                    'filter' => [
+                        'wildcard' => [
+                            'standard_fields.test.default.keyword' => [
+                                'value' => '*value*',
+                                'case_insensitive' => true,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ], $search->toArray());
+
+        $filter = new AssetMetaDataFilter('test', 'input', 'value*', 'en');
+        $search = new Search();
+        $adapter->applySearchFilter($filter, $search);
+
+        $this->assertSame([
+            'query' => [
+                'bool' => [
+                    'filter' => [
+                        'wildcard' => [
+                            'standard_fields.test.en.keyword' => [
+                                'value' => 'value*',
+                                'case_insensitive' => true,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ], $search->toArray());
+
+        $filter = new AssetMetaDataFilter('test', 'input', 'val*ue', 'en');
+        $search = new Search();
+        $adapter->applySearchFilter($filter, $search);
+
+        $this->assertSame([
+            'query' => [
+                'bool' => [
+                    'filter' => [
+                        'wildcard' => [
+                            'standard_fields.test.en.keyword' => [
+                                'value' => 'val*ue',
+                                'case_insensitive' => true,
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ], $search->toArray());
     }
 }

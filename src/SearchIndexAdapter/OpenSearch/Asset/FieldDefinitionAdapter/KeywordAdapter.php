@@ -14,32 +14,27 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
-use Pimcore\ValueObject\Collection\ArrayOfBoolean;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation\Aggregation;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Asset\AssetMetaDataAggregation;
 
 /**
  * @internal
  */
-final class BooleanAdapter extends AbstractAdapter
+final class KeywordAdapter extends AbstractAdapter
 {
     public function getIndexMapping(): array
     {
         return [
-            'type' => AttributeType::BOOLEAN->value,
+            'type' => AttributeType::KEYWORD->value,
         ];
     }
 
-    public function normalize(mixed $value): bool
+    public function getSearchFilterAggregation(AssetMetaDataAggregation $aggregation): ?Aggregation
     {
-        return (bool) $value;
-    }
-
-    protected function isValidScalar(mixed $value): bool
-    {
-        return is_bool($value);
-    }
-
-    protected function validateArray(array $value): void
-    {
-        new ArrayOfBoolean($value);
+        return new Aggregation($aggregation->getAggregationName(), [
+            'terms' => [
+                'field' => $this->getSearchFilterFieldPath($aggregation),
+            ],
+        ]);
     }
 }

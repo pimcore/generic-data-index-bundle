@@ -19,6 +19,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifi
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSort;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 
+/**
+ * @internal
+ */
 final class TreeSortHandlers
 {
     #[AsSearchModifierHandler]

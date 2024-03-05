@@ -19,7 +19,7 @@ final class TermFilter extends BoolQuery implements AsSubQueryInterface
 {
     public function __construct(
         private readonly string $field,
-        private readonly string|int $term,
+        private readonly string|int|bool $term,
     ) {
         parent::__construct([
             ConditionType::FILTER->value => [
@@ -35,7 +35,7 @@ final class TermFilter extends BoolQuery implements AsSubQueryInterface
         return $this->field;
     }
 
-    public function getTerm(): string|int
+    public function getTerm(): string|int|bool
     {
         return $this->term;
     }

@@ -23,6 +23,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\Exc
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdsFilter;
 
+/**
+ * @internal
+ */
 final class BasicFilters
 {
     #[AsSearchModifierHandler]

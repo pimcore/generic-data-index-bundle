@@ -32,6 +32,8 @@ class BaseSearch implements SearchInterface
 
     private ?User $user = null;
 
+    private bool $aggregationsOnly = false;
+
     public function getModifiers(): array
     {
         return $this->modifiers;
@@ -54,5 +56,17 @@ class BaseSearch implements SearchInterface
     public function getUser(): ?User
     {
         return $this->user;
+    }
+
+    public function isAggregationsOnly(): bool
+    {
+        return $this->aggregationsOnly;
+    }
+
+    public function setAggregationsOnly(bool $aggregationsOnly): BaseSearch
+    {
+        $this->aggregationsOnly = $aggregationsOnly;
+
+        return $this;
     }
 }

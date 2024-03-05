@@ -11,14 +11,17 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset;
 
-final class AssetMetaData
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
+
+final class AssetMetaDataFilter implements SearchModifierInterface
 {
     public function __construct(
         private readonly string $name,
-        private readonly ?string $language,
+        private readonly string $type,
         private readonly mixed $data,
+        private readonly ?string $language = null,
     ) {
     }
 
@@ -27,9 +30,9 @@ final class AssetMetaData
         return $this->name;
     }
 
-    public function getLanguage(): ?string
+    public function getType(): string
     {
-        return $this->language;
+        return $this->type;
     }
 
     public function getData(): mixed
@@ -37,11 +40,8 @@ final class AssetMetaData
         return $this->data;
     }
 
-    /**
-     * @deprecated Type is not indexed anymore as the type does not make sense from a search perspective.
-     */
-    public function getType(): string
+    public function getLanguage(): ?string
     {
-        return '';
+        return $this->language;
     }
 }

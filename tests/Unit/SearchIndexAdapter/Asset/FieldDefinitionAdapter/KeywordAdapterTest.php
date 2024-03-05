@@ -17,86 +17,51 @@ use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter\RelationAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter\KeywordAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
-use Pimcore\Model\Asset\Image;
 
 /**
  * @internal
  */
-final class RelationAdapterTest extends Unit
+final class KeywordAdapterTest extends Unit
 {
-    public function testGetIndexMapping()
+    public function testGetOpenSearchMapping(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $adapter = new RelationAdapter(
+        $adapter = new KeywordAdapter(
             $searchIndexConfigServiceInterfaceMock,
         );
 
+        $mapping = $adapter->getIndexMapping();
         $this->assertSame([
-            'properties' => [
-                'id' => [
-                    'type' => 'long',
-                ],
-                'type' => [
-                    'type' => 'keyword',
-                ],
-            ],
-        ], $adapter->getIndexMapping());
-    }
-
-    public function testNormalize()
-    {
-        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $adapter = new RelationAdapter(
-            $searchIndexConfigServiceInterfaceMock,
-        );
-
-        $image = new Image();
-        $image->setId(1);
-
-        $this->assertSame([
-            'type' => 'asset',
-            'id' => 1,
-        ], $adapter->normalize($image));
+            'type' => 'keyword',
+        ], $mapping);
     }
 
     public function testApplySearchFilterWrongMetaDataType(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $adapter = (new RelationAdapter(
+        $adapter = (new KeywordAdapter(
             $searchIndexConfigServiceInterfaceMock,
-        ))->setType('asset');
+        ))->setType('select');
 
-        $filter = new AssetMetaDataFilter('test', 'input', 1);
+        $filter = new AssetMetaDataFilter('test', 'checkbox', 1);
         $this->expectException(InvalidArgumentException::class);
         $adapter->applySearchFilter($filter, new Search());
     }
 
-    public function testApplySearchFilterWrongScalarType()
+    public function testApplySearchFilterWrongType()
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $adapter = (new RelationAdapter(
+        $adapter = (new KeywordAdapter(
             $searchIndexConfigServiceInterfaceMock,
-        ))->setType('asset');
+        ))->setType('select');
 
-        $filter = new AssetMetaDataFilter('test', 'asset', true);
+        $filter = new AssetMetaDataFilter('test', 'select', 1);
         $this->expectException(InvalidArgumentException::class);
         $adapter->applySearchFilter($filter, new Search());
 
-        $filter = new AssetMetaDataFilter('test', 'asset', ['test']);
-        $this->expectException(InvalidArgumentException::class);
-        $adapter->applySearchFilter($filter, new Search());
-    }
-
-    public function testApplySearchFilterWrongArrayType()
-    {
-        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $adapter = (new RelationAdapter(
-            $searchIndexConfigServiceInterfaceMock,
-        ))->setType('asset');
-
-        $filter = new AssetMetaDataFilter('test', 'checkbox', [1]);
+        $filter = new AssetMetaDataFilter('test', 'select', [null]);
         $this->expectException(InvalidArgumentException::class);
         $adapter->applySearchFilter($filter, new Search());
     }
@@ -105,11 +70,11 @@ final class RelationAdapterTest extends Unit
     {
 
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $adapter = (new RelationAdapter(
+        $adapter = (new KeywordAdapter(
             $searchIndexConfigServiceInterfaceMock,
-        ))->setType('asset');
+        ))->setType('select');
 
-        $filter = new AssetMetaDataFilter('test', 'asset', 1);
+        $filter = new AssetMetaDataFilter('test', 'select', 'value');
         $search = new Search();
         $adapter->applySearchFilter($filter, $search);
 
@@ -118,14 +83,14 @@ final class RelationAdapterTest extends Unit
                 'bool' => [
                     'filter' => [
                         'term' => [
-                            'standard_fields.test.default.id' => 1,
+                            'standard_fields.test.default' => 'value',
                         ],
                     ],
                 ],
             ],
         ], $search->toArray());
 
-        $filter = new AssetMetaDataFilter('test', 'asset', 2, 'en');
+        $filter = new AssetMetaDataFilter('test', 'select', 'value', 'en');
         $search = new Search();
         $adapter->applySearchFilter($filter, $search);
 
@@ -134,14 +99,14 @@ final class RelationAdapterTest extends Unit
                 'bool' => [
                     'filter' => [
                         'term' => [
-                            'standard_fields.test.en.id' => 2,
+                            'standard_fields.test.en' => 'value',
                         ],
                     ],
                 ],
             ],
         ], $search->toArray());
 
-        $filter = new AssetMetaDataFilter('test', 'asset', [1, 2], 'en');
+        $filter = new AssetMetaDataFilter('test', 'select', ['value', 'value2'], 'en');
         $search = new Search();
         $adapter->applySearchFilter($filter, $search);
 
@@ -150,7 +115,7 @@ final class RelationAdapterTest extends Unit
                 'bool' => [
                     'filter' => [
                         'terms' => [
-                            'standard_fields.test.en.id' => [1, 2],
+                            'standard_fields.test.en' => ['value', 'value2'],
                         ],
                     ],
                 ],

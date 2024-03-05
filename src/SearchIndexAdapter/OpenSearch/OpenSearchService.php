@@ -16,13 +16,14 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 use Exception;
 use JsonException;
 use OpenSearch\Client;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\SearchExecutionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Psr\Log\LogLevel;
 
@@ -39,8 +40,8 @@ final class OpenSearchService implements SearchIndexServiceInterface
 
     public function __construct(
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
-        private readonly SearchResultDenormalizer $searchResultDenormalizer,
         private readonly Client $openSearchClient,
+        private readonly SearchExecutionServiceInterface $searchExecutionService,
     ) {
     }
 
@@ -249,29 +250,35 @@ final class OpenSearchService implements SearchIndexServiceInterface
         return $countResult['hits']['total'] ?? 0;
     }
 
-    public function createPaginatedSearch(int $page, int $pageSize): AdapterSearchInterface
-    {
+    public function createPaginatedSearch(
+        int $page,
+        int $pageSize,
+        bool $aggregationsOnly = false
+    ): AdapterSearchInterface {
+        if ($aggregationsOnly) {
+            return new Search(
+                from: 0,
+                size: 0
+            );
+        }
+
         return new Search(
             from: $pageSize * ($page - 1),
             size: $pageSize
         );
     }
 
+    /**
+     * @throws SearchFailedException
+     */
     public function search(AdapterSearchInterface $search, string $indexName): SearchResult
     {
-        $openSearchResult = $this
-            ->openSearchClient
-            ->search([
-                'index' => $indexName,
-                'body' => $search->toArray(),
-            ]);
+        return $this->searchExecutionService->executeSearch($search, $indexName);
+    }
 
-        return $this->searchResultDenormalizer->denormalize(
-            $openSearchResult,
-            SearchResult::class,
-            null,
-            ['search' => $search]
-        );
+    public function getExecutedSearches(): array
+    {
+        return $this->searchExecutionService->getExecutedSearches();
     }
 
     public function getStats(string $indexName): array
