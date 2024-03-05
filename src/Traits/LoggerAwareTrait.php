@@ -21,8 +21,8 @@ trait LoggerAwareTrait
     protected LoggerInterface|null $logger;
 
     #[Required]
-    public function setLogger(LoggerInterface $logger): void
+    public function setLogger(LoggerInterface $pimcoreLogger): void
     {
-        $this->logger = $logger;
+        $this->logger = $pimcoreLogger;
     }
 }

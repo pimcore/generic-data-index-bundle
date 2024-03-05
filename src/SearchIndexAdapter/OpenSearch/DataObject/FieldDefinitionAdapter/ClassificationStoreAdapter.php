@@ -13,8 +13,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
+use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
@@ -29,6 +31,8 @@ use Symfony\Contracts\Service\Attribute\Required;
  */
 final class ClassificationStoreAdapter extends AbstractAdapter
 {
+    use LoggerAwareTrait;
+
     private ServiceResolverInterface $classificationService;
 
     #[Required]
@@ -66,7 +70,16 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     {
         $groupMapping = [];
         foreach ($groupConfigs as $key) {
-            $definition = $this->classificationService->getFieldDefinitionFromKeyConfig($key);
+            try {
+                $definition = $this->classificationService->getFieldDefinitionFromKeyConfig($key);
+            } catch (Exception) {
+                $this->logger->warning(
+                    'Could not get field definition for type ' . $key->getType() . ' in group ' . $key->getGroupId()
+                );
+
+                continue;
+            }
+
             if ($definition instanceof Data) {
                 $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($definition);
 
