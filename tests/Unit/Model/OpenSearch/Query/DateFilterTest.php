@@ -188,5 +188,10 @@ final class DateFilterTest extends Unit
         DateFilter::createFromArray('datefield', [
             'invalid' => 'invalid',
         ]);
+
+        $this->expectException(InvalidArgumentException::class);
+        DateFilter::createFromArray('datefield', [
+           DateFilter::PARAM_ON => 'invalid',
+        ]);
     }
 }

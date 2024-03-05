@@ -52,6 +52,18 @@ final class DateFilter implements QueryInterface
                 )
             );
         }
+        
+        foreach ($params as $key => $value) {
+            if (!is_int($value)) {
+                throw new InvalidArgumentException(
+                    sprintf(
+                        'Invalid value for parameter %s, expected integer, got %s',
+                        $key,
+                        gettype($value)
+                    )
+                );
+            }
+        }
 
         return new self(
             $field,

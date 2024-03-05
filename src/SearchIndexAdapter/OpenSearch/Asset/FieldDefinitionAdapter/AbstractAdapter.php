@@ -130,7 +130,7 @@ abstract class AbstractAdapter implements AdapterInterface
     /**
      * @throws InvalidArgumentException
      */
-    private function throwInvalidFilterValueArgumentException(mixed $value, AssetMetaDataFilter $filter): void
+    protected function throwInvalidFilterValueArgumentException(mixed $value, AssetMetaDataFilter $filter): void
     {
         throw new InvalidArgumentException(
             sprintf(

@@ -43,6 +43,10 @@ final class DateAdapter extends AbstractAdapter
 
     public function applySearchFilter(AssetMetaDataFilter $filter, AdapterSearchInterface $adapterSearch): void
     {
+        if (!is_array($filter->getData())) {
+            $this->throwInvalidFilterValueArgumentException($filter->getData(), $filter);
+        }
+
         $dateFilter = DateFilter::createFromArray($this->getSearchFilterFieldPath($filter), $filter->getData());
         $adapterSearch->addQuery($dateFilter);
     }
