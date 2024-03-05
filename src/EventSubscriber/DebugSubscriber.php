@@ -48,7 +48,7 @@ final class DebugSubscriber implements EventSubscriberInterface
         if (!Pimcore::inDebugMode() || empty($event->getRequest()->query->get(self::DEBUG_SEARCH_PARAM))) {
             return;
         }
-        $verbosity = (int) $event->getRequest()->query->get(self::DEBUG_SEARCH_PARAM);
+        $verbosity = $event->getRequest()->query->getInt(self::DEBUG_SEARCH_PARAM);
         $event->setResponse(new JsonResponse($this->getNormalizedSearches($verbosity)));
     }
 
