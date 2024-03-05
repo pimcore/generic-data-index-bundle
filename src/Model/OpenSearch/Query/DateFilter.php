@@ -52,7 +52,7 @@ final class DateFilter implements QueryInterface
                 )
             );
         }
-        
+
         foreach ($params as $key => $value) {
             if (!is_int($value)) {
                 throw new InvalidArgumentException(
