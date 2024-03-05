@@ -14,17 +14,18 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validator\HasPositiveIntArrayTrait;
+use Pimcore\ValueObject\Collection\ArrayOfPositiveIntegers;
 
 final class ChildrenCountAggregation implements SearchModifierInterface
 {
-    use HasPositiveIntArrayTrait;
+
+    private ArrayOfPositiveIntegers $parentIds;
 
     public function __construct(
-        private readonly array $parentIds = [],
+        array $parentIds = [],
         private readonly string $aggregationName = 'children_count'
     ) {
-        $this->validatePositiveIntArray($this->parentIds);
+        $this->parentIds = new ArrayOfPositiveIntegers($parentIds);
     }
 
     /**
@@ -32,7 +33,7 @@ final class ChildrenCountAggregation implements SearchModifierInterface
      */
     public function getParentIds(): array
     {
-        return $this->parentIds;
+        return $this->parentIds->getValue();
     }
 
     public function getAggregationName(): string

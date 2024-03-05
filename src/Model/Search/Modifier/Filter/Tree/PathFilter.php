@@ -14,23 +14,24 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validator\ValidPathStringTrait;
+use Pimcore\ValueObject\String\Path;
 
 final class PathFilter implements SearchModifierInterface
 {
-    use ValidPathStringTrait;
+
+    private Path $path;
 
     public function __construct(
-        private readonly string $path = '/',
+        string $path = '/',
         private readonly bool $directChildrenOnly = false,
         private readonly bool $includeParentItem = false,
     ) {
-        $this->validatePathString($this->path);
+        $this->path = new Path($path);
     }
 
     public function getPath(): string
     {
-        return $this->path;
+        return $this->path->getValue();
     }
 
     public function getPathWithoutTrailingSlash(): string

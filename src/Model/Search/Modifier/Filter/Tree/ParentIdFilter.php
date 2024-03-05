@@ -14,20 +14,18 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validator\HasPositiveIdTrait;
+use Pimcore\ValueObject\Integer\PositiveInteger;
 
 final class ParentIdFilter implements SearchModifierInterface
 {
-    use HasPositiveIdTrait;
+    private PositiveInteger $parentId;
 
-    public function __construct(
-        private readonly int $parentId = 1
-    ) {
-        $this->validatePositiveInt($this->parentId);
+    public function __construct(int $parentId = 1) {
+        $this->parentId = new PositiveInteger($parentId);
     }
 
     public function getParentId(): int
     {
-        return $this->parentId;
+        return $this->parentId->getValue();
     }
 }
