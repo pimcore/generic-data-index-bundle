@@ -18,7 +18,6 @@ use Pimcore\ValueObject\String\Path;
 
 final class PathFilter implements SearchModifierInterface
 {
-
     private Path $path;
 
     public function __construct(

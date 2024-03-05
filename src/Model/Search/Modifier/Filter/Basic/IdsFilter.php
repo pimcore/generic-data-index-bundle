@@ -18,10 +18,10 @@ use Pimcore\ValueObject\Collection\ArrayOfPositiveIntegers;
 
 final class IdsFilter implements SearchModifierInterface
 {
-
     private ArrayOfPositiveIntegers $ids;
 
-    public function __construct(array $ids = []) {
+    public function __construct(array $ids = [])
+    {
         $this->ids = new ArrayOfPositiveIntegers($ids);
     }
 

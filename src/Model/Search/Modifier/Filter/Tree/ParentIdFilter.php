@@ -20,7 +20,8 @@ final class ParentIdFilter implements SearchModifierInterface
 {
     private PositiveInteger $parentId;
 
-    public function __construct(int $parentId = 1) {
+    public function __construct(int $parentId = 1)
+    {
         $this->parentId = new PositiveInteger($parentId);
     }
 

@@ -18,7 +18,6 @@ use Pimcore\ValueObject\Collection\ArrayOfPositiveIntegers;
 
 final class ChildrenCountAggregation implements SearchModifierInterface
 {
-
     private ArrayOfPositiveIntegers $parentIds;
 
     public function __construct(
