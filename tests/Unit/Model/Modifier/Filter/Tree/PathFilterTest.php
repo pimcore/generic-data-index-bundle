@@ -14,8 +14,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Model\Modifier\Filter\Tree;
 
 use Codeception\Test\Unit;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\PathFilter;
+use ValueError;
 
 /**
  * @internal
@@ -24,14 +24,14 @@ final class PathFilterTest extends Unit
 {
     public function testPathFilterWithoutSlash(): void
     {
-        $this->expectException(InvalidModifierException::class);
+        $this->expectException(ValueError::class);
         $this->expectExceptionMessage('Path must start with a slash.');
         new PathFilter('test');
     }
 
     public function testPathFilterWithMultipleSlashes(): void
     {
-        $this->expectException(InvalidModifierException::class);
+        $this->expectException(ValueError::class);
         $this->expectExceptionMessage('Path must not contain consecutive slashes.');
         new PathFilter('/test//path');
     }

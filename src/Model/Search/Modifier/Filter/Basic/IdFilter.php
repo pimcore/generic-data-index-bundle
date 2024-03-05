@@ -14,20 +14,19 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validator\HasPositiveIdTrait;
+use Pimcore\ValueObject\Integer\PositiveInteger;
 
 final class IdFilter implements SearchModifierInterface
 {
-    use HasPositiveIdTrait;
+    private PositiveInteger $id;
 
-    public function __construct(
-        private readonly int $id = 1
-    ) {
-        $this->validatePositiveInt($this->id);
+    public function __construct(int $id = 1)
+    {
+        $this->id = new PositiveInteger($id);
     }
 
     public function getId(): int
     {
-        return $this->id;
+        return $this->id->getValue();
     }
 }

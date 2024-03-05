@@ -14,16 +14,15 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Validator\HasPositiveIntArrayTrait;
+use Pimcore\ValueObject\Collection\ArrayOfPositiveIntegers;
 
 final class IdsFilter implements SearchModifierInterface
 {
-    use HasPositiveIntArrayTrait;
+    private ArrayOfPositiveIntegers $ids;
 
-    public function __construct(
-        private readonly array $ids = []
-    ) {
-        $this->validatePositiveIntArray($this->ids);
+    public function __construct(array $ids = [])
+    {
+        $this->ids = new ArrayOfPositiveIntegers($ids);
     }
 
     /**
@@ -31,6 +30,6 @@ final class IdsFilter implements SearchModifierInterface
      */
     public function getIds(): array
     {
-        return $this->ids;
+        return $this->ids->getValue();
     }
 }

@@ -14,8 +14,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Model\Modifier\Aggregation\Tree;
 
 use Codeception\Test\Unit;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree\ChildrenCountAggregation;
+use ValueError;
 
 /**
  * @internal
@@ -24,22 +24,22 @@ final class ChildrenCountAggregationTest extends Unit
 {
     public function testChildrenCountAggregationWithNegativeInteger(): void
     {
-        $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage('Value must be a positive integer.');
+        $this->expectException(ValueError::class);
+        $this->expectExceptionMessage('Provided integer must be positive. (-10 given)');
         new ChildrenCountAggregation([1, 2, -10, 5]);
     }
 
     public function testChildrenCountAggregationWithZero(): void
     {
-        $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage('Value must be a positive integer.');
+        $this->expectException(ValueError::class);
+        $this->expectExceptionMessage('Provided integer must be positive. (0 given)');
         new ChildrenCountAggregation([1, 2, 0, 5]);
     }
 
     public function testChildrenCountAggregationWithString(): void
     {
-        $this->expectException(InvalidModifierException::class);
-        $this->expectExceptionMessage('Array must contain only integers.');
+        $this->expectException(ValueError::class);
+        $this->expectExceptionMessage('Provided array must contain only integer values. (string given)');
         new ChildrenCountAggregation([1, 2, 'string', 5]);
     }
 
