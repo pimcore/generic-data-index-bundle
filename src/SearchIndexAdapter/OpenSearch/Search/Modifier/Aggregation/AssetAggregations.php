@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Asset\AssetMetaDataAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefinitionServiceInterface;
+use Pimcore\Twig\Extension\Templating\Placeholder\Exception;
 
 /**
  * @internal
@@ -44,17 +45,20 @@ final class AssetAggregations
             );
         }
 
-        $aggregation = $adapter->getSearchFilterAggregation($assetMetaDataAggregation);
+        try {
+            $aggregation = $adapter->getSearchFilterAggregation($assetMetaDataAggregation);
 
-        if ($aggregation === null) {
-            throw new InvalidModifierException(
-                sprintf(
-                    'Meta data filter for type "%s" does not support aggregation.',
-                    $assetMetaDataAggregation->getType()
-                )
-            );
+            if ($aggregation === null) {
+                throw new InvalidModifierException(
+                    sprintf(
+                        'Meta data filter for type "%s" does not support aggregation.',
+                        $assetMetaDataAggregation->getType()
+                    )
+                );
+            }
+            $context->getSearch()->addAggregation($aggregation);
+        } catch (Exception $e) {
+            throw new InvalidModifierException($e->getMessage(), 0, $e);
         }
-
-        $context->getSearch()->addAggregation($aggregation);
     }
 }

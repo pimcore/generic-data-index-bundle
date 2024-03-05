@@ -15,10 +15,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Se
 
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch\AsSearchModifierHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidValueException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefinitionServiceInterface;
+use Pimcore\Twig\Extension\Templating\Placeholder\Exception;
 
 /**
  * @internal
@@ -50,7 +50,7 @@ final class AssetFilters
 
         try {
             $adapter->applySearchFilter($assetMetaDataFilter, $context->getSearch());
-        } catch (InvalidValueException $e) {
+        } catch (Exception $e) {
             throw new InvalidModifierException($e->getMessage(), 0, $e);
         }
     }

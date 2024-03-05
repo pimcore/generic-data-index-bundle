@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\Asset\FieldDefinitionAdapter;
 
 use Codeception\Test\Unit;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidValueException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter\TextKeywordAdapter;
@@ -51,7 +51,7 @@ final class TextKeywordAdapterTest extends Unit
         ))->setType('input');
 
         $filter = new AssetMetaDataFilter('test', 'checkbox', 1);
-        $this->expectException(InvalidValueException::class);
+        $this->expectException(InvalidArgumentException::class);
         $adapter->applySearchFilter($filter, new Search());
     }
 
@@ -63,11 +63,11 @@ final class TextKeywordAdapterTest extends Unit
         ))->setType('input');
 
         $filter = new AssetMetaDataFilter('test', 'input', 1);
-        $this->expectException(InvalidValueException::class);
+        $this->expectException(InvalidArgumentException::class);
         $adapter->applySearchFilter($filter, new Search());
 
         $filter = new AssetMetaDataFilter('test', 'input', [null]);
-        $this->expectException(InvalidValueException::class);
+        $this->expectException(InvalidArgumentException::class);
         $adapter->applySearchFilter($filter, new Search());
     }
 

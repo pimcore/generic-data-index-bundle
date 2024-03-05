@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidValueException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\WildcardFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Asset\AssetMetaDataAggregation;
@@ -45,7 +45,7 @@ final class TextKeywordAdapter extends AbstractAdapter
     public function applySearchFilter(AssetMetaDataFilter $filter, AdapterSearchInterface $adapterSearch): void
     {
         if ($filter->getType() !== $this->getType()) {
-            throw new InvalidValueException(
+            throw new InvalidArgumentException(
                 sprintf(
                     '%s does not support filter type "%s" for filter "%s"',
                     self::class,
@@ -57,7 +57,7 @@ final class TextKeywordAdapter extends AbstractAdapter
 
         $searchTerm = $filter->getData();
         if (!is_string($searchTerm)) {
-            throw new InvalidValueException('Search term must be a string');
+            throw new InvalidArgumentException('Search term must be a string');
         }
 
         if (empty($searchTerm)) {

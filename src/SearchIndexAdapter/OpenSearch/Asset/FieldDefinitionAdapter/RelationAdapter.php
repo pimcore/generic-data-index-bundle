@@ -16,9 +16,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\As
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Asset\AssetMetaDataAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\ValueObject\IntegerArray;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
+use Pimcore\ValueObject\Collection\ArrayOfIntegers;
 
 /**
  * @internal
@@ -63,6 +63,6 @@ final class RelationAdapter extends AbstractAdapter
 
     protected function validateArray(array $value): void
     {
-        new IntegerArray($value);
+        new ArrayOfIntegers($value);
     }
 }

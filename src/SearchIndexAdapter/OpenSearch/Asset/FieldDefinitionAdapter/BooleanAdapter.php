@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\ValueObject\BooleanArray;
+use Pimcore\ValueObject\Collection\ArrayOfBoolean;
 
 /**
  * @internal
@@ -40,6 +40,6 @@ final class BooleanAdapter extends AbstractAdapter
 
     protected function validateArray(array $value): void
     {
-        new BooleanArray($value);
+        new ArrayOfBoolean($value);
     }
 }
