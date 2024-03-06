@@ -17,5 +17,5 @@ This bundle can be extended and customized to fit your specific needs, for examp
 ## Documentation Overview
 - [Installation](./doc/01_Installation/README.md)
 - [Configuration](./doc/02_Configuration/README.md)
-- [Searching Data Index](doc/04_Searching_For_Data_In_Index/README.md)
+- [Searching Data Index](./doc/04_Searching_For_Data_In_Index/README.md)
 - [Extending Data Index](./doc/05_Extending_Data_Index/README.md)
