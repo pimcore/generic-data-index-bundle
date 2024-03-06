@@ -36,12 +36,4 @@ final class AssetMetaData
     {
         return $this->data;
     }
-
-    /**
-     * @deprecated Type is not indexed anymore as the type does not make sense from a search perspective.
-     */
-    public function getType(): string
-    {
-        return '';
-    }
 }

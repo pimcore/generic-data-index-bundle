@@ -11,11 +11,12 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataMappingProvider;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\MappingProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
 use Pimcore\Model\Metadata\Predefined;
 
 /**
@@ -29,14 +30,14 @@ final class PredefinedAssetMetadataProvider implements MappingProviderInterface
     ) {
     }
 
-    public function addMapping(array $mapping): array
+    public function getMappingProperties(): array
     {
-        $mapping['properties'] = $mapping['properties'] ?? [];
+        $mappingProperties = [];
 
-        $predefinedMetadata = (new Predefined\Listing())->load();
-        $languages = array_merge([AssetNormalizer::NOT_LOCALIZED_KEY], $this->languageService->getValidLanguages());
+        $predefinedMetaDataList = (new Predefined\Listing())->load();
+        $languages = array_merge([MappingProperty::NOT_LOCALIZED_KEY], $this->languageService->getValidLanguages());
 
-        foreach ($predefinedMetadata as $predefinedMetaData) {
+        foreach ($predefinedMetaDataList as $predefinedMetaData) {
             $languageMapping = [
                 'properties' => [],
             ];
@@ -47,10 +48,15 @@ final class PredefinedAssetMetadataProvider implements MappingProviderInterface
                 }
             }
 
-            $mapping['properties'][$predefinedMetaData->getType()] = $languageMapping;
+            $mappingProperties[] = new MappingProperty(
+                $predefinedMetaData->getName(),
+                $predefinedMetaData->getType(),
+                $languageMapping,
+                $languages
+            );
         }
 
-        return $mapping;
+        return $mappingProperties;
     }
 
     private function getTypeMapping(string $type): ?array

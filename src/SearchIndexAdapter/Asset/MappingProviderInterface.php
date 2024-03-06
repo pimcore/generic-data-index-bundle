@@ -11,9 +11,14 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataMappingProvider;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset;
+
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 
 interface MappingProviderInterface
 {
-    public function addMapping(array $mapping): array;
+    /**
+     * @return MappingProperty[]
+     */
+    public function getMappingProperties(): array;
 }
