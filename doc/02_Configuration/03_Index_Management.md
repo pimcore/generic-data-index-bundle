@@ -22,8 +22,6 @@ The Generic Data Index generates indices for the following entities:
 
 * Assets search index (one alias and one index)
 * Data objects search index (one alias and one index per class definition)
-* Login tracker for login statistics (one index)
-* Download tracker for download statistics (one index)
 
 For the asset and data object indices the Generic Data Index uses an alias (e.g. `<index_prefix>_asset`) that points to the
 most current index (e.g. `<index_prefix>_asset-odd`). The alias name always stays the same, the index names alternate
@@ -31,13 +29,14 @@ between `-odd` and `-even` suffix. For more details also see 'Updating index str
 
 ## Keeping Indices Up to Date
 
-Whereas the tracker indices are created automatically as soon as some gets tracked, the element search indices need to be
-created via the following console commands:
+The element search indices need to be created via the following console commands:
 
 ```
 # create/update all indices + their mappings and add all items to the index queue
 bin/console generic-data-index:update:index
 ```
+
+The command will create the indices and add all assets and data objects to the index queue. The queue will be processed by Symfony messenger workers (`pimcore_generic_data_index_queue` queue).
 
 ### Refreshing of the index
 
@@ -53,7 +52,7 @@ Available methods:
 
 The indexing queue considers the following options:
 
-- **worker_count** (default 1): number of messenger workers to process the queue
+- **worker_count** (default 1): number of messenger workers to process the queue. Set this to the actual used parallel number of `messenger:consume` workers to improve the calculation of items per batch.
 - **min_batch_size** (default 5): minimum number of items to process in one batch (when using multiple workers) 
 - **max_batch_size** (default 400): maximum number of items to process in one batch
 
