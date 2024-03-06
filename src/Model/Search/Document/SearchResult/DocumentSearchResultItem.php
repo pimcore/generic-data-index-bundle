@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermission;
 
 class DocumentSearchResultItem
 {
@@ -51,7 +51,7 @@ class DocumentSearchResultItem
 
     private array $searchIndexData;
 
-    private DataObjectPermission $permissions;
+    private DocumentPermission $permissions;
 
     public function __construct(
     ) {
@@ -261,12 +261,12 @@ class DocumentSearchResultItem
         return $this;
     }
 
-    public function getPermissions(): DataObjectPermission
+    public function getPermissions(): DocumentPermission
     {
         return $this->permissions;
     }
 
-    public function setPermissions(DataObjectPermission $permissions): DocumentSearchResultItem
+    public function setPermissions(DocumentPermission $permissions): DocumentSearchResultItem
     {
         $this->permissions = $permissions;
 
