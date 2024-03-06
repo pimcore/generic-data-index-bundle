@@ -78,6 +78,7 @@ final class DocumentNormalizer implements NormalizerInterface
             SystemField::PARENT_ID->value => $document->getParentId(),
             SystemField::CREATION_DATE->value => $this->formatTimestamp($document->getCreationDate()),
             SystemField::MODIFICATION_DATE->value => $this->formatTimestamp($document->getModificationDate()),
+            SystemField::PUBLISHED->value => $document->isPublished(),
             SystemField::TYPE->value => $document->getType(),
             SystemField::KEY->value => $document->getKey(),
             SystemField::PATH->value => $document->getPath(),
