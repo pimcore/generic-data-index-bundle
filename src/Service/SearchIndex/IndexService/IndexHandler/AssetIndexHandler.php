@@ -15,10 +15,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataMappingProvider\MappingProviderInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataProviderServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
-use Symfony\Component\DependencyInjection\ServiceLocator;
 use Symfony\Contracts\Service\Attribute\Required;
 
 /**
@@ -28,7 +27,7 @@ final class AssetIndexHandler extends AbstractIndexHandler
 {
     private AssetTypeAdapter $assetAdapter;
 
-    private ServiceLocator $mappingProviderLocator;
+    private MetadataProviderServiceInterface $metadataProviderService;
 
     protected function extractMappingProperties(mixed $context = null): array
     {
@@ -37,33 +36,19 @@ final class AssetIndexHandler extends AbstractIndexHandler
                 'properties' => $this->searchIndexConfigService
                     ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELD_ASSET),
             ],
-            FieldCategory::STANDARD_FIELDS->value => [],
+            FieldCategory::STANDARD_FIELDS->value => ['properties' => []],
             FieldCategory::CUSTOM_FIELDS->value => [],
         ];
 
-        foreach ($this->getMappingProviders() as $mappingProvider) {
-            $mappingProperties[FieldCategory::STANDARD_FIELDS->value] = $mappingProvider->addMapping(
-                $mappingProperties[FieldCategory::STANDARD_FIELDS->value]
-            );
+        foreach ($this->metadataProviderService->getMappingProperties() as $mappingProperty) {
+            $mappingProperties[FieldCategory::STANDARD_FIELDS->value]['properties'][$mappingProperty->getName()]
+                = $mappingProperty->getMapping();
         }
 
         $mappingProperties[FieldCategory::CUSTOM_FIELDS->value]['properties'] =
             $this->fireEventAndGetCustomFieldsMapping($mappingProperties[FieldCategory::CUSTOM_FIELDS->value]);
 
         return $mappingProperties;
-    }
-
-    /**
-     * @return MappingProviderInterface[]
-     */
-    private function getMappingProviders(): array
-    {
-        $mappingProviders = [];
-        foreach ($this->mappingProviderLocator->getProvidedServices() as $serviceType => $service) {
-            $mappingProviders[] = $this->mappingProviderLocator->get($serviceType);
-        }
-
-        return $mappingProviders;
     }
 
     protected function getAliasIndexName(mixed $context = null): string
@@ -77,9 +62,11 @@ final class AssetIndexHandler extends AbstractIndexHandler
         $this->assetAdapter = $assetAdapter;
     }
 
-    public function setMappingProviderLocator(ServiceLocator $mappingProviderLocator): void
-    {
-        $this->mappingProviderLocator = $mappingProviderLocator;
+    #[Required]
+    public function setMetadataProviderService(
+        MetadataProviderServiceInterface $metadataProviderService
+    ): void {
+        $this->metadataProviderService = $metadataProviderService;
     }
 
     private function fireEventAndGetCustomFieldsMapping($customFields): array

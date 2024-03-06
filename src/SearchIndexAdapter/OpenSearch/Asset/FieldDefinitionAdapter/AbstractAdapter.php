@@ -22,9 +22,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Asset\AssetMetaDataAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
 use Pimcore\ValueObject\Collection\ArrayOfStrings;
 use ValueError;
 
@@ -122,7 +122,7 @@ abstract class AbstractAdapter implements AdapterInterface
             [
                 FieldCategory::STANDARD_FIELDS->value,
                 $filter->getName(),
-                $filter->getLanguage() ?? AssetNormalizer::NOT_LOCALIZED_KEY,
+                $filter->getLanguage() ?? MappingProperty::NOT_LOCALIZED_KEY,
             ]
         );
     }
