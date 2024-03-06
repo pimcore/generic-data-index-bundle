@@ -18,7 +18,7 @@ use Pimcore\Model\Document;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /**
- * Fires before the data for assets gets updated in the search index.
+ * Fires before the data for document gets updated in the search index.
  * Can be used to add additional customized attributes in the search index.
  * You will find a description and example on how it works in the docs.
  */
