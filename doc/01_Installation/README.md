@@ -8,7 +8,7 @@
 
  ## Bundle Installation
 
-To install the Generic Data Index bundle, follow the three steps below:
+To install the Generic Data Index bundle, follow the steps below:
 
 1) Install the required dependencies:
 
@@ -33,11 +33,9 @@ return [
 bin/console pimcore:bundle:install PimcoreGenericDataIndexBundle
 ```
 
-4) Setup open search client configuration in your Symfony configuration (e.g. `config.yaml`):
-
+4) Setup open search client configuration in your Symfony configuration files (e.g. `config.yaml`):
 
 ```yaml
-# Example configuration, take a look at the OpenSearch client documentation for more options
 pimcore_open_search_client:
     clients:
         default:
@@ -46,6 +44,8 @@ pimcore_open_search_client:
             username: 'admin'
             ssl_verification: false # set to true when valid SSL certificate is used
 ```
+
+*Example configuration, take a look at the [OpenSearch client documentation](https://github.com/pimcore/opensearch-client) for more options*
 
 5) Setup one or multiple Symfony messenger workers for the indexing queue processing. It is recommended to use a tool like Supervisor to manage the workers.
    For more information, see the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html). 
