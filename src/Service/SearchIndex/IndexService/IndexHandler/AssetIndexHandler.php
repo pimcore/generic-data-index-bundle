@@ -27,7 +27,7 @@ final class AssetIndexHandler extends AbstractIndexHandler
 {
     private AssetTypeAdapter $assetAdapter;
 
-    private MetadataProviderServiceInterface $metadataMappingProviderService;
+    private MetadataProviderServiceInterface $metadataProviderService;
 
     protected function extractMappingProperties(mixed $context = null): array
     {
@@ -40,7 +40,7 @@ final class AssetIndexHandler extends AbstractIndexHandler
             FieldCategory::CUSTOM_FIELDS->value => [],
         ];
 
-        foreach ($this->metadataMappingProviderService->getMappingProperties() as $mappingProperty) {
+        foreach ($this->metadataProviderService->getMappingProperties() as $mappingProperty) {
             $mappingProperties[FieldCategory::STANDARD_FIELDS->value]['properties'][$mappingProperty->getName()]
                 = $mappingProperty->getMapping();
         }
@@ -63,10 +63,10 @@ final class AssetIndexHandler extends AbstractIndexHandler
     }
 
     #[Required]
-    public function setMetadataMappingProviderService(
-        MetadataProviderServiceInterface $metadataMappingProviderService
+    public function setMetadataProviderService(
+        MetadataProviderServiceInterface $metadataProviderService
     ): void {
-        $this->metadataMappingProviderService = $metadataMappingProviderService;
+        $this->metadataProviderService = $metadataProviderService;
     }
 
     private function fireEventAndGetCustomFieldsMapping($customFields): array
