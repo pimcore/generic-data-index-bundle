@@ -48,7 +48,7 @@ Available methods:
 - `disable()`: disable synchronous processing
 - `isEnabled()`: check if synchronous processing is enabled
 
-### Index Queue options
+### Index Queue Options
 
 The indexing queue considers the following options:
 
@@ -78,7 +78,7 @@ Do this with the index update command and pass -r option.
 bin/console generic-data-index:update:index -r
 ```
 
-### Handling failed messages
+### Handling Failed Messages
 
 By default, the messenger will retry failed messages 3 times and then send them into the failed queue `pimcore_generic_data_index_failed`.
 If you want to retry failed messages, you can use the following command:

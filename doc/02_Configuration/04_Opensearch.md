@@ -1,4 +1,4 @@
-# OpenSearch setup
+# OpenSearch Client Setup
 
 Following configuration is required to set up open-search. OpenSearch client configuration takes place via [Pimcore Opensearch Client](https://github.com/pimcore/opensearch-client) and has two parts:
 1) Configuring an OpenSearch client.

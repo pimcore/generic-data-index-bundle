@@ -181,9 +181,7 @@ class CarOwnerSubscriber implements EventSubscriberInterface
         // Ensure that you take the original array and extend it.
         $customFields = $event->getCustomFields();
 
-        $owner = User::getById($car->getUserOwner());
-
-        $customFields['userOwner'] = $owner ? $owner->getName() : 'system';
+        $customFields['numberOfVariants'] = count($car->getChildren() ?? []);
 
         $event->setCustomFields($customFields);
     }
@@ -202,8 +200,8 @@ class CarOwnerSubscriber implements EventSubscriberInterface
          * A 'keyword' field would be best for regular select and multi select filters.
          * For full text search it is possible to define sub-fields with special OpenSearch analyzers too.
          */
-        $customFieldsMapping['userOwner'] = [
-            'type' => 'keyword'
+        $customFieldsMapping['numberOfVariants'] = [
+            'type' => 'integer'
         ];
 
         $event->setCustomFieldsMapping($customFieldsMapping);

@@ -35,23 +35,13 @@ bin/console pimcore:bundle:install PimcoreGenericDataIndexBundle
 
 4) Setup open search client configuration in your Symfony configuration files (e.g. `config.yaml`):
 
-```yaml
-pimcore_open_search_client:
-    clients:
-        default:
-            hosts: ['https://opensearch:9200']
-            password: 'admin'
-            username: 'admin'
-            ssl_verification: false # set to true when valid SSL certificate is used
-```
-
-*Example configuration, take a look at the [OpenSearch client documentation](https://github.com/pimcore/opensearch-client) for more options*
+See [OpenSearch Client Setup](../02_Configuration/04_Opensearch.md) for more information.
 
 5) Setup one or multiple Symfony messenger workers for the indexing queue processing. It is recommended to use a tool like Supervisor to manage the workers.
    For more information, see the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html). 
 
 ```bash
-bin/console messenger:consume pimcore_generic_data_index_queue
+./bin/console messenger:consume pimcore_generic_data_index_queue
 ```
 
 ## Commands after Installation
