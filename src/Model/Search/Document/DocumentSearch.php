@@ -11,16 +11,11 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document;
 
-/**
- * @internal
- */
-enum IndexName: string
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\BaseSearch;
+
+final class DocumentSearch extends BaseSearch
 {
-    case ASSET = 'asset';
 
-    case DATA_OBJECT = 'data-object';
-
-    case DOCUMENT = 'document';
 }

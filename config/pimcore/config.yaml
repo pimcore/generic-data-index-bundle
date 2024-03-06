@@ -109,6 +109,9 @@ pimcore_generic_data_index:
           type: boolean
         hasWorkflowWithPermissions:
           type: boolean
+      document:
+        published:
+          type: boolean
       data_object:
         published:
           type: boolean

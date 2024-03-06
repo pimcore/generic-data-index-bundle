@@ -29,9 +29,11 @@ final class AdapterService implements AdapterServiceInterface
     public function __construct(
         AssetTypeAdapter $assetTypeAdapter,
         DataObjectTypeAdapter $dataObjectTypeAdapter,
+        DocumentTypeAdapter $documentTypeAdapter
     ) {
         $this->adapters[] = $assetTypeAdapter;
         $this->adapters[] = $dataObjectTypeAdapter;
+        $this->adapters[] = $documentTypeAdapter;
     }
 
     /**

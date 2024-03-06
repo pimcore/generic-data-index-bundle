@@ -11,13 +11,10 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Exception;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\SearchResultItem;
 
-use RuntimeException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
 
-/**
- * @internal
- */
-final class EnqueueAssetsException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
+class Folder extends DocumentSearchResultItem
 {
 }

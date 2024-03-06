@@ -11,16 +11,11 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\StandardField\Document;
 
-/**
- * @internal
- */
-enum IndexName: string
+enum DocumentStandardField: string
 {
-    case ASSET = 'asset';
+    case NAVIGATION_TITLE = 'navigation_title';
 
-    case DATA_OBJECT = 'data-object';
-
-    case DOCUMENT = 'document';
+    case NAVIGATION_NAME = 'navigation_name';
 }

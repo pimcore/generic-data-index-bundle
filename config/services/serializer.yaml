@@ -6,6 +6,7 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\DataObjectNormalizer: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\DocumentNormalizer: ~
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer: ~
@@ -65,6 +66,22 @@ services:
             - '@pimcore.generic_data_index.data_object.type_serialization_handler_locator'
 
     pimcore.generic_data_index.data_object.type_serialization_handler_locator:
+        class: Symfony\Component\DependencyInjection\ServiceLocator
+        tags: [ 'container.service_locator' ]
+        arguments:
+            - [ ]
+
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandler\FolderSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.document_type_serialization_handler, type: folder }
+
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandlerService:
+        arguments:
+            - '@pimcore.generic_data_index.document.type_serialization_handler_locator'
+
+    pimcore.generic_data_index.document.type_serialization_handler_locator:
         class: Symfony\Component\DependencyInjection\ServiceLocator
         tags: [ 'container.service_locator' ]
         arguments:

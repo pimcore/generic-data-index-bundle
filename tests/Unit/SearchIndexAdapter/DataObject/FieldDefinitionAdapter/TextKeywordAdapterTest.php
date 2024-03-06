@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\Da
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\TextKeywordAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
@@ -27,9 +28,20 @@ final class TextKeywordAdapterTest extends Unit
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
+        $indexMappingServiceInterfaceMock = $this->makeEmpty(IndexMappingServiceInterface::class,
+            ['getMappingForTextKeyword' => [
+                'type' => 'text',
+                'fields' => [
+                    'keyword' => [
+                        'type' => 'keyword',
+                    ],
+                ],
+            ]]
+        );
         $adapter = new TextKeywordAdapter(
             $searchIndexConfigServiceInterfaceMock,
-            $fieldDefinitionServiceInterfaceMock
+            $fieldDefinitionServiceInterfaceMock,
+            $indexMappingServiceInterfaceMock
         );
 
         $mapping = $adapter->getIndexMapping();

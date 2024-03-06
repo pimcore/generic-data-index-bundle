@@ -24,4 +24,6 @@ interface IndexMappingServiceInterface
      * @param Data[] $fieldDefinitions
      */
     public function getMappingForFieldDefinitions(array $fieldDefinitions);
+
+    public function getMappingForTextKeyword(array $attributes): array;
 }

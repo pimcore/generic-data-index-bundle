@@ -13,7 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\WildcardFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
@@ -25,21 +26,21 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\Ass
  */
 final class TextKeywordAdapter extends AbstractAdapter
 {
+    public function __construct(
+        protected SearchIndexConfigServiceInterface $searchIndexConfigService,
+        private readonly IndexMappingServiceInterface $indexMappingService,
+    )
+    {
+        parent::__construct(
+            $searchIndexConfigService
+        );
+    }
+
     public function getIndexMapping(): array
     {
-        $searchAnalyzerAttributes = $this->searchIndexConfigService->getSearchAnalyzerAttributes();
-
-        return [
-            'type' => AttributeType::TEXT->value,
-            'fields' => array_merge(
-                $searchAnalyzerAttributes[AttributeType::TEXT->value]['fields'] ?? [],
-                [
-                    'keyword' => [
-                        'type' => AttributeType::KEYWORD->value,
-                    ],
-                ]
-            ),
-        ];
+        return $this->indexMappingService->getMappingForTextKeyword(
+            $this->searchIndexConfigService->getSearchAnalyzerAttributes()
+        );
     }
 
     public function applySearchFilter(AssetMetaDataFilter $filter, AdapterSearchInterface $adapterSearch): void

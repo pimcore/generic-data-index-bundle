@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidElementTypeException;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\Document;
 
 /**
  * @internal
@@ -27,5 +28,5 @@ interface ElementServiceInterface
      *
      * @throws InvalidElementTypeException
      */
-    public function getElementByType(int $id, string $type): Asset|AbstractObject|null;
+    public function getElementByType(int $id, string $type): Asset|AbstractObject|Document|null;
 }
