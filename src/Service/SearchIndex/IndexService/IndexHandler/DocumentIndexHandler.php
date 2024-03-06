@@ -64,7 +64,7 @@ final class DocumentIndexHandler extends AbstractIndexHandler
             'properties' => [
                 DocumentStandardField::NAVIGATION_NAME->value => $keywordMapping,
                 DocumentStandardField::NAVIGATION_TITLE->value => $keywordMapping,
-            ]
+            ],
         ];
     }
 

@@ -16,6 +16,5 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\S
 enum DocumentStandardField: string
 {
     case NAVIGATION_TITLE = 'navigation_title';
-
     case NAVIGATION_NAME = 'navigation_name';
 }

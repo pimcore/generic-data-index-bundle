@@ -29,8 +29,7 @@ abstract class AbstractSerializationHandler implements HandlerInterface
     protected function getPageResultModelFields(
         DocumentSearchResultItem $document,
         array $indexData
-    ): DocumentSearchResultItem
-    {
+    ): DocumentSearchResultItem {
         if (!$document instanceof SearchResultItem\Page &&
             !$document instanceof SearchResultItem\Snippet &&
             !$document instanceof SearchResultItem\Email

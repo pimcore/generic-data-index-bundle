@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandler;
@@ -38,13 +38,14 @@ final class LinkSerializationHandler extends AbstractSerializationHandler
             LinkSystemField::INTERNAL_TYPE->value => $document->getInternalType(),
             LinkSystemField::DIRECT->value => $document->getDirect(),
             LinkSystemField::LINK_TYPE->value => $document->getLinktype(),
-            LinkSystemField::HREF->value => $document->getHref()
+            LinkSystemField::HREF->value => $document->getHref(),
         ];
     }
 
     public function createSearchResultModel(array $indexData): DocumentSearchResultItem
     {
         $document = new Link();
+
         return $document
             ->setInternal(LinkSystemField::INTERNAL->getData($indexData))
             ->setInternalType(LinkSystemField::INTERNAL_TYPE->getData($indexData))

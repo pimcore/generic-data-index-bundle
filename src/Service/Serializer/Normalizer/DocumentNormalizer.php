@@ -89,7 +89,7 @@ final class DocumentNormalizer implements NormalizerInterface
             SystemField::LOCKED->value => $document->getLocked(),
             SystemField::IS_LOCKED->value => $document->isLocked(),
             SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
-                $this->workflowService->hasWorkflowWithPermissions($document)
+                $this->workflowService->hasWorkflowWithPermissions($document),
         ];
 
         if ($handler = $this->documentTypeSerializationHandlerService->getSerializationHandler($document->getType())) {

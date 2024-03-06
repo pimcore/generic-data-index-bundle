@@ -26,8 +26,7 @@ final class TextKeywordAdapter extends AbstractAdapter
         protected SearchIndexConfigServiceInterface $searchIndexConfigService,
         protected FieldDefinitionServiceInterface $fieldDefinitionService,
         private readonly IndexMappingServiceInterface $indexMappingService,
-    )
-    {
+    ) {
         parent::__construct(
             $searchIndexConfigService,
             $fieldDefinitionService
