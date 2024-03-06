@@ -65,8 +65,7 @@ final class AssetIndexHandler extends AbstractIndexHandler
     #[Required]
     public function setMetadataMappingProviderService(
         MetadataProviderServiceInterface $metadataMappingProviderService
-    ): void
-    {
+    ): void {
         $this->metadataMappingProviderService = $metadataMappingProviderService;
     }
 

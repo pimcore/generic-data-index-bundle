@@ -17,7 +17,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProper
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\MappingProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
 use Pimcore\Model\Metadata\Predefined;
 
 /**

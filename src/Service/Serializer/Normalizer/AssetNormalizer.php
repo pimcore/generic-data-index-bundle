@@ -33,9 +33,9 @@ final class AssetNormalizer implements NormalizerInterface
 
     public function __construct(
         private readonly AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService,
-        private readonly FieldDefinitionServiceInterface      $fieldDefinitionService,
-        private readonly WorkflowServiceInterface             $workflowService,
-        private readonly MetadataProviderServiceInterface     $metadataProviderService,
+        private readonly FieldDefinitionServiceInterface $fieldDefinitionService,
+        private readonly WorkflowServiceInterface $workflowService,
+        private readonly MetadataProviderServiceInterface $metadataProviderService,
     ) {
     }
 
