@@ -93,6 +93,7 @@ final class DocumentNormalizer implements NormalizerInterface
         ];
 
         if ($handler = $this->documentTypeSerializationHandlerService->getSerializationHandler($document->getType())) {
+            p_r($handler);
             $systemFields = array_merge($systemFields, $handler->getAdditionalSystemFields($document));
         }
 

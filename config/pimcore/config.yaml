@@ -112,6 +112,54 @@ pimcore_generic_data_index:
       document:
         published:
           type: boolean
+        controller:
+          type: keyword
+        template:
+          type: keyword
+        contentMainDocumentId:
+          type: integer
+        supportsContentMain:
+          type: boolean
+        missingRequiredEditable:
+          type: boolean
+        staticGeneratorEnabled:
+          type: boolean
+        staticGeneratorLifetime:
+          type: integer
+        title:
+          type: keyword
+        description:
+          type: keyword
+        prettyUrl:
+          type: keyword
+        sourceId:
+          type: integer
+        propertiesFromSource:
+          type: boolean
+        childrenFromSource:
+          type: boolean
+        subject:
+          type: keyword
+        from:
+          type: keyword
+        replyTo:
+          type: keyword
+        to:
+          type: keyword
+        cc:
+          type: keyword
+        bcc:
+          type: keyword
+        internal:
+          type: integer
+        internalType:
+          type: keyword
+        direct:
+          type: keyword
+        linktype:
+          type: keyword
+        href:
+          type: keyword
       data_object:
         published:
           type: boolean

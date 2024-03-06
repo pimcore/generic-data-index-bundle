@@ -71,6 +71,30 @@ services:
         arguments:
             - [ ]
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandler\PageSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.document_type_serialization_handler, type: page }
+
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandler\SnippetSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.document_type_serialization_handler, type: snippet }
+
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandler\EmailSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.document_type_serialization_handler, type: email }
+
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandler\LinkSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.document_type_serialization_handler, type: link }
+
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandler\HardLinkSerializationHandler:
+        tags:
+            - { name: pimcore.generic_data_index.document_type_serialization_handler, type: hardlink }
+
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandler\FolderSerializationHandler:
         tags:
