@@ -43,8 +43,8 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
     public function updateAll(): IndexUpdateService
     {
         $this
-            //->updateClassDefinitions()
-            //->updateAssets()
+            ->updateClassDefinitions()
+            ->updateAssets()
             ->updateDocuments();
 
         return $this;
