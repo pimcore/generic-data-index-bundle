@@ -204,6 +204,10 @@ class AssetSearchResultItem
         return $this;
     }
 
+    /**
+     * This will deliver searchable metadata only.
+     * Custom metadata which is not relevant for the asset grid will not be included.
+     */
     public function getMetaData(): array
     {
         return $this->metaData;

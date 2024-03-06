@@ -17,8 +17,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetMetaData;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandlerService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
 class AssetSearchResultDenormalizer implements DenormalizerInterface
@@ -86,7 +86,7 @@ class AssetSearchResultDenormalizer implements DenormalizerInterface
 
                 $result[] = new AssetMetaData(
                     name: $fieldName,
-                    language: $language !== AssetNormalizer::NOT_LOCALIZED_KEY ? $language : null,
+                    language: $language !== MappingProperty::NOT_LOCALIZED_KEY ? $language : null,
                     data: $fieldData,
                 );
             }

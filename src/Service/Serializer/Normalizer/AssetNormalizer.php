@@ -15,7 +15,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataProviderServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandlerService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
@@ -29,12 +31,11 @@ final class AssetNormalizer implements NormalizerInterface
 {
     use ElementNormalizerTrait;
 
-    public const NOT_LOCALIZED_KEY = 'default';
-
     public function __construct(
         private readonly AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService,
-        private readonly FieldDefinitionServiceInterface $fieldDefinitionService,
-        private readonly WorkflowServiceInterface $workflowService,
+        private readonly FieldDefinitionServiceInterface      $fieldDefinitionService,
+        private readonly WorkflowServiceInterface             $workflowService,
+        private readonly MetadataProviderServiceInterface     $metadataProviderService,
     ) {
     }
 
@@ -108,17 +109,15 @@ final class AssetNormalizer implements NormalizerInterface
     {
         $result = [];
 
-        foreach($asset->getMetadata() as $metadata) {
-            if(is_array($metadata) && isset($metadata['data'], $metadata['name'])) {
-                $data = $metadata['data'];
-                $language = $metadata['language'] ?? null;
-                $language = $language ?: self::NOT_LOCALIZED_KEY;
-                $result[$metadata['name']] = $result[$metadata['name']] ?? [];
-                $result[$metadata['name']][$language] = $this->fieldDefinitionService->normalizeValue(
-                    $metadata['type'],
-                    $data
-                );
-            }
+        foreach($this->metadataProviderService->getSearchableMetaDataForAsset($asset) as $metadata) {
+            $data = $metadata['data'];
+            $language = $metadata['language'] ?? null;
+            $language = $language ?: MappingProperty::NOT_LOCALIZED_KEY;
+            $result[$metadata['name']] = $result[$metadata['name']] ?? [];
+            $result[$metadata['name']][$language] = $this->fieldDefinitionService->normalizeValue(
+                $metadata['type'],
+                $data
+            );
         }
 
         return $result;

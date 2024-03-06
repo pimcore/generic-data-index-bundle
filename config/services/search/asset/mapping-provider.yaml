@@ -4,6 +4,17 @@ services:
         autoconfigure: true
         public: false
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataMappingProvider\PredefinedAssetMetadataProvider:
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\PredefinedAssetMetadataProvider:
         tags:
             - { name: "pimcore.generic_data_index.asset.mapping_provider", type: "predefined" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataProviderServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataProviderService
+        arguments:
+            - '@pimcore.generic_data_index.asset.mapping_provider_locator'
+
+    pimcore.generic_data_index.asset.mapping_provider_locator:
+        class: Symfony\Component\DependencyInjection\ServiceLocator
+        tags: [ 'container.service_locator' ]
+        arguments:
+            - [ ]
