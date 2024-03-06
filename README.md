@@ -10,9 +10,9 @@ This bundle can be extended and customized to fit your specific needs, for examp
 
 ## Features in a Nutshell
 - Based on OpenSearch
-- Indexing of all asset and data objects
 - Centralized data index for multiple bundles (Portal Engine, Studio API/UI, etc.)
-- Provides search services and models to search, filter and aggregate data in the OpenSearch indices 
+- Indexing of all asset and data objects
+- Provides search services and models to search, filter and aggregate the data saved in the OpenSearch indices 
 
 ## Documentation Overview
 - [Installation](./doc/01_Installation/README.md)
