@@ -85,9 +85,9 @@ trait PageSnippetTrait
         return $this->missingRequiredEditable;
     }
 
-    public function setMissingRequiredEditable(bool $missingRequiredEditable): static
+    public function setMissingRequiredEditable(?bool $missingRequiredEditable): static
     {
-        $this->missingRequiredEditable = $missingRequiredEditable;
+        $this->missingRequiredEditable = (bool)$missingRequiredEditable;
 
         return $this;
     }
@@ -97,9 +97,9 @@ trait PageSnippetTrait
         return $this->staticGeneratorEnabled;
     }
 
-    public function setStaticGeneratorEnabled(bool $staticGeneratorEnabled): static
+    public function setStaticGeneratorEnabled(?bool $staticGeneratorEnabled): static
     {
-        $this->staticGeneratorEnabled = $staticGeneratorEnabled;
+        $this->staticGeneratorEnabled = (bool)$staticGeneratorEnabled;
 
         return $this;
     }

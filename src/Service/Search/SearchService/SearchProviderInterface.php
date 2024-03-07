@@ -20,4 +20,6 @@ interface SearchProviderInterface
     public function createAssetSearch(): SearchInterface;
 
     public function createDataObjectSearch(): SearchInterface;
+
+    public function createDocumentSearch(): SearchInterface;
 }

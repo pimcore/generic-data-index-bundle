@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Paging\PaginationInfo;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultAggregation;
 
 final class DocumentSearchResult
 {
@@ -21,6 +22,8 @@ final class DocumentSearchResult
         /** @var DocumentSearchResultItem[] */
         private readonly array $items,
         private readonly PaginationInfo $pagination,
+        /** @var SearchResultAggregation[] */
+        private readonly array $aggregations = [],
     ) {
     }
 
@@ -32,5 +35,29 @@ final class DocumentSearchResult
     public function getPagination(): PaginationInfo
     {
         return $this->pagination;
+    }
+
+    public function getAggregations(): array
+    {
+        return $this->aggregations;
+    }
+
+    public function getAggregation(string $aggregationName): ?SearchResultAggregation
+    {
+        foreach ($this->aggregations as $aggregation) {
+            if ($aggregation->getName() === $aggregationName) {
+                return $aggregation;
+            }
+        }
+
+        return null;
+    }
+
+    public function getIds(): array
+    {
+        return array_map(
+            static fn (DocumentSearchResult $item) => $item->getId(),
+            $this->items
+        );
     }
 }

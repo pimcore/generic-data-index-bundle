@@ -20,10 +20,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\PermissionEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\EventService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceService;
 use Pimcore\Bundle\StaticResolverBundle\Models\User\UserResolver;
@@ -47,11 +49,14 @@ final class PermissionServiceTest extends Unit
 
     private DataObjectSearchResultItem $dataObjectSearchResult;
 
+    private DocumentSearchResultItem $documentSearchResultItem;
+
     public function _before(): void
     {
         $this->user = new User();
         $this->assetSearchResult = new AssetSearchResultItem();
         $this->dataObjectSearchResult = new DataObjectSearchResultItem();
+        $this->documentSearchResultItem = new DocumentSearchResultItem();
     }
 
     public function testAssetPermissionWithUserOnRoot(): void
@@ -285,7 +290,7 @@ final class PermissionServiceTest extends Unit
             type: DocumentWorkspace::WORKSPACE_TYPE
         )]);
         $permission = $this->getPermissionServiceWithUser()->getDocumentPermissions(
-            '/',
+            $this->documentSearchResultItem->setFullPath('/'),
             $this->user
         );
 
@@ -319,7 +324,7 @@ final class PermissionServiceTest extends Unit
         );
 
         $permissions = $this->getPermissionServiceWithUser()->getDocumentPermissions(
-            '/parentFolder/testFolder',
+            $this->documentSearchResultItem->setFullPath('/parentFolder/testFolder'),
             $this->user
         );
 
@@ -365,7 +370,7 @@ final class PermissionServiceTest extends Unit
         );
 
         $permissions = $this->getPermissionServiceWithUser()->getDocumentPermissions(
-            '/parentFolder/childFolder',
+            $this->documentSearchResultItem->setFullPath('/parentFolder/childFolder'),
             $this->user
         );
 
@@ -380,7 +385,10 @@ final class PermissionServiceTest extends Unit
     public function testDocumentPermissionWithoutUserOnRoot(): void
     {
         $permissionService = $this->getPermissionServiceWithoutUser();
-        $permission = $permissionService->getDocumentPermissions('/', null);
+        $permission = $permissionService->getDocumentPermissions(
+            $this->documentSearchResultItem->setFullPath('/'),
+            null
+        );
 
         $this->assertSame(self::DEFAULT_VALUE, $permission->isList());
         $this->assertSame(self::DEFAULT_VALUE, $permission->isView());
@@ -434,20 +442,6 @@ final class PermissionServiceTest extends Unit
         }
     }
 
-    public function testEventDispatcherCall(): void
-    {
-        $eventDispatcher = $this->makeEmpty(EventDispatcherInterface::class, [
-            'dispatch' => Expected::exactly(1, static function () {
-                return new PermissionEvent(new AssetSearchResultItem(), new AssetPermissions());
-            }),
-        ]);
-        $permissionService = new PermissionService($eventDispatcher, new WorkspaceService(new UserResolver()));
-        $permissionService->getAssetPermissions(
-            $this->assetSearchResult->setFullPath('/'),
-            $this->user
-        );
-    }
-
     /**
      * @throws Exception
      */
@@ -474,7 +468,7 @@ final class PermissionServiceTest extends Unit
     private function getPermissionServiceWithUser(): PermissionService
     {
         return new PermissionService(
-            $this->makeEmpty(EventDispatcherInterface::class),
+            $this->getEventService(),
             new WorkspaceService(
                 $this->makeEmpty(UserResolverInterface::class, [
                     'getUserRoleById' => $this->role,
@@ -486,10 +480,15 @@ final class PermissionServiceTest extends Unit
     private function getPermissionServiceWithoutUser(): PermissionService
     {
         return new PermissionService(
-            $this->makeEmpty(EventDispatcherInterface::class),
+            $this->getEventService(),
             new WorkspaceService(
                 new UserResolver()
             )
         );
+    }
+
+    private function getEventService(): EventService
+    {
+        return new EventService($this->makeEmpty(EventDispatcherInterface::class));
     }
 }

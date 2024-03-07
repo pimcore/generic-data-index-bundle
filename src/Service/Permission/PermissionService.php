@@ -13,20 +13,20 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Event;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\BasePermissions;
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermission;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\WorkspaceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\EventServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceServiceInterface;
 use Pimcore\Model\User;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * @internal
@@ -34,7 +34,7 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 final class PermissionService implements PermissionServiceInterface
 {
     public function __construct(
-        private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly EventServiceInterface $eventService,
         private readonly WorkspaceServiceInterface $workspaceService,
     ) {
     }
@@ -52,36 +52,31 @@ final class PermissionService implements PermissionServiceInterface
             user: $user
         ) ?? $permissions;
 
-        $event = new Event\Asset\PermissionEvent($asset, $permissions);
-        $this->eventDispatcher->dispatch($event);
-
-        return $event->getPermissions();
+        return $this->eventService->dispatchAssetSearchEvent($asset, $permissions)->getPermissions();
     }
 
     public function getDocumentPermissions(
-        string $documentPath,
+        DocumentSearchResultItem $document,
         ?User $user
-    ): DocumentPermission {
-        $permissions = new DocumentPermission();
-        /** @var DocumentPermission $permissions */
+    ): DocumentPermissions {
+        $permissions = new DocumentPermissions();
+        /** @var DocumentPermissions $permissions */
         $permissions = $this->getPermissions(
-            elementPath: $documentPath,
+            elementPath: $document->getFullPath(),
             permissionsType: DocumentWorkspace::WORKSPACE_TYPE,
             defaultPermissions: $permissions,
             user: $user
         ) ?? $permissions;
 
-        //ToDo - add event dispatching for document permissions
-
-        return $permissions;
+        return $this->eventService->dispatchDocumentSearchEvent($document, $permissions)->getPermissions();
     }
 
     public function getDataObjectPermissions(
         DataObjectSearchResultItem $object,
         ?User $user
-    ): DataObjectPermission {
-        $permissions = new DataObjectPermission();
-        /** @var DataObjectPermission $permissions */
+    ): DataObjectPermissions {
+        $permissions = new DataObjectPermissions();
+        /** @var DataObjectPermissions $permissions */
         $permissions = $this->getPermissions(
             elementPath: $object->getFullPath(),
             permissionsType: DataObjectWorkspace::WORKSPACE_TYPE,
@@ -89,10 +84,7 @@ final class PermissionService implements PermissionServiceInterface
             user: $user,
         ) ?? $permissions;
 
-        $event = new Event\DataObject\PermissionEvent($object, $permissions);
-        $this->eventDispatcher->dispatch($event);
-
-        return $event->getPermissions();
+        return $this->eventService->dispatchDataObjectSearchEvent($object, $permissions)->getPermissions();
     }
 
     public function checkWorkspacePermission(

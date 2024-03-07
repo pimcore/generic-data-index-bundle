@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Event\Document;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult;
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermission;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermissions;
 use Symfony\Contracts\EventDispatcher\Event;
 
 /**
@@ -26,7 +26,7 @@ final class PermissionEvent extends Event
 {
     public function __construct(
         private readonly SearchResult\DocumentSearchResultItem $searchResultItem,
-        private DocumentPermission $permissions
+        private DocumentPermissions $permissions
     ) {
     }
 
@@ -35,12 +35,12 @@ final class PermissionEvent extends Event
         return $this->searchResultItem;
     }
 
-    public function getPermissions(): DocumentPermission
+    public function getPermissions(): DocumentPermissions
     {
         return $this->permissions;
     }
 
-    public function setPermissions(DocumentPermission $permission): void
+    public function setPermissions(DocumentPermissions $permission): void
     {
         $this->permissions = $permission;
     }

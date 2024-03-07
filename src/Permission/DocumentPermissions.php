@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Permission;
 /**
  * @internal
  */
-final class DocumentPermission extends BasePermissions
+final class DocumentPermissions extends BasePermissions
 {
     private bool $save = self::DEFAULT_VALUE;
 
