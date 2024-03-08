@@ -22,6 +22,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\DateFilter;
  */
 final class DateFilterTest extends Unit
 {
+    public function _before(): void
+    {
+        date_default_timezone_set('UTC');
+    }
+
     public function testToArray(): void
     {
         $dateFilter = new DateFilter('datefield', strtotime('2000-01-01'), strtotime('2099-12-31'));
