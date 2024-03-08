@@ -17,8 +17,8 @@ if (getenv('PIMCORE_PROJECT_ROOT') == '') {
 }
 
 if (file_exists(getenv('PIMCORE_PROJECT_ROOT') . '/vendor/autoload.php')) {
-    include getenv('PIMCORE_PROJECT_ROOT') . '/vendor/autoload.php';
-    $pimcoreTestDir = getenv('PIMCORE_PROJECT_ROOT') . '/vendor/pimcore/pimcore/tests';
+    include realpath(getenv('PIMCORE_PROJECT_ROOT')) . '/vendor/autoload.php';
+    $pimcoreTestDir = realpath(getenv('PIMCORE_PROJECT_ROOT')) . '/vendor/pimcore/pimcore/tests';
 } else {
     throw new \Exception('Invalid Pimcore project root "' . getenv('PIMCORE_PROJECT_ROOT') . '"');
 }
