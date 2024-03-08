@@ -56,7 +56,7 @@ final class DocumentSearchResult
     public function getIds(): array
     {
         return array_map(
-            static fn (DocumentSearchResult $item) => $item->getId(),
+            static fn (DocumentSearchResultItem $item) => $item->getId(),
             $this->items
         );
     }
