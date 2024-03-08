@@ -99,25 +99,6 @@ $boolQuery = new BoolQuery([
 ]);
 ```
 
-### Generic Query
-
-The generic `Query` model can be used to create any query which is supported by OpenSearch. It can be used to create custom queries which are not covered by the other query models.
-
-```php
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\Query;
-
-$matchQuery = new Query('match', [
-    'field' => 'value'
-]);
-
-$rangeQuery = new Query('range', [
-    'field' => [
-        'gte' => 10,
-        'lte' => 20,
-    ]
-]);
-```
-
 ### TermFilter
 
 The term filter combines a boolean query with a term query. It can be used to filter the search results by a term.
@@ -163,9 +144,29 @@ The date filter rounds the timestamps to full days by default. If you want to us
 $dateFilter = new DateFilter('datefield', null, null, strtotime('2000-01-01 12:00:00'), false);
 ```
 
-```php
 
-## Aggregation
+
+### Generic Query
+
+The generic `Query` model can be used to create any query which is supported by OpenSearch. It can be used to create custom queries which are not covered by the other query models.
+
+```php
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\Query;
+
+$matchQuery = new Query('match', [
+    'field' => 'value'
+]);
+
+$rangeQuery = new Query('range', [
+    'field' => [
+        'gte' => 10,
+        'lte' => 20,
+    ]
+]);
+```
+
+
+## Aggregation Model
 
 The aggregation model is used to create an aggregation for the search. It can be used to create any aggregation which is supported by OpenSearch. It's just a simple wrapper class without any special logic.
 
