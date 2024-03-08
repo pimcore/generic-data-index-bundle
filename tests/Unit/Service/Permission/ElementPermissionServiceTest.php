@@ -28,8 +28,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Document;
-use Pimcore\Model\Document\PageSnippet;
-use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\User;
 
 /**

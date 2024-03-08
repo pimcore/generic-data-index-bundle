@@ -52,6 +52,7 @@ final class EventServiceTest extends Unit
         $this->assertFalse($returnedEvent->getPermissions()->isRename());
         $this->assertTrue($returnedEvent->getPermissions()->isList());
     }
+
     public function testDispatchDataObjectSearchEvent(): void
     {
         $permissions = new DataObjectPermissions();
@@ -115,8 +116,7 @@ final class EventServiceTest extends Unit
 
     private function getEventService(
         Event\Asset\PermissionEvent|Event\DataObject\PermissionEvent|Event\Document\PermissionEvent $event
-    ): EventService
-    {
+    ): EventService {
         $eventDispatcher = $this->makeEmpty(EventDispatcherInterface::class, [
             'dispatch' => Expected::exactly(1, $event),
         ]);

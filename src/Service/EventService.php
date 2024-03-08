@@ -35,8 +35,7 @@ final class EventService implements EventServiceInterface
     public function dispatchAssetSearchEvent(
         AssetSearchResultItem $asset,
         AssetPermissions $permissions
-    ): Event\Asset\PermissionEvent
-    {
+    ): Event\Asset\PermissionEvent {
         $event = new Event\Asset\PermissionEvent($asset, $permissions);
         $this->eventDispatcher->dispatch($event);
 
@@ -46,8 +45,7 @@ final class EventService implements EventServiceInterface
     public function dispatchDataObjectSearchEvent(
         DataObjectSearchResultItem $dataObject,
         DataObjectPermissions $permissions
-    ): Event\DataObject\PermissionEvent
-    {
+    ): Event\DataObject\PermissionEvent {
         $event = new Event\DataObject\PermissionEvent($dataObject, $permissions);
         $this->eventDispatcher->dispatch($event);
 
@@ -57,8 +55,7 @@ final class EventService implements EventServiceInterface
     public function dispatchDocumentSearchEvent(
         DocumentSearchResultItem $document,
         DocumentPermissions $permissions
-    ): Event\Document\PermissionEvent
-    {
+    ): Event\Document\PermissionEvent {
         $event = new Event\Document\PermissionEvent($document, $permissions);
         $this->eventDispatcher->dispatch($event);
 
