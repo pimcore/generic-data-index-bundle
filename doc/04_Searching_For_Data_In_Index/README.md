@@ -50,7 +50,7 @@ The search service respects the user permissions and user workspaces in connecti
 Details about permissions and workspaces can be found in the [permissions and workspaces documentation](08_Permissions_Workspaces/README.md).
 
 ## Debug OpenSearch Queries
-To debug the OpenSearch queries which are created by the search service, it's possible to use the following magic parameter in the URL (when debug mode is enabled):
+To debug the OpenSearch queries which are created by the search service, it is possible to use the following magic parameter in the URL (when debug mode is enabled):
 
 | Get Parameter             | Description |  |
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |  |
