@@ -21,9 +21,7 @@ public function handleCustomFilter(CustomFilter $customFilter, SearchModifierCon
 }
 ```
 
-## Available OpenSearch search models
-
-### Search
+## Search Model
 
 The search model is the main model to create a search query. It can be used to add queries, filters, aggregations and sorting to the search.
 
@@ -44,15 +42,15 @@ $result = $openSearchClient->search( [
 ]);
 ```
 
-### Query
+## Query Models
 
-The query model is used to create a query for the search. It can be used to create any query which is supported by OpenSearch.
+The query models are used to create a query for the search. They can be used to create any query which is supported by OpenSearch.
 
-#### BoolQuery
+### BoolQuery
 
 Represents a boolean query. It can be used to combine multiple queries with boolean operators. See OpenSearch [documentation](https://opensearch.org/docs/latest/query-dsl/compound/bool/) for more details.
 
-##### Basic usage
+#### Basic usage
 ```php
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
 
@@ -64,7 +62,7 @@ $boolQuery = new BoolQuery([
 ]);
 ```
 
-##### Add additional conditions
+#### Add additional conditions
 ```php
 $boolQuery = new BoolQuery();
 $boolQuery->addCondition('must', [
@@ -73,7 +71,7 @@ $boolQuery->addCondition('must', [
 ```
 
 
-##### Merge multiple queries
+#### Merge multiple queries
 ```php
 $boolQueryA = new BoolQuery([
     'should' => [
@@ -91,7 +89,7 @@ $boolQueryB = new BoolQuery([
 $boolQueryA->merge($boolQueryB);
 ```
 
-##### Use other queries in sub queries
+#### Use other queries in sub queries
 ```php
 $boolQuery = new BoolQuery([
     'should' => [
@@ -101,26 +99,7 @@ $boolQuery = new BoolQuery([
 ]);
 ```
 
-#### Generic Query
-
-The generic `Query` model can be used to create any query which is supported by OpenSearch. It can be used to create custom queries which are not covered by the other query models.
-
-```php
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\Query;
-
-$matchQuery = new Query('match', [
-    'field' => 'value'
-]);
-
-$rangeQuery = new Query('range', [
-    'field' => [
-        'gte' => 10,
-        'lte' => 20,
-    ]
-]);
-```
-
-#### TermFilter
+### TermFilter
 
 The term filter combines a boolean query with a term query. It can be used to filter the search results by a term.
 
@@ -129,11 +108,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermFilter;
 $termFilter = new TermFilter('field', 'value');
 ```
 
-#### TermsFilter
+### TermsFilter
 
 The terms filter combines a boolean query with a terms query. It can be used to filter the search results by multiple term.
 
-#### WildcardFilter
+### WildcardFilter
 
 The wildcard filter combines a boolean query with a wildcard query. It can be used to filter the search results by terms using * as wildcard.
 
@@ -144,7 +123,7 @@ $wildcardFilter = new WildcardFilter('field', 'value*');
 
 It is possible to influence the wildcard filter behaviour by setting additional options. Take a look at the constructor of the `WildcardFilter` class for more details.
 
-#### DateFilter
+### DateFilter
 
 The date filter can be used to filter the search results by a date range or exact date.
 
@@ -165,9 +144,29 @@ The date filter rounds the timestamps to full days by default. If you want to us
 $dateFilter = new DateFilter('datefield', null, null, strtotime('2000-01-01 12:00:00'), false);
 ```
 
-```php
 
-### Aggregation
+
+### Generic Query
+
+The generic `Query` model can be used to create any query which is supported by OpenSearch. It can be used to create custom queries which are not covered by the other query models.
+
+```php
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\Query;
+
+$matchQuery = new Query('match', [
+    'field' => 'value'
+]);
+
+$rangeQuery = new Query('range', [
+    'field' => [
+        'gte' => 10,
+        'lte' => 20,
+    ]
+]);
+```
+
+
+## Aggregation Model
 
 The aggregation model is used to create an aggregation for the search. It can be used to create any aggregation which is supported by OpenSearch. It's just a simple wrapper class without any special logic.
 

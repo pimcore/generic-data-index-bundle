@@ -4,7 +4,7 @@ The Generic Data Index bundle respects the user permissions and user workspaces 
 User workspace permissions are respected by the search service and are attached by using the search modifier to the search query. 
 These permissions are then returned as a part of the search result item.
 
-## Permission manipulation
+## Permission Manipulation
 If there is a need to manipulate the workspace permissions, e.g. for specific asset path, it is possible to do so via events:
 - `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\PermisisonEvent` for data objects
 - `Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\PermisisonEvent` for assets
