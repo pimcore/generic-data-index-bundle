@@ -1,4 +1,15 @@
 <?php
+
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper;
 
 // here you can define custom actions
@@ -6,8 +17,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper;
 
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\ClassDefinition;
-use Pimcore\Model\DataObject\Unittest;
 use Pimcore\Model\DataObject\Simple;
+use Pimcore\Model\DataObject\Unittest;
 use Pimcore\Tests\Support\Helper\ClassManager;
 use Pimcore\Tests\Support\Helper\DataType\TestDataHelper;
 use Pimcore\Tests\Support\Helper\Model;
@@ -66,8 +77,6 @@ class Index extends Model
 
         return $class;
     }
-
-
 
     /**
      * Set up a class which (hopefully) contains all data types
@@ -132,9 +141,9 @@ class Index extends Model
             $panel->addChild($this->createDataChild('geopolygon', 'polygon', false, false));
             $panel->addChild($this->createDataChild('geopolyline', 'polyline', false, false));
 
-//            $panel->addChild($this->createDataChild('indexFieldSelection', 'indexFieldSelection', false, false));
-//            $panel->addChild($this->createDataChild('indexFieldSelectionCombo', 'indexFieldSelectionCombo', false, false));
-//            $panel->addChild($this->createDataChild('indexFieldSelectionField', 'indexFieldSelectionField', false, false));
+            //            $panel->addChild($this->createDataChild('indexFieldSelection', 'indexFieldSelection', false, false));
+            //            $panel->addChild($this->createDataChild('indexFieldSelectionCombo', 'indexFieldSelectionCombo', false, false));
+            //            $panel->addChild($this->createDataChild('indexFieldSelectionField', 'indexFieldSelectionField', false, false));
 
             $panel->addChild($this->createDataChild('imageGallery'));
             $panel->addChild($this->createDataChild('input'));
@@ -278,8 +287,8 @@ class Index extends Model
         return $class;
     }
 
-
-    public function createFullyFledgedObjectSimple($keyPrefix = '', $save = true, $publish = true, $seed = 1) {
+    public function createFullyFledgedObjectSimple($keyPrefix = '', $save = true, $publish = true, $seed = 1)
+    {
         $testDataHelper = $this->getModule('\\' . TestDataHelper::class);
 
         $object = new Simple();
@@ -380,7 +389,8 @@ class Index extends Model
         return $object;
     }
 
-    public function initSimpleDataObjectData(): array {
+    public function initSimpleDataObjectData(): array
+    {
 
         $ids = [];
 
@@ -412,31 +422,33 @@ class Index extends Model
         return $ids;
     }
 
-    public function applyAssetMetadata(Asset $asset, array $data) {
+    public function applyAssetMetadata(Asset $asset, array $data)
+    {
 
     }
 
-    public function initAssetData(): array {
+    public function initAssetData(): array
+    {
 
         $ids = [];
 
         $asset1 = TestHelper::createImageAsset();
         $metadata = [
-            'License.license' => 'image license'
+            'License.license' => 'image license',
         ];
         $this->applyAssetMetadata($asset1, $metadata);
         $ids[1] = $asset1->getId();
 
         $asset2 = TestHelper::createDocumentAsset();
         $metadata = [
-            'License.license' => 'document license'
+            'License.license' => 'document license',
         ];
         $this->applyAssetMetadata($asset2, $metadata);
         $ids[2] = $asset2->getId();
 
         $asset3 = TestHelper::createVideoAsset();
         $metadata = [
-            'License.license' => 'video license'
+            'License.license' => 'video license',
         ];
         $folder = Asset\Service::createFolderByPath('/subfolder');
         $asset3->setParent($folder);
@@ -447,7 +459,8 @@ class Index extends Model
 
     }
 
-    public function initImageAssetData(): array {
+    public function initImageAssetData(): array
+    {
 
         $ids = [];
         $folder = Asset\Service::createFolderByPath('/testfolder');
@@ -478,6 +491,4 @@ class Index extends Model
 
         return $ids;
     }
-
-
 }

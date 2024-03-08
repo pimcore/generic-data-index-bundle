@@ -1,11 +1,20 @@
 <?php
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 use Pimcore\Tests\Support\Util\Autoloader;
 
 if (getenv('PIMCORE_PROJECT_ROOT') == '') {
     define('PIMCORE_PROJECT_ROOT', dirname(__DIR__));
 }
-
 
 if (file_exists(getenv('PIMCORE_PROJECT_ROOT') . '/vendor/autoload.php')) {
     include getenv('PIMCORE_PROJECT_ROOT') . '/vendor/autoload.php';
@@ -13,7 +22,6 @@ if (file_exists(getenv('PIMCORE_PROJECT_ROOT') . '/vendor/autoload.php')) {
 } else {
     throw new \Exception('Invalid Pimcore project root "' . getenv('PIMCORE_PROJECT_ROOT') . '"');
 }
-
 
 $pimcoreTestsSupportDir = $pimcoreTestDir . '/Support';
 include $pimcoreTestsSupportDir . '/Util/Autoloader.php';

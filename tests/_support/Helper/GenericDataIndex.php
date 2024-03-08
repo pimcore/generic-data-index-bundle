@@ -1,4 +1,15 @@
 <?php
+
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper;
 
 // here you can define custom actions
@@ -6,10 +17,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper;
 
 use Codeception\Lib\ModuleContainer;
 use OpenSearch\Client;
+use Pimcore\Bundle\GenericDataIndexBundle\Installer;
+use Pimcore\Bundle\GenericDataIndexBundle\Installer as GenericDataIndexInstaller;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Installer as GenericDataIndexInstaller;
-use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Console\Application;
 use Pimcore\Tests\Support\Helper\Pimcore;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -17,7 +28,6 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 
 class GenericDataIndex extends \Codeception\Module
 {
-
     public function __construct(ModuleContainer $moduleContainer, $config = null)
     {
         $this->config = array_merge($this->config, [
@@ -27,7 +37,8 @@ class GenericDataIndex extends \Codeception\Module
         parent::__construct($moduleContainer, $config);
     }
 
-    public function runCommand(string $command, array $parameters = [], array $consoleInputs = [], int $expectedExitCode = 0): string {
+    public function runCommand(string $command, array $parameters = [], array $consoleInputs = [], int $expectedExitCode = 0): string
+    {
         /** @var Pimcore $pimcoreModule */
         $pimcoreModule = $this->getModule('\\' . Pimcore::class);
         $kernel = $pimcoreModule->getKernel();
@@ -64,7 +75,6 @@ class GenericDataIndex extends \Codeception\Module
             collate=utf8_unicode_ci;
             ');
 
-
         if ($this->config['run_installer']) {
             /** @var Pimcore $pimcoreModule */
             $pimcoreModule = $this->getModule('\\' . Pimcore::class);
@@ -91,8 +101,10 @@ class GenericDataIndex extends \Codeception\Module
      */
     protected static $container = null;
 
-    public function grabService(string $serviceId) {
+    public function grabService(string $serviceId)
+    {
         $pimcoreHelper = $this->getModule('\\' . Pimcore::class);
+
         return $pimcoreHelper->grabService($serviceId);
     }
 
@@ -107,13 +119,14 @@ class GenericDataIndex extends \Codeception\Module
         return $this->grabService('generic-data-index.opensearch-client');
     }
 
-    public function checkIndexEntry(string $id, string $index): array {
+    public function checkIndexEntry(string $id, string $index): array
+    {
 
         /** @var Client $client */
         $client = $this->getIndexSearchClient();
         $response = $client->get([
             'id' => $id,
-            'index' => $index
+            'index' => $index,
         ]);
 
         $this->assertEquals($id, $response['_id'], 'Check ES document id of element');
@@ -121,23 +134,23 @@ class GenericDataIndex extends \Codeception\Module
         return $response;
     }
 
-    public function flushIndex() {
+    public function flushIndex()
+    {
         $client = $this->getIndexSearchClient();
         $client->indices()->refresh();
         $client->indices()->flush();
     }
 
-    public function cleanupIndex() {
+    public function cleanupIndex()
+    {
         $client = $this->getIndexSearchClient();
         $client->deleteByQuery([
             'index' => '*',
             'body' => [
                 'query' => [
-                    'match_all' => (object)[]
-                ]
-            ]
+                    'match_all' => (object)[],
+                ],
+            ],
         ]);
     }
-
 }
-

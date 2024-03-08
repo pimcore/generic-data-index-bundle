@@ -1,4 +1,15 @@
 <?php
+
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -41,7 +52,6 @@ class AssetTest extends \Codeception\Test\Unit
 
         // check indexed
         $response = $this->tester->checkIndexEntry($asset->getId(), $indexName);
-        $this->assertEquals($asset->getId(), $response['_source']['system_fields']['id'] );
+        $this->assertEquals($asset->getId(), $response['_source']['system_fields']['id']);
     }
-
 }
