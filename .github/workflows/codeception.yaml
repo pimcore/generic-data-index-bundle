@@ -56,6 +56,7 @@ jobs:
         steps:
             -   name: "Checkout code"
                 uses: "actions/checkout@v2"
+                path: "bundles/pimcore/generic-data-index-bundle"
 
             -   name: "Install PHP"
                 uses: "shivammathur/setup-php@v2"
@@ -80,8 +81,7 @@ jobs:
                   REQUIRE_ADMIN_BUNDLE: "${{ matrix.require_admin_bundle }}"
               run: |
                   mysql -e "CREATE DATABASE pimcore_test CHARSET=utf8mb4;"
-                  mkdir -p bundles/pimcore/generic-data-index-bundle
-                  cp -R * bundles/pimcore/generic-data-index-bundle
+                  cp -R bundles/pimcore/generic-data-index-bundle/.github .github
                   chmod 755 .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
                   .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
 
