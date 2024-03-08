@@ -14,16 +14,19 @@ use Pimcore\Tests\Support\Util\Autoloader;
 
 if (file_exists('../../vendor/autoload.php')) {
     $vendorLocation = '../../vendor/autoload.php';
+    $projectRoot = '../../';
 } elseif (file_exists('../vendor/autoload.php')) {
     $vendorLocation = '../vendor/autoload.php';
+    $projectRoot = '../';
 } elseif (file_exists('vendor/autoload.php')) {
     $vendorLocation = 'vendor/autoload.php';
+    $projectRoot = '';
 } else {
     throw new \Exception('Vendor location not found! Please run composer install.');
 }
 
 include $vendorLocation;
-$pimcoreTestDir =  $vendorLocation . '/vendor/pimcore/pimcore/tests';
+$pimcoreTestDir =  $projectRoot . '/vendor/pimcore/pimcore/tests';
 
 $pimcoreTestsSupportDir = $pimcoreTestDir . '/Support';
 include $pimcoreTestsSupportDir . '/Util/Autoloader.php';
