@@ -1,6 +1,6 @@
 # OpenSearch Client Setup
 
-Following configuration is required to set up open-search. OpenSearch client configuration takes place via [Pimcore Opensearch Client](https://github.com/pimcore/opensearch-client) and has two parts:
+Following configuration is required to set up OpenSearch. The OpenSearch client configuration takes place via [Pimcore Opensearch Client](https://github.com/pimcore/opensearch-client) and has two parts:
 1) Configuring an OpenSearch client.
 2) Define the client to be used by Generic Data Index bundle.
 
@@ -21,4 +21,4 @@ pimcore_generic_data_index:
             client_name: default
 ```
 
-For the further configuration of the client, please refer to the [Pimcore Opensearch Client documentation](https://github.com/pimcore/opensearch-client/blob/1.x/doc/02_Configuration.md).
+For the further configuration of the client, please refer to the [Pimcore OpenSearch Client documentation](https://github.com/pimcore/opensearch-client/blob/1.x/doc/02_Configuration.md).

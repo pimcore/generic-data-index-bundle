@@ -40,7 +40,7 @@ The command will create the indices and add all assets and data objects to the i
 
 ### Refreshing of the index
 
-By default, the index queue is refreshed after each bulk operation as the items are processed Asynchronously with the symfony messenger.
+By default, the index queue is refreshed after each bulk operation as the items are processed asynchronously with the Symfony messenger.
 If you want to perform index refresh immediately you can use enable synchronous processing by injecting the `SynchronousProcessingServiceInterface` and calling `enable()` method.
 
 Available methods:
@@ -55,6 +55,8 @@ The indexing queue considers the following options:
 - **worker_count** (default 1): number of messenger workers to process the queue. Set this to the actual used parallel number of `messenger:consume` workers to improve the calculation of items per batch.
 - **min_batch_size** (default 5): minimum number of items to process in one batch (when using multiple workers) 
 - **max_batch_size** (default 400): maximum number of items to process in one batch
+
+Based on this configuration, the queue will be processed in batches of `min_batch_size` to `max_batch_size` items. The number of items per batch is calculated based on the number of workers and the number of items in the queue.
 
 Sample configuration:
 
