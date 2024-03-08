@@ -70,6 +70,9 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
         return $this->permissionService->getPermissionValue($assetPermissions, $permission);
     }
 
+    /**
+     * @throws Exception
+     */
     private function isDataObjectAllowed(
         DataObject $dataObject,
         string $permission,
