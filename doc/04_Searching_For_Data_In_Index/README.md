@@ -55,4 +55,4 @@ To debug the OpenSearch queries which are created by the search service, it is p
 
 | Get Parameter             | Description                                                                                                                                                                                                    |
 |---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| debug-open-search-queries | Will change the response of the called URL and outputs all executed OpenSearch queries. It is possible to influence the output verbosity with the value of the parameter (1=normal, 2=verbose, 3=very verbose) |
+| `debug-open-search-queries` | Will change the response of the called URL and outputs all executed OpenSearch queries. <br/><br/>It is possible to influence the output verbosity with the value of the parameter (1=normal, 2=verbose, 3=very verbose) |
