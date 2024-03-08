@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Event\Document;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Document\PermissionEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermission;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermissions;
 
 /**
  * @internal
@@ -25,7 +25,7 @@ final class PermissionEventTest extends Unit
 {
     public function testGetPermissionsMapping(): void
     {
-        $permissions = new DocumentPermission();
+        $permissions = new DocumentPermissions();
         $permissions->setView(false);
         $event = new PermissionEvent(new DocumentSearchResultItem(), $permissions);
 
@@ -35,7 +35,7 @@ final class PermissionEventTest extends Unit
 
     public function testSetPermissionsMapping(): void
     {
-        $permissions = new DocumentPermission();
+        $permissions = new DocumentPermissions();
         $event = new PermissionEvent(new DocumentSearchResultItem(), $permissions);
         $permissions->setView(false);
         $permissions->setRename(false);

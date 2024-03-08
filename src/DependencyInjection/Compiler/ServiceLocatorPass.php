@@ -41,8 +41,6 @@ final class ServiceLocatorPass implements CompilerPassInterface
                 CompilerPassTag::ASSET_MAPPING_PROVIDER->value,
             'pimcore.generic_data_index.document.type_serialization_handler_locator' =>
                 CompilerPassTag::DOCUMENT_TYPE_SERIALIZATION_HANDLER->value,
-            'pimcore.generic_data_index.data_object.type_serialization_handler_locator' =>
-                CompilerPassTag::DATA_OBJECT_TYPE_SERIALIZATION_HANDLER->value,
         ];
 
         foreach ($definitionList as $definitionId => $serviceTagName) {
