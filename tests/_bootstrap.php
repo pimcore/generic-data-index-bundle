@@ -26,7 +26,7 @@ if (file_exists('../../vendor/autoload.php')) {
 }
 
 include $vendorLocation;
-$pimcoreTestDir =  $projectRoot . '/vendor/pimcore/pimcore/tests';
+$pimcoreTestDir =  $projectRoot . 'vendor/pimcore/pimcore/tests';
 
 $pimcoreTestsSupportDir = $pimcoreTestDir . '/Support';
 include $pimcoreTestsSupportDir . '/Util/Autoloader.php';
