@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Permission;
 /**
  * @internal
  */
-final class DataObjectPermission extends BasePermissions
+final class DataObjectPermissions extends BasePermissions
 {
     private bool $save = self::DEFAULT_VALUE;
 

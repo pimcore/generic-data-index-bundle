@@ -13,7 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermission;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermissions;
 use Pimcore\Model\User\Workspace;
 
 /**
@@ -28,7 +28,7 @@ final class DocumentWorkspace extends AbstractWorkspace
     ) {
         $this->setWorkspacePermissions(
             userPermissions: $documentPermissions,
-            workspacePermissions: new DocumentPermission()
+            workspacePermissions: new DocumentPermissions()
         );
         parent::__construct($documentPermissions->getCpath());
     }

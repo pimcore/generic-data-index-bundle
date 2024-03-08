@@ -15,7 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Dat
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\UserPermissionTypes;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\AssetSearchException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
@@ -44,7 +44,7 @@ final class DataObjectSearchService implements DataObjectSearchServiceInterface
     }
 
     /**
-     * @throws AssetSearchException
+     * @throws DataObjectSearchException
      */
     public function search(SearchInterface|DataObjectSearchInterface $dataObjectSearch): DataObjectSearchResult
     {
@@ -82,10 +82,13 @@ final class DataObjectSearchService implements DataObjectSearchServiceInterface
                 aggregations: $searchResult->getAggregations(),
             );
         } catch (Exception $e) {
-            throw new AssetSearchException($e->getMessage());
+            throw new DataObjectSearchException($e->getMessage());
         }
     }
 
+    /**
+     * @throws Exception
+     */
     public function byId(
         int $id,
         ?User $user = null,
@@ -109,6 +112,9 @@ final class DataObjectSearchService implements DataObjectSearchServiceInterface
         return $searchResult;
     }
 
+    /**
+     * @throws Exception
+     */
     private function searchObjectById(int $id, ?User $user = null): ?DataObjectSearchResultItem
     {
         $dataObjectSearch = $this->searchProvider->createDataObjectSearch();

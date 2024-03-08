@@ -3,10 +3,10 @@
 ## Extending Search Index via Events
 
 The regular index update process stores a defined set of standard data types in the data index which makes it
-possible to find, filter, sort and list them in the portal engine.
+possible to find, filter, sort and list them..
 
 It is possible to extend the index with custom attributes if needed. For this purpose the following events exist. You
-will find code examples at the end of this section.
+will find code examples below.
 
 ### UpdateIndexDataEvent
 
@@ -16,7 +16,7 @@ data for assets or data objects use one of the following two events.
 * `Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\UpdateIndexDataEvent`
 * `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent`
 
-If you take a look at the source of an indexed document within data index (e.g. OpenSearch) you will find a structure like this:
+If you take a look at the source of an indexed document within search index you will find a structure like this:
 
 ```json
 {
@@ -181,9 +181,7 @@ class CarOwnerSubscriber implements EventSubscriberInterface
         // Ensure that you take the original array and extend it.
         $customFields = $event->getCustomFields();
 
-        $owner = User::getById($car->getUserOwner());
-
-        $customFields['userOwner'] = $owner ? $owner->getName() : 'system';
+        $customFields['numberOfVariants'] = count($car->getChildren() ?? []);
 
         $event->setCustomFields($customFields);
     }
@@ -202,8 +200,8 @@ class CarOwnerSubscriber implements EventSubscriberInterface
          * A 'keyword' field would be best for regular select and multi select filters.
          * For full text search it is possible to define sub-fields with special OpenSearch analyzers too.
          */
-        $customFieldsMapping['userOwner'] = [
-            'type' => 'keyword'
+        $customFieldsMapping['numberOfVariants'] = [
+            'type' => 'integer'
         ];
 
         $event->setCustomFieldsMapping($customFieldsMapping);
