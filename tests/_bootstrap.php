@@ -12,16 +12,18 @@
 
 use Pimcore\Tests\Support\Util\Autoloader;
 
-if (getenv('PIMCORE_PROJECT_ROOT') == '') {
-    define('PIMCORE_PROJECT_ROOT', dirname(__DIR__));
+if (file_exists('../../vendor/autoload.php')) {
+    $vendorLocation = '../../vendor/autoload.php';
+} elseif (file_exists('../vendor/autoload.php')) {
+    $vendorLocation = '../vendor/autoload.php';
+} elseif (file_exists('vendor/autoload.php')) {
+    $vendorLocation = 'vendor/autoload.php';
+} else {
+    throw new \Exception('Vendor location not found! Please run composer install.');
 }
 
-if (file_exists(getenv('PIMCORE_PROJECT_ROOT') . '/vendor/autoload.php')) {
-    include realpath(getenv('PIMCORE_PROJECT_ROOT')) . '/vendor/autoload.php';
-    $pimcoreTestDir = realpath(getenv('PIMCORE_PROJECT_ROOT')) . '/vendor/pimcore/pimcore/tests';
-} else {
-    throw new \Exception('Invalid Pimcore project root "' . getenv('PIMCORE_PROJECT_ROOT') . '"');
-}
+include $vendorLocation;
+$pimcoreTestDir =  $vendorLocation . '/vendor/pimcore/pimcore/tests';
 
 $pimcoreTestsSupportDir = $pimcoreTestDir . '/Support';
 include $pimcoreTestsSupportDir . '/Util/Autoloader.php';
