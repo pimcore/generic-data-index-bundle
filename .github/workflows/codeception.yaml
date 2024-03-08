@@ -32,7 +32,7 @@ jobs:
 
         services:
             mariadb:
-                image: "${{ matrix.database }}"
+                image: "mariadb:10.11"
                 ports:
                     - 33006:3306
                 env:
