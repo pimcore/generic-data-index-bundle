@@ -56,7 +56,8 @@ jobs:
         steps:
             -   name: "Checkout code"
                 uses: "actions/checkout@v2"
-                path: "bundles/pimcore/generic-data-index-bundle"
+                with:
+                    path: "bundles/pimcore/generic-data-index-bundle"
 
             -   name: "Install PHP"
                 uses: "shivammathur/setup-php@v2"
