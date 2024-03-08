@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\BasePermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
@@ -32,7 +33,10 @@ interface PermissionServiceInterface
         ?User $user
     ): AssetPermissions;
 
-    public function getDocumentPermissions(string $documentPath, ?User $user): DocumentPermissions;
+    public function getDocumentPermissions(
+        DocumentSearchResultItem $document,
+        ?User $user
+    ): DocumentPermissions;
 
     public function getDataObjectPermissions(
         DataObjectSearchResultItem $object,

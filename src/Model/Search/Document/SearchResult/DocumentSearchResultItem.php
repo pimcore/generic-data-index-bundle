@@ -110,9 +110,9 @@ class DocumentSearchResultItem
         return $this->published;
     }
 
-    public function setPublished(bool $published): DocumentSearchResultItem
+    public function setPublished(?bool $published): DocumentSearchResultItem
     {
-        $this->published = $published;
+        $this->published = (bool)$published;
 
         return $this;
     }

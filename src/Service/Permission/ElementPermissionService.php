@@ -15,9 +15,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
+use Pimcore\Model\Document;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\User;
 
@@ -26,6 +28,7 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
     public function __construct(
         private readonly AssetSearchServiceInterface $assetSearchService,
         private readonly DataObjectSearchServiceInterface $dataObjectSearchService,
+        private readonly DocumentSearchServiceInterface $documentSearchService,
         private readonly PermissionServiceInterface $permissionService
     ) {
     }
@@ -41,6 +44,7 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
         return match (true) {
             $element instanceof Asset => $this->isAssetAllowed($permission, $element, $user),
             $element instanceof DataObject => $this->isDataObjectAllowed($element, $permission, $user),
+            $element instanceof Document => $this->isDocumentAllowed($element, $permission, $user),
             default => false,
         };
     }
@@ -81,6 +85,27 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
 
         $permissions = $this->permissionService->getDataObjectPermissions(
             $dataObjectResult,
+            $user
+        );
+
+        return $this->permissionService->getPermissionValue($permissions, $permission);
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function isDocumentAllowed(
+        Document $document,
+        string $permission,
+        User $user
+    ): bool {
+        $documentResult = $this->documentSearchService->byId($document->getId(), $user);
+        if (!$documentResult) {
+            return false;
+        }
+
+        $permissions = $this->permissionService->getDocumentPermissions(
+            $documentResult,
             $user
         );
 

@@ -71,6 +71,9 @@ services:
         arguments:
             - [ ]
 
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\DocumentSearchResultDenormalizer: ~
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandler\PageSerializationHandler:
         tags:
             - { name: pimcore.generic_data_index.document_type_serialization_handler, type: page }

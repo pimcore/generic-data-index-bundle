@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 
 /**
@@ -30,5 +31,10 @@ final class SearchProvider implements SearchProviderInterface
     public function createDataObjectSearch(): SearchInterface
     {
         return new DataObjectSearch();
+    }
+
+    public function createDocumentSearch(): SearchInterface
+    {
+        return new DocumentSearch();
     }
 }
