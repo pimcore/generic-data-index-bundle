@@ -80,6 +80,8 @@ jobs:
                   REQUIRE_ADMIN_BUNDLE: "${{ matrix.require_admin_bundle }}"
               run: |
                   mysql -e "CREATE DATABASE pimcore_test CHARSET=utf8mb4;"
+                  mkdir bundles/pimcore/generic-data-index-bundle
+                  cp -R * bundles/pimcore/generic-data-index-bundle
                   chmod 755 .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
                   .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
 
