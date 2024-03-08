@@ -18,8 +18,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetS
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\BasePermissions;
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermission;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
@@ -61,9 +61,9 @@ final class PermissionService implements PermissionServiceInterface
     public function getDocumentPermissions(
         string $documentPath,
         ?User $user
-    ): DocumentPermission {
-        $permissions = new DocumentPermission();
-        /** @var DocumentPermission $permissions */
+    ): DocumentPermissions {
+        $permissions = new DocumentPermissions();
+        /** @var DocumentPermissions $permissions */
         $permissions = $this->getPermissions(
             elementPath: $documentPath,
             permissionsType: DocumentWorkspace::WORKSPACE_TYPE,
@@ -79,9 +79,9 @@ final class PermissionService implements PermissionServiceInterface
     public function getDataObjectPermissions(
         DataObjectSearchResultItem $object,
         ?User $user
-    ): DataObjectPermission {
-        $permissions = new DataObjectPermission();
-        /** @var DataObjectPermission $permissions */
+    ): DataObjectPermissions {
+        $permissions = new DataObjectPermissions();
+        /** @var DataObjectPermissions $permissions */
         $permissions = $this->getPermissions(
             elementPath: $object->getFullPath(),
             permissionsType: DataObjectWorkspace::WORKSPACE_TYPE,

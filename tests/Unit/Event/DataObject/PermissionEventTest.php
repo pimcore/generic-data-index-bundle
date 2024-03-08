@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Event\DataObject;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\PermissionEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermission;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
 
 /**
  * @internal
@@ -25,7 +25,7 @@ final class PermissionEventTest extends Unit
 {
     public function testGetPermissionsMapping(): void
     {
-        $permissions = new DataObjectPermission();
+        $permissions = new DataObjectPermissions();
         $permissions->setView(false);
         $permissions->setPublish(false);
         $event = new PermissionEvent(new DataObjectSearchResultItem(), $permissions);
@@ -37,7 +37,7 @@ final class PermissionEventTest extends Unit
 
     public function testSetPermissionsMapping(): void
     {
-        $permissions = new DataObjectPermission();
+        $permissions = new DataObjectPermissions();
         $event = new PermissionEvent(new DataObjectSearchResultItem(), $permissions);
         $permissions->setView(false);
         $permissions->setPublish(false);
