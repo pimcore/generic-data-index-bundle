@@ -53,6 +53,6 @@ Details about permissions and workspaces can be found in the [permissions and wo
 ## Debug OpenSearch Queries
 To debug the OpenSearch queries which are created by the search service, it is possible to use the following magic parameter in the URL (when debug mode is enabled):
 
-| Get Parameter             | Description |  |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |  |
-| debug-open-search-queries | Will change the response of the called URL and outputs all executed OpenSearch queries. It is possible to influence the output verbosity with the value of the parameter (1=normal, 2=verbose, 3=very verbose)          
+| Get Parameter             | Description                                                                                                                                                                                                    |
+|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| debug-open-search-queries | Will change the response of the called URL and outputs all executed OpenSearch queries. It is possible to influence the output verbosity with the value of the parameter (1=normal, 2=verbose, 3=very verbose) |
