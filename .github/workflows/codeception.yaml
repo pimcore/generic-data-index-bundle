@@ -30,6 +30,27 @@ jobs:
                     - { php-version: 8.1, dependencies: lowest, pimcore_version: "", experimental: false }
                     - { php-version: 8.2, dependencies: highest, pimcore_version: "", experimental: false }
 
+        services:
+            mariadb:
+                image: "${{ matrix.database }}"
+                ports:
+                    - 33006:3306
+                env:
+                    MYSQL_ALLOW_EMPTY_PASSWORD: yes
+
+            opensearch:
+                image: opensearchproject/opensearch:latest
+                ports:
+                    - 39200:9200
+                env:
+                    cluster.name: "opensearch-cluster"
+                    node.name: "opensearch-node"
+                    discovery.seed_hosts: "opensearch-node"
+                    bootstrap.memory_lock: true
+                    OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+                    discovery.type: "single-node"
+                    DISABLE_SECURITY_PLUGIN: true
+
         steps:
             -   name: "Checkout code"
                 uses: "actions/checkout@v2"
