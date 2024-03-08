@@ -2,9 +2,10 @@
 
 The Generic Data Index bundle adds standardized and flexible services to search data from the search indices.
 
-## Asset Search Service
+Each search is based on a search service (depending on the element type) and a search model defining the search. The search models can be created with the [SearchProviderInterface](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Service/Search/SearchService/SearchProviderInterface.php)
 
-Asset Search Service can be created with the [SearchProviderInterface](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Service/Search/SearchService/SearchProviderInterface.php)
+
+## Asset Search Service
 
 ### Example usage
 
