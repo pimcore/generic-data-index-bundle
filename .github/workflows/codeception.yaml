@@ -45,6 +45,14 @@ jobs:
                 run: |
                     composer config --global --auth http-basic.enterprise.repo.pimcore.com token ${{ secrets.COMPOSER_PIMCORE_REPO_TOKEN }}
 
+            - name: "Setup Pimcore environment"
+              env:
+                  REQUIRE_ADMIN_BUNDLE: "${{ matrix.require_admin_bundle }}"
+              run: |
+                  mysql -e "CREATE DATABASE pimcore_test CHARSET=utf8mb4;"
+                  chmod 755 .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
+                  .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
+
             -   name: "Install dependencies with Composer"
                 uses: "ramsey/composer-install@v2"
                 with:
