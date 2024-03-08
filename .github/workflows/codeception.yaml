@@ -89,6 +89,7 @@ jobs:
               run: |
                   mysql -e "CREATE DATABASE pimcore_test CHARSET=utf8mb4;"
                   cp -R bundles/pimcore/generic-data-index-bundle/tests tests
+                  mkdir src
                   chmod 755 .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
                   .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
 
