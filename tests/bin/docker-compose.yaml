@@ -39,7 +39,8 @@ services:
             APP_ENV: test
             PIMCORE_TEST: 1
             PIMCORE_TEST_DB_DSN: "mysql://pimcore:pimcore@db:3306/pimcore_test"
-            PIMCORE_OPEN_SEARCH_HOST: 'opensearch:9200'
+            PIMCORE_OPEN_SEARCH_HOST: "opensearch:9200"
+            CODECEPTION_BUNDLE_PATH: "bundles/pimcore/generic-data-index-bundle"
         depends_on:
             - db
             - opensearch

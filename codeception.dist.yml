@@ -5,6 +5,10 @@ settings:
     shuffle: true
     lint: true
 
+params:
+    - env
+    - CODECEPTION_BUNDLE_PATH: ''
+
 paths:
     tests: tests
     output: tests/_output
@@ -15,10 +19,10 @@ coverage:
     enabled: true
     show_uncovered: true
     include:
-        - src/*
+        - "%CODECEPTION_BUNDLE_PATH%src/*"
     exclude:
-        - src/Controller/*
-        - src/DependencyInjection/*
-        - src/Repository/*
-        - src/Installer.php
-        - src/PimcoreGenericDataIndexBundle.php
+        - "%CODECEPTION_BUNDLE_PATH%src/Controller/*"
+        - "%CODECEPTION_BUNDLE_PATH%src/DependencyInjection/*"
+        - "%CODECEPTION_BUNDLE_PATH%src/Repository/*"
+        - "%CODECEPTION_BUNDLE_PATH%src/Installer.php"
+        - "%CODECEPTION_BUNDLE_PATH%src/PimcoreGenericDataIndexBundle.php"
