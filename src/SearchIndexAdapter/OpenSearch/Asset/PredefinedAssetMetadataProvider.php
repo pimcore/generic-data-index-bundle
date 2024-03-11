@@ -55,6 +55,7 @@ final class PredefinedAssetMetadataProvider implements MappingProviderInterface
                 $languages
             );
         }
+
         return $mappingProperties;
     }
 
