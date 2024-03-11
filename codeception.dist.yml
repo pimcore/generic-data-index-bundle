@@ -6,8 +6,8 @@ settings:
     lint: true
 
 params:
-    - env
     - CODECEPTION_BUNDLE_PATH: ''
+    - env
 
 paths:
     tests: tests
