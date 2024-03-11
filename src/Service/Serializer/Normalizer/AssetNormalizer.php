@@ -42,7 +42,7 @@ final class AssetNormalizer implements NormalizerInterface
     public function normalize(mixed $object, string $format = null, array $context = []): array
     {
         $asset = $object;
-die('AssetNormalizer');
+        die('AssetNormalizer');
         if ($asset instanceof Asset\Folder) {
             return $this->normalizeFolder($asset);
         }

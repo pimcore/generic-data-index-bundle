@@ -13,12 +13,9 @@
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional;
 
 use OpenSearch\Common\Exceptions\Missing404Exception;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer;
-use Pimcore\Model\Metadata\Predefined;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 class AssetBasicTest extends \Codeception\Test\Unit
@@ -92,5 +89,4 @@ class AssetBasicTest extends \Codeception\Test\Unit
         $this->assertCount(1, $searchResult->getItems());
         $this->assertEquals([$asset->getId()], $searchResult->getIds());
     }
-
 }

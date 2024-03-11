@@ -54,7 +54,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testInput', 'input', 'lorem ipsum', 'en'))
-          
+
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -64,7 +64,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testInput', 'input', 'lorem*', 'en'))
-          
+
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -74,7 +74,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testInput', 'input', '*ipsum', 'en'))
-          
+
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -84,7 +84,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testInput', 'input', 'lor*psum', 'en'))
-          
+
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -94,13 +94,14 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testInput', 'input', 'ipsum*', 'en'))
-          
+
         ;
 
         $searchResult = $searchService->search($assetSearch);
 
         $this->assertEquals([], $searchResult->getIds());
     }
+
     public function testAssetMetaDataFilterTextarea()
     {
         $asset = TestHelper::createImageAsset();
@@ -115,7 +116,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testTextarea', 'textarea', 'lorem ipsum', 'en'))
-          
+
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -125,7 +126,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testTextarea', 'textarea', 'lorem*', 'en'))
-          
+
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -135,7 +136,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testTextarea', 'textarea', '*ipsum', 'en'))
-          
+
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -145,7 +146,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testTextarea', 'textarea', 'lor*psum', 'en'))
-          
+
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -155,13 +156,14 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testTextarea', 'textarea', 'ipsum*', 'en'))
-          
+
         ;
 
         $searchResult = $searchService->search($assetSearch);
 
         $this->assertEquals([], $searchResult->getIds());
     }
+
     public function testAssetMetaDataFilterSelect()
     {
         $asset = TestHelper::createImageAsset();
@@ -176,7 +178,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testSelect', 'select', 'value1'))
-          
+
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -186,7 +188,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testSelect', 'select', 'value2'))
-          
+
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -199,7 +201,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testSelect', 'select', 'value2'))
-          
+
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -209,7 +211,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testSelect', 'select', ['value2', 'value3']))
-          
+
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -231,7 +233,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testAsset', 'asset', $asset->getId()))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
 
@@ -240,7 +242,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testAsset', 'asset', [$asset->getId(), 123]))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
 
@@ -249,7 +251,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testAsset', 'asset', [123]))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
 
@@ -272,7 +274,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testDocument', 'document', $document->getId()))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
 
@@ -281,7 +283,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testDocument', 'document', [$document->getId(), 123]))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
 
@@ -290,7 +292,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testDocument', 'document', [123]))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
 
@@ -313,7 +315,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testObject', 'object', $object->getId()))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
 
@@ -322,7 +324,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testObject', 'object', [$object->getId(), 123]))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
 
@@ -331,7 +333,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testObject', 'object', [123]))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
 
@@ -353,7 +355,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testCheckbox', 'checkbox', true))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
         $this->assertEquals([$asset->getId()], $searchResult->getIds());
@@ -364,7 +366,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testCheckbox', 'checkbox', false))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
         $this->assertEquals([$asset->getId()], $searchResult->getIds());
@@ -373,14 +375,14 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testCheckbox', 'checkbox', true))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
         $this->assertEquals([], $searchResult->getIds());
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testCheckbox', 'checkbox', [true, false]))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
         $this->assertEquals([$asset->getId()], $searchResult->getIds());
@@ -401,7 +403,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testDate', 'date', [DateFilter::PARAM_ON => strtotime('2020-01-01')]))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
         $this->assertEquals([$asset->getId()], $searchResult->getIds());
@@ -409,7 +411,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testDate', 'date', [DateFilter::PARAM_START => strtotime('2019-01-01')]))
-          ;
+        ;
 
         $searchResult = $searchService->search($assetSearch);
         $this->assertEquals([$asset->getId()], $searchResult->getIds());
