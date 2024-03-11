@@ -416,14 +416,6 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $searchResult = $searchService->search($assetSearch);
         $this->assertEquals([$asset->getId()], $searchResult->getIds());
 
-        $assetSearch = $searchProvider
-            ->createAssetSearch()
-            ->addModifier(new AssetMetaDataFilter('testDate', 'date', [DateFilter::PARAM_START => strtotime('2020-01-01')]))
-        ;
-
-        /*$searchResult = $searchService->search($assetSearch);
-        $this->assertEquals([$asset->getId()], $searchResult->getIds());
-
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
@@ -447,7 +439,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
           ;
 
         $searchResult = $searchService->search($assetSearch);
-        $this->assertEquals([], $searchResult->getIds());*/
+        $this->assertEquals([], $searchResult->getIds());
 
     }
 }
