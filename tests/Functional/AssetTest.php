@@ -12,6 +12,8 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Tests\Support\Util\TestHelper;
 
@@ -53,5 +55,29 @@ class AssetTest extends \Codeception\Test\Unit
         // check indexed
         $response = $this->tester->checkIndexEntry($asset->getId(), $indexName);
         $this->assertEquals($asset->getId(), $response['_source']['system_fields']['id']);
+    }
+
+    public function testAssetSearch()
+    {
+        // create asset
+        TestHelper::createImageAsset();
+
+        $this->tester->flushIndex();
+
+        /** @var AssetSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService(AssetSearchServiceInterface::class);
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->setPageSize(20)
+        ;
+
+        $searchResult = $searchService->search($assetSearch);
+
+        $this->assertEquals(1, $searchResult->getPagination()->getTotalItems());
+        $this->assertEquals(20, $searchResult->getPagination()->getPageSize());
+        $this->assertCount(1, $searchResult->getItems());
     }
 }
