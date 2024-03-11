@@ -42,7 +42,7 @@ final class FullTextSearchTest extends \Codeception\Test\Unit
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new ElementKeySearch('Test'))
+            ->addModifier(new ElementKeySearch('Test*'))
         ;
         $searchResult = $searchService->search($assetSearch);
         $this->assertEquals([$asset->getId()], $searchResult->getIds());

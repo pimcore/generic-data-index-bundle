@@ -13,6 +13,15 @@
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional;
 
 use OpenSearch\Common\Exceptions\Missing404Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Archive;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Audio;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Document;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Folder;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Image;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Text;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Unknown;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Video;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -88,5 +97,21 @@ class AssetBasicTest extends \Codeception\Test\Unit
         $this->assertEquals(20, $searchResult->getPagination()->getPageSize());
         $this->assertCount(1, $searchResult->getItems());
         $this->assertEquals([$asset->getId()], $searchResult->getIds());
+    }
+
+    public function testAssetSearchTypes()
+    {
+        /** @var AssetSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
+
+        $folder = TestHelper::createAssetFolder();
+        $video = TestHelper::createVideoAsset();
+        $document = TestHelper::createDocumentAsset();
+        $image = TestHelper::createImageAsset();
+
+        $this->assertInstanceOf(Document::class, $searchService->byId($document->getId()));
+        $this->assertInstanceOf(Folder::class, $searchService->byId($folder->getId()));
+        $this->assertInstanceOf(Image::class, $searchService->byId($image->getId()));
+        $this->assertInstanceOf(Video::class, $searchService->byId($video->getId()));
     }
 }
