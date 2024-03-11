@@ -19,7 +19,6 @@ docker-compose exec php composer config repositories.pimcore_enterprise composer
 docker-compose exec php composer update
 #docker-compose exec php composer update --prefer-lowest --prefer-stable
 
-docker-compose exec php vendor/bin/codecept build
 docker-compose exec php vendor/bin/codecept run Functional -vv
 
 printf "\n\n\n================== \n"

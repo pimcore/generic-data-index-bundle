@@ -101,5 +101,4 @@ jobs:
 
             -   name: "Run Codeception"
                 run: |
-                    vendor/bin/codecept build
                     vendor/bin/codecept run -c . -vvv --xml --coverage-xml

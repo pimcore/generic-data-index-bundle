@@ -43,7 +43,7 @@ Autoloader::addNamespace('Pimcore\Tests\Support', $pimcoreTestsSupportDir);
 //Autoloader::addNamespace('Pimcore\Model\DataObject', __DIR__ . '/_output/var/classes/DataObject');
 Autoloader::addNamespace('Pimcore\Model\DataObject', PIMCORE_CLASS_DIRECTORY . '/DataObject');
 Autoloader::addNamespace('Pimcore\Bundle\GenericDataIndexBundle\Tests', __DIR__);
-Autoloader::addNamespace('Pimcore\Bundle\GenericDataIndexBundle\Tests', __DIR__ . '/_support');
+Autoloader::addNamespace('Pimcore\Bundle\GenericDataIndexBundle\Tests', __DIR__ . '/Support');
 
 if (!defined('TESTS_PATH')) {
     define('TESTS_PATH', __DIR__);
