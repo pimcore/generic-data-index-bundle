@@ -12,6 +12,7 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional;
 
+use OpenSearch\Common\Exceptions\Missing404Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -50,11 +51,21 @@ class AssetTest extends \Codeception\Test\Unit
         // create asset
         $asset = TestHelper::createImageAsset();
 
-        $this->tester->flushIndex();
-
         // check indexed
         $response = $this->tester->checkIndexEntry($asset->getId(), $indexName);
         $this->assertEquals($asset->getId(), $response['_source']['system_fields']['id']);
+
+        $asset->setKey('test.jpg');
+        $asset->save();
+
+        $response = $this->tester->checkIndexEntry($asset->getId(), $indexName);
+        $this->assertEquals('test.jpg', $response['_source']['system_fields']['key']);
+
+        $asset->delete();
+
+        $this->expectException(Missing404Exception::class);
+        $this->tester->checkIndexEntry($asset->getId(), $indexName);
+
     }
 
     public function testAssetSearch()
