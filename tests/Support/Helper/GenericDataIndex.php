@@ -129,7 +129,7 @@ class GenericDataIndex extends \Codeception\Module
             'index' => $index,
         ]);
 
-        $this->assertEquals($id, $response['_id'], 'Check ES document id of element');
+        $this->assertEquals($id, $response['_id'], 'Check OpenSearch document id of element');
 
         return $response;
     }
