@@ -20,7 +20,7 @@ env:
     PIMCORE_TEST: 1
     PIMCORE_TEST_DB_DSN: "mysql://root@127.0.0.1:33006/pimcore_test"
     PIMCORE_OPEN_SEARCH_HOST: "localhost:39200"
-    CODECEPTION_BUNDLE_PATH: "bundles/pimcore/generic-data-index-bundle"
+    CODECEPTION_BUNDLE_PATH: "bundles/pimcore/generic-data-index-bundle/"
 
 jobs:
     codeception-tests:
@@ -101,5 +101,4 @@ jobs:
 
             -   name: "Run Codeception"
                 run: |
-                    vendor/bin/codecept build
                     vendor/bin/codecept run -c . -vvv --xml --coverage-xml

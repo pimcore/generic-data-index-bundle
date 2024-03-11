@@ -10,7 +10,6 @@ docker-compose down -v --remove-orphans
 
 docker-compose up -d
 
-docker-compose exec php mkdir test-environment && cd test-environment
 docker-compose exec php .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
 
 docker-compose exec php composer config --global --auth http-basic.enterprise.repo.pimcore.com token $1
@@ -20,6 +19,7 @@ docker-compose exec php composer config repositories.pimcore_enterprise composer
 docker-compose exec php composer update
 #docker-compose exec php composer update --prefer-lowest --prefer-stable
 
+docker-compose exec php vendor/bin/codecept build
 docker-compose exec php vendor/bin/codecept run Functional -vv
 
 printf "\n\n\n================== \n"
