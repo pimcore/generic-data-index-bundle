@@ -65,7 +65,7 @@ class AssetTest extends \Codeception\Test\Unit
         $this->tester->flushIndex();
 
         /** @var AssetSearchServiceInterface $searchService */
-        $searchService = $this->tester->grabService(AssetSearchServiceInterface::class);
+        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
         /** @var SearchProviderInterface $searchProvider */
         $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
 
