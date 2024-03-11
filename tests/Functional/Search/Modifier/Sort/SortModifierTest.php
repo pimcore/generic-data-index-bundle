@@ -63,7 +63,7 @@ final class SortModifierTest extends \Codeception\Test\Unit
         ;
         $searchResult = $searchService->search($assetSearch);
 
-        $resultFullPaths = array_map(function($asset) {
+        $resultFullPaths = array_map(function ($asset) {
             return $asset->getFullPath();
         }, $searchResult->getItems());
 
@@ -77,7 +77,7 @@ final class SortModifierTest extends \Codeception\Test\Unit
         ;
         $searchResult = $searchService->search($assetSearch);
 
-        $resultFullPaths = array_map(function($asset) {
+        $resultFullPaths = array_map(function ($asset) {
             return $asset->getFullPath();
         }, $searchResult->getItems());
 

@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\FullTextSearch;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\ElementKeySearch;
@@ -10,7 +20,6 @@ use Pimcore\Tests\Support\Util\TestHelper;
 
 final class FullTextSearchTest extends \Codeception\Test\Unit
 {
-
     /**
      * @var \Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester
      */
@@ -80,7 +89,7 @@ final class FullTextSearchTest extends \Codeception\Test\Unit
         ;
         $searchResult = $searchService->search($assetSearch);
         $this->assertEquals([], $searchResult->getIds());
-        ;
+
         $searchResult = $searchService->search($assetSearch);
         $this->assertEquals([], $searchResult->getIds());
         $assetSearch = $searchProvider
