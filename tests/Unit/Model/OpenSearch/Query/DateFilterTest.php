@@ -34,16 +34,16 @@ final class DateFilterTest extends Unit
         self::assertSame([
             'range' => [
                 'datefield' => [
-                    'gt' => '2000-01-01T00:00:00+00:00',
-                    'lt' => '2099-12-31T23:59:59+00:00',
+                    'gte' => '2000-01-01T00:00:00+00:00',
+                    'lte' => '2099-12-31T23:59:59+00:00',
                 ],
             ],
         ], $dateFilter->toArray(true));
 
         self::assertSame([
             'datefield' => [
-                'gt' => '2000-01-01T00:00:00+00:00',
-                'lt' => '2099-12-31T23:59:59+00:00',
+                'gte' => '2000-01-01T00:00:00+00:00',
+                'lte' => '2099-12-31T23:59:59+00:00',
             ],
         ], $dateFilter->toArray());
 
@@ -52,7 +52,7 @@ final class DateFilterTest extends Unit
         self::assertSame([
             'range' => [
                 'datefield' => [
-                    'gt' => '2000-01-01T00:00:00+00:00',
+                    'gte' => '2000-01-01T00:00:00+00:00',
                 ],
             ],
         ], $dateFilter->toArray(true));
@@ -62,7 +62,7 @@ final class DateFilterTest extends Unit
         self::assertSame([
             'range' => [
                 'datefield' => [
-                    'lt' => '2000-01-01T23:59:59+00:00',
+                    'lte' => '2000-01-01T23:59:59+00:00',
                 ],
             ],
         ], $dateFilter->toArray(true));
@@ -92,8 +92,8 @@ final class DateFilterTest extends Unit
 
         self::assertSame([
             'datefield' => [
-                'gt' => '2000-01-01T00:00:00+00:00',
-                'lt' => '2099-12-31T23:59:59+00:00',
+                'gte' => '2000-01-01T00:00:00+00:00',
+                'lte' => '2099-12-31T23:59:59+00:00',
             ],
         ], $dateFilter->getParams());
 
@@ -101,7 +101,7 @@ final class DateFilterTest extends Unit
 
         self::assertSame([
             'datefield' => [
-                'gt' => '2000-01-01T00:00:00+00:00',
+                'gte' => '2000-01-01T00:00:00+00:00',
             ],
         ], $dateFilter->getParams());
 
@@ -109,7 +109,7 @@ final class DateFilterTest extends Unit
 
         self::assertSame([
             'datefield' => [
-                'lt' => '2000-01-01T23:59:59+00:00',
+                'lte' => '2000-01-01T23:59:59+00:00',
             ],
         ], $dateFilter->getParams());
 
@@ -153,8 +153,8 @@ final class DateFilterTest extends Unit
 
         self::assertSame([
             'datefield' => [
-                'gt' => '2000-01-01T12:00:00+00:00',
-                'lt' => '2099-12-31T20:00:00+00:00',
+                'gte' => '2000-01-01T12:00:00+00:00',
+                'lte' => '2099-12-31T20:00:00+00:00',
             ],
         ], $dateFilter->getParams());
 
@@ -162,8 +162,8 @@ final class DateFilterTest extends Unit
 
         self::assertSame([
             'datefield' => [
-                'gt' => '2000-01-01T00:00:00+00:00',
-                'lt' => '2099-12-31T23:59:59+00:00',
+                'gte' => '2000-01-01T00:00:00+00:00',
+                'lte' => '2099-12-31T23:59:59+00:00',
             ],
         ], $dateFilter->getParams());
 

@@ -35,3 +35,34 @@ pimcore_open_search_client:
     clients:
         default:
             hosts: ['%env(PIMCORE_OPEN_SEARCH_HOST)%']
+
+pimcore:
+    assets:
+        metadata:
+            predefined:
+                definitions:
+                    test-input:
+                        name: 'testInput'
+                        type: input
+                    test-textarea:
+                        name: 'testTextarea'
+                        type: textarea
+                    test-select:
+                        name: 'testSelect'
+                        type: select
+                        config: value1,value2
+                    test-asset:
+                        name: 'testAsset'
+                        type: asset
+                    test-document:
+                        name: 'testDocument'
+                        type: document
+                    test-object:
+                        name: 'testObject'
+                        type: object
+                    test-date:
+                        name: 'testDate'
+                        type: date
+                    test-checkbox:
+                        name: 'testCheckbox'
+                        type: checkbox
