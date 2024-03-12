@@ -13,7 +13,6 @@ docker-compose up -d
 docker-compose exec php .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
 
 docker-compose exec php composer config --global --auth http-basic.enterprise.repo.pimcore.com token $1
-docker-compose exec php composer config repositories.pimcore_enterprise composer https://enterprise.repo.pimcore.com/
 
 #docker-compose exec php composer require pimcore/pimcore:10.0.0 --no-update
 docker-compose exec php composer update
