@@ -27,7 +27,6 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
      */
     protected $tester;
 
-
     protected function _after()
     {
         TestHelper::cleanUp();
@@ -71,13 +70,13 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
         $openSearchService = $this->tester->grabService(SearchIndexServiceInterface::class);
 
         $openSearchService->createIndex('test_index-odd');
-        $openSearchService->addAlias('test_index','test_index-odd');
+        $openSearchService->addAlias('test_index', 'test_index-odd');
         $this->assertEquals('odd', $openSearchService->getCurrentIndexVersion('test_index'));
 
         $openSearchService->deleteIndex('test_index-odd');
 
         $openSearchService->createIndex('test_index-even');
-        $openSearchService->addAlias('test_index','test_index-even');
+        $openSearchService->addAlias('test_index', 'test_index-even');
         $this->assertEquals('even', $openSearchService->getCurrentIndexVersion('test_index'));
         $openSearchService->deleteIndex('test_index-even');
     }
@@ -88,9 +87,8 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
         $openSearchService = $this->tester->grabService(SearchIndexServiceInterface::class);
 
         $openSearchService->createIndex('test_index-odd', ['test'=> ['type'=>'object']]);
-        $openSearchService->addAlias('test_index','test_index-odd');
+        $openSearchService->addAlias('test_index', 'test_index-odd');
         $openSearchService->reindex('test_index', ['test'=> ['type'=>'keyword']]);
-
 
         /** @var Client $openSearchClient */
         $openSearchClient = $this->tester->grabService('generic-data-index.opensearch-client');
@@ -123,14 +121,15 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
 
         $openSearchService->createIndex('test_index');
         $openSearchService->createIndex('test_index2');
-        $openSearchService->addAlias('test_index_alias','test_index');
-        $openSearchService->addAlias('test_index_alias','test_index2');
+        $openSearchService->addAlias('test_index_alias', 'test_index');
+        $openSearchService->addAlias('test_index_alias', 'test_index2');
         $this->assertTrue($openSearchClient->indices()->existsAlias(['name' => 'test_index_alias', 'index' => 'test_index']));
         $this->assertTrue($openSearchClient->indices()->existsAlias(['name' => 'test_index_alias', 'index' => 'test_index2']));
         $openSearchService->deleteIndex('test_index');
         $openSearchService->deleteIndex('test_index2');
 
     }
+
     public function testPutAlias(): void
     {
 
@@ -141,8 +140,8 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
 
         $openSearchService->createIndex('test_index');
         $openSearchService->createIndex('test_index2');
-        $openSearchService->putAlias('test_index_alias','test_index');
-        $openSearchService->putAlias('test_index_alias','test_index2');
+        $openSearchService->putAlias('test_index_alias', 'test_index');
+        $openSearchService->putAlias('test_index_alias', 'test_index2');
         $this->assertTrue($openSearchClient->indices()->existsAlias(['name' => 'test_index_alias', 'index' => 'test_index']));
         $this->assertTrue($openSearchClient->indices()->existsAlias(['name' => 'test_index_alias', 'index' => 'test_index2']));
         $openSearchService->deleteIndex('test_index');
@@ -155,7 +154,7 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
         $openSearchService = $this->tester->grabService(SearchIndexServiceInterface::class);
 
         $openSearchService->createIndex('test_index');
-        $openSearchService->putAlias('test_index_alias','test_index');
+        $openSearchService->putAlias('test_index_alias', 'test_index');
 
         $this->assertTrue($openSearchService->existsAlias('test_index_alias', 'test_index'));
         $this->assertFalse($openSearchService->existsAlias('test_index_alias', 'test_index2'));
@@ -181,7 +180,7 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
         $openSearchService = $this->tester->grabService(SearchIndexServiceInterface::class);
 
         $openSearchService->createIndex('test_index');
-        $openSearchService->putAlias('test_index_alias','test_index');
+        $openSearchService->putAlias('test_index_alias', 'test_index');
         $this->assertTrue($openSearchService->existsAlias('test_index_alias', 'test_index'));
         $openSearchService->deleteAlias('test_index', 'test_index_alias');
         $this->assertFalse($openSearchService->existsAlias('test_index_alias', 'test_index'));
@@ -216,7 +215,7 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
         $openSearchService->createIndex('test_index');
         $openSearchService->putMapping([
             'index' => 'test_index',
-            'body' => ['properties' => ['test' => ['type' => 'keyword']]]
+            'body' => ['properties' => ['test' => ['type' => 'keyword']]],
         ]);
 
         $mapping = $openSearchClient->indices()->getMapping(['index' => 'test_index']);
@@ -268,7 +267,7 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
 
         $this->assertCount(1, $openSearchService->getExecutedSearches());
         $searchInformation = $openSearchService->getExecutedSearches()[0];
-        $this->assertEquals($search,$searchInformation->getSearch());
+        $this->assertEquals($search, $searchInformation->getSearch());
         $this->assertTrue($searchInformation->isSuccess());
         $this->assertEquals($searchInformation->getResponse()['hits']['total']['value'], $result->getTotalHits());
         $this->assertIsNumeric($searchInformation->getExecutionTime());
