@@ -12,9 +12,7 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\Aggregation;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\Search\SortDirection;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree\ChildrenCountAggregation;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultAggregationBucket;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
@@ -67,7 +65,7 @@ final class TreeAggregationTest extends \Codeception\Test\Unit
 
         $aggregationResult = $searchResult->getAggregation($aggregation->getAggregationName());
 
-        array_map(function (SearchResultAggregationBucket $bucket) use($folder)  {
+        array_map(function (SearchResultAggregationBucket $bucket) use ($folder) {
             $this->assertEquals($folder->getId(), $bucket->getKey());
             $this->assertEquals(3, $bucket->getDocCount());
         }, $aggregationResult->getBuckets());
