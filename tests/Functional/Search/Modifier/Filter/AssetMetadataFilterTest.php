@@ -178,7 +178,6 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new AssetMetaDataFilter('testSelect', 'select', 'value1'))
-
         ;
 
         $searchResult = $searchService->search($assetSearch);
