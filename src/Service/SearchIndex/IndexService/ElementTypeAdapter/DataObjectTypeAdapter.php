@@ -115,6 +115,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
                     ->setMaxResults(1)
                     ->setParameter('id', $element->getId());
             }
+
             return null;
         }
 
