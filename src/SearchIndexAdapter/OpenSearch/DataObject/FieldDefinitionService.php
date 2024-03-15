@@ -56,10 +56,6 @@ final class FieldDefinitionService implements FieldDefinitionServiceInterface
             return $adapter->normalize($value);
         }
 
-        if($fieldDefinition instanceof NormalizerInterface) {
-            return $fieldDefinition->normalize($value);
-        }
-
-        return $value;
+        return null;
     }
 }
