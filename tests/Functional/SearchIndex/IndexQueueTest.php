@@ -53,7 +53,7 @@ class IndexQueueTest extends \Codeception\Test\Unit
         $indexQueueRepository = $this->tester->grabService(IndexQueueRepository::class);
 
         $entries = $indexQueueRepository->getUnhandledIndexQueueEntries();
-        $entries = array_map(fn($entry) => $indexQueueRepository->denormalizeDatabaseEntry($entry), $entries);
+        $entries = array_map(fn ($entry) => $indexQueueRepository->denormalizeDatabaseEntry($entry), $entries);
         $indexQueueRepository->deleteQueueEntries($entries);
 
         TestHelper::createImageAsset();
@@ -69,7 +69,7 @@ class IndexQueueTest extends \Codeception\Test\Unit
         usleep(1000); //sleep for 1 ms to ensure that the dispatchId is different
         $this->assertEquals([], $indexQueueRepository->getUnhandledIndexQueueEntries(true));
 
-        $dispatchedItems = array_map(fn($entry) => $indexQueueRepository->denormalizeDatabaseEntry($entry), $dispatchedItems);
+        $dispatchedItems = array_map(fn ($entry) => $indexQueueRepository->denormalizeDatabaseEntry($entry), $dispatchedItems);
 
         $this->assertEquals(1, $indexQueueRepository->countIndexQueueEntries());
         $indexQueueRepository->deleteQueueEntries($dispatchedItems);
@@ -122,7 +122,6 @@ class IndexQueueTest extends \Codeception\Test\Unit
                 [$asset->getId()]
             )
         );
-
 
         $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
         $result = $this->tester->checkIndexEntry($asset->getId(), $indexName);
