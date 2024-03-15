@@ -30,3 +30,39 @@ parameters:
     pimcore_test.db.dsn: '%env(PIMCORE_TEST_DB_DSN)%'
     env(PIMCORE_TEST_DB_DSN): ~
     pimcore.encryption.secret: 'def00000fc1e34a17a03e2ef85329325b0736a5941633f8062f6b0a1a20f416751af119256bea0abf83ac33ef656b3fff087e1ce71fa6b8810d7f854fe2781f3fe4507f6'
+
+pimcore_open_search_client:
+    clients:
+        default:
+            hosts: ['%env(PIMCORE_OPEN_SEARCH_HOST)%']
+
+pimcore:
+    assets:
+        metadata:
+            predefined:
+                definitions:
+                    test-input:
+                        name: 'testInput'
+                        type: input
+                    test-textarea:
+                        name: 'testTextarea'
+                        type: textarea
+                    test-select:
+                        name: 'testSelect'
+                        type: select
+                        config: value1,value2
+                    test-asset:
+                        name: 'testAsset'
+                        type: asset
+                    test-document:
+                        name: 'testDocument'
+                        type: document
+                    test-object:
+                        name: 'testObject'
+                        type: object
+                    test-date:
+                        name: 'testDate'
+                        type: date
+                    test-checkbox:
+                        name: 'testCheckbox'
+                        type: checkbox

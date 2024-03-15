@@ -18,6 +18,9 @@ env:
     PIMCORE_PROJECT_ROOT: ${{ github.workspace }}
     APP_ENV: test
     PIMCORE_TEST: 1
+    PIMCORE_TEST_DB_DSN: "mysql://root@127.0.0.1:33006/pimcore_test"
+    PIMCORE_OPEN_SEARCH_HOST: "localhost:39200"
+    CODECEPTION_BUNDLE_PATH: "bundles/pimcore/generic-data-index-bundle/"
 
 jobs:
     codeception-tests:
@@ -30,9 +33,38 @@ jobs:
                     - { php-version: 8.1, dependencies: lowest, pimcore_version: "", experimental: false }
                     - { php-version: 8.2, dependencies: highest, pimcore_version: "", experimental: false }
 
+        services:
+            mariadb:
+                image: "mariadb:10.11"
+                ports:
+                    - 33006:3306
+                env:
+                    MYSQL_ALLOW_EMPTY_PASSWORD: yes
+
+            opensearch:
+                image: opensearchproject/opensearch:latest
+                ports:
+                    - 39200:9200
+                env:
+                    cluster.name: "opensearch-cluster"
+                    node.name: "opensearch-node"
+                    discovery.seed_hosts: "opensearch-node"
+                    bootstrap.memory_lock: true
+                    OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+                    discovery.type: "single-node"
+                    DISABLE_SECURITY_PLUGIN: true
+
         steps:
             -   name: "Checkout code"
                 uses: "actions/checkout@v2"
+                with:
+                    path: "bundles/pimcore/generic-data-index-bundle"
+
+            - name: "Copy .github directory"
+              env:
+                  REQUIRE_ADMIN_BUNDLE: "${{ matrix.require_admin_bundle }}"
+              run: |
+                  cp -R bundles/pimcore/generic-data-index-bundle/.github .github
 
             -   name: "Install PHP"
                 uses: "shivammathur/setup-php@v2"
@@ -41,9 +73,26 @@ jobs:
                     ini-values: display_errors=On, display_startup_errors=On, error_reporting=32767
                     php-version: "${{ matrix.php-version }}"
 
+            - name: Verify MariaDB connection
+              run: |
+                  cp .github/ci/files/.my.cnf ~/.my.cnf
+                  while ! mysqladmin ping --silent; do
+                    sleep 1
+                  done
+
             -   name: "Add authentication for private pimcore packages"
                 run: |
                     composer config --global --auth http-basic.enterprise.repo.pimcore.com token ${{ secrets.COMPOSER_PIMCORE_REPO_TOKEN }}
+
+            - name: "Setup Pimcore environment"
+              env:
+                  REQUIRE_ADMIN_BUNDLE: "${{ matrix.require_admin_bundle }}"
+              run: |
+                  mysql -e "CREATE DATABASE pimcore_test CHARSET=utf8mb4;"
+                  cp -R bundles/pimcore/generic-data-index-bundle/tests tests
+                  mkdir src
+                  chmod 755 .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
+                  .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
 
             -   name: "Install dependencies with Composer"
                 uses: "ramsey/composer-install@v2"
@@ -51,4 +100,5 @@ jobs:
                     dependency-versions: "${{ matrix.dependencies }}"
 
             -   name: "Run Codeception"
-                run: "vendor/bin/codecept run -c . -vvv --xml --coverage-xml"
+                run: |
+                    vendor/bin/codecept run -c . -vvv --xml --coverage-xml
