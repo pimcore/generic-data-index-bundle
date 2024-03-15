@@ -114,6 +114,12 @@ class GenericDataIndex extends \Codeception\Module
         $synchronousProcessing->enable();
     }
 
+    public function disableSynchronousProcessing(): void
+    {
+        $synchronousProcessing = $this->grabService(SynchronousProcessingServiceInterface::class);
+        $synchronousProcessing->disable();
+    }
+
     public function getIndexSearchClient(): mixed
     {
         return $this->grabService('generic-data-index.opensearch-client');

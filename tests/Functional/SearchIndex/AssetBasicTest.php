@@ -10,7 +10,7 @@
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional;
+namespace Functional\SearchIndex;
 
 use OpenSearch\Common\Exceptions\Missing404Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Document;
