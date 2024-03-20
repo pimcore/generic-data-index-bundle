@@ -80,6 +80,16 @@ jobs:
                     sleep 1
                   done
 
+            - name: "Setup Pimcore environment"
+              env:
+                  REQUIRE_ADMIN_BUNDLE: "${{ matrix.require_admin_bundle }}"
+              run: |
+                  mysql -e "CREATE DATABASE pimcore_test CHARSET=utf8mb4;"
+                  cp -R bundles/pimcore/generic-data-index-bundle/tests tests
+                  mkdir src
+                  chmod 755 .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
+                  .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
+
             - name: Install SSH Key # this is necessary for Composer to be able to clone source from pimcore/ee-pimcore
               uses: shimataro/ssh-key-action@v2
               with:
@@ -90,16 +100,6 @@ jobs:
               run: |
                   composer config repositories.private-packagist composer https://repo.pimcore.com/github-actions/
                   composer config --global --auth http-basic.repo.pimcore.com github-actions ${{ secrets.COMPOSER_PIMCORE_REPO_PACKAGIST_TOKEN }}      
-
-            - name: "Setup Pimcore environment"
-              env:
-                  REQUIRE_ADMIN_BUNDLE: "${{ matrix.require_admin_bundle }}"
-              run: |
-                  mysql -e "CREATE DATABASE pimcore_test CHARSET=utf8mb4;"
-                  cp -R bundles/pimcore/generic-data-index-bundle/tests tests
-                  mkdir src
-                  chmod 755 .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
-                  .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
 
             -   name: "Install dependencies with Composer"
                 uses: "ramsey/composer-install@v2"
