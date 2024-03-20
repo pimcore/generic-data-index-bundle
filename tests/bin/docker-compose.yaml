@@ -1,0 +1,54 @@
+version: '3.0'
+services:
+    db:
+        image: mariadb:10.7
+        working_dir: /application
+        command: [mysqld, --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci, --innodb-file-per-table=1]
+        environment:
+            MYSQL_ROOT_PASSWORD: ROOT
+            MYSQL_DATABASE: pimcore_test
+            MYSQL_USER: pimcore
+            MYSQL_PASSWORD: pimcore
+
+    opensearch:
+        image: opensearchproject/opensearch:latest
+        environment:
+            - cluster.name=opensearch-cluster
+            - node.name=opensearch-node
+            - discovery.seed_hosts=opensearch-node
+            - bootstrap.memory_lock=true
+            - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+            - discovery.type=single-node
+            - "DISABLE_SECURITY_PLUGIN=true"
+        ulimits:
+            memlock:
+                soft: -1
+                hard: -1
+            nofile:
+                soft: 65536
+                hard: 65536
+
+    php:
+        #user: '1000:1000' # set to your uid:gid
+        #        image: pimcore/pimcore:PHP8.1-fpm-debug
+        image: pimcore/pimcore:PHP8.1-fpm
+        environment:
+            PHP_IDE_CONFIG: "serverName=localhost"
+            COMPOSER_HOME: /var/www/html
+            PIMCORE_PROJECT_ROOT: /var/www/html
+            APP_ENV: test
+            PIMCORE_TEST: 1
+            PIMCORE_TEST_DB_DSN: "mysql://pimcore:pimcore@db:3306/pimcore_test"
+            PIMCORE_OPEN_SEARCH_HOST: "opensearch:9200"
+            CODECEPTION_BUNDLE_PATH: "bundles/pimcore/generic-data-index-bundle/"
+        depends_on:
+            - db
+            - opensearch
+        volumes:
+            - ../../.:/var/www/html/bundles/pimcore/generic-data-index-bundle
+            - ../../.github:/var/www/html/.github
+            - ../../tests:/var/www/html/tests
+           # - ../../.:/var/www/html
+           # - /var/www/html/src
+           # - /var/www/html/config
+           # - /var/www/html/test-environment

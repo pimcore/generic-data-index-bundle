@@ -1,0 +1,11 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    public: true
+
+  generic-data-index.test.service.asset-search-service: '@Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface'
+  generic-data-index.test.service.data-object-search-service: '@Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface'
+
+  test.calculatorservice:
+    class: Pimcore\Tests\Support\Helper\DataType\Calculator

@@ -10,14 +10,14 @@ services:
     #
     # INSTALLER
     #
-    Pimcore\Bundle\xTemplateBundlex\Installer:
+    Pimcore\Bundle\GenericDataIndexBundle\Installer:
         public: true
         arguments:
-            $bundle: "@=service('kernel').getBundle('PimcorexTemplateBundlex')"
+            $bundle: "@=service('kernel').getBundle('PimcoreGenericDataIndexBundle')"
 
     # controllers are imported separately to make sure they're public
     # and have a tag that allows actions to type-hint services
-    Pimcore\Bundle\xTemplateBundlex\Controller\:
-        resource: '../src/Controller'
-        public: true
-        tags: [ 'controller.service_arguments' ]
+    #Pimcore\Bundle\GenericDataIndexBundle\Controller\:
+    #    resource: '../src/Controller'
+    #    public: true
+    #    tags: [ 'controller.service_arguments' ]

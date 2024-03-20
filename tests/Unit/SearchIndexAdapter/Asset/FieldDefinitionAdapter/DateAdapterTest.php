@@ -26,6 +26,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
  */
 final class DateAdapterTest extends Unit
 {
+    public function _before(): void
+    {
+        date_default_timezone_set('UTC');
+    }
+
     public function testGetIndexMapping(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
@@ -116,7 +121,7 @@ final class DateAdapterTest extends Unit
             'query' => [
                 'range' => [
                     'standard_fields.test.en' => [
-                        'gt' => '2000-01-01T00:00:00+00:00',
+                        'gte' => '2000-01-01T00:00:00+00:00',
                     ],
                 ],
             ],
@@ -130,7 +135,7 @@ final class DateAdapterTest extends Unit
             'query' => [
                 'range' => [
                     'standard_fields.test.en' => [
-                        'lt' => '2000-01-01T23:59:59+00:00',
+                        'lte' => '2000-01-01T23:59:59+00:00',
                     ],
                 ],
             ],

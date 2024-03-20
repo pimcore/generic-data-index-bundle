@@ -92,10 +92,10 @@ final class DateFilter implements QueryInterface
             $params['lte'] = date(DateTimeInterface::ATOM, $this->getEndOfDay($this->onTimestamp));
         } else {
             if ($this->startTimestamp) {
-                $params['gt'] = date(DateTimeInterface::ATOM, $this->getStartOfDay($this->startTimestamp));
+                $params['gte'] = date(DateTimeInterface::ATOM, $this->getStartOfDay($this->startTimestamp));
             }
             if ($this->endTimestamp) {
-                $params['lt'] = date(DateTimeInterface::ATOM, $this->getEndOfDay($this->endTimestamp));
+                $params['lte'] = date(DateTimeInterface::ATOM, $this->getEndOfDay($this->endTimestamp));
             }
         }
 

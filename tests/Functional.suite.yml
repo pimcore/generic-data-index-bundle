@@ -1,0 +1,22 @@
+actor: IndexTester
+modules:
+    enabled:
+        - \Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper\Index
+        - \Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper\GenericDataIndex
+        - \Pimcore\Tests\Support\Helper\DataType\TestDataHelper
+        - \Pimcore\Tests\Support\Helper\ClassManager
+        - \Pimcore\Tests\Support\Helper\Pimcore:
+            connect_db: true
+            cache_router: false
+env:
+    pimcore10:
+        modules:
+            enabled:
+                - \Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper\Index
+                - \Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper\GenericDataIndex
+                - \Pimcore\Tests\Support\Helper\DataType\TestDataHelper
+                - \Pimcore\Tests\Helper\ClassManager
+                - \Pimcore\Tests\Support\Helper\ClassManager
+                - \Pimcore\Tests\Support\Helper\Pimcore:
+                      connect_db: true
+                      cache_router: false

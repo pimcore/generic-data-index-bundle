@@ -18,6 +18,7 @@ use JsonException;
 use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug\SearchInformation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
@@ -276,6 +277,9 @@ final class OpenSearchService implements SearchIndexServiceInterface
         return $this->searchExecutionService->executeSearch($search, $indexName);
     }
 
+    /**
+     * @return SearchInformation[]
+     */
     public function getExecutedSearches(): array
     {
         return $this->searchExecutionService->getExecutedSearches();

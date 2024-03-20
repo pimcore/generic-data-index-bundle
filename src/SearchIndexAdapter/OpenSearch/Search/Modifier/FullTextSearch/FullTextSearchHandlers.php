@@ -39,7 +39,7 @@ final class FullTextSearchHandlers
                 new WildcardFilter(
                     SystemField::KEY->getPath(),
                     $elementKeySearch->getSearchTerm(),
-                    WildcardFilterMode::PREFIX
+                    WildcardFilterMode::SUFFIX
                 )
             );
     }
