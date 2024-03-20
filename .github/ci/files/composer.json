@@ -41,10 +41,6 @@
       "options": {
         "symlink": true
       }
-    },
-    "pimcore_enterprise": {
-      "type": "composer",
-      "url": "https://repo.pimcore.com/pimcore-developers/"
     }
   }
 }
