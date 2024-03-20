@@ -44,7 +44,7 @@
     },
     "pimcore_enterprise": {
       "type": "composer",
-      "url": "https://enterprise.repo.pimcore.com/"
+      "url": "https://repo.pimcore.com/pimcore-developers/"
     }
   }
 }
