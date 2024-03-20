@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Functional\SearchIndex;
@@ -35,7 +35,7 @@ final class DocumentBasicTest extends Unit
 {
     protected IndexTester $tester;
 
-    private  DocumentSearchServiceInterface $documentSearchService;
+    private DocumentSearchServiceInterface $documentSearchService;
 
     protected function _before(): void
     {
@@ -124,5 +124,4 @@ final class DocumentBasicTest extends Unit
         $this->assertInstanceOf(Link::class, $this->documentSearchService->byId($link->getId()));
         $this->assertInstanceOf(Snippet::class, $this->documentSearchService->byId($snippet->getId()));
     }
-
 }
