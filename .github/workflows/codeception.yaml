@@ -82,7 +82,7 @@ jobs:
 
             - name: "Add authentication for private pimcore packages"
               run: |
-                  composer config --global --auth http-basic.repo.pimcore.com github-actions ${{ secrets.COMPOSER_PIMCORE_REPO_PACKAGIST_TOKEN }}      
+                  composer config --global --auth http-basic.repo.pimcore.com ${{ secrets.COMPOSER_PIMCORE_REPO_PACKAGIST_TOKEN }}      
 
             - name: "Setup Pimcore environment"
               env:
