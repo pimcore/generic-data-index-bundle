@@ -91,7 +91,6 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->assertEquals($object->getKey(), $response['_source']['system_fields']['key']);
     }
 
-
     public function testIndexingWithoutInheritanceSynchronous()
     {
         $object = TestHelper::createEmptyObject();
@@ -113,7 +112,6 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->expectException(Missing404Exception::class);
         $this->tester->checkIndexEntry($object->getId(), $indexName);
     }
-
 
     public function testIndexingWithoutInheritanceAsynchronous()
     {
