@@ -14,10 +14,3 @@ services:
         public: true
         arguments:
             $bundle: "@=service('kernel').getBundle('PimcoreGenericDataIndexBundle')"
-
-    # controllers are imported separately to make sure they're public
-    # and have a tag that allows actions to type-hint services
-    Pimcore\Bundle\GenericDataIndexBundle\Controller\:
-        resource: '../src/Controller'
-        public: true
-        tags: [ 'controller.service_arguments' ]

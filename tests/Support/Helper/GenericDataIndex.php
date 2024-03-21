@@ -19,9 +19,11 @@ use Codeception\Lib\ModuleContainer;
 use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer as GenericDataIndexInstaller;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
 use Pimcore\Console\Application;
+use Pimcore\Db;
 use Pimcore\Tests\Support\Helper\Pimcore;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -158,5 +160,21 @@ class GenericDataIndex extends \Codeception\Module
                 ],
             ],
         ]);
+    }
+
+    public function clearQueue()
+    {
+        /**
+         * @var QueueMessagesDispatcher $queueMessagesDispatcher
+         */
+        $queueMessagesDispatcher = $this->grabService(QueueMessagesDispatcher::class);
+        $queueMessagesDispatcher->clearPendingState();
+
+        Db::get()->executeStatement(
+            'delete from messenger_messages where queue_name = "pimcore_generic_data_index_queue"'
+        );
+        Db::get()->executeStatement(
+            'truncate table generic_data_index_queue'
+        );
     }
 }

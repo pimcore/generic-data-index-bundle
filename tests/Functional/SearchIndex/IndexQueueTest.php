@@ -32,7 +32,7 @@ class IndexQueueTest extends \Codeception\Test\Unit
     protected function _before()
     {
         $this->tester->disableSynchronousProcessing();
-        $this->clearQueue();
+        $this->tester->clearQueue();
     }
 
     protected function _after()
@@ -92,7 +92,7 @@ class IndexQueueTest extends \Codeception\Test\Unit
 
     public function testAssetSaveNotEnqueued(): void
     {
-        $this->clearQueue();
+        $this->tester->clearQueue();
 
         /**
          * @var SearchIndexConfigServiceInterface $searchIndexConfigService
@@ -126,21 +126,5 @@ class IndexQueueTest extends \Codeception\Test\Unit
         $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
         $result = $this->tester->checkIndexEntry($asset->getId(), $indexName);
         $this->assertEquals($asset->getId(), $result['_source']['system_fields']['id']);
-    }
-
-    private function clearQueue()
-    {
-        /**
-         * @var QueueMessagesDispatcher $queueMessagesDispatcher
-         */
-        $queueMessagesDispatcher = $this->tester->grabService(QueueMessagesDispatcher::class);
-        $queueMessagesDispatcher->clearPendingState();
-
-        Db::get()->executeStatement(
-            'delete from messenger_messages where queue_name = "pimcore_generic_data_index_queue"'
-        );
-        Db::get()->executeStatement(
-            'truncate table generic_data_index_queue'
-        );
     }
 }
