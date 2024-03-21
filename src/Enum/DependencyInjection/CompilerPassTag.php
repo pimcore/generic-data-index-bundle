@@ -24,5 +24,6 @@ enum CompilerPassTag: string
     case SEARCH_MODIFIER_HANDLER = 'pimcore.generic_data_index.search_modifier_handler';
     case ASSET_TYPE_SERIALIZATION_HANDLER = 'pimcore.generic_data_index.asset_type_serialization_handler';
     case DATA_OBJECT_TYPE_SERIALIZATION_HANDLER = 'pimcore.generic_data_index.data_object_type_serialization_handler';
+    case DOCUMENT_TYPE_SERIALIZATION_HANDLER = 'pimcore.generic_data_index.document_type_serialization_handler';
     case ASSET_MAPPING_PROVIDER = 'pimcore.generic_data_index.asset.mapping_provider';
 }

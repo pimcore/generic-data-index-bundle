@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidMappingException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
@@ -22,7 +23,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data;
 class IndexMappingService implements IndexMappingServiceInterface
 {
     public function __construct(
-        private readonly FieldDefinitionServiceInterface $fieldDefinitionService
+        private readonly FieldDefinitionServiceInterface $fieldDefinitionService,
     ) {
     }
 
@@ -48,6 +49,21 @@ class IndexMappingService implements IndexMappingServiceInterface
         $mapping['properties'] = $this->transformLocalizedfields($mapping['properties']);
 
         return $mapping;
+    }
+
+    public function getMappingForTextKeyword(array $attributes): array
+    {
+        return [
+            'type' => AttributeType::TEXT->value,
+            'fields' => array_merge(
+                $attributes[AttributeType::TEXT->value]['fields'] ?? [],
+                [
+                    'keyword' => [
+                        'type' => AttributeType::KEYWORD->value,
+                    ],
+                ]
+            ),
+        ];
     }
 
     /**

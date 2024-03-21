@@ -17,6 +17,7 @@ use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter\TextKeywordAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
@@ -28,8 +29,19 @@ final class TextKeywordAdapterTest extends Unit
     public function testGetOpenSearchMapping(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $indexMappingServiceInterfaceMock = $this->getMappingService(
+            ['getMappingForTextKeyword' => [
+                'type' => 'text',
+                'fields' => [
+                    'keyword' => [
+                        'type' => 'keyword',
+                    ],
+                ],
+            ]]
+        );
         $adapter = new TextKeywordAdapter(
             $searchIndexConfigServiceInterfaceMock,
+            $indexMappingServiceInterfaceMock
         );
 
         $mapping = $adapter->getIndexMapping();
@@ -48,6 +60,7 @@ final class TextKeywordAdapterTest extends Unit
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $adapter = (new TextKeywordAdapter(
             $searchIndexConfigServiceInterfaceMock,
+            $this->getMappingService()
         ))->setType('input');
 
         $filter = new AssetMetaDataFilter('test', 'checkbox', 1);
@@ -60,6 +73,7 @@ final class TextKeywordAdapterTest extends Unit
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $adapter = (new TextKeywordAdapter(
             $searchIndexConfigServiceInterfaceMock,
+            $this->getMappingService()
         ))->setType('input');
 
         $filter = new AssetMetaDataFilter('test', 'input', 1);
@@ -77,6 +91,7 @@ final class TextKeywordAdapterTest extends Unit
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $adapter = (new TextKeywordAdapter(
             $searchIndexConfigServiceInterfaceMock,
+            $this->getMappingService()
         ))->setType('input');
 
         $filter = new AssetMetaDataFilter('test', 'input', 'value');
@@ -135,5 +150,10 @@ final class TextKeywordAdapterTest extends Unit
                 ],
             ],
         ], $search->toArray());
+    }
+
+    private function getMappingService(array $arguments = []): IndexMappingServiceInterface
+    {
+        return $this->makeEmpty(IndexMappingServiceInterface::class, $arguments);
     }
 }

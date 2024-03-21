@@ -107,6 +107,7 @@ class Configuration implements ConfigurationInterface
                          ->arrayNode('system_fields_settings')
                             ->children()
                                 ->append($this->buildSystemFieldsSettingsNode('general'))
+                                ->append($this->buildSystemFieldsSettingsNode('document'))
                                 ->append($this->buildSystemFieldsSettingsNode('data_object'))
                                 ->append($this->buildSystemFieldsSettingsNode('asset'))
                             ->end()

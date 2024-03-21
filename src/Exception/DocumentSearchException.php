@@ -18,6 +18,6 @@ use RuntimeException;
 /**
  * @internal
  */
-final class EnqueueAssetsException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
+final class DocumentSearchException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
 {
 }

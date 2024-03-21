@@ -13,6 +13,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue;
 
+/**
+ * @internal
+ */
 final class SynchronousProcessingService implements SynchronousProcessingServiceInterface
 {
     private bool $enabled = false;

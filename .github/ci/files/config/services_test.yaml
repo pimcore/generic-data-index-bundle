@@ -6,6 +6,7 @@ services:
 
   generic-data-index.test.service.asset-search-service: '@Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface'
   generic-data-index.test.service.data-object-search-service: '@Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface'
+  generic-data-index.test.service.document-search-service: '@Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface'
 
   test.calculatorservice:
     class: Pimcore\Tests\Support\Helper\DataType\Calculator

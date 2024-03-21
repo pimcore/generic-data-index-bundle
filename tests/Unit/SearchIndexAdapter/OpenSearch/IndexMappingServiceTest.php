@@ -116,6 +116,60 @@ final class IndexMappingServiceTest extends Unit
         );
     }
 
+    public function testGetMappingForTextKeywordWithoutArguments(): void
+    {
+        $fieldDefinitionServiceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
+        $indexMappingService = new IndexMappingService($fieldDefinitionServiceMock);
+
+        $this->assertSame(
+            [
+                'type' => 'text',
+                'fields' => [
+                    'keyword' => [
+                        'type' => 'keyword',
+                    ],
+                ],
+            ],
+            $indexMappingService->getMappingForTextKeyword([])
+        );
+    }
+
+    public function testGetMappingForTextKeywordWithArguments(): void
+    {
+        $fieldDefinitionServiceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
+        $indexMappingService = new IndexMappingService($fieldDefinitionServiceMock);
+        $attributes = [
+            'text' => [
+                'fields' => [
+                    'analyzed_ngram' => [
+                        'type' => 'text',
+                        'analyzer' => 'ngram_analyzer',
+                        'search_analyzer' => 'generic_data_index_whitespace_analyzer',
+                    ],
+                ],
+            ],
+        ];
+        $keyWordMapping = $indexMappingService->getMappingForTextKeyword($attributes);
+
+        $this->assertCount(2, $keyWordMapping['fields']);
+        $this->assertSame(
+            [
+                'type' => 'text',
+                'fields' => [
+                    'analyzed_ngram' => [
+                        'type' => 'text',
+                        'analyzer' => 'ngram_analyzer',
+                        'search_analyzer' => 'generic_data_index_whitespace_analyzer',
+                    ],
+                    'keyword' => [
+                        'type' => 'keyword',
+                    ],
+                ],
+            ],
+            $keyWordMapping
+        );
+    }
+
     private function getLocalizedFieldsMappingMock(): array
     {
         return [

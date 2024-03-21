@@ -41,5 +41,10 @@ interface IndexUpdateServiceInterface
      */
     public function updateAssets(): self;
 
+    /**
+     * @throws Exception
+     */
+    public function updateDocuments(): self;
+
     public function setReCreateIndex(bool $reCreateIndex): self;
 }

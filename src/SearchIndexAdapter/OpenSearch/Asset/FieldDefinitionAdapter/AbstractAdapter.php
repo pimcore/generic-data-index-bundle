@@ -31,7 +31,7 @@ use ValueError;
 abstract class AbstractAdapter implements AdapterInterface
 {
     public function __construct(
-        protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
+        protected SearchIndexConfigServiceInterface $searchIndexConfigService
     ) {
     }
 
