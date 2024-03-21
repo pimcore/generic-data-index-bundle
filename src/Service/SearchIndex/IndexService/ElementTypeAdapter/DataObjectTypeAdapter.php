@@ -100,6 +100,22 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         }
 
         if(!$element->getClass()->getAllowInherit()) {
+            if ($includeElement) {
+                return $this->dbConnection->createQueryBuilder()
+                    ->select([
+                        $element->getId(),
+                        "'" . ElementType::DATA_OBJECT->value . "'",
+                        'className',
+                        "'$operation'",
+                        "'$operationTime'",
+                        '0',
+                    ])
+                    ->from('objects') // just a dummy query to fit into the query builder interface
+                    ->where('id = :id')
+                    ->setMaxResults(1)
+                    ->setParameter('id', $element->getId());
+            }
+
             return null;
         }
 
