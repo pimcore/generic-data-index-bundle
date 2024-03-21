@@ -21,4 +21,4 @@ coverage:
         - src/DependencyInjection/*
         - src/Repository/*
         - src/Installer.php
-        - src/PimcorexTemplateBundlex.php
+        - src/PimcoreGenericDataIndexBundle.php
