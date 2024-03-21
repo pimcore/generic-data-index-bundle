@@ -24,8 +24,8 @@ abstract class AbstractAdapter implements AdapterInterface
     private Data $fieldDefinition;
 
     public function __construct(
-        protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
-        protected readonly FieldDefinitionServiceInterface $fieldDefinitionService,
+        protected SearchIndexConfigServiceInterface $searchIndexConfigService,
+        protected FieldDefinitionServiceInterface $fieldDefinitionService,
     ) {
     }
 

@@ -20,4 +20,5 @@ enum IndexName: string
 {
     case ASSET = 'asset';
     case DATA_OBJECT = 'data-object';
+    case DOCUMENT = 'document';
 }

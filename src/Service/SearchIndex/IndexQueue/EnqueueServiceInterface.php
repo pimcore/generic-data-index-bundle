@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue;
 
 use Doctrine\DBAL\Exception;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\EnqueueAssetsException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\EnqueueElementsException;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Tag;
@@ -35,9 +35,14 @@ interface EnqueueServiceInterface
     public function enqueueByClassDefinition(ClassDefinition $classDefinition): self;
 
     /**
-     * @throws EnqueueAssetsException
+     * @throws EnqueueElementsException
      */
     public function enqueueAssets(): self;
+
+    /**
+     * @throws EnqueueElementsException
+     */
+    public function enqueueDocuments(): self;
 
     /**
      * @throws \Exception

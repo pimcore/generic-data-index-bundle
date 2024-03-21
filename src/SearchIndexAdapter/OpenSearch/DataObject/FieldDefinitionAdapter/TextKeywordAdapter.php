@@ -13,27 +13,30 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
 /**
  * @internal
  */
 final class TextKeywordAdapter extends AbstractAdapter
 {
+    public function __construct(
+        protected SearchIndexConfigServiceInterface $searchIndexConfigService,
+        protected FieldDefinitionServiceInterface $fieldDefinitionService,
+        private readonly IndexMappingServiceInterface $indexMappingService,
+    ) {
+        parent::__construct(
+            $searchIndexConfigService,
+            $fieldDefinitionService
+        );
+    }
+
     public function getIndexMapping(): array
     {
-        $searchAnalyzerAttributes = $this->searchIndexConfigService->getSearchAnalyzerAttributes();
-
-        return [
-            'type' => AttributeType::TEXT->value,
-            'fields' => array_merge(
-                $searchAnalyzerAttributes[AttributeType::TEXT->value]['fields'] ?? [],
-                [
-                    'keyword' => [
-                        'type' => AttributeType::KEYWORD->value,
-                    ],
-                ]
-            ),
-        ];
+        return $this->indexMappingService->getMappingForTextKeyword(
+            $this->searchIndexConfigService->getSearchAnalyzerAttributes()
+        );
     }
 }

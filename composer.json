@@ -52,7 +52,7 @@
   "extra": {
     "pimcore": {
       "bundles": [
-        "Pimcore\\Bundle\\xTemplateBundlex\\PimcorexTemplateBundlex"
+        "Pimcore\\Bundle\\GenericDataIndexBundle\\PimcoreGenericDataIndexBundle"
       ]
     }
   }

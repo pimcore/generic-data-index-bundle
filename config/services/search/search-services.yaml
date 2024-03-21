@@ -10,8 +10,12 @@ services:
   Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface:
       class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchService
 
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchService
+
   Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\SearchHelper: ~
   Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\SearchHelper: ~
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\SearchHelper: ~
 
   Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface:
       class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProvider

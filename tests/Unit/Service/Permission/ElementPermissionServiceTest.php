@@ -15,12 +15,19 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\Permission;
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\ElementPermissionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
 use Pimcore\Model\Asset;
+use Pimcore\Model\DataObject;
+use Pimcore\Model\Document;
 use Pimcore\Model\User;
 
 /**
@@ -32,15 +39,25 @@ final class ElementPermissionServiceTest extends Unit
 
     private Asset $asset;
 
+    private DataObject $dataObject;
+
+    private Document $document;
+
     private AssetSearchResultItem $assetSearchResultItem;
+
+    private DataObjectSearchResultItem $dataObjectSearchResultItem;
+
+    private DocumentSearchResultItem $documentSearchResultItem;
 
     public function _before(): void
     {
         $this->user = new User();
-        $asset = new Asset();
-        $asset->setId(1);
-        $this->asset = $asset;
+        $this->asset = $this->getAsset();
+        $this->dataObject = $this->getDatObject();
+        $this->document = $this->getDocument();
         $this->assetSearchResultItem = new AssetSearchResultItem();
+        $this->documentSearchResultItem = new DocumentSearchResultItem();
+        $this->dataObjectSearchResultItem = new DataObjectSearchResultItem();
     }
 
     public function testIsAllowedWithAsset(): void
@@ -55,6 +72,30 @@ final class ElementPermissionServiceTest extends Unit
         $this->assertFalse($elementPermissionService->isAllowed('list', $this->asset, $this->user));
     }
 
+    public function testIsAllowedWithDataObject(): void
+    {
+        $elementPermissionService = $this->getElementPermissionService();
+        $this->assertTrue($elementPermissionService->isAllowed('read', $this->dataObject, $this->user));
+    }
+
+    public function testIsAllowedWithDataObjectAndNoPermission(): void
+    {
+        $elementPermissionService = $this->getElementPermissionService(false);
+        $this->assertFalse($elementPermissionService->isAllowed('list', $this->dataObject, $this->user));
+    }
+
+    public function testIsAllowedWithDocument(): void
+    {
+        $elementPermissionService = $this->getElementPermissionService();
+        $this->assertTrue($elementPermissionService->isAllowed('read', $this->document, $this->user));
+    }
+
+    public function testIsAllowedWithDocumentAndNoPermission(): void
+    {
+        $elementPermissionService = $this->getElementPermissionService(false);
+        $this->assertFalse($elementPermissionService->isAllowed('publish', $this->document, $this->user));
+    }
+
     private function getElementPermissionService(bool $permissionValue = true): ElementPermissionService
     {
         return new ElementPermissionService(
@@ -62,12 +103,42 @@ final class ElementPermissionServiceTest extends Unit
                 'byId' => $this->assetSearchResultItem,
             ]),
             $this->makeEmpty(DataObjectSearchServiceInterface::class, [
-                'byId' => $this->assetSearchResultItem,
+                'byId' => $this->dataObjectSearchResultItem,
+            ]),
+            $this->makeEmpty(DocumentSearchServiceInterface::class, [
+                'byId' => $this->documentSearchResultItem,
             ]),
             $this->makeEmpty(PermissionServiceInterface::class, [
                 'getAssetPermissions' => new AssetPermissions(),
+                'getDataObjectPermissions' => new DataObjectPermissions(),
+                'getDocumentPermissions' => new DocumentPermissions(),
                 'getPermissionValue' => $permissionValue,
             ])
         );
+    }
+
+    private function getAsset(): Asset
+    {
+
+        $asset = new Asset();
+        $asset->setId(1);
+
+        return $asset;
+    }
+
+    private function getDatObject(): DataObject
+    {
+        $dataObject = new DataObject();
+        $dataObject->setId(1);
+
+        return $dataObject;
+    }
+
+    private function getDocument(): Document
+    {
+        $document = new Document();
+        $document->setId(1);
+
+        return $document;
     }
 }

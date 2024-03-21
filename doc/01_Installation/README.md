@@ -41,7 +41,7 @@ See [OpenSearch Client Setup](../02_Configuration/04_Opensearch.md) for more inf
    For more information, see the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html). 
 
 ```bash
-./bin/console messenger:consume pimcore_generic_data_index_queue
+./bin/console messenger:consume pimcore_generic_data_index_queue scheduler_generic_data_index
 ```
 
 **Deployment hint:** 

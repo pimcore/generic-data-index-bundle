@@ -17,7 +17,7 @@ use Doctrine\DBAL\Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\EnqueueAssetsException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\EnqueueElementsException;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
@@ -111,7 +111,7 @@ final class EnqueueService implements EnqueueServiceInterface
     }
 
     /**
-     * @throws EnqueueAssetsException
+     * @throws EnqueueElementsException
      */
     public function enqueueAssets(): EnqueueService
     {
@@ -128,7 +128,33 @@ final class EnqueueService implements EnqueueServiceInterface
             );
             $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
         } catch (Exception $e) {
-            throw new EnqueueAssetsException(
+            throw new EnqueueElementsException(
+                $e->getMessage()
+            );
+        }
+
+        return $this;
+    }
+
+    /**
+     * @throws EnqueueElementsException
+     */
+    public function enqueueDocuments(): EnqueueService
+    {
+        try {
+            $selectQuery = $this->indexQueueRepository->generateSelectQuery(
+                'documents',
+                [
+                    ElementType::DOCUMENT->value,
+                    IndexName::DOCUMENT->value,
+                    IndexQueueOperation::UPDATE->value,
+                    $this->timeService->getCurrentMillisecondTimestamp(),
+                    0,
+                ]
+            );
+            $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
+        } catch (Exception $e) {
+            throw new EnqueueElementsException(
                 $e->getMessage()
             );
         }

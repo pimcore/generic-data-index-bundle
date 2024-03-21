@@ -26,6 +26,8 @@ final class SearchIndexConfigService implements SearchIndexConfigServiceInterfac
 
     public const SYSTEM_FIELD_ASSET = 'asset';
 
+    public const SYSTEM_FIELD_DOCUMENT = 'document';
+
     public const SYSTEM_FIELD_DATA_OBJECT = 'data_object';
 
     public function __construct(
