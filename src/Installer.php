@@ -96,7 +96,7 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
 
             $queueTable->setPrimaryKey(['elementId', 'elementType']);
             $queueTable->addIndex(['dispatched'], IndexQueue::TABLE . '_dispatched');
-            $queueTable->addIndex(['operationTime'], IndexQueue::TABLE . '_operationTime');
+            $queueTable->addIndex(['operationTime'], IndexQueue::TABLE . '_operation_time');
         }
     }
 
