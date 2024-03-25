@@ -15,7 +15,7 @@ final class Version20240325081139 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return '';
+        return 'Add index on operationTime column in generic_data_index_queue table';
     }
 
     public function up(Schema $schema): void

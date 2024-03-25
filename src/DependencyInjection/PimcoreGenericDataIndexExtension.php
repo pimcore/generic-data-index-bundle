@@ -53,6 +53,9 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $this->registerIndexServiceParams($container, $config['index_service']);
     }
 
+    /**
+     * @throws Exception
+     */
     public function prepend(ContainerBuilder $container): void
     {
         if ($container->hasExtension('doctrine_migrations')) {

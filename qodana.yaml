@@ -39,6 +39,12 @@ exclude:
   - name: PhpUnusedParameterInspection
     paths:
         - src/SearchIndexAdapter/OpenSearch/Search/Modifier
+  - name: PhpUnusedParameterInspection
+    paths:
+        - src/SearchIndexAdapter/OpenSearch/Search/Modifier
+  - name: PhpMethodNamingConventionInspection
+    paths:
+        - src/Migrations
 include:
   - name: PhpTaintFunctionInspection
   - name: PhpVulnerablePathsInspection
