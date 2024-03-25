@@ -43,7 +43,6 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
         return Version20240325081139::class;
     }
 
-
     /**
      * @throws SchemaException|Exception
      */
