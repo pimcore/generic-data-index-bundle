@@ -36,7 +36,7 @@ class IndexQueue
     #[ORM\Column(type: 'string', length: 20)]
     private string $elementType;
 
-    #[ORM\Column(type: 'string', length: 10)]
+    #[ORM\Column(type: 'string', length: 255)]
     private string $elementIndexName;
 
     #[ORM\Column(type: 'string', length: 20)]

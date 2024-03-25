@@ -91,7 +91,7 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
             $queueTable = $schema->createTable(IndexQueue::TABLE);
             $queueTable->addColumn('elementId', 'integer', ['notnull' => true, 'unsigned' => true]);
             $queueTable->addColumn('elementType', 'string', ['notnull' => true, 'length' => 20]);
-            $queueTable->addColumn('elementIndexName', 'string', ['notnull' => true, 'length' => 10]);
+            $queueTable->addColumn('elementIndexName', 'string', ['notnull' => true, 'length' => 255]);
             $queueTable->addColumn('operation', 'string', ['notnull' => true, 'length' => 20]);
             $queueTable->addColumn('operationTime', 'bigint', ['notnull' => true, 'unsigned' => true]);
             $queueTable->addColumn('dispatched', 'bigint', [
