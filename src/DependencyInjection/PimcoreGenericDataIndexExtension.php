@@ -21,6 +21,7 @@ use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader;
+use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
@@ -54,6 +55,15 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
 
     public function prepend(ContainerBuilder $container): void
     {
+        if ($container->hasExtension('doctrine_migrations')) {
+            $loader = new YamlFileLoader(
+                $container,
+                new FileLocator(__DIR__ . '/../../config')
+            );
+
+            $loader->load('doctrine_migrations.yaml');
+        }
+
         $filename = __DIR__ . '/../../config/doctrine.yaml';
 
         try {
