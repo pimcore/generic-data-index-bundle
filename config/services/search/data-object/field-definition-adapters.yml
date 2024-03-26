@@ -23,6 +23,8 @@ services:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "user" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "firstname" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "lastname" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "email" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "gender" }
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\NumericAdapter:
         shared: false
@@ -127,7 +129,12 @@ services:
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "block" }
 
-    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\TextAdapter:
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\ConsentAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "consent" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\ExternalImageAdapter:
         shared: false
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "externalImage" }
@@ -151,3 +158,8 @@ services:
         shared: false
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "imageGallery" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\StructuredTableAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "structuredTable" }

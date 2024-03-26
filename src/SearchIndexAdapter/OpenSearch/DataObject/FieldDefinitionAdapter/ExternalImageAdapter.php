@@ -18,7 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeT
 /**
  * @internal
  */
-final class TextAdapter extends AbstractAdapter
+final class ExternalImageAdapter extends AbstractAdapter
 {
     public function getIndexMapping(): array
     {

@@ -40,7 +40,7 @@ final class AdvancedImageAdapter extends AbstractAdapter
         return [
             'properties' => [
                 'image' => [
-                    'type' => AttributeType::LONG,
+                    'type' => AttributeType::LONG->value,
                 ],
                 'details' => $this->indexMappingService->getMappingForAdvancedImage(
                     $this->searchIndexConfigService->getSearchAnalyzerAttributes()

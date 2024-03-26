@@ -78,7 +78,7 @@ class IndexMappingService implements IndexMappingServiceInterface
         ];
 
         return [
-            'type' => AttributeType::NESTED,
+            'type' => AttributeType::NESTED->value,
             'properties' => [
                 'crop' => [
                     'properties' => [
@@ -104,10 +104,10 @@ class IndexMappingService implements IndexMappingServiceInterface
                 'image' => [
                     'properties' => [
                         'id' => [
-                            'type' => AttributeType::LONG,
+                            'type' => AttributeType::LONG->value,
                         ],
                         'type' => [
-                            'type' => AttributeType::KEYWORD,
+                            'type' => AttributeType::KEYWORD->value,
                         ],
                     ],
                 ],
