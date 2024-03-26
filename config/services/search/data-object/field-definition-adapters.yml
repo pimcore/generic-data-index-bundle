@@ -21,6 +21,8 @@ services:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "password" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "time" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "user" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "firstname" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "lastname" }
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\NumericAdapter:
         shared: false
@@ -58,6 +60,7 @@ services:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "manyToOneRelation" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "manyToManyObjectRelation" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "manyToManyRelation" }
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "reverseObjectRelation" }
 
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\AdvancedManyToManyRelationAdapter:
@@ -123,3 +126,28 @@ services:
         shared: false
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "block" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\TextAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "externalImage" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\VideoAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "video" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\ImageAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "image" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\AdvancedImageAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "hotspotimage" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\ImageGalleryAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "imageGallery" }

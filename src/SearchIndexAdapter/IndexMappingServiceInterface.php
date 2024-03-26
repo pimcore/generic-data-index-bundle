@@ -26,4 +26,6 @@ interface IndexMappingServiceInterface
     public function getMappingForFieldDefinitions(array $fieldDefinitions);
 
     public function getMappingForTextKeyword(array $attributes): array;
+
+    public function getMappingForAdvancedImage(array $attributes): array;
 }

@@ -27,4 +27,5 @@ enum AttributeType: string
     case NESTED = 'nested';
     case OBJECT = 'object';
     case BOOLEAN = 'boolean';
+    case FLAT_OBJECT = 'flat_object';
 }

@@ -66,6 +66,74 @@ class IndexMappingService implements IndexMappingServiceInterface
         ];
     }
 
+    public function getMappingForAdvancedImage(array $attributes): array
+    {
+        $markerFields = $this->getAdvancedImagePointData($attributes);
+        $hotspotFields = $markerFields;
+        $hotspotFields['properties']['width'] = [
+            'type' => AttributeType::FLOAT->value,
+        ];
+        $hotspotFields['properties']['height'] = [
+            'type' => AttributeType::FLOAT->value,
+        ];
+
+        return [
+            'type' => AttributeType::NESTED,
+            'properties' => [
+                'crop' => [
+                    'properties' => [
+                        'cropWidth' => [
+                            'type' => AttributeType::FLOAT->value,
+                        ],
+                        'cropHeight' => [
+                            'type' => AttributeType::FLOAT->value,
+                        ],
+                        'cropLeft' => [
+                            'type' => AttributeType::FLOAT->value,
+                        ],
+                        'cropTop' => [
+                            'type' => AttributeType::FLOAT->value,
+                        ],
+                        'cropPercent' => [
+                            'type' => AttributeType::BOOLEAN->value,
+                        ],
+                    ]
+                ],
+                'hotspots' => $hotspotFields,
+                'marker' => $markerFields,
+                'image' => [
+                    'properties' => [
+                        'id' => [
+                            'type' => AttributeType::LONG,
+                        ],
+                        'type' => [
+                            'type' => AttributeType::KEYWORD,
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    private function getAdvancedImagePointData(array $attributes): array
+    {
+        return [
+            'type' => AttributeType::NESTED->value,
+            'properties' => [
+                'name' => $this->getMappingForTextKeyword($attributes),
+                'data' => [
+                    'type' => AttributeType::FLAT_OBJECT->value,
+                ],
+                'top' => [
+                    'type' => AttributeType::FLOAT->value
+                ],
+                'left' => [
+                    'type' => AttributeType::FLOAT->value
+                ],
+            ]
+        ];
+    }
+
     /**
      * @throws InvalidMappingException
      */
