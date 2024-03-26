@@ -3,6 +3,7 @@
 :::info
 
  This bundle is only supported on Pimcore Core Framework 11.
+ This bundle requires minimum version of OpenSearch 2.7.
 
 :::
 

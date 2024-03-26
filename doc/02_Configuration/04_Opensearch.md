@@ -1,5 +1,11 @@
 # OpenSearch Client Setup
 
+:::info
+
+This bundle requires minimum version of OpenSearch 2.7.
+
+:::
+
 Following configuration is required to set up OpenSearch. The OpenSearch client configuration takes place via [Pimcore Opensearch Client](https://github.com/pimcore/opensearch-client) and has two parts:
 1) Configuring an OpenSearch client.
 2) Define the client to be used by Generic Data Index bundle.
