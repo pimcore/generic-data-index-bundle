@@ -25,12 +25,12 @@ final class ImageAdapter extends AbstractAdapter
         return [
             'properties' => [
                 'id' => [
-                    'type' => AttributeType::LONG->value
+                    'type' => AttributeType::LONG->value,
                 ],
                 'type' => [
-                    'type' => AttributeType::KEYWORD->value
-                ]
-            ]
+                    'type' => AttributeType::KEYWORD->value,
+                ],
+            ],
         ];
     }
 }

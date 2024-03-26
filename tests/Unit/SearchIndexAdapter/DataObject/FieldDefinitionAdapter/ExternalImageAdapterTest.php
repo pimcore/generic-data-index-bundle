@@ -40,9 +40,9 @@ final class ExternalImageAdapterTest extends Unit
         $this->assertSame([
             'properties' => [
                 'url' => [
-                    'type' => AttributeType::TEXT->value
-                ]
-            ]
+                    'type' => AttributeType::TEXT->value,
+                ],
+            ],
         ], $adapter->getIndexMapping());
     }
 }

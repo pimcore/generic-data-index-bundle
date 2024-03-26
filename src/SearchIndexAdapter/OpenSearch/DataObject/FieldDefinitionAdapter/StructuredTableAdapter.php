@@ -7,12 +7,11 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
-
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
@@ -52,14 +51,14 @@ final class StructuredTableAdapter extends AbstractAdapter
 
             $mapping[$row['key']] = [
                 'type' => AttributeType::NESTED->value,
-                'properties' => $columns
+                'properties' => $columns,
             ];
         }
 
         return [
-            'properties' => $mapping
+            'properties' => $mapping,
         ];
-        
+
     }
 
     public function normalize(mixed $value): ?array
@@ -87,16 +86,16 @@ final class StructuredTableAdapter extends AbstractAdapter
     {
         return match (true) {
             $columnType === 'text' => [
-                'type' => AttributeType::KEYWORD->value
+                'type' => AttributeType::KEYWORD->value,
             ],
             $columnType === 'number' => [
-                'type' => AttributeType::FLOAT->value
+                'type' => AttributeType::FLOAT->value,
             ],
             $columnType === 'bool' => [
-                'type' => AttributeType::INTEGER->value
+                'type' => AttributeType::INTEGER->value,
             ],
             default => [
-                'type' => AttributeType::TEXT->value
+                'type' => AttributeType::TEXT->value,
             ]
         };
     }

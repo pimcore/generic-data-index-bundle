@@ -40,12 +40,12 @@ final class ConsentAdapterTest extends Unit
         $this->assertSame([
             'properties' => [
                 'consent' => [
-                    'type' => AttributeType::BOOLEAN->value
+                    'type' => AttributeType::BOOLEAN->value,
                 ],
                 'noteId' => [
-                    'type' => AttributeType::LONG->value
-                ]
-            ]
+                    'type' => AttributeType::LONG->value,
+                ],
+            ],
         ], $adapter->getIndexMapping());
     }
 }

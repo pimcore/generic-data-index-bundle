@@ -79,9 +79,9 @@ final class VideoAdapterTest extends Unit
                                 ],
                             ],
                         ],
-                    ]
-                ]
-            ]
+                    ],
+                ],
+            ],
         ], $adapter->getIndexMapping());
     }
 

@@ -54,7 +54,7 @@ final class ImageGalleryAdapterTest extends Unit
                 'assets' => [
                     'type' => AttributeType::LONG->value,
                 ],
-                'details' => []
+                'details' => [],
             ],
         ], $adapter->getIndexMapping());
     }

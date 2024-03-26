@@ -198,7 +198,7 @@ final class IndexMappingServiceTest extends Unit
                             'cropPercent' => [
                                 'type' => AttributeType::BOOLEAN->value,
                             ],
-                        ]
+                        ],
                     ],
                     'hotspots' => [
                         'type' => AttributeType::NESTED->value,
@@ -215,18 +215,18 @@ final class IndexMappingServiceTest extends Unit
                                 'type' => AttributeType::FLAT_OBJECT->value,
                             ],
                             'top' => [
-                                'type' => AttributeType::FLOAT->value
+                                'type' => AttributeType::FLOAT->value,
                             ],
                             'left' => [
-                                'type' => AttributeType::FLOAT->value
+                                'type' => AttributeType::FLOAT->value,
                             ],
                             'width' => [
-                                'type' => AttributeType::FLOAT->value
+                                'type' => AttributeType::FLOAT->value,
                             ],
                             'height' => [
-                                'type' => AttributeType::FLOAT->value
+                                'type' => AttributeType::FLOAT->value,
                             ],
-                        ]
+                        ],
                     ],
                     'marker' => [
                         'type' => AttributeType::NESTED->value,
@@ -243,12 +243,12 @@ final class IndexMappingServiceTest extends Unit
                                 'type' => AttributeType::FLAT_OBJECT->value,
                             ],
                             'top' => [
-                                'type' => AttributeType::FLOAT->value
+                                'type' => AttributeType::FLOAT->value,
                             ],
                             'left' => [
-                                'type' => AttributeType::FLOAT->value
+                                'type' => AttributeType::FLOAT->value,
                             ],
-                        ]
+                        ],
                     ],
                     'image' => [
                         'properties' => [

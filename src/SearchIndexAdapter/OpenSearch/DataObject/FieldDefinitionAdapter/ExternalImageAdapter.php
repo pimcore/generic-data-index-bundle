@@ -25,9 +25,9 @@ final class ExternalImageAdapter extends AbstractAdapter
         return [
             'properties' => [
                 'url' => [
-                    'type' => AttributeType::TEXT->value
-                ]
-            ]
+                    'type' => AttributeType::TEXT->value,
+                ],
+            ],
         ];
     }
 }

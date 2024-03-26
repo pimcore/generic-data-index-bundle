@@ -54,7 +54,7 @@ final class AdvancedImageAdapterTest extends Unit
                 'image' => [
                     'type' => AttributeType::LONG->value,
                 ],
-                'details' => []
+                'details' => [],
             ],
         ], $adapter->getIndexMapping());
     }

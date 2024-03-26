@@ -97,7 +97,7 @@ class IndexMappingService implements IndexMappingServiceInterface
                         'cropPercent' => [
                             'type' => AttributeType::BOOLEAN->value,
                         ],
-                    ]
+                    ],
                 ],
                 'hotspots' => $hotspotFields,
                 'marker' => $markerFields,
@@ -125,12 +125,12 @@ class IndexMappingService implements IndexMappingServiceInterface
                     'type' => AttributeType::FLAT_OBJECT->value,
                 ],
                 'top' => [
-                    'type' => AttributeType::FLOAT->value
+                    'type' => AttributeType::FLOAT->value,
                 ],
                 'left' => [
-                    'type' => AttributeType::FLOAT->value
+                    'type' => AttributeType::FLOAT->value,
                 ],
-            ]
+            ],
         ];
     }
 
