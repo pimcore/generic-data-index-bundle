@@ -182,6 +182,9 @@ final class IndexQueueRepository
         $this->connection->executeQuery($sql, $queryBuilder->getParameters());
     }
 
+    /**
+     * @throws \Doctrine\DBAL\Exception
+     */
     public function dispatchItems(
         int $limit
     ): int {
