@@ -28,7 +28,6 @@ final class QueueMessageService implements QueueMessageServiceInterface
     use LoggerAwareTrait;
 
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
         private readonly IndexQueueRepository $indexQueueRepository,
         private readonly MessageBusInterface $messageBus
     ) {
@@ -39,7 +38,6 @@ final class QueueMessageService implements QueueMessageServiceInterface
         int $maxBatchSize
     ): void {
         while(true) {
-            $this->entityManager->beginTransaction();
             $entries = $this->indexQueueRepository->getUnhandledIndexQueueEntries(
                 true,
                 $maxBatchSize
@@ -48,14 +46,16 @@ final class QueueMessageService implements QueueMessageServiceInterface
             if ($amountOfEntries > 0) {
                 try {
                     $this->messageBus->dispatch(new IndexUpdateQueueMessage($entries));
-                    $this->entityManager->commit();
                 } catch (Exception $exception) {
-                    $this->entityManager->rollback();
                     $this->logger->error(
                         'Dispatching IndexUpdateQueueMessage failed! ' .
                         get_class($exception) . ': ' . $exception->getMessage()
                     );
 
+                    $dispatchId = $entries[0]['dispatched'] ?? null;
+                    if ($dispatchId !== null) {
+                        $this->indexQueueRepository->resetDispatchedItems($dispatchId);
+                    }
                     break;
                 }
             }
