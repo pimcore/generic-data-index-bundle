@@ -43,14 +43,12 @@ final class UpdateLanguageSettingsHandler
             $newLanguages = $this->languageService->getNewLanguages(
                 $message->getValidLanguages()
             );
-            if (empty($currentLanguages) && !empty($newLanguages)) {
-                $this->setLanguagesAndUpdate($newLanguages);
 
-                return;
-            }
-
-            if ($currentLanguages !== $newLanguages) {
-                $this->setLanguagesAndUpdate($newLanguages);
+            if ((empty($currentLanguages) && !empty($newLanguages)) ||
+                ($currentLanguages !== $newLanguages)
+            ) {
+                $this->languageService->setValidLanguages($newLanguages);
+                $this->handleIndexUpdate();
             }
 
         } catch (Exception $exception) {
@@ -61,10 +59,8 @@ final class UpdateLanguageSettingsHandler
     /**
      * @throws Exception
      */
-    private function setLanguagesAndUpdate(
-        array $newLanguages
+    private function handleIndexUpdate(
     ): void {
-        $this->languageService->setValidLanguages($newLanguages);
         $this->indexUpdateService->setReCreateIndex(true);
         $this->indexUpdateService->updateAll();
         $this->enqueueService->dispatchQueueMessages(true);
