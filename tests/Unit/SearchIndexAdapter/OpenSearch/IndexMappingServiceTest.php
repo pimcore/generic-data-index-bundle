@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\OpenSearch;
 
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\IndexMappingService;
@@ -163,6 +164,101 @@ final class IndexMappingServiceTest extends Unit
                     ],
                     'keyword' => [
                         'type' => 'keyword',
+                    ],
+                ],
+            ],
+            $keyWordMapping
+        );
+    }
+
+    public function testGetMappingForAdvancedImage(): void
+    {
+        $fieldDefinitionServiceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
+        $indexMappingService = new IndexMappingService($fieldDefinitionServiceMock);
+        $keyWordMapping = $indexMappingService->getMappingForAdvancedImage([]);
+
+        $this->assertSame(
+            [
+                'type' => AttributeType::NESTED->value,
+                'properties' => [
+                    'crop' => [
+                        'properties' => [
+                            'cropWidth' => [
+                                'type' => AttributeType::FLOAT->value,
+                            ],
+                            'cropHeight' => [
+                                'type' => AttributeType::FLOAT->value,
+                            ],
+                            'cropLeft' => [
+                                'type' => AttributeType::FLOAT->value,
+                            ],
+                            'cropTop' => [
+                                'type' => AttributeType::FLOAT->value,
+                            ],
+                            'cropPercent' => [
+                                'type' => AttributeType::BOOLEAN->value,
+                            ],
+                        ],
+                    ],
+                    'hotspots' => [
+                        'type' => AttributeType::NESTED->value,
+                        'properties' => [
+                            'name' => [
+                                'type' => 'text',
+                                'fields' => [
+                                    'keyword' => [
+                                        'type' => 'keyword',
+                                    ],
+                                ],
+                            ],
+                            'data' => [
+                                'type' => AttributeType::FLAT_OBJECT->value,
+                            ],
+                            'top' => [
+                                'type' => AttributeType::FLOAT->value,
+                            ],
+                            'left' => [
+                                'type' => AttributeType::FLOAT->value,
+                            ],
+                            'width' => [
+                                'type' => AttributeType::FLOAT->value,
+                            ],
+                            'height' => [
+                                'type' => AttributeType::FLOAT->value,
+                            ],
+                        ],
+                    ],
+                    'marker' => [
+                        'type' => AttributeType::NESTED->value,
+                        'properties' => [
+                            'name' => [
+                                'type' => 'text',
+                                'fields' => [
+                                    'keyword' => [
+                                        'type' => 'keyword',
+                                    ],
+                                ],
+                            ],
+                            'data' => [
+                                'type' => AttributeType::FLAT_OBJECT->value,
+                            ],
+                            'top' => [
+                                'type' => AttributeType::FLOAT->value,
+                            ],
+                            'left' => [
+                                'type' => AttributeType::FLOAT->value,
+                            ],
+                        ],
+                    ],
+                    'image' => [
+                        'properties' => [
+                            'id' => [
+                                'type' => AttributeType::LONG->value,
+                            ],
+                            'type' => [
+                                'type' => AttributeType::KEYWORD->value,
+                            ],
+                        ],
                     ],
                 ],
             ],
