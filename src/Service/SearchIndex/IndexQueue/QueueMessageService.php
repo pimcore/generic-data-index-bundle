@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue;
 
-use Doctrine\ORM\EntityManagerInterface;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
@@ -56,6 +55,7 @@ final class QueueMessageService implements QueueMessageServiceInterface
                     if ($dispatchId !== null) {
                         $this->indexQueueRepository->resetDispatchedItems($dispatchId);
                     }
+
                     break;
                 }
             }
