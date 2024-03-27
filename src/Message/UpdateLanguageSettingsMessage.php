@@ -21,8 +21,7 @@ final class UpdateLanguageSettingsMessage
     public function __construct(
         private readonly array $currentLanguages,
         private readonly array $validLanguages,
-    )
-    {
+    ) {
     }
 
     public function getCurrentLanguages(): array
