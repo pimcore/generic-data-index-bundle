@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service;
 
 /**
@@ -46,6 +56,7 @@ final class PathService implements PathServiceInterface
             foreach ($result as $existingPath) {
                 if ($this->isSubPath($path, $existingPath)) {
                     $isSubPath = true;
+
                     break;
                 }
             }
@@ -73,6 +84,6 @@ final class PathService implements PathServiceInterface
 
     public function appendSlashes(array $paths): array
     {
-        return array_map(static fn(string $path) => rtrim($path, '/') . '/', $paths);
+        return array_map(static fn (string $path) => rtrim($path, '/') . '/', $paths);
     }
 }

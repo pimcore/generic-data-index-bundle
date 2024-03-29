@@ -160,7 +160,7 @@ final class QueryService implements QueryServiceInterface
                     [
                         'exists' => [
                             'field' => SystemField::FULL_PATH->getPath(),
-                        ]
+                        ],
                     ]
                 );
             } else {
@@ -173,7 +173,6 @@ final class QueryService implements QueryServiceInterface
                     ]
                 );
             }
-
 
         }
 
@@ -237,16 +236,16 @@ final class QueryService implements QueryServiceInterface
                         [
                             'range' => [
                                 SystemField::PATH_LEVEL->getPath() => [
-                                    'lte' => $this->pathService->calculateLongestPathLevel($allowedSubPaths)
+                                    'lte' => $this->pathService->calculateLongestPathLevel($allowedSubPaths),
                                 ],
                             ],
-                        ]
+                        ],
                     ],
                     ConditionType::MUST_NOT->value => [
                         'terms' => [
                             SystemField::FULL_PATH->getPath() => $allowedSubPaths,
                         ],
-                    ]
+                    ],
                 ]);
 
                 $boolQuery->addCondition(ConditionType::SHOULD->value, $subQuery->toArray(true));
@@ -258,10 +257,10 @@ final class QueryService implements QueryServiceInterface
                 ->setSize(0)
                 ->addQuery($boolQuery)
                 ->addAggregation(new Aggregation('paths', [
-                    "terms" => [
-                        "field" => SystemField::PATH->getPath('keyword'),
-                        "size" => 10000,
-                    ]
+                    'terms' => [
+                        'field' => SystemField::PATH->getPath('keyword'),
+                        'size' => 10000,
+                    ],
                 ]));
 
             $result = $this->searchIndexService->search($search, 'pimcore_asset');
@@ -286,6 +285,7 @@ final class QueryService implements QueryServiceInterface
 
         if ($indexName === null) {
             $this->logger->error('Unknown workspace type: ' . $workspaceType);
+
             return null;
         }
 
@@ -301,6 +301,7 @@ final class QueryService implements QueryServiceInterface
             }
 
         }
+
         return $result;
     }
 
@@ -313,6 +314,7 @@ final class QueryService implements QueryServiceInterface
                 $result[] = $path;
             }
         }
+
         return $result;
     }
 
