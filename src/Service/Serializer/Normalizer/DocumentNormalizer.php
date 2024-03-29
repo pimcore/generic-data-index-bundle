@@ -73,6 +73,8 @@ final class DocumentNormalizer implements NormalizerInterface
 
     private function normalizeSystemFields(Document $document): array
     {
+        $pathLevels = $this->extractPathLevels($document);
+
         $systemFields = [
             SystemField::ID->value => $document->getId(),
             SystemField::PARENT_ID->value => $document->getParentId(),
@@ -83,7 +85,8 @@ final class DocumentNormalizer implements NormalizerInterface
             SystemField::KEY->value => $document->getKey(),
             SystemField::PATH->value => $document->getPath(),
             SystemField::FULL_PATH->value => $document->getRealFullPath(),
-            SystemField::PATH_LEVELS->value => $this->extractPathLevels($document),
+            SystemField::PATH_LEVELS->value => $pathLevels,
+            SystemField::PATH_LEVEL->value => count($pathLevels),
             SystemField::TAGS->value => $this->extractTagIds($document),
             SystemField::USER_OWNER->value => $document->getUserOwner(),
             SystemField::USER_MODIFICATION->value => $document->getUserModification(),

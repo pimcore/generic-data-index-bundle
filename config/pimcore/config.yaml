@@ -95,6 +95,8 @@ pimcore_generic_data_index:
               type: integer
             name:
               type: keyword
+        pathLevel:
+          type: integer
         tags:
           type: integer
         thumbnail:

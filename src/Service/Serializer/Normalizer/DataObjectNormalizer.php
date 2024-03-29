@@ -85,6 +85,8 @@ final class DataObjectNormalizer implements NormalizerInterface
 
     private function normalizeSystemFields(AbstractObject $dataObject): array
     {
+        $pathLevels = $this->extractPathLevels($dataObject);
+
         $result = [
             SystemField::ID->value => $dataObject->getId(),
             SystemField::PARENT_ID->value => $dataObject->getParentId(),
@@ -94,7 +96,8 @@ final class DataObjectNormalizer implements NormalizerInterface
             SystemField::KEY->value => $dataObject->getKey(),
             SystemField::PATH->value => $dataObject->getPath(),
             SystemField::FULL_PATH->value => $dataObject->getRealFullPath(),
-            SystemField::PATH_LEVELS->value => $this->extractPathLevels($dataObject),
+            SystemField::PATH_LEVELS->value => $pathLevels,
+            SystemField::PATH_LEVEL->value => count($pathLevels),
             SystemField::TAGS->value => $this->extractTagIds($dataObject),
             SystemField::USER_OWNER->value => $dataObject->getUserOwner(),
             SystemField::USER_MODIFICATION->value => $dataObject->getUserModification(),

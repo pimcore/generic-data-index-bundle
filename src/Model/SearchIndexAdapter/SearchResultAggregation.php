@@ -17,7 +17,7 @@ class SearchResultAggregation
 {
     public function __construct(
         private readonly string $name,
-        /** SearchResultAggregationBucket[] */
+        /** @var SearchResultAggregationBucket[] */
         private readonly array $buckets,
         private readonly int $otherDocCount,
         private readonly int $docCountErrorUpperBound,

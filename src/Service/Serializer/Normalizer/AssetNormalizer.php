@@ -77,6 +77,8 @@ final class AssetNormalizer implements NormalizerInterface
 
     private function normalizeSystemFields(Asset $asset): array
     {
+        $pathLevels = $this->extractPathLevels($asset);
+
         $systemFields = [
             SystemField::ID->value => $asset->getId(),
             SystemField::PARENT_ID->value => $asset->getParentId(),
@@ -86,7 +88,8 @@ final class AssetNormalizer implements NormalizerInterface
             SystemField::KEY->value => $asset->getKey(),
             SystemField::PATH->value => $asset->getPath(),
             SystemField::FULL_PATH->value => $asset->getRealFullPath(),
-            SystemField::PATH_LEVELS->value => $this->extractPathLevels($asset),
+            SystemField::PATH_LEVELS->value => $pathLevels,
+            SystemField::PATH_LEVEL->value => count($pathLevels),
             SystemField::TAGS->value => $this->extractTagIds($asset),
             SystemField::MIME_TYPE->value => $asset->getMimeType(),
             SystemField::USER_OWNER->value => $asset->getUserOwner(),

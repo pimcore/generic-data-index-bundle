@@ -11,7 +11,7 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Workspace;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
 use Pimcore\Model\User;
