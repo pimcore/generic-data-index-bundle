@@ -151,29 +151,26 @@ final class QueryService implements QueryServiceInterface
 
         $query = new BoolQuery();
 
-        if (count($allowedPaths) > 0) {
-            $allowedMainPaths = $this->pathService->removeSubPaths($allowedPaths);
+        $allowedMainPaths = $this->pathService->removeSubPaths($allowedPaths);
 
-            if(count($allowedMainPaths) === 1 && $allowedMainPaths[0] === '/') {
-                $query->addCondition(
-                    ConditionType::SHOULD->value,
-                    [
-                        'exists' => [
-                            'field' => SystemField::FULL_PATH->getPath(),
-                        ],
-                    ]
-                );
-            } else {
-                $query->addCondition(
-                    ConditionType::SHOULD->value,
-                    [
-                        'terms' => [
-                            SystemField::FULL_PATH->getPath() => $allowedPaths,
-                        ],
-                    ]
-                );
-            }
-
+        if(count($allowedMainPaths) === 1 && $allowedMainPaths[0] === '/') {
+            $query->addCondition(
+                ConditionType::SHOULD->value,
+                [
+                    'exists' => [
+                        'field' => SystemField::FULL_PATH->getPath(),
+                    ],
+                ]
+            );
+        } else {
+            $query->addCondition(
+                ConditionType::SHOULD->value,
+                [
+                    'terms' => [
+                        SystemField::FULL_PATH->getPath() => $allowedPaths,
+                    ],
+                ]
+            );
         }
 
         if (count($excludedPaths) > 0) {
