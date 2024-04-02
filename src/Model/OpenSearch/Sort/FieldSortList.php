@@ -30,6 +30,11 @@ final class FieldSortList
         return $this;
     }
 
+    public function getSort(): array
+    {
+        return $this->sort;
+    }
+
     public function isEmpty(): bool
     {
         return empty($this->sort);

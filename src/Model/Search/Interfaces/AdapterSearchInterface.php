@@ -13,6 +13,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSortList;
+
 interface AdapterSearchInterface
 {
     public function getFrom(): ?int;
@@ -22,6 +25,14 @@ interface AdapterSearchInterface
     public function getSize(): ?int;
 
     public function setSize(?int $size): AdapterSearchInterface;
+
+    public function getSortList(): FieldSortList;
+
+    public function setSortList(FieldSortList $sortList): OpenSearchSearchInterface;
+
+    public function isReverseItemOrder(): bool;
+
+    public function setReverseItemOrder(bool $reverseItemOrder): OpenSearchSearchInterface;
 
     public function toArray(): array;
 }
