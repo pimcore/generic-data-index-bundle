@@ -43,8 +43,7 @@ final class TreeSortHandlers
     public function handleFullPathSort(
         OrderByFullPath $fullPathSort,
         SearchModifierContextInterface $context
-    ): void
-    {
+    ): void {
         $context->getSearch()
             ->addSort(
                 new FieldSort(
@@ -58,8 +57,7 @@ final class TreeSortHandlers
     public function handleSortByPageNumber(
         OrderByPageNumber $pageNumberSort,
         SearchModifierContextInterface $context
-    ): void
-    {
+    ): void {
         $contextSearch = $context->getSearch();
         $sortListItems = $contextSearch->getSortList()->getSort();
         if (empty($sortListItems)) {

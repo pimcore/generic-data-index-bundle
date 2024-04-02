@@ -48,8 +48,6 @@ final class SortModifierTest extends \Codeception\Test\Unit
         $this->tester->flushIndex();
     }
 
-
-
     public function testHandleSortByPageNumber()
     {
         $assets = $this->createAssets();
@@ -85,7 +83,6 @@ final class SortModifierTest extends \Codeception\Test\Unit
         $this->assertCount(2, $searchResult->getItems());
         $this->assertSame($fullPaths[8], $searchResult->getItems()[0]->getFullPath());
         $this->assertSame($fullPaths[9], $searchResult->getItems()[1]->getFullPath());
-
 
         sort($fullPaths);
         $assetSearch = $searchProvider

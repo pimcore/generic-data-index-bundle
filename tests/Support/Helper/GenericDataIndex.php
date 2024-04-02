@@ -181,8 +181,7 @@ class GenericDataIndex extends \Codeception\Module
 
     public function resetIndexWindowSettings(
         string $indexType
-    ): void
-    {
+    ): void {
         $searchIndexConfigService = $this->grabService(SearchIndexConfigServiceInterface::class);
         $indexName = $searchIndexConfigService->getIndexName($indexType);
         $this->setIndexResultWindow($indexName);
