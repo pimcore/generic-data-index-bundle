@@ -37,8 +37,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         mixed $context = null,
         bool $forceCreateIndex = false,
         ?array $mappingProperties = null
-    ): void
-    {
+    ): void {
         $aliasName = $this->getAliasIndexName($context);
 
         if ($forceCreateIndex || !$this->searchIndexService->existsAlias($aliasName)) {

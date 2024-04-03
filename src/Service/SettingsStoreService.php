@@ -33,8 +33,7 @@ final class SettingsStoreService implements SettingsStoreServiceInterface
 
     public function getClassMappingCheckSum(
         string $classDefinitionId
-    ): ?int
-    {
+    ): ?int {
         return $this->settingsStoreResolver->get(
             self::SETTINGS_STORE_PREFIX . $classDefinitionId,
             self::SETTINGS_STORE_SCOPE
@@ -47,8 +46,7 @@ final class SettingsStoreService implements SettingsStoreServiceInterface
     public function storeClassMapping(
         string $classDefinitionId,
         int $data
-    ): void
-    {
+    ): void {
 
         $this->settingsStoreResolver->set(
             self::SETTINGS_STORE_PREFIX . $classDefinitionId,
@@ -60,8 +58,7 @@ final class SettingsStoreService implements SettingsStoreServiceInterface
 
     public function removeClassMapping(
         string $classDefinitionId
-    ): void
-    {
+    ): void {
         $this->settingsStoreResolver->delete(
             self::SETTINGS_STORE_PREFIX . $classDefinitionId,
             self::SETTINGS_STORE_SCOPE
