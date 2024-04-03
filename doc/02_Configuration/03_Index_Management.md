@@ -90,3 +90,15 @@ php bin/console messenger:failed:retry -vv
 ```
 
 For the further commands please refer to the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html#saving-retrying-failed-messages).
+
+## Deployment and Index Management
+
+### Pimcore Class Definitions
+
+After every class definition update you should run the following command to update the index structure:
+
+```
+php bin/console generic-data-index:deployment:classes:reindex
+```
+
+This command will update the index structure for all data object classes which were created/updated since the last deployment and reindex all data objects for relevant classes.

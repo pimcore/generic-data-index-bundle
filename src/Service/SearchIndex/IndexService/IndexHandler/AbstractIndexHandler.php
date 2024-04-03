@@ -33,7 +33,11 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     ) {
     }
 
-    public function updateMapping(mixed $context = null, bool $forceCreateIndex = false): void
+    public function updateMapping(
+        mixed $context = null,
+        bool $forceCreateIndex = false,
+        ?array $mappingProperties = null
+    ): void
     {
         $aliasName = $this->getAliasIndexName($context);
 
@@ -47,7 +51,10 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         } catch (Exception $e) {
             $this->logger->info($e);
             //try recreating index
-            $this->searchIndexService->reindex($aliasName, $this->extractMappingProperties($context));
+            $this->searchIndexService->reindex(
+                $aliasName,
+                $mappingProperties ?: $this->extractMappingProperties($context)
+            );
         }
     }
 
@@ -64,6 +71,19 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         $currentIndexVersion = $this->searchIndexService->getCurrentIndexVersion($indexName);
 
         return $indexName . '-' . ($currentIndexVersion === 'even' ? 'even' : 'odd');
+    }
+
+    public function getMappingProperties(mixed $context): array
+    {
+        return $this->extractMappingProperties($context);
+    }
+
+    /**
+     * @throws JsonException
+     */
+    public function getClassMappingCheckSum(array $properties): int
+    {
+        return crc32(json_encode($properties, JSON_THROW_ON_ERROR));
     }
 
     abstract protected function extractMappingProperties(mixed $context = null): array;

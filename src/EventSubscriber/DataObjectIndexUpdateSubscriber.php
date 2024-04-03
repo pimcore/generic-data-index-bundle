@@ -21,12 +21,14 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMe
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Event\DataObjectClassDefinitionEvents;
 use Pimcore\Event\DataObjectEvents;
 use Pimcore\Event\Model\DataObject\ClassDefinitionEvent;
 use Pimcore\Event\Model\DataObjectEvent;
 use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -42,6 +44,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         private readonly DataObjectIndexHandler $dataObjectMappingHandler,
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
+        private readonly SettingsStoreServiceInterface $settingsStoreService,
         private readonly SynchronousProcessingServiceInterface $synchronousProcessing
     ) {
     }
@@ -112,12 +115,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         }
 
         $classDefinition = $event->getClassDefinition();
-
-        $this->dataObjectMappingHandler
-            ->updateMapping(
-                context: $classDefinition,
-                forceCreateIndex: true
-            );
+        $this->updateClassMapping($classDefinition);
     }
 
     /**
@@ -130,12 +128,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         }
 
         $classDefinition = $event->getClassDefinition();
-
-        $this->dataObjectMappingHandler
-            ->updateMapping(
-                context: $classDefinition,
-                forceCreateIndex: true
-            );
+        $this->updateClassMapping($classDefinition);
 
         $this->enqueueService
             ->enqueueByClassDefinition($classDefinition)
@@ -153,8 +146,35 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         try {
             $this->dataObjectMappingHandler
                 ->deleteIndex($classDefinition);
+
+            $this->settingsStoreService->removeClassMapping(
+                classDefinitionId: $classDefinition->getId()
+            );
+
         } catch (Exception $e) {
             $this->logger->error($e->getMessage());
         }
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function updateClassMapping(ClassDefinition $classDefinition): void
+    {
+        $mappingProperties = $this->dataObjectMappingHandler->getMappingProperties($classDefinition);
+
+        $this->dataObjectMappingHandler
+            ->updateMapping(
+                context: $classDefinition,
+                forceCreateIndex: true,
+                mappingProperties: $mappingProperties
+            );
+
+        $this->settingsStoreService->storeClassMapping(
+            classDefinitionId: $classDefinition->getId(),
+            data: $this->dataObjectMappingHandler->getClassMappingCheckSum(
+                $mappingProperties
+            )
+        );
     }
 }
