@@ -18,7 +18,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug\SearchInformati
 use RuntimeException;
 use Throwable;
 
-final class SearchFailedException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
+/**
+ * @internal
+ */
+final class ResultWindowTooLargeException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
 {
     public function __construct(
         private readonly SearchInformation $searchInformation,

@@ -292,6 +292,15 @@ final class OpenSearchService implements SearchIndexServiceInterface
             ->stats(['index' => $indexName]);
     }
 
+    public function getCount(string $indexName): int
+    {
+        $result = $this->openSearchClient->count([
+            'index' => $indexName,
+        ]);
+
+        return $result['count'];
+    }
+
     /**
      * @throws SwitchIndexAliasException
      */

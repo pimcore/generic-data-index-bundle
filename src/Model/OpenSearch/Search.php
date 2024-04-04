@@ -28,7 +28,8 @@ final class Search implements OpenSearchSearchInterface
         private array|bool|string|null $source = null,
         private readonly QueryList $queryList = new QueryList(),
         private readonly AggregationList $aggregationList = new AggregationList(),
-        private readonly FieldSortList $sortList = new FieldSortList(),
+        private FieldSortList $sortList = new FieldSortList(),
+        private bool $reverseItemOrder = false
     ) {
     }
 
@@ -92,6 +93,30 @@ final class Search implements OpenSearchSearchInterface
     public function getQueryList(): QueryList
     {
         return $this->queryList;
+    }
+
+    public function getSortList(): FieldSortList
+    {
+        return $this->sortList;
+    }
+
+    public function setSortList(FieldSortList $sortList): OpenSearchSearchInterface
+    {
+        $this->sortList = $sortList;
+
+        return $this;
+    }
+
+    public function isReverseItemOrder(): bool
+    {
+        return $this->reverseItemOrder;
+    }
+
+    public function setReverseItemOrder(bool $reverseItemOrder): OpenSearchSearchInterface
+    {
+        $this->reverseItemOrder = $reverseItemOrder;
+
+        return $this;
     }
 
     public function toArray(): array
