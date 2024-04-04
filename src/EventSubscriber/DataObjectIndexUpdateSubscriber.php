@@ -13,22 +13,15 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
-use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
-use Pimcore\Event\DataObjectClassDefinitionEvents;
 use Pimcore\Event\DataObjectEvents;
-use Pimcore\Event\Model\DataObject\ClassDefinitionEvent;
 use Pimcore\Event\Model\DataObjectEvent;
 use Pimcore\Model\DataObject\AbstractObject;
-use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -41,10 +34,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
     public function __construct(
         private readonly Installer $installer,
         private readonly IndexQueueServiceInterface $indexQueueService,
-        private readonly DataObjectIndexHandler $dataObjectMappingHandler,
-        private readonly EnqueueServiceInterface $enqueueService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
-        private readonly SettingsStoreServiceInterface $settingsStoreService,
         private readonly SynchronousProcessingServiceInterface $synchronousProcessing
     ) {
     }
@@ -55,9 +45,6 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
             DataObjectEvents::POST_UPDATE => 'updateDataObject',
             DataObjectEvents::POST_ADD => 'updateDataObject',
             DataObjectEvents::PRE_DELETE => 'deleteDataObject',
-            DataObjectClassDefinitionEvents::POST_UPDATE => 'updateDataObjectMapping',
-            DataObjectClassDefinitionEvents::POST_ADD => 'addDataObjectMapping',
-            DataObjectClassDefinitionEvents::POST_DELETE => 'deleteDataObjectIndex',
         ];
     }
 
@@ -103,88 +90,5 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
                 processSynchronously: $this->synchronousProcessing->isEnabled()
             )
             ->commit();
-    }
-
-    /**
-     * @throws Exception
-     */
-    public function addDataObjectMapping(ClassDefinitionEvent $event): void
-    {
-        if (!$this->installer->isInstalled()) {
-            return;
-        }
-
-        $classDefinition = $event->getClassDefinition();
-        $this->updateClassMapping($classDefinition);
-    }
-
-    /**
-     * @throws Exception
-     */
-    public function updateDataObjectMapping(ClassDefinitionEvent $event): void
-    {
-        if (!$this->installer->isInstalled()) {
-            return;
-        }
-
-        $classDefinition = $event->getClassDefinition();
-        $mappingUpdated = $this->updateClassMapping($classDefinition);
-
-        if ($mappingUpdated) {
-            $this->enqueueService
-                ->enqueueByClassDefinition($classDefinition)
-                ->dispatchQueueMessages();
-        }
-    }
-
-    public function deleteDataObjectIndex(ClassDefinitionEvent $event): void
-    {
-        if (!$this->installer->isInstalled()) {
-            return;
-        }
-
-        $classDefinition = $event->getClassDefinition();
-
-        try {
-            $this->dataObjectMappingHandler
-                ->deleteIndex($classDefinition);
-
-            $this->settingsStoreService->removeClassMapping(
-                classDefinitionId: $classDefinition->getId()
-            );
-
-        } catch (Exception $e) {
-            $this->logger->error($e->getMessage());
-        }
-    }
-
-    /**
-     * @throws Exception
-     */
-    private function updateClassMapping(ClassDefinition $classDefinition): bool
-    {
-        $mappingProperties = $this->dataObjectMappingHandler->getMappingProperties($classDefinition);
-        $currentCheckSum = $this->dataObjectMappingHandler->getClassMappingCheckSum($mappingProperties);
-        $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
-
-        if ($storedCheckSum === $currentCheckSum) {
-            return false;
-        }
-
-        $this->dataObjectMappingHandler
-            ->updateMapping(
-                context: $classDefinition,
-                forceCreateIndex: true,
-                mappingProperties: $mappingProperties
-            );
-
-        $this->settingsStoreService->storeClassMapping(
-            classDefinitionId: $classDefinition->getId(),
-            data: $this->dataObjectMappingHandler->getClassMappingCheckSum(
-                $mappingProperties
-            )
-        );
-
-        return true;
     }
 }
