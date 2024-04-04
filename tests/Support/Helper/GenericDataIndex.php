@@ -19,9 +19,11 @@ use Codeception\Lib\ModuleContainer;
 use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer as GenericDataIndexInstaller;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\Modifier\Sort\TreeSortHandlers;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Console\Application;
 use Pimcore\Db;
 use Pimcore\Tests\Support\Helper\Pimcore;
@@ -160,6 +162,32 @@ class GenericDataIndex extends \Codeception\Module
                 ],
             ],
         ]);
+    }
+
+    public function setIndexResultWindow(
+        string $indexName,
+        int $windowSize = 10000): void
+    {
+        /** @var Client $client */
+        $client = $this->getIndexSearchClient();
+
+        $client->indices()->putSettings([
+            'index' => $indexName,
+            'body' => [
+                'max_result_window' => $windowSize,
+            ],
+        ]);
+    }
+
+    public function resetIndexWindowSettings(
+        string $indexType
+    ): void {
+        $searchIndexConfigService = $this->grabService(SearchIndexConfigServiceInterface::class);
+        $indexName = $searchIndexConfigService->getIndexName($indexType);
+        $this->setIndexResultWindow($indexName);
+
+        $treeSort = $this->grabService(TreeSortHandlers::class);
+        $treeSort->setItemsLimit(1000);
     }
 
     public function clearQueue()

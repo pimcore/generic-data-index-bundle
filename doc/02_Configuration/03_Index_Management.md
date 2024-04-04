@@ -90,3 +90,21 @@ php bin/console messenger:failed:retry -vv
 ```
 
 For the further commands please refer to the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html#saving-retrying-failed-messages).
+
+## Configuring the Maximum Item Limit
+
+A maximum of 10000 items can be retrieved and viewed, because of the maximum default item limit.
+To increase this limit, configuration can be adjusted as follows:
+
+```yaml
+pimcore_generic_data_index:
+    index_service:
+        index_settings:
+            max_result_window: 20000
+```
+
+If an index was already created before setting this parameter, the index needs to be recreated.
+
+```
+bin/console generic-data-index:update:index -r
+```

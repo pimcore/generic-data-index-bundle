@@ -32,9 +32,10 @@ $search->addModifier(new ParentIdFilter(1))
 
 ### Sort Modifiers
 
-| Modifier                                                                            | Modifier Category    | Description                                |
-|-------------------------------------------------------------------------------------|----------------------|--------------------------------------------|
-| [OrderByFullPath](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Sort/Tree/OrderByFullPath.php) | Tree related sorting | Order by full path (including element key) |
+| Modifier                                                                            | Modifier Category      | Description                                                                                                                                                                                                                                             |
+|-------------------------------------------------------------------------------------|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [OrderByFullPath](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Sort/Tree/OrderByFullPath.php) | Tree related sorting   | Order by full path (including element key)                                                                                                                                                                                                              |
+| [OrderByPageNumber](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Sort/Tree/OrderByPageNumber.php) | Search related sorting | Use inverted search for large amounts of data (this modifier is added to the search when there are at least 1000 results by default, and page number is above the half of total pages. Furthermore, existing sorting has to be already applied.) |
 
 ### Aggregations
 
