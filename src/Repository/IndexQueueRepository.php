@@ -182,25 +182,39 @@ final class IndexQueueRepository
         $this->connection->executeQuery($sql, $queryBuilder->getParameters());
     }
 
+    /**
+     * @throws \Doctrine\DBAL\Exception
+     */
     public function dispatchItems(
         int $limit
     ): int {
         $dispatchId = $this->timeService->getCurrentMillisecondTimestamp();
-        $dispatchedTime = $dispatchId - 60*60*24*1000;
 
+        // Executed as direct SQL statement as doctrine ORM does not support LIMIT in UPDATE queries
+        $this->connection->executeQuery(
+            'UPDATE ' . IndexQueue::TABLE .
+            ' SET dispatched = :dispatchId WHERE dispatched < :dispatched LIMIT ' . $limit,
+
+            [
+                'dispatchId' => $dispatchId,
+                'dispatched' => $dispatchId - 60*60*24*1000,
+            ]
+        );
+
+        return $dispatchId;
+    }
+
+    public function resetDispatchedItems(string $dispatchId): void
+    {
         $this->createQueryBuilder('iq')
             ->update(IndexQueue::class, 'iq')
-            ->set('iq.dispatched', ':dispatchId')
-            ->where('iq.dispatched < :dispatched')
+            ->set('iq.dispatched', 0)
+            ->where('iq.dispatched = :dispatchId')
             ->setParameter('dispatchId', $dispatchId)
-            ->setParameter('dispatched', $dispatchedTime)
-            ->setMaxResults($limit)
             ->getQuery()
             ->execute();
 
         $this->entityManager->flush();
-
-        return $dispatchId;
     }
 
     private function createQueryBuilder(string $alias): QueryBuilder
