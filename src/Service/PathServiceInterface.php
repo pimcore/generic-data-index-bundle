@@ -18,7 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service;
  */
 interface PathServiceInterface
 {
-    public function isSubPath(string $path, $parentPath): bool;
+    public function isSubPath(string $path, string $parentPath): bool;
 
     public function containsSubPath(string $path, array $paths): bool;
 
@@ -29,4 +29,6 @@ interface PathServiceInterface
     public function calculateLongestPathLevel(array $paths): int;
 
     public function appendSlashes(array $paths): array;
+
+    public function getAllParentPaths(array $paths): array;
 }

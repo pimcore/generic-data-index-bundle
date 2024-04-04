@@ -148,6 +148,7 @@ final class QueryService implements QueryServiceInterface
 
         $excludedPaths = $this->evaluateExcludedPaths($allowedPaths, $declinedPaths);
         $excludedFullPaths = $this->evaluateExcludedFullPaths($allowedPaths, $declinedPaths);
+        $additionalIncludedPaths = [];
 
         $query = new BoolQuery();
 
@@ -167,7 +168,19 @@ final class QueryService implements QueryServiceInterface
                 ConditionType::SHOULD->value,
                 [
                     'terms' => [
-                        SystemField::FULL_PATH->getPath() => $allowedPaths,
+                        SystemField::FULL_PATH->getPath() => $allowedMainPaths,
+                    ],
+                ]
+            );
+        }
+
+        if (count($excludedFullPaths) > 0) {
+
+            $query->addCondition(
+                ConditionType::MUST_NOT->value,
+                [
+                    'terms' => [
+                        SystemField::FULL_PATH->getPath() => $this->pathService->removeSubPaths($excludedFullPaths),
                     ],
                 ]
             );
@@ -192,17 +205,32 @@ final class QueryService implements QueryServiceInterface
                     ],
                 ]
             );
+
+            // as all direct children are excluded by the condition above, we need to explicitly include all allowed sub paths
+            $additionalIncludedPaths = array_merge(
+                $additionalIncludedPaths,
+                array_values(array_diff($allowedPaths, $allowedMainPaths))
+            );
         }
 
-        if (count($excludedFullPaths) > 0) {
-            $query->addCondition(
-                ConditionType::MUST_NOT->value,
-                [
-                    'terms' => [
-                        SystemField::FULL_PATH->getPath() => $this->pathService->removeSubPaths($excludedFullPaths),
+        // we need to include all parent paths of the allowed paths as otherwise it will not be possible to navigate to the allowed paths in the tree
+        $additionalIncludedPaths = array_merge(
+            $additionalIncludedPaths,
+            $this->pathService->getAllParentPaths($allowedMainPaths)
+        );
+
+        if (count($additionalIncludedPaths)) {
+
+            return new BoolQuery([
+                ConditionType::SHOULD->value => [
+                    $query,
+                    [
+                        'terms' => [
+                            SystemField::FULL_PATH->getPath('keyword') => $additionalIncludedPaths,
+                        ],
                     ],
-                ]
-            );
+                ],
+            ]);
         }
 
         return $query;

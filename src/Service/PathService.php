@@ -13,19 +13,22 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service;
 
+use Pimcore\ValueObject\Collection\ArrayOfStrings;
+use Pimcore\ValueObject\String\Path;
+
 /**
  * @internal
  */
 final class PathService implements PathServiceInterface
 {
-    public function isSubPath(string $path, $parentPath): bool
+    public function isSubPath(string $path, string $parentPath): bool
     {
-        return str_starts_with($path, $parentPath);
+        return $path !== $parentPath && str_starts_with($path, $parentPath);
     }
 
     public function containsSubPath(string $path, array $paths): bool
     {
-        foreach ($paths as $potentialSubPath) {
+        foreach ((new ArrayOfStrings($paths))->getValue() as $potentialSubPath) {
             if ($this->isSubPath($potentialSubPath, $path)) {
                 return true;
             }
@@ -37,7 +40,7 @@ final class PathService implements PathServiceInterface
     public function getContainedSubPaths(string $path, array $paths): array
     {
         $result = [];
-        foreach ($paths as $potentialSubPath) {
+        foreach ((new ArrayOfStrings($paths))->getValue() as $potentialSubPath) {
             if ($this->isSubPath($potentialSubPath, $path)) {
                 $result[] = $potentialSubPath;
             }
@@ -49,6 +52,7 @@ final class PathService implements PathServiceInterface
     public function removeSubPaths(array $paths): array
     {
         $result = [];
+        $paths = (new ArrayOfStrings($paths))->getValue();
         sort($paths);
 
         foreach ($paths as $path) {
@@ -72,8 +76,8 @@ final class PathService implements PathServiceInterface
     public function calculateLongestPathLevel(array $paths): int
     {
         $longestPathLevel = 0;
-        foreach ($paths as $path) {
-            $pathLevel = substr_count($path, '/');
+        foreach ((new ArrayOfStrings($paths))->getValue() as $path) {
+            $pathLevel = $path === '/' ? 0 : substr_count($path, '/');
             if ($pathLevel > $longestPathLevel) {
                 $longestPathLevel = $pathLevel;
             }
@@ -84,6 +88,37 @@ final class PathService implements PathServiceInterface
 
     public function appendSlashes(array $paths): array
     {
+        $paths = (new ArrayOfStrings($paths))->getValue();
         return array_map(static fn (string $path) => rtrim($path, '/') . '/', $paths);
+    }
+
+    public function getAllParentPaths(array $paths): array
+    {
+        $paths = $this->removeSubPaths($paths);
+        if(count($paths) === 1 && $paths[0] === '/') {
+            return [];
+        }
+        $result = [];
+        foreach ($paths as $path) {
+            $parentPath = (new Path($path))->getValue();
+            while ($parentPath = $this->getParentPath($parentPath)) {
+                $result[] = $parentPath;
+                if ($parentPath === '/') {
+                    break;
+                }
+            }
+        }
+        sort($result);
+        return $result;
+    }
+
+    private function getParentPath(string $path): string
+    {
+        $pathParts = explode('/', $path);
+        array_pop($pathParts);
+        if (count($pathParts) === 1) {
+            return '/';
+        }
+        return implode('/', $pathParts);
     }
 }
