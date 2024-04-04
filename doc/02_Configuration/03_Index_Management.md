@@ -80,6 +80,17 @@ Do this with the index update command and pass -r option.
 bin/console generic-data-index:update:index -r
 ```
 
+### Updating Index Structure for Data Indices
+
+Index mapping is updated automatically e.g. when adding system languages or new fields to the class definition. 
+Sometimes it might be necessary to update the index structure manually.
+
+Do this with the reindex command.
+```
+# updates index mapping with native reindexing
+bin/console generic-data-index:reindex
+```
+
 ### Handling Failed Messages
 
 By default, the messenger will retry failed messages 3 times and then send them into the failed queue `pimcore_generic_data_index_failed`.

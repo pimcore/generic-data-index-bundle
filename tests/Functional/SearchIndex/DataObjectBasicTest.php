@@ -176,17 +176,49 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->assertNull($settingsStoreService->getClassMappingCheckSum($classId));
 
         $class->save();
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
         $checkSum = $settingsStoreService->getClassMappingCheckSum($classId);
         $this->assertNotNull($checkSum);
 
         $class->save();
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
         $this->assertEquals($checkSum, $settingsStoreService->getClassMappingCheckSum($classId));
 
         $input = new Input();
         $input->setName('settingsTest');
         $class->addFieldDefinition('settingsTest', $input);
         $class->save();
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
         $this->assertNotEquals($checkSum, $settingsStoreService->getClassMappingCheckSum($classId));
+    }
+
+    public function testClassDefinitionMapping(): void
+    {
+        $object = TestHelper::createEmptyObject();
+        $index = $this->searchIndexConfigService->getIndexName($object->getClassName());
+        $class = $object->getClass();
+
+        $input = new Input();
+        $input->setName('mappingTest');
+        $class->addFieldDefinition('mappingTest', $input);
+        $class->save();
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+
+        $indexName = $this->tester->getIndexName($object->getClassName());
+        $mapping = $this->tester->getIndexMapping($index);
+        $standardFields = $mapping[$indexName]['mappings']['properties']['standard_fields']['properties'];
+        $this->assertArrayHasKey('mappingTest', $standardFields);
+
+        $fieldDefinitions = $class->getFieldDefinitions();
+        unset($fieldDefinitions['mappingTest']);
+        $class->setFieldDefinitions($fieldDefinitions);
+        $class->save();
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+
+        $indexName = $this->tester->getIndexName($object->getClassName());
+        $mapping = $this->tester->getIndexMapping($index);
+        $standardFields = $mapping[$indexName]['mappings']['properties']['standard_fields']['properties'];
+        $this->assertArrayNotHasKey('mappingTest', $standardFields);
     }
 
     private function assertIdArrayEquals(array $ids1, array $ids2)

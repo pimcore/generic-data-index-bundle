@@ -11,13 +11,13 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Command\Update;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Command;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -28,14 +28,14 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * @internal
  */
-final class DeploymentReindex extends AbstractCommand
+final class DeploymentReindexCommand extends AbstractCommand
 {
     use LockableTrait;
 
     public function __construct(
         private readonly DataObjectIndexHandler $indexHandler,
         private readonly EnqueueServiceInterface $enqueueService,
-        private readonly IndexUpdateServiceInterface $indexUpdateService,
+        private readonly ReindexServiceInterface $reindexService,
         private readonly SettingsStoreServiceInterface $settingsStoreService,
         string $name = null
     ) {
@@ -80,8 +80,8 @@ final class DeploymentReindex extends AbstractCommand
                     $updatedIds[] = $classDefinitionId;
 
                     $this
-                        ->indexUpdateService
-                        ->updateClassDefinition($classDefinition);
+                        ->reindexService
+                        ->reindexClassDefinition($classDefinition);
                 }
             }
 

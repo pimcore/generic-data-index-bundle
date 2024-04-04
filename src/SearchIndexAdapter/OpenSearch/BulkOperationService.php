@@ -38,23 +38,20 @@ final class BulkOperationService implements BulkOperationServiceInterface
     ) {
     }
 
-    public function addUpdate(
+    public function add(
         string $indexName,
         int $id,
         array $indexData,
         bool $upsert = true
     ): void {
         $this->bulkOperationData[] = [
-            'update' => [
+            'index' => [
                 '_index' => $indexName,
                 '_id' => $id,
             ],
         ];
 
-        $this->bulkOperationData[] = [
-            'doc' => $indexData,
-            'doc_as_upsert' => $upsert,
-        ];
+        $this->bulkOperationData[] = $indexData;
     }
 
     public function addDeletion(
