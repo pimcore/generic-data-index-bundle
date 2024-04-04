@@ -7,8 +7,8 @@ declare(strict_types=1);
  * This source file is available under following license:
  * - Pimcore Commercial License (PCL)
  *
- * @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- * @license    http://www.pimcore.org/license     PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
@@ -27,7 +27,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 /**
  * @internal
  */
-final class ClassDefinitionIndexSubscriber  implements EventSubscriberInterface
+final class ClassDefinitionIndexSubscriber implements EventSubscriberInterface
 {
     use LoggerAwareTrait;
 
@@ -47,8 +47,6 @@ final class ClassDefinitionIndexSubscriber  implements EventSubscriberInterface
             DataObjectClassDefinitionEvents::POST_DELETE => 'deleteClassDefinitionIndex',
         ];
     }
-
-
 
     /**
      * @throws Exception
