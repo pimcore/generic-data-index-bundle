@@ -75,13 +75,11 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
 
         /** @var Data\Localizedfields $fieldDefinition */
         $fieldDefinition = $this->getFieldDefinition();
-        $attributes = [];
+
         $indexData = $fieldDefinition->normalize($value);
 
         $languages = array_keys($indexData);
-        if (!empty($indexData)) {
-            $attributes = array_keys(reset($indexData));
-        }
+        $attributes = array_keys(reset($indexData));
 
         $result = [];
         foreach($attributes as $attribute) {
