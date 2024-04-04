@@ -89,6 +89,7 @@ final class PathService implements PathServiceInterface
     public function appendSlashes(array $paths): array
     {
         $paths = (new ArrayOfStrings($paths))->getValue();
+
         return array_map(static fn (string $path) => rtrim($path, '/') . '/', $paths);
     }
 
@@ -109,6 +110,7 @@ final class PathService implements PathServiceInterface
             }
         }
         sort($result);
+
         return $result;
     }
 
@@ -119,6 +121,7 @@ final class PathService implements PathServiceInterface
         if (count($pathParts) === 1) {
             return '/';
         }
+
         return implode('/', $pathParts);
     }
 }

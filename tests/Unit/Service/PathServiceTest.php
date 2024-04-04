@@ -38,8 +38,8 @@ final class PathServiceTest extends Unit
     {
         $pathService = new PathService();
         $this->assertTrue($pathService->containsSubPath('/foo/bar', ['/foo/bar/baz']));
-        $this->assertTrue($pathService->containsSubPath('/foo/bar', ['/asdf','/foo/bar/baz']));
-        $this->assertTrue($pathService->containsSubPath('/foo/bar', ['/asdf','/foo/bar/baz/asdf']));
+        $this->assertTrue($pathService->containsSubPath('/foo/bar', ['/asdf', '/foo/bar/baz']));
+        $this->assertTrue($pathService->containsSubPath('/foo/bar', ['/asdf', '/foo/bar/baz/asdf']));
         $this->assertFalse($pathService->containsSubPath('/foo/bar', ['/foo/bar']));
         $this->assertFalse($pathService->containsSubPath('/foo/bar', ['/asdf']));
     }
@@ -52,8 +52,8 @@ final class PathServiceTest extends Unit
             $pathService->getContainedSubPaths('/foo/bar', ['/foo/bar/baz'])
         );
         $this->assertEquals(
-            ['/foo/bar/baz','/foo/bar/baz/asdf'],
-            $pathService->getContainedSubPaths('/foo/bar', ['/foo/bar/baz','/foo/bar/baz/asdf'])
+            ['/foo/bar/baz', '/foo/bar/baz/asdf'],
+            $pathService->getContainedSubPaths('/foo/bar', ['/foo/bar/baz', '/foo/bar/baz/asdf'])
         );
         $this->assertEquals(
             [],
@@ -61,7 +61,7 @@ final class PathServiceTest extends Unit
         );
         $this->assertEquals(
             ['/foo/bar/baz'],
-            $pathService->getContainedSubPaths('/foo/bar', ['/asdf','/foo/bar/baz'])
+            $pathService->getContainedSubPaths('/foo/bar', ['/asdf', '/foo/bar/baz'])
         );
     }
 
@@ -70,15 +70,15 @@ final class PathServiceTest extends Unit
         $pathService = new PathService();
         $this->assertEquals(
             ['/foo/bar'],
-            $pathService->removeSubPaths(['/foo/bar/baz','/foo/bar'],)
+            $pathService->removeSubPaths(['/foo/bar/baz', '/foo/bar'], )
         );
         $this->assertEquals(
             ['/foo/bar'],
-            $pathService->removeSubPaths(['/foo/bar/baz','/foo/bar','/foo/bar/baz/asdf'])
+            $pathService->removeSubPaths(['/foo/bar/baz', '/foo/bar', '/foo/bar/baz/asdf'])
         );
         $this->assertEquals(
-            ['/asdf','/foo/bar'],
-            $pathService->removeSubPaths(['/foo/bar','/asdf'])
+            ['/asdf', '/foo/bar'],
+            $pathService->removeSubPaths(['/foo/bar', '/asdf'])
         );
     }
 
@@ -87,7 +87,7 @@ final class PathServiceTest extends Unit
         $pathService = new PathService();
         $this->assertEquals(
             3,
-            $pathService->calculateLongestPathLevel(['/foo/bar/baz','/foo/bar','/foo'])
+            $pathService->calculateLongestPathLevel(['/foo/bar/baz', '/foo/bar', '/foo'])
         );
         $this->assertEquals(
             1,
@@ -107,12 +107,12 @@ final class PathServiceTest extends Unit
     {
         $pathService = new PathService();
         $this->assertEquals(
-            ['/foo/bar/','/foo/bar/baz/'],
-            $pathService->appendSlashes(['/foo/bar','/foo/bar/baz'])
+            ['/foo/bar/', '/foo/bar/baz/'],
+            $pathService->appendSlashes(['/foo/bar', '/foo/bar/baz'])
         );
         $this->assertEquals(
-            ['/foo/bar/','/foo/bar/baz/'],
-            $pathService->appendSlashes(['/foo/bar/','/foo/bar/baz/'])
+            ['/foo/bar/', '/foo/bar/baz/'],
+            $pathService->appendSlashes(['/foo/bar/', '/foo/bar/baz/'])
         );
         $this->assertEquals(
             ['/'],
