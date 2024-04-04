@@ -128,11 +128,13 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         }
 
         $classDefinition = $event->getClassDefinition();
-        $this->updateClassMapping($classDefinition);
+        $mappingUpdated = $this->updateClassMapping($classDefinition);
 
-        $this->enqueueService
-            ->enqueueByClassDefinition($classDefinition)
-            ->dispatchQueueMessages();
+        if ($mappingUpdated) {
+            $this->enqueueService
+                ->enqueueByClassDefinition($classDefinition)
+                ->dispatchQueueMessages();
+        }
     }
 
     public function deleteDataObjectIndex(ClassDefinitionEvent $event): void
@@ -159,9 +161,15 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
     /**
      * @throws Exception
      */
-    private function updateClassMapping(ClassDefinition $classDefinition): void
+    private function updateClassMapping(ClassDefinition $classDefinition): bool
     {
         $mappingProperties = $this->dataObjectMappingHandler->getMappingProperties($classDefinition);
+        $currentCheckSum = $this->dataObjectMappingHandler->getClassMappingCheckSum($mappingProperties);
+        $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
+
+        if ($storedCheckSum === $currentCheckSum) {
+            return false;
+        }
 
         $this->dataObjectMappingHandler
             ->updateMapping(
@@ -176,5 +184,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
                 $mappingProperties
             )
         );
+
+        return true;
     }
 }

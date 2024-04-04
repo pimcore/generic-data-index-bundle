@@ -22,9 +22,9 @@ use Pimcore\Model\Tool\SettingsStore;
  */
 final class SettingsStoreService implements SettingsStoreServiceInterface
 {
-    public const SETTINGS_STORE_PREFIX = 'reindex_class_id_';
+    private const SETTINGS_STORE_PREFIX = 'reindex_class_id_';
 
-    public const SETTINGS_STORE_SCOPE = 'generic_data_index';
+    private const SETTINGS_STORE_SCOPE = 'generic_data_index';
 
     public function __construct(
         private readonly SettingsStoreResolverInterface $settingsStoreResolver

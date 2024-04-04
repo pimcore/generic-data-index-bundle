@@ -28,7 +28,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * @internal
  */
-final class DeploymentClassesReindex extends AbstractCommand
+final class DeploymentReindex extends AbstractCommand
 {
     use LockableTrait;
 
@@ -45,7 +45,7 @@ final class DeploymentClassesReindex extends AbstractCommand
     protected function configure(): void
     {
         $this
-            ->setName('generic-data-index:deployment:classes:reindex')
+            ->setName('generic-data-index:deployment:reindex')
             ->setDescription(
                 'Updates index/mapping for all classDefinitions which changed without' .
                 'deleting them. Afterwards are affected items added into the index queue.'
