@@ -206,14 +206,16 @@ final class QueryService implements QueryServiceInterface
                 ]
             );
 
-            // as all direct children are excluded by the condition above, we need to explicitly include all allowed sub paths
+            /* we need to explicitly include all allowed sub paths
+               as all direct children are excluded by the condition above */
             $additionalIncludedPaths = array_merge(
                 $additionalIncludedPaths,
                 array_values(array_diff($allowedPaths, $allowedMainPaths))
             );
         }
 
-        // we need to include all parent paths of the allowed paths as otherwise it will not be possible to navigate to the allowed paths in the tree
+        /* we need to include all parent paths of the allowed paths
+           as otherwise it will not be possible to navigate to the allowed paths in the tree */
         $additionalIncludedPaths = array_merge(
             $additionalIncludedPaths,
             $this->pathService->getAllParentPaths($allowedMainPaths)
