@@ -61,7 +61,6 @@ final class UpdateLanguageSettingsHandler
      */
     private function handleIndexUpdate(
     ): void {
-        $this->indexUpdateService->setReCreateIndex(true);
         $this->indexUpdateService->updateAll();
         $this->enqueueService->dispatchQueueMessages(true);
     }
