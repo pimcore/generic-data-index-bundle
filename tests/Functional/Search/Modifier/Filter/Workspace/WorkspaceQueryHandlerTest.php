@@ -99,7 +99,6 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-3',
         ], $user);
 
-
     }
 
     public function testExcludeFolders(): void
@@ -163,7 +162,6 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         ], $user);
     }
 
-
     public function testCombineIncludeExclude(): void
     {
         $this->createTestAssetFolders();
@@ -185,7 +183,6 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-folder-1/sub-folder-1',
         ], $user);
 
-
         $user = $this->createUserWithAssetWorkspaces([
             '/test-folder-1' => true,
             '/test-folder-1/sub-folder-1' => false,
@@ -198,7 +195,6 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2',
             '/test-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-3',
         ], $user);
-
 
         $user = $this->createUserWithAssetWorkspaces([
             '/test-folder-1' => true,
@@ -269,7 +265,6 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             return $item->getPath() . $item->getKey();
         }, $searchResult->getItems());
 
-
         sort($expectedPaths);
         sort($paths);
 
@@ -283,7 +278,6 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             ->setPermission('assets', true)
             ->setUsername('test-user-' . uniqid())
             ->save();
-        ;
 
         $workspaceArray = [];
         foreach ($workspaces as $workspace => $permission) {
@@ -293,7 +287,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
                 ->setCpath($workspace)
                 ->setCid(Db::get()->fetchOne('select id from assets where concat(path, filename) = ?', [$workspace]))
                 ->setUserId($user->getId());
-            ;
+
             $workspaceObject->save();
             $workspaceArray[] = $workspaceObject;
         }
