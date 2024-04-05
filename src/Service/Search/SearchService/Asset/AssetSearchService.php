@@ -30,14 +30,14 @@ use Pimcore\Model\User;
 /**
  * @internal
  */
-final class AssetSearchService implements AssetSearchServiceInterface
+final readonly class AssetSearchService implements AssetSearchServiceInterface
 {
     public function __construct(
-        private readonly AssetTypeAdapter $assetTypeAdapter,
-        private readonly PaginationInfoServiceInterface $paginationInfoService,
-        private readonly RuntimeCacheResolverInterface $runtimeCacheResolver,
-        private readonly SearchHelper $searchHelper,
-        private readonly SearchProviderInterface $searchProvider
+        private AssetTypeAdapter $assetTypeAdapter,
+        private PaginationInfoServiceInterface $paginationInfoService,
+        private RuntimeCacheResolverInterface $runtimeCacheResolver,
+        private SearchHelper $searchHelper,
+        private SearchProviderInterface $searchProvider
     ) {
     }
 

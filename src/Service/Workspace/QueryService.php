@@ -23,11 +23,11 @@ use Pimcore\Model\User;
 /**
  * @internal
  */
-final class QueryService implements QueryServiceInterface
+final readonly class QueryService implements QueryServiceInterface
 {
     public function __construct(
-        private readonly PermissionServiceInterface $permissionService,
-        private readonly WorkspaceServiceInterface $workspaceService
+        private PermissionServiceInterface $permissionService,
+        private WorkspaceServiceInterface $workspaceService
     ) {
     }
 

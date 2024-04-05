@@ -17,7 +17,7 @@
   "prefer-stable": true,
   "minimum-stability": "dev",
   "require": {
-    "php": "~8.1.0 || ~8.2.0",
+    "php": "~8.2.0",
     "pimcore/pimcore": "^11.2.0",
     "pimcore/static-resolver-bundle": "^1.4.0",
     "pimcore/opensearch-client": "^1.0.0",

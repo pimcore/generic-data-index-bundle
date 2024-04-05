@@ -28,13 +28,13 @@ use Pimcore\Model\Element\Tag;
 /**
  * @internal
  */
-final class EnqueueService implements EnqueueServiceInterface
+final readonly class EnqueueService implements EnqueueServiceInterface
 {
     public function __construct(
-        private readonly IndexQueueRepository $indexQueueRepository,
-        private readonly TimeServiceInterface $timeService,
-        private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
-        private readonly AdapterServiceInterface $typeAdapterService,
+        private IndexQueueRepository $indexQueueRepository,
+        private TimeServiceInterface $timeService,
+        private QueueMessagesDispatcher $queueMessagesDispatcher,
+        private AdapterServiceInterface $typeAdapterService,
     ) {
 
     }
