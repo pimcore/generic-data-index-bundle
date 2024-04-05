@@ -22,11 +22,11 @@ use Pimcore\Model\Metadata\Predefined;
 /**
  * @internal
  */
-final class PredefinedAssetMetadataProvider implements MappingProviderInterface
+final readonly class PredefinedAssetMetadataProvider implements MappingProviderInterface
 {
     public function __construct(
-        private readonly LanguageServiceInterface $languageService,
-        private readonly FieldDefinitionServiceInterface $fieldDefinitionService
+        private LanguageServiceInterface $languageService,
+        private FieldDefinitionServiceInterface $fieldDefinitionService
     ) {
     }
 

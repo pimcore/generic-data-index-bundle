@@ -15,16 +15,16 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 
-final class SearchResult
+final readonly class SearchResult
 {
     public function __construct(
         /** SearchResultHit[] */
-        private readonly array $hits,
+        private array $hits,
         /** SearchResultAggregation[] */
-        private readonly array $aggregations,
-        private readonly int $totalHits,
-        private readonly ?float $maxScore,
-        private readonly AdapterSearchInterface $search,
+        private array $aggregations,
+        private int $totalHits,
+        private ?float $maxScore,
+        private AdapterSearchInterface $search,
     ) {
     }
 

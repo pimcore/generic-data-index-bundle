@@ -26,11 +26,11 @@ use Symfony\Component\Scheduler\ScheduleProviderInterface;
  * @internal
  */
 #[AsSchedule('generic_data_index')]
-final class GenericDataIndexScheduleProvider implements ScheduleProviderInterface
+final readonly class GenericDataIndexScheduleProvider implements ScheduleProviderInterface
 {
     public function __construct(
-        private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
-        private readonly EventDispatcherInterface $eventDispatcher,
+        private QueueMessagesDispatcher $queueMessagesDispatcher,
+        private EventDispatcherInterface $eventDispatcher,
     ) {
 
     }

@@ -13,11 +13,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter;
 
-class SearchResultAggregationBucket
+readonly class SearchResultAggregationBucket
 {
     public function __construct(
-        private readonly string|int $key,
-        private readonly int $docCount,
+        private string|int $key,
+        private int $docCount,
     ) {
     }
 

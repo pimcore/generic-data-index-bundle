@@ -21,12 +21,12 @@ use Pimcore\Model\DataObject;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\User;
 
-final class ElementPermissionService implements ElementPermissionServiceInterface
+final readonly class ElementPermissionService implements ElementPermissionServiceInterface
 {
     public function __construct(
-        private readonly AssetSearchServiceInterface $assetSearchService,
-        private readonly DataObjectSearchServiceInterface $dataObjectSearchService,
-        private readonly PermissionServiceInterface $permissionService
+        private AssetSearchServiceInterface $assetSearchService,
+        private DataObjectSearchServiceInterface $dataObjectSearchService,
+        private PermissionServiceInterface $permissionService
     ) {
     }
 

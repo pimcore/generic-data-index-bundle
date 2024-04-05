@@ -13,13 +13,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter;
 
-class SearchResultHit
+readonly class SearchResultHit
 {
     public function __construct(
-        private readonly string $id,
-        private readonly string $index,
-        private readonly ?float $score,
-        private readonly array $source,
+        private string $id,
+        private string $index,
+        private ?float $score,
+        private array $source,
     ) {
     }
 

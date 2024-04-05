@@ -25,13 +25,13 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 /**
  * @internal
  */
-final class AssetIndexUpdateSubscriber implements EventSubscriberInterface
+final readonly class AssetIndexUpdateSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private readonly IndexQueueServiceInterface $indexQueueService,
-        private readonly Installer $installer,
-        private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
-        private readonly SynchronousProcessingServiceInterface $synchronousProcessing
+        private IndexQueueServiceInterface $indexQueueService,
+        private Installer $installer,
+        private QueueMessagesDispatcher $queueMessagesDispatcher,
+        private SynchronousProcessingServiceInterface $synchronousProcessing
     ) {
     }
 
