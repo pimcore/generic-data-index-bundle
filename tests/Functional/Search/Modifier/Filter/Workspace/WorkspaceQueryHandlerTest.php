@@ -74,6 +74,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-folder-2' => true,
         ]);
         $this->assertSearchResultFolders([
+            '/',
             '/test-folder-1',
             '/test-folder-1/sub-folder-1',
             '/test-folder-1/sub-folder-1/sub-sub-folder-1',
@@ -91,12 +92,24 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-folder-1/sub-folder-1' => true,
         ]);
         $this->assertSearchResultFolders([
+            '/',
             '/test-folder-1',
             '/test-folder-1/sub-folder-1',
             '/test-folder-1/sub-folder-1/sub-sub-folder-1',
             '/test-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
             '/test-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2',
             '/test-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-3',
+        ], $user);
+
+        $user = $this->createUserWithAssetWorkspaces([
+            '/test-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1' => true,
+        ]);
+        $this->assertSearchResultFolders([
+            '/',
+            '/test-folder-1',
+            '/test-folder-1/sub-folder-1',
+            '/test-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
         ], $user);
 
     }
@@ -171,6 +184,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-folder-1/sub-folder-1' => false,
         ]);
         $this->assertSearchResultFolders([
+            '/',
             '/test-folder-1',
         ], $user);
 
@@ -179,6 +193,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-folder-1/sub-folder-1/sub-sub-folder-1' => false,
         ]);
         $this->assertSearchResultFolders([
+            '/',
             '/test-folder-1',
             '/test-folder-1/sub-folder-1',
         ], $user);
@@ -189,6 +204,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-folder-1/sub-folder-1/sub-sub-folder-1' => true,
         ]);
         $this->assertSearchResultFolders([
+            '/',
             '/test-folder-1',
             '/test-folder-1/sub-folder-1/sub-sub-folder-1',
             '/test-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
@@ -202,6 +218,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1' => true,
         ]);
         $this->assertSearchResultFolders([
+            '/',
             '/test-folder-1',
             '/test-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
         ], $user);
@@ -213,6 +230,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1' => false,
         ]);
         $this->assertSearchResultFolders([
+            '/',
             '/test-folder-1',
             '/test-folder-1/sub-folder-1/sub-sub-folder-1',
             '/test-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2',
