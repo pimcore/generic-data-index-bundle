@@ -17,10 +17,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\AssetTypeSerializationHandler\
 use Psr\Container\ContainerExceptionInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
-final class AssetTypeSerializationHandlerService
+final readonly class AssetTypeSerializationHandlerService
 {
     public function __construct(
-        private readonly ServiceLocator $adapterLocator
+        private ServiceLocator $adapterLocator
     ) {
     }
 

@@ -20,10 +20,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingService
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Mapping;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 
-class IndexMappingService implements IndexMappingServiceInterface
+readonly class IndexMappingService implements IndexMappingServiceInterface
 {
     public function __construct(
-        private readonly FieldDefinitionServiceInterface $fieldDefinitionService,
+        private FieldDefinitionServiceInterface $fieldDefinitionService,
     ) {
     }
 

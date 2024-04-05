@@ -16,11 +16,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter;
 /**
  * @internal
  */
-final class Mapping
+final readonly class Mapping
 {
     public function __construct(
-        private readonly string $mappingName,
-        private readonly array $mapping,
+        private string $mappingName,
+        private array $mapping,
     ) {
     }
 

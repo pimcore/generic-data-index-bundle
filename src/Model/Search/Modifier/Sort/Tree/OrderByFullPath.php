@@ -16,10 +16,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Search\SortDirection;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 
-final class OrderByFullPath implements SearchModifierInterface
+final readonly class OrderByFullPath implements SearchModifierInterface
 {
     public function __construct(
-        private readonly SortDirection $direction = SortDirection::ASC
+        private SortDirection $direction = SortDirection::ASC
     ) {
     }
 

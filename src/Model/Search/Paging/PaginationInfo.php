@@ -13,13 +13,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Paging;
 
-final class PaginationInfo
+final readonly class PaginationInfo
 {
     public function __construct(
-        private readonly int $totalItems,
-        private readonly int $page,
-        private readonly int $pageSize,
-        private readonly int $totalPages,
+        private int $totalItems,
+        private int $page,
+        private int $pageSize,
+        private int $totalPages,
     ) {
     }
 
