@@ -13,12 +13,12 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Stats;
 
-final class IndexStats
+final readonly class IndexStats
 {
     public function __construct(
-        private readonly int $countIndexQueueEntries,
+        private int $countIndexQueueEntries,
         /** @var IndexStatsIndex[] */
-        private readonly array $indices
+        private array $indices
     ) {
     }
 

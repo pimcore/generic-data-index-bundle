@@ -100,6 +100,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
                 processSynchronously: $this->synchronousProcessing->isEnabled()
             )
             ->commit();
+        $this->queueMessagesDispatcher->dispatchQueueMessages();
     }
 
     /**

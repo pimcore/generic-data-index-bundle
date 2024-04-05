@@ -21,10 +21,10 @@ use Symfony\Component\DependencyInjection\ServiceLocator;
 /**
  * @internal
  */
-final class MetadataProviderService implements MetadataProviderServiceInterface
+final readonly class MetadataProviderService implements MetadataProviderServiceInterface
 {
     public function __construct(
-        private readonly ServiceLocator $mappingProviderLocator,
+        private ServiceLocator $mappingProviderLocator,
     ) {
     }
 

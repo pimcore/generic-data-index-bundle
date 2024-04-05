@@ -30,14 +30,14 @@ use Pimcore\Model\User;
 /**
  * @internal
  */
-final class DocumentSearchService implements DocumentSearchServiceInterface
+final readonly class DocumentSearchService implements DocumentSearchServiceInterface
 {
     public function __construct(
-        private readonly DocumentTypeAdapter $documentTypeAdapter,
-        private readonly PaginationInfoServiceInterface $paginationInfoService,
-        private readonly RuntimeCacheResolverInterface $runtimeCacheResolver,
-        private readonly SearchHelper $searchHelper,
-        private readonly SearchProviderInterface $searchProvider
+        private DocumentTypeAdapter $documentTypeAdapter,
+        private PaginationInfoServiceInterface $paginationInfoService,
+        private RuntimeCacheResolverInterface $runtimeCacheResolver,
+        private SearchHelper $searchHelper,
+        private SearchProviderInterface $searchProvider
     ) {
     }
 

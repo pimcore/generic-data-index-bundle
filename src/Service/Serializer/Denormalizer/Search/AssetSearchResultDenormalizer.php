@@ -21,10 +21,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProper
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandlerService;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
-class AssetSearchResultDenormalizer implements DenormalizerInterface
+readonly class AssetSearchResultDenormalizer implements DenormalizerInterface
 {
     public function __construct(
-        private readonly AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService
+        private AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService
     ) {
     }
 

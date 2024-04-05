@@ -21,6 +21,7 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Schema\SchemaException;
 use Pimcore;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
+use Pimcore\Bundle\GenericDataIndexBundle\Migrations\Version20240325081139;
 use Pimcore\Extension\Bundle\Installer\Exception\InstallationException;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 
@@ -35,6 +36,11 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
 
     ) {
         parent::__construct($bundle);
+    }
+
+    public function getLastMigrationVersionClassName(): ?string
+    {
+        return Version20240325081139::class;
     }
 
     /**
@@ -85,7 +91,7 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
             $queueTable = $schema->createTable(IndexQueue::TABLE);
             $queueTable->addColumn('elementId', 'integer', ['notnull' => true, 'unsigned' => true]);
             $queueTable->addColumn('elementType', 'string', ['notnull' => true, 'length' => 20]);
-            $queueTable->addColumn('elementIndexName', 'string', ['notnull' => true, 'length' => 10]);
+            $queueTable->addColumn('elementIndexName', 'string', ['notnull' => true, 'length' => 255]);
             $queueTable->addColumn('operation', 'string', ['notnull' => true, 'length' => 20]);
             $queueTable->addColumn('operationTime', 'bigint', ['notnull' => true, 'unsigned' => true]);
             $queueTable->addColumn('dispatched', 'bigint', [
@@ -96,6 +102,7 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
 
             $queueTable->setPrimaryKey(['elementId', 'elementType']);
             $queueTable->addIndex(['dispatched'], IndexQueue::TABLE . '_dispatched');
+            $queueTable->addIndex(['operationTime'], IndexQueue::TABLE . '_operation_time');
         }
     }
 

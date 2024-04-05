@@ -11,14 +11,16 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Stats;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort;
 
-final readonly class IndexStatsIndex
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
+
+final readonly class OrderByPageNumber implements SearchModifierInterface
 {
     public function __construct(
         private string $indexName,
-        private int $itemsCount,
-        private float $sizeInKb
+        private SearchInterface $search,
     ) {
     }
 
@@ -27,13 +29,8 @@ final readonly class IndexStatsIndex
         return $this->indexName;
     }
 
-    public function getItemsCount(): int
+    public function getSearch(): SearchInterface
     {
-        return $this->itemsCount;
-    }
-
-    public function getSizeInKb(): float
-    {
-        return $this->sizeInKb;
+        return $this->search;
     }
 }

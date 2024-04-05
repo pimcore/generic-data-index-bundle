@@ -21,11 +21,11 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 /**
  * @internal
  */
-final class WorkflowService implements WorkflowServiceInterface
+final readonly class WorkflowService implements WorkflowServiceInterface
 {
     public function __construct(
-        private readonly Manager $workflowManager,
-        private readonly TokenStorageInterface $tokenStorage
+        private Manager $workflowManager,
+        private TokenStorageInterface $tokenStorage
     ) {
     }
 

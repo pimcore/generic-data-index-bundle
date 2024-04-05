@@ -15,10 +15,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSe
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 
-final class ElementKeySearch implements SearchModifierInterface
+final readonly class ElementKeySearch implements SearchModifierInterface
 {
     public function __construct(
-        private readonly ?string $searchTerm,
+        private ?string $searchTerm,
     ) {
     }
 

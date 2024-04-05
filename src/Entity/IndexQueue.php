@@ -19,6 +19,7 @@ use Doctrine\ORM\Mapping\Entity;
 #[Entity]
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Index(columns: ['dispatched'], name: self::TABLE . '_dispatched')]
+#[ORM\Index(columns: ['operationTime'], name: self::TABLE . '_operation_time')]
 
 /**
  * @internal
@@ -35,7 +36,7 @@ class IndexQueue
     #[ORM\Column(type: 'string', length: 20)]
     private string $elementType;
 
-    #[ORM\Column(type: 'string', length: 10)]
+    #[ORM\Column(type: 'string', length: 255)]
     private string $elementIndexName;
 
     #[ORM\Column(type: 'string', length: 20)]

@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Se
 
 use Exception;
 use OpenSearch\Client;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\ResultWindowTooLargeException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug\SearchInformation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
@@ -67,11 +68,23 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
 
             $this->executedSearches[] = $searchInformation;
 
+            if ($this->isWindowTooLarge($e)) {
+                throw new ResultWindowTooLargeException(
+                    $searchInformation,
+                    'Result window too large: ' . $e->getMessage(),
+                    $e->getCode(), $e
+                );
+            }
+
             throw new SearchFailedException(
                 $searchInformation,
                 'Search failed: ' . $e->getMessage(),
                 $e->getCode(), $e
             );
+        }
+
+        if ($search->isReverseItemOrder()) {
+            $openSearchResult['hits']['hits'] = array_reverse($openSearchResult['hits']['hits']);
         }
 
         $this->executedSearches[] = new SearchInformation(
@@ -93,5 +106,22 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
     public function getExecutedSearches(): array
     {
         return $this->executedSearches;
+    }
+
+    private function isWindowTooLarge(Exception $e): bool
+    {
+        try {
+            $reason = json_decode($e->getMessage(), false, 512, JSON_THROW_ON_ERROR)
+                ->error->caused_by->reason;
+
+            if (str_contains($reason, 'window is too large')) {
+                return true;
+            }
+
+        } catch (Exception) {
+            return false;
+        }
+
+        return false;
     }
 }

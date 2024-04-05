@@ -16,9 +16,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Message;
 /**
  * @internal
  */
-final class IndexUpdateQueueMessage
+final readonly class IndexUpdateQueueMessage
 {
-    public function __construct(private readonly array $entries)
+    public function __construct(private array $entries)
     {
     }
 

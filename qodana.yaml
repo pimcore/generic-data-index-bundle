@@ -3,7 +3,7 @@ linter: jetbrains/qodana-php:latest
 profile:
   path: .qodana-profile.xml
 php:
-  version: "8.1"
+  version: "8.2"
 failThreshold: 0
 exclude:
   - name: All
@@ -39,6 +39,9 @@ exclude:
   - name: PhpUnusedParameterInspection
     paths:
         - src/SearchIndexAdapter/OpenSearch/Search/Modifier
+  - name: PhpMethodNamingConventionInspection
+    paths:
+        - src/Migrations
 include:
   - name: PhpTaintFunctionInspection
   - name: PhpVulnerablePathsInspection
