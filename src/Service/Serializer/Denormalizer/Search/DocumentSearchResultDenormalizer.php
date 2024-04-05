@@ -18,10 +18,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\Doc
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandlerService;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
-class DocumentSearchResultDenormalizer implements DenormalizerInterface
+readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
 {
     public function __construct(
-        private readonly DocumentTypeSerializationHandlerService $documentTypeSerializationHandlerService
+        private DocumentTypeSerializationHandlerService $documentTypeSerializationHandlerService
     ) {
     }
 

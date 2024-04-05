@@ -16,14 +16,14 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResu
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Paging\PaginationInfo;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultAggregation;
 
-final class DocumentSearchResult
+final readonly class DocumentSearchResult
 {
     public function __construct(
         /** @var DocumentSearchResultItem[] */
-        private readonly array $items,
-        private readonly PaginationInfo $pagination,
+        private array $items,
+        private PaginationInfo $pagination,
         /** @var SearchResultAggregation[] */
-        private readonly array $aggregations = [],
+        private array $aggregations = [],
     ) {
     }
 

@@ -23,10 +23,10 @@ use Symfony\Component\Messenger\MessageBusInterface;
 /**
  * @internal
  */
-final class AdminSettingsSubscriber implements EventSubscriberInterface
+final readonly class AdminSettingsSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private readonly MessageBusInterface $messageBus
+        private MessageBusInterface $messageBus
     ) {
     }
 

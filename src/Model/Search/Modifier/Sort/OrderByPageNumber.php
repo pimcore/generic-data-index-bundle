@@ -16,11 +16,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 
-final class OrderByPageNumber implements SearchModifierInterface
+final readonly class OrderByPageNumber implements SearchModifierInterface
 {
     public function __construct(
-        private readonly string $indexName,
-        private readonly SearchInterface $search,
+        private string $indexName,
+        private SearchInterface $search,
     ) {
     }
 
