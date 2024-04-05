@@ -18,11 +18,11 @@ use Pimcore\Model\DataObject\ClassDefinition;
 /**
  * @internal
  */
-final class UpdateClassMappingMessage
+final readonly class UpdateClassMappingMessage
 {
     public function __construct(
-        private readonly ClassDefinition $classDefinition,
-        private readonly bool $dispatchQueueMessages = false
+        private ClassDefinition $classDefinition,
+        private bool $dispatchQueueMessages = false
     ) {
     }
 

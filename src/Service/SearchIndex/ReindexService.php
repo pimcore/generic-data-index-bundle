@@ -25,14 +25,14 @@ use Pimcore\Model\DataObject\ClassDefinition\Listing;
 /**
  * @internal
  */
-final class ReindexService implements ReindexServiceInterface
+final readonly class ReindexService implements ReindexServiceInterface
 {
     public function __construct(
-        private readonly AssetIndexHandler $assetIndexHandler,
-        private readonly DocumentIndexHandler $documentIndexHandler,
-        private readonly DataObjectIndexHandler $dataObjectIndexHandler,
-        private readonly EnqueueServiceInterface $enqueueService,
-        private readonly SettingsStoreServiceInterface $settingsStoreService,
+        private AssetIndexHandler $assetIndexHandler,
+        private DocumentIndexHandler $documentIndexHandler,
+        private DataObjectIndexHandler $dataObjectIndexHandler,
+        private EnqueueServiceInterface $enqueueService,
+        private SettingsStoreServiceInterface $settingsStoreService,
     ) {
 
     }
