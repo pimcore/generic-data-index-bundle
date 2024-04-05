@@ -25,10 +25,10 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 /**
  * @internal
  */
-final class EventService implements EventServiceInterface
+final readonly class EventService implements EventServiceInterface
 {
     public function __construct(
-        private readonly EventDispatcherInterface $eventDispatcher
+        private EventDispatcherInterface $eventDispatcher
     ) {
     }
 

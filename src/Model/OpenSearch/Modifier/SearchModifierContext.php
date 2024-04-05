@@ -15,10 +15,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
 
-class SearchModifierContext implements SearchModifierContextInterface
+readonly class SearchModifierContext implements SearchModifierContextInterface
 {
     public function __construct(
-        private readonly OpenSearchSearchInterface $search,
+        private OpenSearchSearchInterface $search,
     ) {
     }
 

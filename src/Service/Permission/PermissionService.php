@@ -31,11 +31,11 @@ use Pimcore\Model\User;
 /**
  * @internal
  */
-final class PermissionService implements PermissionServiceInterface
+final readonly class PermissionService implements PermissionServiceInterface
 {
     public function __construct(
-        private readonly EventServiceInterface $eventService,
-        private readonly WorkspaceServiceInterface $workspaceService,
+        private EventServiceInterface $eventService,
+        private WorkspaceServiceInterface $workspaceService,
     ) {
     }
 

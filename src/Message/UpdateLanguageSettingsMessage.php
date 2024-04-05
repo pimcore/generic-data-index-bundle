@@ -16,11 +16,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Message;
 /**
  * @internal
  */
-final class UpdateLanguageSettingsMessage
+final readonly class UpdateLanguageSettingsMessage
 {
     public function __construct(
-        private readonly array $currentLanguages,
-        private readonly array $validLanguages,
+        private array $currentLanguages,
+        private array $validLanguages,
     ) {
     }
 

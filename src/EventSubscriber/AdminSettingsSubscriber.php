@@ -25,12 +25,12 @@ use Symfony\Component\Messenger\Stamp\DelayStamp;
 /**
  * @internal
  */
-final class AdminSettingsSubscriber implements EventSubscriberInterface
+final readonly class AdminSettingsSubscriber implements EventSubscriberInterface
 {
     use StopMessengerWorkersTrait;
 
     public function __construct(
-        private readonly MessageBusInterface $messageBus
+        private MessageBusInterface $messageBus
     ) {
     }
 

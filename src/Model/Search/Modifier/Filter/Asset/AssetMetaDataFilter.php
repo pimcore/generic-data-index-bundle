@@ -15,13 +15,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Ass
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 
-final class AssetMetaDataFilter implements SearchModifierInterface
+final readonly class AssetMetaDataFilter implements SearchModifierInterface
 {
     public function __construct(
-        private readonly string $name,
-        private readonly string $type,
-        private readonly mixed $data,
-        private readonly ?string $language = null,
+        private string $name,
+        private string $type,
+        private mixed $data,
+        private ?string $language = null,
     ) {
     }
 

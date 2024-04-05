@@ -22,10 +22,10 @@ use Symfony\Component\DependencyInjection\ServiceLocator;
 /**
  * @internal
  */
-final class FieldDefinitionService implements FieldDefinitionServiceInterface
+final readonly class FieldDefinitionService implements FieldDefinitionServiceInterface
 {
     public function __construct(
-        private readonly ServiceLocator $adapterLocator
+        private ServiceLocator $adapterLocator
     ) {
     }
 

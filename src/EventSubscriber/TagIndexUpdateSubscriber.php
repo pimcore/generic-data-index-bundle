@@ -30,14 +30,14 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 /**
  * @internal
  */
-final class TagIndexUpdateSubscriber implements EventSubscriberInterface
+final readonly class TagIndexUpdateSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private readonly Installer $installer,
-        private readonly EnqueueServiceInterface $enqueueService,
-        private readonly IndexQueueServiceInterface $indexQueueService,
-        private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
-        private readonly SynchronousProcessingServiceInterface $synchronousProcessing
+        private Installer $installer,
+        private EnqueueServiceInterface $enqueueService,
+        private IndexQueueServiceInterface $indexQueueService,
+        private QueueMessagesDispatcher $queueMessagesDispatcher,
+        private SynchronousProcessingServiceInterface $synchronousProcessing
     ) {
     }
 

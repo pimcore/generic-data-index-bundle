@@ -23,9 +23,9 @@ use Pimcore\Twig\Extension\Templating\Placeholder\Exception;
 /**
  * @internal
  */
-final class AssetFilters
+final readonly class AssetFilters
 {
-    public function __construct(private readonly FieldDefinitionServiceInterface $fieldDefinitionService)
+    public function __construct(private FieldDefinitionServiceInterface $fieldDefinitionService)
     {
     }
 
