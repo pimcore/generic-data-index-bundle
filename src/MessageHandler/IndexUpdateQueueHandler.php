@@ -23,11 +23,11 @@ use Symfony\Component\Serializer\Exception\ExceptionInterface;
  * @internal
  */
 #[AsMessageHandler]
-final class IndexUpdateQueueHandler
+final readonly class IndexUpdateQueueHandler
 {
     public function __construct(
-        private readonly IndexQueueServiceInterface $indexQueueService,
-        private readonly IndexQueueRepository $indexQueueRepository,
+        private IndexQueueServiceInterface $indexQueueService,
+        private IndexQueueRepository $indexQueueRepository,
     ) {
     }
 

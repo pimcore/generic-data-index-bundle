@@ -21,10 +21,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\QueryServiceInterfac
 /**
  * @internal
  */
-final class WorkspaceQueryHandler
+final readonly class WorkspaceQueryHandler
 {
     public function __construct(
-        private readonly QueryServiceInterface $workspaceQueryService
+        private QueryServiceInterface $workspaceQueryService
     ) {
     }
 

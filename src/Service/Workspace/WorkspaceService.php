@@ -25,10 +25,10 @@ use Pimcore\Model\User\Workspace;
 /**
  * @internal
  */
-final class WorkspaceService implements WorkspaceServiceInterface
+final readonly class WorkspaceService implements WorkspaceServiceInterface
 {
     public function __construct(
-        private readonly UserResolverInterface $userResolver
+        private UserResolverInterface $userResolver
     ) {
     }
 

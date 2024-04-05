@@ -31,11 +31,11 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 /**
  * @internal
  */
-final class PermissionService implements PermissionServiceInterface
+final readonly class PermissionService implements PermissionServiceInterface
 {
     public function __construct(
-        private readonly EventDispatcherInterface $eventDispatcher,
-        private readonly WorkspaceServiceInterface $workspaceService,
+        private EventDispatcherInterface $eventDispatcher,
+        private WorkspaceServiceInterface $workspaceService,
     ) {
     }
 

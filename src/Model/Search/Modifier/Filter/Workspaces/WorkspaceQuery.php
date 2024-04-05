@@ -17,12 +17,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 use Pimcore\Model\User;
 
-final class WorkspaceQuery implements SearchModifierInterface
+final readonly class WorkspaceQuery implements SearchModifierInterface
 {
     public function __construct(
-        private readonly string $workspaceType,
-        private readonly ?User $user = null,
-        private readonly ?string $permission = null
+        private string $workspaceType,
+        private ?User $user = null,
+        private ?string $permission = null
     ) {
     }
 

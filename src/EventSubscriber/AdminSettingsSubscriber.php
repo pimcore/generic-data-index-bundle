@@ -23,11 +23,11 @@ use Symfony\Component\EventDispatcher\GenericEvent;
 /**
  * @internal
  */
-final class AdminSettingsSubscriber implements EventSubscriberInterface
+final readonly class AdminSettingsSubscriber implements EventSubscriberInterface
 {
     public function __construct(
-        private readonly IndexUpdateServiceInterface $indexUpdateService,
-        private readonly LanguageServiceInterface $languageService
+        private IndexUpdateServiceInterface $indexUpdateService,
+        private LanguageServiceInterface $languageService
     ) {
     }
 

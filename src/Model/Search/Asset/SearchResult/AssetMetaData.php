@@ -13,12 +13,12 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult;
 
-final class AssetMetaData
+final readonly class AssetMetaData
 {
     public function __construct(
-        private readonly string $name,
-        private readonly ?string $language,
-        private readonly mixed $data,
+        private string $name,
+        private ?string $language,
+        private mixed $data,
     ) {
     }
 
