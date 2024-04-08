@@ -108,3 +108,15 @@ If an index was already created before setting this parameter, the index needs t
 ```
 bin/console generic-data-index:update:index -r
 ```
+
+## Deployment and Index Management
+
+### Pimcore Class Definitions
+
+After every class definition update you should run the following command to update the index structure:
+
+```
+php bin/console generic-data-index:deployment:reindex
+```
+
+This command will update the index structure for all data object classes which were created/updated since the last deployment and reindex all data objects for relevant classes.

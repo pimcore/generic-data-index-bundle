@@ -23,9 +23,17 @@ interface IndexHandlerInterface
     /**
      * @throws Exception
      */
-    public function updateMapping(mixed $context = null, bool $forceCreateIndex = false): void;
+    public function updateMapping(
+        mixed $context = null,
+        bool $forceCreateIndex = false,
+        ?array $mappingProperties = null
+    ): void;
 
     public function deleteIndex(mixed $context): void;
 
     public function getCurrentFullIndexName(mixed $context = null): string;
+
+    public function getClassMappingCheckSum(array $properties): int;
+
+    public function getMappingProperties(mixed $context): array;
 }

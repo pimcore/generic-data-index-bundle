@@ -16,7 +16,9 @@ use OpenSearch\Common\Exceptions\Missing404Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Db;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Tests\Support\Util\TestHelper;
 
@@ -156,6 +158,35 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->assertEquals(20, $searchResult->getPagination()->getPageSize());
         $this->assertCount(1, $searchResult->getItems());
         $this->assertIdArrayEquals([$object->getId()], $searchResult->getIds());
+    }
+
+    public function testSettingsStoreMapping()
+    {
+        /** @var SettingsStoreServiceInterface $searchProvider */
+        $settingsStoreService = $this->tester->grabService(SettingsStoreServiceInterface::class);
+        $object = TestHelper::createEmptyObject();
+        $class = $object->getClass();
+        $classId = $class->getId();
+        $checkSum = 123;
+
+        $settingsStoreService->storeClassMapping($classId, $checkSum);
+        $this->assertEquals($checkSum, $settingsStoreService->getClassMappingCheckSum($classId));
+
+        $settingsStoreService->removeClassMapping($classId);
+        $this->assertNull($settingsStoreService->getClassMappingCheckSum($classId));
+
+        $class->save();
+        $checkSum = $settingsStoreService->getClassMappingCheckSum($classId);
+        $this->assertNotNull($checkSum);
+
+        $class->save();
+        $this->assertEquals($checkSum, $settingsStoreService->getClassMappingCheckSum($classId));
+
+        $input = new Input();
+        $input->setName('settingsTest');
+        $class->addFieldDefinition('settingsTest', $input);
+        $class->save();
+        $this->assertNotEquals($checkSum, $settingsStoreService->getClassMappingCheckSum($classId));
     }
 
     private function assertIdArrayEquals(array $ids1, array $ids2)

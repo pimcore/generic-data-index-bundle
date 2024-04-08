@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\Enqueue
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DocumentIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\ClassDefinition\Listing;
 
@@ -33,6 +34,7 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
         private readonly DocumentIndexHandler $documentIndexHandler,
         private readonly DataObjectIndexHandler $dataObjectIndexHandler,
         private readonly EnqueueServiceInterface $enqueueService,
+        private readonly SettingsStoreServiceInterface $settingsStoreService,
     ) {
 
     }
@@ -72,12 +74,20 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
                 ->deleteIndex($classDefinition);
         }
 
+        $mappingProperties = $this->dataObjectIndexHandler->getMappingProperties($classDefinition);
+
         $this
             ->dataObjectIndexHandler
             ->updateMapping(
                 context: $classDefinition,
-                forceCreateIndex: $this->reCreateIndex
+                forceCreateIndex: $this->reCreateIndex,
+                mappingProperties: $mappingProperties
             );
+
+        $this->settingsStoreService->storeClassMapping(
+            classDefinitionId: $classDefinition->getId(),
+            data: $this->dataObjectIndexHandler->getClassMappingCheckSum($mappingProperties)
+        );
 
         //add dataObjects to update queue
         $this
