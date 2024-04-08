@@ -147,12 +147,12 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         /** @var SearchProviderInterface $searchProvider */
         $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
 
-        $assetSearch = $searchProvider
+        $dataObjectSearch = $searchProvider
             ->createDataObjectSearch()
             ->setPageSize(20)
         ;
 
-        $searchResult = $searchService->search($assetSearch);
+        $searchResult = $searchService->search($dataObjectSearch);
 
         $this->assertEquals(1, $searchResult->getPagination()->getTotalItems());
         $this->assertEquals(20, $searchResult->getPagination()->getPageSize());
