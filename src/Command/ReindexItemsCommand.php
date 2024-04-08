@@ -59,8 +59,7 @@ final class ReindexItemsCommand extends AbstractCommand
         }
 
         try {
-            $this->reindexService->reindexAll();
-            $this->enqueueService->dispatchQueueMessages(true);
+            $this->reindexService->reindexAllIndices();
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
         } finally {

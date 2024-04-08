@@ -53,10 +53,23 @@ final readonly class ReindexService implements ReindexServiceInterface
     /**
      * @throws Exception
      */
-    public function reindexClassDefinitions(): ReindexService
+    public function reindexAllIndices(): ReindexService
+    {
+        $this
+            ->reindexClassDefinitions(false)
+            ->reindexAssets(false)
+            ->reindexDocuments(false);
+
+        return $this;
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function reindexClassDefinitions(bool $enqueueElements = true): ReindexService
     {
         foreach ((new Listing())->load() as $classDefinition) {
-            $this->reindexClassDefinition($classDefinition);
+            $this->reindexClassDefinition($classDefinition, $enqueueElements);
         }
 
         return $this;
@@ -65,7 +78,10 @@ final readonly class ReindexService implements ReindexServiceInterface
     /**
      * @throws Exception
      */
-    public function reindexClassDefinition(ClassDefinition $classDefinition): ReindexService
+    public function reindexClassDefinition(
+        ClassDefinition $classDefinition,
+        bool $enqueueElements = true
+    ): ReindexService
     {
         $mappingProperties = $this->dataObjectIndexHandler->getMappingProperties($classDefinition);
 
@@ -81,10 +97,11 @@ final readonly class ReindexService implements ReindexServiceInterface
             data: $this->dataObjectIndexHandler->getClassMappingCheckSum($mappingProperties)
         );
 
-        //add dataObjects to update queue
-        $this
-            ->enqueueService
-            ->enqueueByClassDefinition($classDefinition);
+        if ($enqueueElements) {
+            $this
+                ->enqueueService
+                ->enqueueByClassDefinition($classDefinition);
+        }
 
         return $this;
     }
@@ -92,14 +109,15 @@ final readonly class ReindexService implements ReindexServiceInterface
     /**
      * @throws Exception
      */
-    public function reindexAssets(): ReindexService
+    public function reindexAssets(bool $enqueueElements = true): ReindexService
     {
         $this->assetIndexHandler->reindexMapping();
 
-        //add assets to update queue
-        $this
-            ->enqueueService
-            ->enqueueAssets();
+        if ($enqueueElements) {
+            $this
+                ->enqueueService
+                ->enqueueAssets();
+        }
 
         return $this;
     }
@@ -107,14 +125,15 @@ final readonly class ReindexService implements ReindexServiceInterface
     /**
      * @throws Exception
      */
-    public function reindexDocuments(): ReindexService
+    public function reindexDocuments(bool $enqueueElements = true): ReindexService
     {
         $this->documentIndexHandler->reindexMapping();
 
-        //add documents to update queue
-        $this
-            ->enqueueService
-            ->enqueueDocuments();
+        if ($enqueueElements) {
+            $this
+                ->enqueueService
+                ->enqueueDocuments();
+        }
 
         return $this;
     }

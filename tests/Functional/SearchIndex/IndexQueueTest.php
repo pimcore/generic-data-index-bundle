@@ -91,8 +91,6 @@ class IndexQueueTest extends \Codeception\Test\Unit
 
     public function testAssetSaveNotEnqueued(): void
     {
-        $this->tester->clearQueue();
-
         /**
          * @var SearchIndexConfigServiceInterface $searchIndexConfigService
          */

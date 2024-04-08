@@ -22,11 +22,16 @@ interface ReindexServiceInterface
 {
     public function reindexAll(): ReindexServiceInterface;
 
-    public function reindexClassDefinitions(): ReindexServiceInterface;
+    public function reindexAllIndices(): ReindexServiceInterface;
 
-    public function reindexClassDefinition(ClassDefinition $classDefinition): ReindexServiceInterface;
+    public function reindexClassDefinitions(bool $enqueueElements = true): ReindexServiceInterface;
 
-    public function reindexAssets(): ReindexServiceInterface;
+    public function reindexClassDefinition(
+        ClassDefinition $classDefinition,
+        bool $enqueueElements = true
+    ): ReindexService;
 
-    public function reindexDocuments(): ReindexServiceInterface;
+    public function reindexAssets(bool $enqueueElements = true): ReindexServiceInterface;
+
+    public function reindexDocuments(bool $enqueueElements = true): ReindexServiceInterface;
 }
