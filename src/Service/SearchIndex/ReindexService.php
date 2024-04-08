@@ -81,8 +81,7 @@ final readonly class ReindexService implements ReindexServiceInterface
     public function reindexClassDefinition(
         ClassDefinition $classDefinition,
         bool $enqueueElements = true
-    ): ReindexService
-    {
+    ): ReindexService {
         $mappingProperties = $this->dataObjectIndexHandler->getMappingProperties($classDefinition);
 
         $this
