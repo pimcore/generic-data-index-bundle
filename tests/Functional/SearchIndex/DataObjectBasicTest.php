@@ -18,9 +18,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPro
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Db;
-use Pimcore\Model\DataObject\MappingTest;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
 use Pimcore\Model\DataObject\Concrete;
+use Pimcore\Model\DataObject\MappingTest;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 class DataObjectBasicTest extends \Codeception\Test\Unit
