@@ -40,7 +40,7 @@ final class UpdateClassMappingHandler
     {
         $classDefinition = $message->getClassDefinition();
         $dispatch = $message->isDispatchQueueMessages();
-        
+
         try {
             $mappingProperties = $this->dataObjectMappingHandler->getMappingProperties($classDefinition);
             $currentCheckSum = $this->dataObjectMappingHandler->getClassMappingCheckSum($mappingProperties);
