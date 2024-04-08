@@ -15,7 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Command;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
 use Pimcore\Console\AbstractCommand;
 use Symfony\Component\Console\Command\LockableTrait;
@@ -30,7 +29,6 @@ final class ReindexItemsCommand extends AbstractCommand
     use LockableTrait;
 
     public function __construct(
-        private readonly EnqueueServiceInterface $enqueueService,
         private readonly ReindexServiceInterface $reindexService,
         string $name = null
     ) {

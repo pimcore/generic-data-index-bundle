@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPro
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Db;
+use Pimcore\Model\DataObject\MappingTest;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Tests\Support\Util\TestHelper;
@@ -164,7 +165,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
     {
         /** @var SettingsStoreServiceInterface $searchProvider */
         $settingsStoreService = $this->tester->grabService(SettingsStoreServiceInterface::class);
-        $object = TestHelper::createEmptyObject();
+        $object = TestHelper::createEmptyObject('', true, true, MappingTest::class);
         $class = $object->getClass();
         $classId = $class->getId();
         $checkSum = 123;
@@ -194,7 +195,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
 
     public function testClassDefinitionMapping(): void
     {
-        $object = TestHelper::createEmptyObject();
+        $object = TestHelper::createEmptyObject('', true, true, MappingTest::class);
         $index = $this->searchIndexConfigService->getIndexName($object->getClassName());
         $class = $object->getClass();
         $originalFields = $class->getFieldDefinitions();
