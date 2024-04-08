@@ -16,7 +16,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateClassMappingMessage;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -38,7 +37,6 @@ final class ClassDefinitionIndexSubscriber implements EventSubscriberInterface
     public function __construct(
         private readonly Installer $installer,
         private readonly DataObjectIndexHandler $dataObjectMappingHandler,
-        private readonly EnqueueServiceInterface $enqueueService,
         private readonly MessageBusInterface $messageBus,
         private readonly SettingsStoreServiceInterface $settingsStoreService,
     ) {

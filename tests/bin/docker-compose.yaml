@@ -31,7 +31,7 @@ services:
     php:
         #user: '1000:1000' # set to your uid:gid
         #        image: pimcore/pimcore:PHP8.1-fpm-debug
-        image: pimcore/pimcore:PHP8.1-fpm
+        image: pimcore/pimcore:PHP8.2-fpm
         environment:
             PHP_IDE_CONFIG: "serverName=localhost"
             COMPOSER_HOME: /var/www/html
