@@ -6,6 +6,3 @@ services:
 
   Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceServiceInterface:
     class: Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceService
-
-  Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\QueryServiceInterface:
-    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\QueryService

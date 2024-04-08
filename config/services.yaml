@@ -36,6 +36,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreService
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\PathServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\PathService
+
     Pimcore\Bundle\GenericDataIndexBundle\Scheduler\GenericDataIndexScheduleProvider: ~
     Pimcore\Bundle\GenericDataIndexBundle\Installer:
         public: true
