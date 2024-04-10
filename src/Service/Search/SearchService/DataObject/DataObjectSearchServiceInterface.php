@@ -26,7 +26,7 @@ interface DataObjectSearchServiceInterface
     /**
      * @throws DataObjectSearchException
      */
-    public function search(SearchInterface|DataObjectSearchInterface $dataObjectSearch): DataObjectSearchResult;
+    public function search(DataObjectSearchInterface $dataObjectSearch): DataObjectSearchResult;
 
     /**
      * @throws Exception
