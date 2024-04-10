@@ -25,8 +25,10 @@ final class DataObjectSearch extends BaseSearch implements DataObjectSearchInter
         return $this->classDefinition;
     }
 
-    public function setClassDefinition(ClassDefinition $classDefinition): void
+    public function setClassDefinition(ClassDefinition $classDefinition): self
     {
         $this->classDefinition = $classDefinition;
+
+        return $this;
     }
 }

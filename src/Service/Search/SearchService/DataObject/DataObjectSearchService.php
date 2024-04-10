@@ -19,7 +19,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
@@ -46,18 +45,18 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
     /**
      * @throws DataObjectSearchException
      */
-    public function search(SearchInterface|DataObjectSearchInterface $dataObjectSearch): DataObjectSearchResult
+    public function search(DataObjectSearchInterface $dataObjectSearch): DataObjectSearchResult
     {
         $indexContext = $dataObjectSearch->getClassDefinition() ?: DataObjectIndexHandler::DATA_OBJECT_INDEX_ALIAS;
 
-        $dataObjectSearch = $this->searchHelper->addSearchRestrictions(
+        $search = $this->searchHelper->addSearchRestrictions(
             search: $dataObjectSearch,
             userPermission: UserPermissionTypes::OBJECTS->value,
             workspaceType: DataObjectWorkspace::WORKSPACE_TYPE
         );
 
         $searchResult = $this->searchHelper->performSearch(
-            search: $dataObjectSearch,
+            search: $search,
             indexName: $this->dataObjectTypeAdapter->getAliasIndexName($indexContext)
         );
 

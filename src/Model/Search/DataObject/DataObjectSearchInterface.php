@@ -13,11 +13,12 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 
-interface DataObjectSearchInterface
+interface DataObjectSearchInterface extends SearchInterface
 {
     public function getClassDefinition(): ?ClassDefinition;
 
-    public function setClassDefinition(ClassDefinition $classDefinition): void;
+    public function setClassDefinition(ClassDefinition $classDefinition): DataObjectSearchInterface;
 }
