@@ -20,5 +20,5 @@ interface DataObjectSearchInterface extends SearchInterface
 {
     public function getClassDefinition(): ?ClassDefinition;
 
-    public function setClassDefinition(ClassDefinition $classDefinition): void;
+    public function setClassDefinition(ClassDefinition $classDefinition): DataObjectSearchInterface;
 }

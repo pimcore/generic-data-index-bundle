@@ -23,13 +23,14 @@ public function searchAction(SearchProviderInterface $searchProvider)
 
 ## Data Object Search Service
 
-- Example: This example loads all data objects from the root folder (parent ID 1) and orders them by their full path.
+- Example: This example loads all data objects from the root folder (parent ID 1) with a specific class definition and orders them by their full path.
 ```php
 public function searchAction(SearchProviderInterface $searchProvider)
 {
     $assetSearch = $searchProvider->createDataObjectSearch()
                 ->addModifier(new ParentIdFilter(1))
                 ->addModifier(new OrderByFullPath())
+                ->setClassDefinition($carClassDefinition)
                 ->setPageSize(50)
                 ->setPage(1);
 }

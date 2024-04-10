@@ -35,10 +35,11 @@ final class DataObjectSearchTest extends Unit
         $classDefinition->setName('testClassDefinition');
 
         $dataObjectSearch = new DataObjectSearch();
-        $dataObjectSearch->addModifier($searchModifierMock1);
-        $dataObjectSearch->addModifier($searchModifierMock2);
-        $dataObjectSearch->setUser($user);
-        $dataObjectSearch->setClassDefinition($classDefinition);
+        $dataObjectSearch
+            ->addModifier($searchModifierMock1)
+            ->addModifier($searchModifierMock2)
+            ->setClassDefinition($classDefinition)
+            ->setUser($user);
 
         $this->assertCount(2, $dataObjectSearch->getModifiers());
         $this->assertSame([
