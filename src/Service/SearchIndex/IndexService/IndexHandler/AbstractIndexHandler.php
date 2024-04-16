@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingService
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 abstract class AbstractIndexHandler implements IndexHandlerInterface
@@ -50,11 +51,21 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         } catch (Exception $e) {
             $this->logger->info($e);
             //try recreating index
-            $this->searchIndexService->reindex(
-                $aliasName,
-                $mappingProperties ?: $this->extractMappingProperties($context)
-            );
+            $this->reindexMapping($context, $mappingProperties);
         }
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function reindexMapping(
+        ?ClassDefinition $context = null,
+        ?array $mappingProperties = null
+    ): void {
+        $this->searchIndexService->reindex(
+            $this->getAliasIndexName($context),
+            $mappingProperties ?: $this->extractMappingProperties($context)
+        );
     }
 
     public function deleteIndex(mixed $context = null): void

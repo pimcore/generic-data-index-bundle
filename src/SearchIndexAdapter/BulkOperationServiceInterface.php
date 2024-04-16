@@ -20,7 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\BulkOperationException;
  */
 interface BulkOperationServiceInterface
 {
-    public function addUpdate(
+    public function add(
         string $indexName,
         int $id,
         array $indexData,

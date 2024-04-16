@@ -10,6 +10,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexService
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueService
 

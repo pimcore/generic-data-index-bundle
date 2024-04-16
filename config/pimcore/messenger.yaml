@@ -10,6 +10,7 @@ framework:
             Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage: pimcore_generic_data_index_queue
             Pimcore\Bundle\GenericDataIndexBundle\Message\DispatchQueueMessagesMessage: pimcore_generic_data_index_queue
             Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateLanguageSettingsMessage: pimcore_generic_data_index_queue
+            Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateClassMappingMessage: pimcore_generic_data_index_queue
         buses:
             messenger.bus.pimcore-generic-data-index:
                 middleware:

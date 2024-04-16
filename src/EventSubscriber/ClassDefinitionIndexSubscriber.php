@@ -15,14 +15,16 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateClassMappingMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Event\DataObjectClassDefinitionEvents;
 use Pimcore\Event\Model\DataObject\ClassDefinitionEvent;
-use Pimcore\Model\DataObject\ClassDefinition;
+use Pimcore\Helper\StopMessengerWorkersTrait;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\DelayStamp;
 
 /**
  * @internal
@@ -30,11 +32,12 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 final class ClassDefinitionIndexSubscriber implements EventSubscriberInterface
 {
     use LoggerAwareTrait;
+    use StopMessengerWorkersTrait;
 
     public function __construct(
         private readonly Installer $installer,
         private readonly DataObjectIndexHandler $dataObjectMappingHandler,
-        private readonly EnqueueServiceInterface $enqueueService,
+        private readonly MessageBusInterface $messageBus,
         private readonly SettingsStoreServiceInterface $settingsStoreService,
     ) {
     }
@@ -53,12 +56,8 @@ final class ClassDefinitionIndexSubscriber implements EventSubscriberInterface
      */
     public function addClassDefinitionMapping(ClassDefinitionEvent $event): void
     {
-        if (!$this->installer->isInstalled()) {
-            return;
-        }
 
-        $classDefinition = $event->getClassDefinition();
-        $this->updateClassMapping($classDefinition);
+        $this->handleMappingUpdate($event, false);
     }
 
     /**
@@ -66,18 +65,7 @@ final class ClassDefinitionIndexSubscriber implements EventSubscriberInterface
      */
     public function updateClassDefinitionMapping(ClassDefinitionEvent $event): void
     {
-        if (!$this->installer->isInstalled()) {
-            return;
-        }
-
-        $classDefinition = $event->getClassDefinition();
-        $mappingUpdated = $this->updateClassMapping($classDefinition);
-
-        if ($mappingUpdated) {
-            $this->enqueueService
-                ->enqueueByClassDefinition($classDefinition)
-                ->dispatchQueueMessages();
-        }
+        $this->handleMappingUpdate($event, true);
     }
 
     public function deleteClassDefinitionIndex(ClassDefinitionEvent $event): void
@@ -104,30 +92,21 @@ final class ClassDefinitionIndexSubscriber implements EventSubscriberInterface
     /**
      * @throws Exception
      */
-    private function updateClassMapping(ClassDefinition $classDefinition): bool
+    private function handleMappingUpdate(ClassDefinitionEvent $event, bool $dispatch): void
     {
-        $mappingProperties = $this->dataObjectMappingHandler->getMappingProperties($classDefinition);
-        $currentCheckSum = $this->dataObjectMappingHandler->getClassMappingCheckSum($mappingProperties);
-        $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
-
-        if ($storedCheckSum === $currentCheckSum) {
-            return false;
+        if (!$this->installer->isInstalled()) {
+            return;
         }
 
-        $this->dataObjectMappingHandler
-            ->updateMapping(
-                context: $classDefinition,
-                forceCreateIndex: true,
-                mappingProperties: $mappingProperties
-            );
+        $this->stopMessengerWorkers();
+        $classDefinition = $event->getClassDefinition();
 
-        $this->settingsStoreService->storeClassMapping(
-            classDefinitionId: $classDefinition->getId(),
-            data: $this->dataObjectMappingHandler->getClassMappingCheckSum(
-                $mappingProperties
-            )
+        $this->messageBus->dispatch(
+            new UpdateClassMappingMessage(
+                classDefinition: $classDefinition,
+                dispatchQueueMessages: $dispatch
+            ),
+            [new DelayStamp(2000)]
         );
-
-        return true;
     }
 }

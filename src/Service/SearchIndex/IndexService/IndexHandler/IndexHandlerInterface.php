@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
 use Exception;
+use Pimcore\Model\DataObject\ClassDefinition;
 
 /**
  * @internal
@@ -26,6 +27,11 @@ interface IndexHandlerInterface
     public function updateMapping(
         mixed $context = null,
         bool $forceCreateIndex = false,
+        ?array $mappingProperties = null
+    ): void;
+
+    public function reindexMapping(
+        ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): void;
 

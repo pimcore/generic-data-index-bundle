@@ -32,6 +32,7 @@ class Index extends Model
         $this->setupPimcoreClass_Unittest();
         $this->setupObjectbrick_UnittestBrick();
         $this->setupPimcoreClass_Simple();
+        $this->setupPimcoreClass_Simple('mappingTest');
     }
 
     /**

@@ -16,8 +16,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\MessageHandler;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateLanguageSettingsMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -30,9 +30,9 @@ final class UpdateLanguageSettingsHandler
     use LoggerAwareTrait;
 
     public function __construct(
-        private readonly IndexUpdateServiceInterface $indexUpdateService,
+        private readonly EnqueueServiceInterface $enqueueService,
         private readonly LanguageServiceInterface $languageService,
-        private readonly EnqueueServiceInterface $enqueueService
+        private readonly ReindexServiceInterface $reindexService
     ) {
     }
 
@@ -61,8 +61,7 @@ final class UpdateLanguageSettingsHandler
      */
     private function handleIndexUpdate(
     ): void {
-        $this->indexUpdateService->setReCreateIndex(true);
-        $this->indexUpdateService->updateAll();
+        $this->reindexService->reindexAll();
         $this->enqueueService->dispatchQueueMessages(true);
     }
 }

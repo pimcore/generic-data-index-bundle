@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Db;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
 use Pimcore\Model\DataObject\Concrete;
+use Pimcore\Model\DataObject\MappingTest;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 class DataObjectBasicTest extends \Codeception\Test\Unit
@@ -147,12 +148,12 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         /** @var SearchProviderInterface $searchProvider */
         $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
 
-        $assetSearch = $searchProvider
+        $dataObjectSearch = $searchProvider
             ->createDataObjectSearch()
             ->setPageSize(20)
         ;
 
-        $searchResult = $searchService->search($assetSearch);
+        $searchResult = $searchService->search($dataObjectSearch);
 
         $this->assertEquals(1, $searchResult->getPagination()->getTotalItems());
         $this->assertEquals(20, $searchResult->getPagination()->getPageSize());
@@ -164,7 +165,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
     {
         /** @var SettingsStoreServiceInterface $searchProvider */
         $settingsStoreService = $this->tester->grabService(SettingsStoreServiceInterface::class);
-        $object = TestHelper::createEmptyObject();
+        $object = TestHelper::createEmptyObject('', true, true, MappingTest::class);
         $class = $object->getClass();
         $classId = $class->getId();
         $checkSum = 123;
@@ -176,17 +177,48 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->assertNull($settingsStoreService->getClassMappingCheckSum($classId));
 
         $class->save();
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
         $checkSum = $settingsStoreService->getClassMappingCheckSum($classId);
         $this->assertNotNull($checkSum);
 
         $class->save();
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
         $this->assertEquals($checkSum, $settingsStoreService->getClassMappingCheckSum($classId));
 
         $input = new Input();
         $input->setName('settingsTest');
         $class->addFieldDefinition('settingsTest', $input);
         $class->save();
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
         $this->assertNotEquals($checkSum, $settingsStoreService->getClassMappingCheckSum($classId));
+    }
+
+    public function testClassDefinitionMapping(): void
+    {
+        $object = TestHelper::createEmptyObject('', true, true, MappingTest::class);
+        $index = $this->searchIndexConfigService->getIndexName($object->getClassName());
+        $class = $object->getClass();
+        $originalFields = $class->getFieldDefinitions();
+
+        $input = new Input();
+        $input->setName('mappingTest');
+        $class->addFieldDefinition('mappingTest', $input);
+        $class->save();
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+
+        $indexName = $this->tester->getIndexName($object->getClassName());
+        $mapping = $this->tester->getIndexMapping($index);
+        $standardFields = $mapping[$indexName]['mappings']['properties']['standard_fields']['properties'];
+        $this->assertArrayHasKey('mappingTest', $standardFields);
+
+        $class->setFieldDefinitions($originalFields);
+        $class->save();
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+
+        $indexName = $this->tester->getIndexName($object->getClassName());
+        $mapping = $this->tester->getIndexMapping($index);
+        $standardFields = $mapping[$indexName]['mappings']['properties']['standard_fields']['properties'];
+        $this->assertArrayNotHasKey('mappingTest', $standardFields);
     }
 
     private function assertIdArrayEquals(array $ids1, array $ids2)

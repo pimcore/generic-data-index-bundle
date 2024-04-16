@@ -205,4 +205,23 @@ class GenericDataIndex extends \Codeception\Module
             'truncate table generic_data_index_queue'
         );
     }
+
+    public function getIndexName(string $name): string
+    {
+        $searchIndexConfigService = $this->grabService(SearchIndexConfigServiceInterface::class);
+        $indexName = $searchIndexConfigService->getIndexName($name);
+        $client = $this->getIndexSearchClient();
+        $alias = $client->indices()->getAlias([
+            'name' => $indexName,
+        ]);
+
+        return array_keys($alias)[0];
+    }
+
+    public function getIndexMapping(string $indexName): array
+    {
+        $client = $this->getIndexSearchClient();
+
+        return $client->indices()->getMapping(['index' => $indexName]);
+    }
 }

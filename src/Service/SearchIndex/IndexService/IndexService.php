@@ -68,7 +68,7 @@ final class IndexService implements IndexServiceInterface
 
         if ($indexData[FieldCategory::SYSTEM_FIELDS->value][SystemField::CHECKSUM->value] !== $originalChecksum) {
 
-            $this->bulkOperationService->addUpdate(
+            $this->bulkOperationService->add(
                 $indexName,
                 $element->getId(),
                 $indexData
