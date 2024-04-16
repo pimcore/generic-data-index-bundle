@@ -290,7 +290,7 @@ final class QueryService implements QueryServiceInterface
                     ],
                 ]));
 
-            $result = $this->searchIndexService->search($search, 'pimcore_asset');
+            $result = $this->searchIndexService->search($search, $indexName);
             $buckets = $result->getAggregation('paths')?->getBuckets() ?? [];
             foreach ($buckets as $bucket) {
                 $declinedPaths[] = rtrim($bucket->getKey(), '/');
