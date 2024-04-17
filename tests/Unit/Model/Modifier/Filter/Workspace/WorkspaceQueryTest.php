@@ -29,11 +29,11 @@ final class WorkspaceQueryTest extends Unit
         $filter = new WorkspaceQuery(
             DataObjectWorkspace::WORKSPACE_TYPE,
             (new User())->setId(1),
-            PermissionTypes::VIEW->value
+            PermissionTypes::LIST->value
         );
 
         $this->assertSame('object', $filter->getWorkspaceType());
         $this->assertSame(1, $filter->getUser()->getId());
-        $this->assertSame('view', $filter->getPermission());
+        $this->assertSame('list', $filter->getPermission());
     }
 }
