@@ -99,6 +99,8 @@ pimcore_generic_data_index:
           type: integer
         tags:
           type: integer
+        parentTags:
+          type: integer
         thumbnail:
           type: keyword
         userOwner:

@@ -43,15 +43,54 @@ trait ElementNormalizerTrait
 
     private function extractTagIds(ElementInterface $element): array
     {
-        $tag = new Tag();
-        $tags = $tag->getDao()->getTagsForElement(Service::getElementType($element), $element->getId());
-
         $ids = [];
+        $tags = $this->getTagsByElement($element);
         foreach ($tags as $tag) {
             $ids[] = $tag->getId();
         }
 
         return $ids;
+    }
+
+    private function extractParentTagIds(ElementInterface $element): array
+    {
+        $ids = [];
+        $tags = $this->getTagsByElement($element);
+
+        foreach ($tags as $tag) {
+            $ids = $this->getAllTagParentsIds($tag, $ids);
+        }
+
+        return array_unique($ids);
+    }
+
+    private function getAllTagParentsIds(
+        Tag $tag,
+        array $parentTagIds
+    ): array {
+        $parentId = $tag->getParentId();
+        $parent = $tag->getParent();
+
+        if ($parent === null ||
+            $parentId === 0 ||
+            in_array($parentId, $parentTagIds, true)
+        ) {
+            return $parentTagIds;
+        }
+
+        $parentTagIds[] = $parentId;
+
+        return $this->getAllTagParentsIds($parent, $parentTagIds);
+    }
+
+    private function getTagsByElement(ElementInterface $element): array
+    {
+        $tag = new Tag();
+
+        return $tag->getDao()->getTagsForElement(
+            Service::getElementType($element), $element->getId()
+        );
+
     }
 
     private function formatTimestamp(?int $timestamp): ?string

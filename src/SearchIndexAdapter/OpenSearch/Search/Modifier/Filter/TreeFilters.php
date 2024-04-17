@@ -15,11 +15,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Se
 
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch\AsSearchModifierHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\ConditionType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\PathFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\TagFilter;
 
 /**
  * @internal
@@ -55,7 +57,7 @@ final class TreeFilters
 
             $context->getSearch()->addQuery(
                 new BoolQuery([
-                    'should' => [
+                    ConditionType::SHOULD->value => [
                         $directChildrenFilter,
                         new TermFilter(
                             field: SystemField::FULL_PATH->getPath('keyword'),
@@ -83,7 +85,7 @@ final class TreeFilters
         if (!$pathFilter->isIncludeParentItem()) {
             $context->getSearch()->addQuery(
                 new BoolQuery([
-                    'must_not' => [
+                    ConditionType::MUST_NOT->value => [
                         new TermFilter(
                             field: SystemField::FULL_PATH->getPath('keyword'),
                             term: $pathFilter->getPathWithoutTrailingSlash(),
@@ -92,5 +94,63 @@ final class TreeFilters
                 ])
             );
         }
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleTagFilter(TagFilter $tagFilter, SearchModifierContextInterface $context): void
+    {
+        $tagIds = $tagFilter->getTagIds();
+
+        $boolQuery = new BoolQuery();
+
+        if (!$tagFilter->isIncludeChildTags()) {
+            foreach ($tagIds as $tagId) {
+                $boolQuery->addCondition(
+                    ConditionType::MUST->value,
+                    [
+                        new TermFilter(
+                            field: SystemField::TAGS->getPath(),
+                            term: $tagId,
+                        ),
+                    ]
+                );
+            }
+
+            $context->getSearch()->addQuery(
+                $boolQuery
+            );
+
+            return;
+        }
+
+        foreach ($tagIds as $tagId) {
+            $subQuery = new BoolQuery();
+
+            $subQuery->addCondition(
+                ConditionType::SHOULD->value,
+                [
+                    new TermFilter(
+                        field: SystemField::TAGS->getPath(),
+                        term: $tagId,
+                    ),
+                    new TermFilter(
+                        field: SystemField::PARENT_TAGS->getPath(),
+                        term: $tagId,
+                    ),
+                    ]
+            );
+
+            $boolQuery->addCondition(
+                ConditionType::MUST->value,
+                [
+                    $subQuery->toArray(true),
+                ]
+            );
+        }
+
+        $context->getSearch()->addQuery(
+            $boolQuery
+        );
+
     }
 }

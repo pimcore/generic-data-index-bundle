@@ -34,6 +34,7 @@ enum SystemField: string
     case PATH_LEVELS = 'pathLevels';
     case PATH_LEVEL = 'pathLevel';
     case TAGS = 'tags';
+    case PARENT_TAGS = 'parentTags';
     case MIME_TYPE = 'mimetype';
     case CLASS_NAME = 'className';
     case CHECKSUM = 'checksum';

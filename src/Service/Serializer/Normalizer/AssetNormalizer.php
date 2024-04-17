@@ -91,6 +91,7 @@ final class AssetNormalizer implements NormalizerInterface
             SystemField::PATH_LEVELS->value => $pathLevels,
             SystemField::PATH_LEVEL->value => count($pathLevels),
             SystemField::TAGS->value => $this->extractTagIds($asset),
+            SystemField::PARENT_TAGS->value => $this->extractParentTagIds($asset),
             SystemField::MIME_TYPE->value => $asset->getMimeType(),
             SystemField::USER_OWNER->value => $asset->getUserOwner(),
             SystemField::USER_MODIFICATION->value => $asset->getUserModification(),

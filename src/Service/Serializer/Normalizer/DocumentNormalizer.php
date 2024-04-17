@@ -88,6 +88,7 @@ final class DocumentNormalizer implements NormalizerInterface
             SystemField::PATH_LEVELS->value => $pathLevels,
             SystemField::PATH_LEVEL->value => count($pathLevels),
             SystemField::TAGS->value => $this->extractTagIds($document),
+            SystemField::PARENT_TAGS->value => $this->extractParentTagIds($document),
             SystemField::USER_OWNER->value => $document->getUserOwner(),
             SystemField::USER_MODIFICATION->value => $document->getUserModification(),
             SystemField::LOCKED->value => $document->getLocked(),
