@@ -99,6 +99,7 @@ final class DataObjectNormalizer implements NormalizerInterface
             SystemField::PATH_LEVELS->value => $pathLevels,
             SystemField::PATH_LEVEL->value => count($pathLevels),
             SystemField::TAGS->value => $this->extractTagIds($dataObject),
+            SystemField::PARENT_TAGS->value => $this->extractParentTagIds($dataObject),
             SystemField::USER_OWNER->value => $dataObject->getUserOwner(),
             SystemField::USER_MODIFICATION->value => $dataObject->getUserModification(),
             SystemField::LOCKED->value => $dataObject->getLocked(),

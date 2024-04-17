@@ -27,7 +27,7 @@ public function searchAction(SearchProviderInterface $searchProvider)
 ```php
 public function searchAction(SearchProviderInterface $searchProvider)
 {
-    $assetSearch = $searchProvider->createDataObjectSearch()
+    $dataObjectSearch = $searchProvider->createDataObjectSearch()
                 ->addModifier(new ParentIdFilter(1))
                 ->addModifier(new OrderByFullPath())
                 ->setClassDefinition($carClassDefinition)

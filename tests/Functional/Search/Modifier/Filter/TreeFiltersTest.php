@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\ExcludeFoldersFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\PathFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\TagFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Tests\Support\Util\TestHelper;
@@ -133,6 +134,61 @@ class TreeFiltersTest extends \Codeception\Test\Unit
         ;
         $searchResult = $searchService->search($assetSearch);
         $this->assertIdArrayEquals([], $searchResult->getIds());
+    }
+
+    public function testTagFilter(): void
+    {
+        $tagParent1 = TestHelper::createTag('testTag1');
+        $tagParent2 = TestHelper::createTag('testTag2');
+        $tagChild1 = TestHelper::createTag('testTagChild1', $tagParent1->getId());
+
+        $asset = TestHelper::createImageAsset();
+        $asset2 = TestHelper::createImageAsset();
+
+        TestHelper::assignTag($tagParent2, $asset);
+        TestHelper::assignTag($tagChild1, $asset);
+        TestHelper::assignTag($tagParent1, $asset2);
+
+        $asset->save();
+        $asset2->save();
+
+        /** @var AssetSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new TagFilter([$tagParent1->getId()]));
+        $searchResult = $searchService->search($assetSearch);
+
+        $this->assertCount(1, $searchResult->getIds());
+        $this->assertEquals($asset2->getId(), $searchResult->getIds()[0]);
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new TagFilter([$tagParent1->getId()], true));
+
+        $searchResult = $searchService->search($assetSearch);
+
+        $this->assertCount(2, $searchResult->getIds());
+        $this->assertIdArrayEquals([$asset->getId(), $asset2->getId()], $searchResult->getIds());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new TagFilter([$tagParent1->getId(), $tagParent2->getId()]));
+        $searchResult = $searchService->search($assetSearch);
+
+        $this->assertEmpty($searchResult->getIds());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new TagFilter([$tagParent1->getId(), $tagParent2->getId()], true));
+        $searchResult = $searchService->search($assetSearch);
+
+        // Asset has parent2 assigned directly and parent1 assigned via child
+        $this->assertCount(1, $searchResult->getIds());
+        $this->assertEquals($asset->getId(), $searchResult->getIds()[0]);
     }
 
     private function assertIdArrayEquals(array $ids1, array $ids2)
