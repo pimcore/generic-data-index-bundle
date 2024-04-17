@@ -23,8 +23,7 @@ final class TagFilter implements SearchModifierInterface
     public function __construct(
         array $tagIds,
         private readonly bool $includeChildTags = false
-    )
-    {
+    ) {
         $this->tagIds = new ArrayOfPositiveIntegers($tagIds);
     }
 
@@ -37,5 +36,4 @@ final class TagFilter implements SearchModifierInterface
     {
         return $this->includeChildTags;
     }
-
 }

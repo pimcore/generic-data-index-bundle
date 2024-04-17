@@ -123,7 +123,6 @@ final class TreeFilters
             return;
         }
 
-
         foreach ($tagIds as $tagId) {
             $subQuery = new BoolQuery();
 
@@ -139,7 +138,7 @@ final class TreeFilters
                         term: $tagId,
                     ),
                     ]
-                );
+            );
 
             $boolQuery->addCondition(
                 ConditionType::MUST->value,

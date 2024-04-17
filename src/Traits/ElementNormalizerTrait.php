@@ -67,8 +67,7 @@ trait ElementNormalizerTrait
     private function getAllTagParentsIds(
         Tag $tag,
         array $parentTagIds
-    ): array
-    {
+    ): array {
         $parentId = $tag->getParentId();
         $parent = $tag->getParent();
 
@@ -87,6 +86,7 @@ trait ElementNormalizerTrait
     private function getTagsByElement(ElementInterface $element): array
     {
         $tag = new Tag();
+
         return $tag->getDao()->getTagsForElement(
             Service::getElementType($element), $element->getId()
         );
