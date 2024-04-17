@@ -50,7 +50,7 @@ abstract class AbstractSearchHelper implements SearchHelperInterface
             $search->addModifier(new WorkspaceQuery(
                 $workspaceType,
                 $user,
-                PermissionTypes::VIEW->value
+                PermissionTypes::LIST->value
             ));
         }
 

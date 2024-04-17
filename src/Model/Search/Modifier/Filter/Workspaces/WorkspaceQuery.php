@@ -33,7 +33,7 @@ final readonly class WorkspaceQuery implements SearchModifierInterface
 
     public function getPermission(): ?string
     {
-        return $this->permission ?? PermissionTypes::VIEW->value;
+        return $this->permission ?? PermissionTypes::LIST->value;
     }
 
     public function getWorkspaceType(): string

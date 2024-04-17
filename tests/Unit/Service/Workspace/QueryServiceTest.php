@@ -77,7 +77,7 @@ final class QueryServiceTest extends Unit
         )->getWorkspaceQuery(
             AssetWorkspace::WORKSPACE_TYPE,
             $user,
-            PermissionTypes::VIEW->value
+            PermissionTypes::LIST->value
         );
 
         $this->assertEquals($this->getGenericWorkspaceQuery([$this, 'getExpectedWorkspaceQuery']), $query);
@@ -91,7 +91,7 @@ final class QueryServiceTest extends Unit
         $query = $this->getWorkspaceQueryService()->getWorkspaceQuery(
             AssetWorkspace::WORKSPACE_TYPE,
             $user,
-            PermissionTypes::VIEW->value
+            PermissionTypes::LIST->value
         );
 
         $this->assertEquals(new BoolQuery(), $query);
@@ -102,7 +102,7 @@ final class QueryServiceTest extends Unit
         $query = $this->getWorkspaceQueryService()->getWorkspaceQuery(
             AssetWorkspace::WORKSPACE_TYPE,
             null,
-            PermissionTypes::VIEW->value
+            PermissionTypes::LIST->value
         );
 
         $this->assertEquals($this->getGenericWorkspaceQuery([$this, 'getEmptyWorkspaceQuery']), $query);
@@ -123,7 +123,7 @@ final class QueryServiceTest extends Unit
         )->getWorkspaceQuery(
             AssetWorkspace::WORKSPACE_TYPE,
             null,
-            PermissionTypes::VIEW->value
+            PermissionTypes::LIST->value
         );
 
         $this->assertEquals($this->getGenericWorkspaceQuery([$this, 'getEmptyWorkspaceQuery']), $query);
