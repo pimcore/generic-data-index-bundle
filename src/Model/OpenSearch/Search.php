@@ -29,7 +29,9 @@ final class Search implements OpenSearchSearchInterface
         private readonly QueryList $queryList = new QueryList(),
         private readonly AggregationList $aggregationList = new AggregationList(),
         private FieldSortList $sortList = new FieldSortList(),
-        private bool $reverseItemOrder = false
+        private bool $reverseItemOrder = false,
+        private ?array $searchAfter = null,
+
     ) {
     }
 
@@ -119,10 +121,22 @@ final class Search implements OpenSearchSearchInterface
         return $this;
     }
 
+    public function getSearchAfter(): ?array
+    {
+        return $this->searchAfter;
+    }
+
+    public function setSearchAfter(?array $searchAfter): OpenSearchSearchInterface
+    {
+        $this->searchAfter = is_array($searchAfter) && !empty($searchAfter) ? $searchAfter : null;
+
+        return $this;
+    }
+
     public function toArray(): array
     {
         $result = [
-            'from' => $this->from,
+            'from' => $this->getSearchAfter() !== null ? null : $this->from,
             'size' => $this->size,
             '_source' => $this->source,
         ];
@@ -143,6 +157,10 @@ final class Search implements OpenSearchSearchInterface
 
         if (!$this->sortList->isEmpty()) {
             $result['sort'] = $this->sortList->toArray();
+        }
+
+        if ($this->getSearchAfter() !== null) {
+            $result['search_after'] = $this->getSearchAfter();
         }
 
         return $result;

@@ -25,6 +25,7 @@ final readonly class SearchResult
         private int $totalHits,
         private ?float $maxScore,
         private AdapterSearchInterface $search,
+        private array $response,
     ) {
     }
 
@@ -34,6 +35,11 @@ final readonly class SearchResult
     public function getHits(): array
     {
         return $this->hits;
+    }
+
+    public function getLastHit(): ?SearchResultHit
+    {
+        return $this->hits[array_key_last($this->hits)] ?? null;
     }
 
     /**
@@ -81,5 +87,10 @@ final readonly class SearchResult
     public function getSearch(): AdapterSearchInterface
     {
         return $this->search;
+    }
+
+    public function getResponse(): array
+    {
+        return $this->response;
     }
 }

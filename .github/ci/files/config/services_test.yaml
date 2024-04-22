@@ -10,3 +10,7 @@ services:
 
   test.calculatorservice:
     class: Pimcore\Tests\Support\Helper\DataType\Calculator
+
+  Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\LocateInTreeServiceInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\LocateInTreeService
+    public: true

@@ -20,6 +20,7 @@ readonly class SearchResultHit
         private string $index,
         private ?float $score,
         private array $source,
+        private ?array $sort,
     ) {
     }
 
@@ -41,5 +42,10 @@ readonly class SearchResultHit
     public function getSource(): array
     {
         return $this->source;
+    }
+
+    public function getSort(): ?array
+    {
+        return $this->sort;
     }
 }
