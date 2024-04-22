@@ -35,6 +35,7 @@ class LocateInTreeServiceTest extends \Codeception\Test\Unit
     {
         $this->tester->enableSynchronousProcessing();
     }
+
     protected function _after()
     {
         TestHelper::cleanUp();
@@ -124,7 +125,7 @@ class LocateInTreeServiceTest extends \Codeception\Test\Unit
         $folder = Folder::getById(1);
         $folder->save();
 
-        for ($i=0;$i<=50; $i++) {
+        for ($i=0; $i<=50; $i++) {
             $folderName = '/test-folder-'.str_pad($i, 3, '0', STR_PAD_LEFT);
             Service::createFolderByPath($folderName);
         }

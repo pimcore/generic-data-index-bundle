@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
@@ -21,8 +31,7 @@ final readonly class IndexNameResolver implements IndexNameResolverInterface
         private AssetTypeAdapter $assetTypeAdapter,
         private DataObjectTypeAdapter $dataObjectTypeAdapter,
         private DocumentTypeAdapter $documentTypeAdapter,
-    )
-    {
+    ) {
     }
 
     public function resolveIndexName(SearchInterface $search): string
@@ -41,5 +50,4 @@ final readonly class IndexNameResolver implements IndexNameResolverInterface
 
         throw new InvalidArgumentException('Unsupported search type: ' . get_class($search));
     }
-
 }
