@@ -34,6 +34,7 @@ class SearchResultDenormalizer implements DenormalizerInterface
             totalHits: $searchResult['hits']['total']['value'],
             maxScore: $searchResult['hits']['max_score'],
             search: $context['search'],
+            response: $searchResult,
         );
     }
 
@@ -54,7 +55,8 @@ class SearchResultDenormalizer implements DenormalizerInterface
                 id: $hit['_id'],
                 index: $hit['_index'],
                 score: $hit['_score'],
-                source: $hit['_source'],
+                source: $hit['_source'] ?? [],
+                sort: $hit['sort'] ?? null,
             );
         }
 

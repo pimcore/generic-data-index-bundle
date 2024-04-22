@@ -292,10 +292,22 @@ final class OpenSearchService implements SearchIndexServiceInterface
             ->stats(['index' => $indexName]);
     }
 
-    public function getCount(string $indexName): int
+    public function getCount(AdapterSearchInterface $search, string $indexName): int
     {
+        $body = $search->toArray();
+
+        // Remove not allowed keys
+        $body = array_diff_key($body, array_flip([
+            '_source',
+            'sort',
+            'from',
+            'size',
+            'aggs',
+        ]));
+
         $result = $this->openSearchClient->count([
             'index' => $indexName,
+            'body' => $body,
         ]);
 
         return $result['count'];

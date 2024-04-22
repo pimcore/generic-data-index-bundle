@@ -64,7 +64,7 @@ final class TreeSortHandlers
             return;
         }
 
-        $totalItems = $this->searchIndexService->getCount($pageNumberSort->getIndexName());
+        $totalItems = $this->searchIndexService->getCount($contextSearch, $pageNumberSort->getIndexName());
         if ($totalItems === 0 || $totalItems <= $this->itemsLimit) {
             return;
         }

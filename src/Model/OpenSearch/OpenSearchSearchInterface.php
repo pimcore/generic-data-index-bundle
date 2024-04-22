@@ -35,4 +35,8 @@ interface OpenSearchSearchInterface extends AdapterSearchInterface
     public function getSource(): bool|array|string|null;
 
     public function setSource(bool|array|string|null $source): AdapterSearchInterface;
+
+    public function getSearchAfter(): ?array;
+
+    public function setSearchAfter(?array $searchAfter): OpenSearchSearchInterface;
 }
