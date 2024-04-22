@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
@@ -12,6 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\Sea
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\IndexNameResolverInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+
 /**
  * @internal
  */
@@ -22,8 +33,7 @@ final readonly class LocateInTreeService implements LocateInTreeServiceInterface
         private SearchIndexServiceInterface $searchIndexService,
         private SearchIndexConfigServiceInterface $searchIndexConfigService,
         private IndexNameResolverInterface $indexNameResolver,
-    )
-    {
+    ) {
     }
 
     public function getPageNumber(SearchInterface $search, int $elementId): ?int
@@ -79,8 +89,7 @@ final readonly class LocateInTreeService implements LocateInTreeServiceInterface
         SearchInterface $search,
         int $pageSize = null,
         SearchResult $searchAfterSearchResult = null
-    ): Search
-    {
+    ): Search {
         $pageSize = $pageSize ?? $search->getPageSize();
 
         /** @var Search $openSearchSearch */
@@ -126,6 +135,7 @@ final readonly class LocateInTreeService implements LocateInTreeServiceInterface
         if ($count < 2000) {
             return min(2000, $maxResultWindow);
         }
+
         return (int) ceil($count / 4);
     }
 }
