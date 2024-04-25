@@ -156,8 +156,12 @@ final class Parser implements ParserInterface
             return $this->createSubQuery($subQueries, $field, $operatorToken, $valueToken);
         }
 
+        $operatorTokenType = $operatorToken->type;
+        if (!$operatorTokenType instanceof QueryTokenType) {
+            throw new ParsingException(QueryTokenType::class, get_debug_type($operatorTokenType));
+        }
 
-        return $this->pqlAdapter->translateOperatorToSearchQuery($operatorToken->type, $field, $valueToken->value);
+        return $this->pqlAdapter->translateOperatorToSearchQuery($operatorTokenType, $field, $valueToken->value);
     }
 
     private function createSubQuery(array &$subQueries, string $field, Token $operatorToken, Token $valueToken): ParseResultSubQuery
