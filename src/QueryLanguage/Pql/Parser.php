@@ -156,7 +156,6 @@ final class Parser implements ParserInterface
             return $this->createSubQuery($subQueries, $field, $operatorToken, $valueToken);
         }
 
-
         return $this->pqlAdapter->translateOperatorToSearchQuery($operatorToken->type, $field, $valueToken->value);
     }
 
