@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Traits\QueryObjectsToArrayTrait;
 
 final class Query implements QueryInterface
@@ -47,5 +48,25 @@ final class Query implements QueryInterface
         }
 
         return $this->getParams();
+    }
+
+    public static function createFromArray(array $array): Query
+    {
+        if (count($array) !== 1) {
+            throw new InvalidArgumentException('Invalid query array. Expected exactly one key-value pair.');
+        }
+
+        $type = array_key_first($array);
+        $params = array_values($array)[0];
+
+        if (!is_string($type)) {
+            throw new InvalidArgumentException('Invalid query array. Expected query type as key.');
+        }
+
+        if (!is_array($params)) {
+            throw new InvalidArgumentException('Invalid query array. Expected query parameters as value.');
+        }
+
+        return new self($type, $params);
     }
 }

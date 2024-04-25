@@ -35,8 +35,10 @@ final readonly class QueryLanguageHandlers
         SearchModifierContextInterface $context
     ): void {
 
-        $query = $this->queryLanguageProcessor->process($pql->getQuery());
-
-        $context->getSearch()->addQuery(new Query(array_key_first($query), array_values($query)[0]));
+        $context->getSearch()->addQuery(
+            Query::createFromArray(
+                $this->queryLanguageProcessor->process($pql->getQuery())
+            )
+        );
     }
 }
