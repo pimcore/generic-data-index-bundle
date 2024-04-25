@@ -135,10 +135,12 @@ final class Parser implements ParserInterface
         $this->advance(); // Move to operator
         $this->validateCurrentTokenNotEmpty();
 
-        if (!$this->currentToken()->isA(QueryTokenType::T_EQ, QueryTokenType::T_GT, QueryTokenType::T_LT, QueryTokenType::T_GTE, QueryTokenType::T_LTE, QueryTokenType::T_LIKE)) {
+        $operatorToken = $this->currentToken();
+
+        if ($operatorToken === null || !$operatorToken->isA(QueryTokenType::T_EQ, QueryTokenType::T_GT, QueryTokenType::T_LT, QueryTokenType::T_GTE, QueryTokenType::T_LTE, QueryTokenType::T_LIKE)) {
             throw new ParsingException('a comparison operator', '`' . ($this->currentToken()['value'] ?? 'null') . '`');
         }
-        $operatorToken = $this->currentToken();
+
         $this->advance(); // Move to value
         $this->validateCurrentTokenNotEmpty();
 
@@ -153,6 +155,7 @@ final class Parser implements ParserInterface
         if($fieldType === QueryTokenType::T_RELATION_FIELD) {
             return $this->createSubQuery($subQueries, $field, $operatorToken, $valueToken);
         }
+
 
         return $this->pqlAdapter->translateOperatorToSearchQuery($operatorToken->type, $field, $valueToken->value);
     }
