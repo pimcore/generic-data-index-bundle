@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\QueryLanguage;
 
 enum QueryTokenType: string
@@ -21,5 +31,4 @@ enum QueryTokenType: string
     case T_LPAREN = 'T_LPAREN';
     case T_RPAREN = 'T_RPAREN';
     case T_QUERY_STRING = 'T_QUERY_STRING';
-
 }

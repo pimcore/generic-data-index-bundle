@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\Pql;
 
 use Doctrine\Common\Lexer\Token;
@@ -14,8 +24,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAd
 /**
  * @internal
  */
-final class Parser implements ParserInterface {
-
+final class Parser implements ParserInterface
+{
     private int $index = 0;
 
     /** @var Token[] */
@@ -23,8 +33,7 @@ final class Parser implements ParserInterface {
 
     public function __construct(
         private readonly PqlAdapterInterface $pqlAdapter,
-    )
-    {
+    ) {
     }
 
     public function setTokens(array $tokens): void
@@ -33,18 +42,21 @@ final class Parser implements ParserInterface {
         $this->tokens = $tokens;
     }
 
-    private function currentToken(): ?Token {
+    private function currentToken(): ?Token
+    {
         return $this->tokens[$this->index] ?? null;
     }
 
-    private function advance(): void {
+    private function advance(): void
+    {
         ++$this->index;
     }
 
     /**
      * @throws ParsingException
      */
-    private function validateCurrentTokenNotEmpty(): void {
+    private function validateCurrentTokenNotEmpty(): void
+    {
         if ($this->currentToken() === null) {
             throw new ParsingException('some token', 'end of input. Seems query is truncated');
         }
@@ -53,7 +65,8 @@ final class Parser implements ParserInterface {
     /**
      * @throws ParsingException
      */
-    private function expect(QueryTokenType $expectedType): void {
+    private function expect(QueryTokenType $expectedType): void
+    {
         $this->validateCurrentTokenNotEmpty();
         $token = $this->currentToken();
         if (!$token || !$token->isA($expectedType)) {
@@ -82,6 +95,7 @@ final class Parser implements ParserInterface {
                 break;
             }
         }
+
         return $expr;
     }
 
@@ -96,6 +110,7 @@ final class Parser implements ParserInterface {
             $this->advance(); // Skip '('
             $expr = $this->parseCondition($subQueries);
             $this->expect(QueryTokenType::T_RPAREN); // Ensure ')' is present
+
             return $expr;
         } elseif($token->isA(QueryTokenType::T_QUERY_STRING)) {
             return $this->pqlAdapter->translateToQueryStringQuery($token['value']);
@@ -112,7 +127,7 @@ final class Parser implements ParserInterface {
         $this->validateCurrentTokenNotEmpty();
 
         if (!$this->currentToken() || !$this->currentToken()->isA(QueryTokenType::T_FIELDNAME, QueryTokenType::T_RELATION_FIELD)) {
-            throw new ParsingException("an field name", '`' . ($this->currentToken()['value'] ?? 'null') . '`');
+            throw new ParsingException('an field name', '`' . ($this->currentToken()['value'] ?? 'null') . '`');
         }
 
         $fieldType = $this->currentToken()['type'];
@@ -120,9 +135,8 @@ final class Parser implements ParserInterface {
         $this->advance(); // Move to operator
         $this->validateCurrentTokenNotEmpty();
 
-
         if (!$this->currentToken()->isA(QueryTokenType::T_EQ, QueryTokenType::T_GT, QueryTokenType::T_LT, QueryTokenType::T_GTE, QueryTokenType::T_LTE, QueryTokenType::T_LIKE)) {
-            throw new ParsingException("a comparison operator", '`' . ($this->currentToken()['value'] ?? 'null') . '`');
+            throw new ParsingException('a comparison operator', '`' . ($this->currentToken()['value'] ?? 'null') . '`');
         }
         $operatorToken = $this->currentToken();
         $this->advance(); // Move to value
@@ -131,7 +145,7 @@ final class Parser implements ParserInterface {
         // Adjusting expectation for the value type to include both strings and numerics
         $valueToken = $this->currentToken();
         if (!$valueToken || !in_array($valueToken['type'], [QueryTokenType::T_STRING, QueryTokenType::T_INTEGER, QueryTokenType::T_FLOAT])) {
-            throw new ParsingException("a string or numeric value", '`' . ($valueToken['value'] ?? 'null') . '`');
+            throw new ParsingException('a string or numeric value', '`' . ($valueToken['value'] ?? 'null') . '`');
         }
 
         $this->advance(); // Prepare for next
@@ -172,7 +186,8 @@ final class Parser implements ParserInterface {
     /**
      * @throws ParsingException
      */
-    public function parse(): ParseResult {
+    public function parse(): ParseResult
+    {
 
         $subQueries = [];
         $query = $this->parseCondition($subQueries);

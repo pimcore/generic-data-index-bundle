@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage;
 
 use Doctrine\Common\Lexer\Token;
@@ -15,5 +25,6 @@ interface ParserInterface
      * @param Token[] $tokens
      */
     public function setTokens(array $tokens): void;
+
     public function parse(): ParseResult;
 }
