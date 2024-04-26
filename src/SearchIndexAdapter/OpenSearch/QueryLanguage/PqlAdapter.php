@@ -32,7 +32,7 @@ final readonly class PqlAdapter implements PqlAdapterInterface
 {
     public function __construct(
         private SearchIndexConfigServiceInterface $searchIndexConfigService,
-        private FetchIdsBySearchServiceInterface  $fetchIdsBySearchService,
+        private FetchIdsBySearchServiceInterface $fetchIdsBySearchService,
     ) {
     }
 
@@ -53,7 +53,6 @@ final readonly class PqlAdapter implements PqlAdapterInterface
     {
         return ['query_string' => ['query' => $query]];
     }
-
 
     public function processSubQueries(ProcessorInterface $processor, array $subQueries): SubQueryResultList
     {
@@ -82,11 +81,10 @@ final readonly class PqlAdapter implements PqlAdapterInterface
     {
         return [
             'terms' => [
-                $subQuery->getRelationFieldPath() => $subQueryResults->getSubQueryResult($subQuery->getSubQueryId())
-            ]
+                $subQuery->getRelationFieldPath() => $subQueryResults->getSubQueryResult($subQuery->getSubQueryId()),
+            ],
         ];
     }
-
 
     private function getIndexNameFromEntityName(string $entityName): string
     {

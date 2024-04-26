@@ -25,9 +25,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAd
 final readonly class Processor implements ProcessorInterface
 {
     public function __construct(
-        private LexerInterface                    $lexer,
-        private ParserInterface                   $parser,
-        private PqlAdapterInterface               $pqlAdapter,
+        private LexerInterface $lexer,
+        private ParserInterface $parser,
+        private PqlAdapterInterface $pqlAdapter,
     ) {
     }
 
@@ -48,8 +48,8 @@ final readonly class Processor implements ProcessorInterface
         $pqlAdapter = $this->pqlAdapter;
         array_walk_recursive(
             $result,
-            static function (&$value) use($subQueryResults, $pqlAdapter) {
-                if ($value instanceof ParseResultSubQuery)  {
+            static function (&$value) use ($subQueryResults, $pqlAdapter) {
+                if ($value instanceof ParseResultSubQuery) {
                     $value = $pqlAdapter->transformSubQuery($value, $subQueryResults);
                 }
             }
@@ -57,6 +57,4 @@ final readonly class Processor implements ProcessorInterface
 
         return $result;
     }
-
-
 }
