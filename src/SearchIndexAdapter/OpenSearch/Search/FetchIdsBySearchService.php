@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
@@ -16,8 +26,7 @@ final readonly class FetchIdsBySearchService implements FetchIdsBySearchServiceI
     public function __construct(
         private SearchIndexConfigServiceInterface $searchIndexConfigService,
         private SearchIndexServiceInterface $searchIndexService,
-    )
-    {
+    ) {
     }
 
     public function fetchAllIds(OpenSearchSearchInterface $search, string $indexName, bool $sortById = true): array
@@ -46,6 +55,7 @@ final readonly class FetchIdsBySearchService implements FetchIdsBySearchServiceI
         if ($lastHit && (count($ids) === $this->getPageSize())) {
             return array_merge($ids, $this->doFetchIds($search, $indexName, $lastHit->getSort()));
         }
+
         return $ids;
     }
 
