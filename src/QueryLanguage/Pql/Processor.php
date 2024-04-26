@@ -55,12 +55,12 @@ final class Processor implements ProcessorInterface
 
         array_walk_recursive(
             $result,
-            static function (&$value) use($subQueryResults) {
-                if ($value instanceof ParseResultSubQuery)  {
+            static function (&$value) use ($subQueryResults) {
+                if ($value instanceof ParseResultSubQuery) {
                     $value = [
                         'terms' => [
-                            $value->getRelationFieldPath() => $subQueryResults[$value->getSubQueryId()] ?? []
-                        ]
+                            $value->getRelationFieldPath() => $subQueryResults[$value->getSubQueryId()] ?? [],
+                        ],
                     ];
                 }
             }
