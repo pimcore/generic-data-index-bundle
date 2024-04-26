@@ -202,10 +202,6 @@ final class Parser implements ParserInterface
         $subQueries = [];
         $query = $this->parseCondition($subQueries);
 
-        if ($query instanceof ParseResultSubQuery) {
-            $query = [$query];
-        }
-
         return new ParseResult($query, $subQueries);
     }
 }

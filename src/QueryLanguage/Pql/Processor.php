@@ -41,13 +41,17 @@ final readonly class Processor implements ProcessorInterface
             ->applyTokens($tokens)
             ->parse();
 
-        $result = $parseResult->getQuery();
+        $resultQuery = $parseResult->getQuery();
 
         $subQueryResults = $this->pqlAdapter->processSubQueries($this, $parseResult->getSubQueries());
 
+        if ($resultQuery instanceof ParseResultSubQuery) {
+            return $this->pqlAdapter->transformSubQuery($resultQuery, $subQueryResults);
+        }
+
         $pqlAdapter = $this->pqlAdapter;
         array_walk_recursive(
-            $result,
+            $resultQuery,
             static function (&$value) use ($subQueryResults, $pqlAdapter) {
                 if ($value instanceof ParseResultSubQuery) {
                     $value = $pqlAdapter->transformSubQuery($value, $subQueryResults);
@@ -55,6 +59,6 @@ final readonly class Processor implements ProcessorInterface
             }
         );
 
-        return $result;
+        return $resultQuery;
     }
 }

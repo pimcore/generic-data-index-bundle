@@ -19,12 +19,12 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage;
 final readonly class ParseResult
 {
     public function __construct(
-        private array $query,
+        private array|ParseResultSubQuery $query,
         private array $subQueries
     ) {
     }
 
-    public function getQuery(): array
+    public function getQuery(): array|ParseResultSubQuery
     {
         return $this->query;
     }
