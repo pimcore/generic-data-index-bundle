@@ -24,7 +24,7 @@ interface ParserInterface
     /**
      * @param Token[] $tokens
      */
-    public function setTokens(array $tokens): void;
+    public function applyTokens(array $tokens): ParserInterface;
 
     public function parse(): ParseResult;
 }

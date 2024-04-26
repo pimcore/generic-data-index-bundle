@@ -29,6 +29,9 @@ final readonly class ParseResult
         return $this->query;
     }
 
+    /**
+     * @return ParseResultSubQuery[]
+     */
     public function getSubQueries(): array
     {
         return $this->subQueries;

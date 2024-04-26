@@ -33,6 +33,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\LocateInTreeServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\LocateInTreeService
 
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\FetchIdsBySearchServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\FetchIdsBySearchService
+
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\IndexStatsService
 
@@ -44,3 +47,4 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\PqlAdapter
+

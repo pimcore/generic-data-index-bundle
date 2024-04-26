@@ -28,18 +28,16 @@ final class Parser implements ParserInterface
 {
     private int $index = 0;
 
-    /** @var Token[] */
-    private array $tokens = [];
-
     public function __construct(
         private readonly PqlAdapterInterface $pqlAdapter,
+        /** @var Token[] */
+        private readonly array $tokens = [],
     ) {
     }
 
-    public function setTokens(array $tokens): void
+    public function applyTokens(array $tokens): ParserInterface
     {
-        $this->index = 0;
-        $this->tokens = $tokens;
+        return new Parser($this->pqlAdapter, $tokens);
     }
 
     private function currentToken(): ?Token
@@ -177,11 +175,16 @@ final class Parser implements ParserInterface
         $targetType = array_shift($targetPathParts);
         $targetFieldname = implode('.', $targetPathParts);
 
+        $value = $valueToken->value;
+        if ($valueToken->type === QueryTokenType::T_STRING) {
+            $value = '"' . $value . '"';
+        }
+
         $subQuery = new ParseResultSubQuery(
             $subQueryId,
             $relationFieldPath,
             $targetType,
-            $targetFieldname . ' ' . $operatorToken->value . ' ' . $valueToken->value
+            $targetFieldname . ' ' . $operatorToken->value . ' ' . $value
         );
 
         $subQueries[$subQueryId] = $subQuery;
@@ -198,6 +201,10 @@ final class Parser implements ParserInterface
 
         $subQueries = [];
         $query = $this->parseCondition($subQueries);
+
+        if ($query instanceof ParseResultSubQuery) {
+            $query = [$query];
+        }
 
         return new ParseResult($query, $subQueries);
     }
