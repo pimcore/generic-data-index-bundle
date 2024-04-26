@@ -14,14 +14,28 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\QueryLanguage\QueryTokenType;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\ConditionType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuery;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\SubQueryResultList;
+use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\FetchIdsBySearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
 /**
  * @internal
  */
-final class PqlAdapter implements PqlAdapterInterface
+final readonly class PqlAdapter implements PqlAdapterInterface
 {
+    public function __construct(
+        private SearchIndexConfigServiceInterface $searchIndexConfigService,
+        private FetchIdsBySearchServiceInterface  $fetchIdsBySearchService,
+    ) {
+    }
+
     public function translateOperatorToSearchQuery(QueryTokenType $operator, string $field, mixed $value): array
     {
         return match($operator) {
@@ -38,5 +52,44 @@ final class PqlAdapter implements PqlAdapterInterface
     public function translateToQueryStringQuery(string $query): array
     {
         return ['query_string' => ['query' => $query]];
+    }
+
+
+    public function processSubQueries(ProcessorInterface $processor, array $subQueries): SubQueryResultList
+    {
+        $list = new SubQueryResultList();
+        foreach ($subQueries as $subQuery) {
+
+            $query = $processor->process($subQuery->getTargetQuery());
+
+            $search = new Search();
+            $search
+                ->addQuery(new BoolQuery([ConditionType::FILTER->value => $query]));
+
+            $list->addResult(
+                $subQuery->getSubQueryId(),
+                $this->fetchIdsBySearchService->fetchAllIds(
+                    $search,
+                    $this->getIndexNameFromEntityName($subQuery->getTargetType())
+                )
+            );
+        }
+
+        return $list;
+    }
+
+    public function transformSubQuery(ParseResultSubQuery $subQuery, SubQueryResultList $subQueryResults): array
+    {
+        return [
+            'terms' => [
+                $subQuery->getRelationFieldPath() => $subQueryResults->getSubQueryResult($subQuery->getSubQueryId())
+            ]
+        ];
+    }
+
+
+    private function getIndexNameFromEntityName(string $entityName): string
+    {
+        return $this->searchIndexConfigService->getIndexName($entityName);
     }
 }
