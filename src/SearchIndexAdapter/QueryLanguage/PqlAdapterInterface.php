@@ -33,4 +33,10 @@ interface PqlAdapterInterface
     public function processSubQueries(ProcessorInterface $processor, array $subQueries): SubQueryResultList;
 
     public function transformSubQuery(ParseResultSubQuery $subQuery, SubQueryResultList $subQueryResults): array;
+
+    /**
+     * Transforms the field name to the format/structure used in the search index.
+     * E.g. transforms "id" to "system_fields.id"
+     */
+    public function transformFieldName(string $fieldName, array $indexMapping): string;
 }

@@ -74,7 +74,7 @@ final class SearchModifierService implements SearchModifierServiceInterface
         SearchInterface $search,
         AdapterSearchInterface $adapterSearch
     ): void {
-        $context = new SearchModifierContext($adapterSearch);
+        $context = new SearchModifierContext($adapterSearch, $search);
 
         foreach ($search->getModifiers() as $modifier) {
             $this->applyModifier($modifier, $context);

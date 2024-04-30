@@ -32,12 +32,13 @@ final class Parser implements ParserInterface
         private readonly PqlAdapterInterface $pqlAdapter,
         /** @var Token[] */
         private readonly array $tokens = [],
+        private readonly array $indexMapping = [],
     ) {
     }
 
-    public function applyTokens(array $tokens): ParserInterface
+    public function apply(array $tokens, array $indexMapping): ParserInterface
     {
-        return new Parser($this->pqlAdapter, $tokens);
+        return new Parser($this->pqlAdapter, $tokens, $indexMapping);
     }
 
     private function currentToken(): ?Token
@@ -159,6 +160,7 @@ final class Parser implements ParserInterface
             throw new ParsingException(QueryTokenType::class, get_debug_type($operatorTokenType));
         }
 
+        $field = $this->pqlAdapter->transformFieldName($field, $this->indexMapping);
         return $this->pqlAdapter->translateOperatorToSearchQuery($operatorTokenType, $field, $valueToken->value);
     }
 
@@ -168,6 +170,7 @@ final class Parser implements ParserInterface
         $subQueryId = uniqid('subquery_');
         $fieldParts = explode(':', $field);
         $relationFieldPath = $fieldParts[0];
+        $relationFieldPath = $this->pqlAdapter->transformFieldName($relationFieldPath, $this->indexMapping);
 
         $targetPath = $fieldParts[1];
         $targetPathParts = explode('.', $targetPath);

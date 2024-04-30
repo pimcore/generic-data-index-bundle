@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler;
 
 use Exception;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\CompilerPassTag;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\ServiceTag;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DependencyInjection\RuntimeException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
@@ -36,7 +36,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
     public function process(ContainerBuilder $container): void
     {
         $taggedServiceIds = $container->findTaggedServiceIds(
-            CompilerPassTag::SEARCH_MODIFIER_HANDLER->value,
+            ServiceTag::SEARCH_MODIFIER_HANDLER->value,
             true
         );
 

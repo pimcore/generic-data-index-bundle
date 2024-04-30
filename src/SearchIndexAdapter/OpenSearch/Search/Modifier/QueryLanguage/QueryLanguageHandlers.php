@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifi
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\Query;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\QueryLanguage\Pql;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\IndexNameResolverInterface;
 
 /**
  * @internal
@@ -25,7 +26,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
 final readonly class QueryLanguageHandlers
 {
     public function __construct(
-        private ProcessorInterface $queryLanguageProcessor
+        private ProcessorInterface $queryLanguageProcessor,
+        private IndexNameResolverInterface $indexNameResolver,
     ) {
     }
 
@@ -35,9 +37,14 @@ final readonly class QueryLanguageHandlers
         SearchModifierContextInterface $context
     ): void {
 
+        $query = $this->queryLanguageProcessor->process(
+            $pql->getQuery(),
+            $this->indexNameResolver->resolveIndexName($context->getOriginalSearch())
+        );
+
         $context->getSearch()->addQuery(
             Query::createFromArray(
-                $this->queryLanguageProcessor->process($pql->getQuery())
+                $query
             )
         );
     }

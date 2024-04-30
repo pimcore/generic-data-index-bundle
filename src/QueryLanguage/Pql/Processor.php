@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\LexerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ParserInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 
 /**
  * @internal
@@ -28,17 +29,18 @@ final readonly class Processor implements ProcessorInterface
         private LexerInterface $lexer,
         private ParserInterface $parser,
         private PqlAdapterInterface $pqlAdapter,
+        private SearchIndexServiceInterface $searchIndexService,
     ) {
     }
 
-    public function process(string $query): array
+    public function process(string $query, string $indexName): array
     {
 
         $this->lexer->setQuery($query);
         $tokens = $this->lexer->getTokens();
 
         $parseResult = $this->parser
-            ->applyTokens($tokens)
+            ->apply($tokens, $this->searchIndexService->getMapping($indexName))
             ->parse();
 
         $resultQuery = $parseResult->getQuery();

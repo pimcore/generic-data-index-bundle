@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection;
 /**
  * @internal
  */
-enum CompilerPassTag: string
+enum ServiceTag: string
 {
     case DATA_OBJECT_SEARCH_INDEX_FIELD_DEFINITION =
     'pimcore.generic_data_index.data-object.search_index_field_definition';
@@ -26,4 +26,5 @@ enum CompilerPassTag: string
     case DATA_OBJECT_TYPE_SERIALIZATION_HANDLER = 'pimcore.generic_data_index.data_object_type_serialization_handler';
     case DOCUMENT_TYPE_SERIALIZATION_HANDLER = 'pimcore.generic_data_index.document_type_serialization_handler';
     case ASSET_MAPPING_PROVIDER = 'pimcore.generic_data_index.asset.mapping_provider';
+    case PQL_FIELD_NAME_TRANSFORMER = 'pimcore.generic_data_index.pql_field_name_transformer';
 }

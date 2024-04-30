@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle;
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch\AsSearchModifierHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\SearchModifierHandlerPass;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\ServiceLocatorPass;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\CompilerPassTag;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\ServiceTag;
 use Pimcore\Bundle\OpenSearchClientBundle\PimcoreOpenSearchClientBundle;
 use Pimcore\Bundle\StaticResolverBundle\PimcoreStaticResolverBundle;
 use Pimcore\Extension\Bundle\AbstractPimcoreBundle;
@@ -76,7 +76,7 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements
                     ? $reflector->getName()
                     : '__invoke';
 
-                $definition->addTag(CompilerPassTag::SEARCH_MODIFIER_HANDLER->value, [
+                $definition->addTag(ServiceTag::SEARCH_MODIFIER_HANDLER->value, [
                     'method' => $method,
                 ]);
             }

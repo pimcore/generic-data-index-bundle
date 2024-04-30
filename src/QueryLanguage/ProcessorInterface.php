@@ -18,5 +18,5 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage;
  */
 interface ProcessorInterface
 {
-    public function process(string $query): array;
+    public function process(string $query, string $indexName): array;
 }

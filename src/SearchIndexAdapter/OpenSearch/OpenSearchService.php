@@ -232,6 +232,10 @@ final class OpenSearchService implements SearchIndexServiceInterface
         return $this->openSearchClient->indices()->putMapping($params);
     }
 
+    public function getMapping(string $indexName): array
+    {
+        return $this->openSearchClient->indices()->getMapping(['index' => $indexName]);
+    }
     public function countByAttributeValue(string $indexName, string $attribute, string $value): int
     {
         $countResult = $this->openSearchClient->search([
