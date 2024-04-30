@@ -161,6 +161,7 @@ final class Parser implements ParserInterface
         }
 
         $field = $this->pqlAdapter->transformFieldName($field, $this->indexMapping);
+
         return $this->pqlAdapter->translateOperatorToSearchQuery($operatorTokenType, $field, $valueToken->value);
     }
 

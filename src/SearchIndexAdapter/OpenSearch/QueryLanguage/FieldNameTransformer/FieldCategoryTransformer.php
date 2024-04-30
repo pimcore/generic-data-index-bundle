@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
@@ -15,8 +25,7 @@ final readonly class FieldCategoryTransformer implements FieldNameTransformerInt
 {
     public function __construct(
         private MappingAnalyzerServiceInterface $mappingAnalyzerService
-    )
-    {
+    ) {
     }
 
     public function transformFieldName(string $fieldName, array $indexMapping): ?string
@@ -40,5 +49,4 @@ final readonly class FieldCategoryTransformer implements FieldNameTransformerInt
     {
         return false;
     }
-
 }
