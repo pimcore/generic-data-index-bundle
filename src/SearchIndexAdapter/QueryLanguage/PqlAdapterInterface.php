@@ -31,6 +31,7 @@ interface PqlAdapterInterface
 
     /**
      * @param ParseResultSubQuery[] $subQueries
+     *
      * @throws ParsingException
      */
     public function processSubQueries(ProcessorInterface $processor, array $subQueries): SubQueryResultList;

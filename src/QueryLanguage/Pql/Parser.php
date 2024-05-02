@@ -91,7 +91,7 @@ final class Parser implements ParserInterface
         $token = $this->currentToken();
         if (!$token || !$token->isA(QueryTokenType::T_RPAREN)) {
             $this->throwParsingException(
-                "token type `" . QueryTokenType::T_RPAREN->value . "`",
+                'token type `' . QueryTokenType::T_RPAREN->value . '`',
                 '`' . ($token['type']->value ?? 'null') . '`'
             );
         }
