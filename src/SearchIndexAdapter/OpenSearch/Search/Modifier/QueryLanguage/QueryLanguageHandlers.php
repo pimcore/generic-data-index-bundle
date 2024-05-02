@@ -16,7 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Se
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch\AsSearchModifierHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\Query;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\QueryLanguage\Pql;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\QueryLanguage\PqlFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\IndexNameResolverInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityServiceInterface;
@@ -34,8 +34,8 @@ final readonly class QueryLanguageHandlers
     }
 
     #[AsSearchModifierHandler]
-    public function handlePql(
-        Pql $pql,
+    public function handlePqlFilter(
+        PqlFilter                      $pql,
         SearchModifierContextInterface $context
     ): void {
 

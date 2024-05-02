@@ -15,7 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\QueryLangu
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 
-final readonly class Pql implements SearchModifierInterface
+final readonly class PqlFilter implements SearchModifierInterface
 {
     public function __construct(
         private string $query,

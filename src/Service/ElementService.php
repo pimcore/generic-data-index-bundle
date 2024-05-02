@@ -50,7 +50,7 @@ final readonly class ElementService implements ElementServiceInterface
             if ($this->connection->fetchOne('SELECT id FROM classes where name=?', [$name])) {
                 return true;
             }
-        } catch (Exception $e) {
+        } catch (Exception) {
             // do nothing
         }
 

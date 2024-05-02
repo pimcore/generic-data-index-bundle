@@ -27,6 +27,25 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAd
  */
 final class Parser implements ParserInterface
 {
+    private const FIELD_NAME_TOKENS = [
+        QueryTokenType::T_FIELDNAME,
+        QueryTokenType::T_RELATION_FIELD,
+    ];
+
+    private const OPERATOR_TOKENS = [
+        QueryTokenType::T_EQ,
+        QueryTokenType::T_GT,
+        QueryTokenType::T_LT,
+        QueryTokenType::T_GTE,
+        QueryTokenType::T_LTE,
+        QueryTokenType::T_LIKE,
+    ];
+
+    private const NUMERIC_TOKENS = [
+        QueryTokenType::T_INTEGER,
+        QueryTokenType::T_FLOAT,
+    ];
+
     private int $index = 0;
 
     public function __construct(
@@ -71,7 +90,10 @@ final class Parser implements ParserInterface
         $this->validateCurrentTokenNotEmpty();
         $token = $this->currentToken();
         if (!$token || !$token->isA($expectedType)) {
-            $this->throwParsingException("token type `{$expectedType->value}`", '`' . ($token['type']->value ?? 'null') . '`');
+            $this->throwParsingException(
+                "token type `$expectedType->value`",
+                '`' . ($token['type']->value ?? 'null') . '`'
+            );
         }
         $this->advance();
     }
@@ -87,7 +109,7 @@ final class Parser implements ParserInterface
             if ($token->isA(QueryTokenType::T_AND, QueryTokenType::T_OR)) {
                 $this->advance(); // Skip the logical operator
                 $rightExpr = $this->parseExpression($subQueries);
-                if ($token->isA(QueryTokenType::T_AND)) {
+                if ($token?->isA(QueryTokenType::T_AND)) {
                     $expr = ['bool' => ['must' => [$expr, $rightExpr]]];
                 } else {
                     $expr = ['bool' => ['should' => [$expr, $rightExpr], 'minimum_should_match' => 1]];
@@ -107,17 +129,20 @@ final class Parser implements ParserInterface
     {
         $this->validateCurrentTokenNotEmpty(); // Check before attempting to parse the expression
         $token = $this->currentToken();
-        if ($token->isA(QueryTokenType::T_LPAREN)) {
+
+        if ($token?->isA(QueryTokenType::T_LPAREN)) {
             $this->advance(); // Skip '('
             $expr = $this->parseCondition($subQueries);
             $this->expect(QueryTokenType::T_RPAREN); // Ensure ')' is present
 
             return $expr;
-        } elseif($token->isA(QueryTokenType::T_QUERY_STRING)) {
-            return $this->pqlAdapter->translateToQueryStringQuery($token['value']);
-        } else {
-            return $this->parseComparison($subQueries);
         }
+
+        if ($token?->isA(QueryTokenType::T_QUERY_STRING)) {
+            return $this->pqlAdapter->translateToQueryStringQuery($token?->value);
+        }
+
+        return $this->parseComparison($subQueries);
     }
 
     /**
@@ -127,7 +152,7 @@ final class Parser implements ParserInterface
     {
         $this->validateCurrentTokenNotEmpty();
 
-        if (!$this->currentToken() || !$this->currentToken()->isA(QueryTokenType::T_FIELDNAME, QueryTokenType::T_RELATION_FIELD)) {
+        if (!$this->currentToken() || !$this->currentToken()->isA(...self::FIELD_NAME_TOKENS)) {
             $this->throwParsingException('an field name', '`' . ($this->currentToken()['value'] ?? 'null') . '`');
         }
 
@@ -138,7 +163,7 @@ final class Parser implements ParserInterface
 
         $operatorToken = $this->currentToken();
 
-        if ($operatorToken === null || !$operatorToken->isA(QueryTokenType::T_EQ, QueryTokenType::T_GT, QueryTokenType::T_LT, QueryTokenType::T_GTE, QueryTokenType::T_LTE, QueryTokenType::T_LIKE)) {
+        if ($operatorToken === null || !$operatorToken->isA(...self::OPERATOR_TOKENS)) {
             $this->throwParsingException('a comparison operator', '`' . ($operatorToken['value'] ?? 'null') . '`');
         }
 
@@ -147,7 +172,7 @@ final class Parser implements ParserInterface
 
         // Adjusting expectation for the value type to include both strings and numerics
         $valueToken = $this->currentToken();
-        if (!$valueToken || !in_array($valueToken['type'], [QueryTokenType::T_STRING, QueryTokenType::T_INTEGER, QueryTokenType::T_FLOAT])) {
+        if (!$valueToken || !$valueToken->isA(QueryTokenType::T_STRING, ...self::NUMERIC_TOKENS)) {
             $this->throwParsingException('a string or numeric value', '`' . ($valueToken['value'] ?? 'null') . '`');
         }
 
@@ -167,13 +192,22 @@ final class Parser implements ParserInterface
         return $this->pqlAdapter->translateOperatorToSearchQuery($operatorTokenType, $field, $valueToken->value);
     }
 
-    private function createSubQuery(array &$subQueries, string $field, Token $operatorToken, Token $valueToken): ParseResultSubQuery
+    private function createSubQuery(
+        array &$subQueries,
+        string $field,
+        Token $operatorToken,
+        Token $valueToken
+    ): ParseResultSubQuery
     {
 
-        $subQueryId = uniqid('subquery_');
+        $subQueryId = uniqid('subquery_', true);
         $fieldParts = explode(':', $field);
         $relationFieldPath = $fieldParts[0];
-        $relationFieldPath = $this->pqlAdapter->transformFieldName($relationFieldPath, $this->indexEntity, $this->indexMapping);
+        $relationFieldPath = $this->pqlAdapter->transformFieldName(
+            $relationFieldPath,
+            $this->indexEntity,
+            $this->indexMapping
+        );
 
         $targetPath = $fieldParts[1];
         $targetPathParts = explode('.', $targetPath);

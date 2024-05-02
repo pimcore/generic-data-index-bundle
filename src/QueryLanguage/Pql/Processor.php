@@ -41,18 +41,9 @@ final readonly class Processor implements ProcessorInterface
         $this->lexer->setQuery($query);
         $tokens = $this->lexer->getTokens();
 
-        try {
-            $parseResult = $this->parser
-                ->apply($tokens, $indexEntity, $this->searchIndexService->getMapping($indexEntity->getIndexName()))
-                ->parse();
-        } catch (ParsingException $e) {
-            throw new ParsingException(
-                $e->getExpected(),
-                $e->getFound(),
-                $e->getToken(),
-                $e->getPosition() ?? strlen($query)
-            );
-        }
+        $parseResult = $this->parser
+            ->apply($tokens, $indexEntity, $this->searchIndexService->getMapping($indexEntity->getIndexName()))
+            ->parse();
 
         $resultQuery = $parseResult->getQuery();
 

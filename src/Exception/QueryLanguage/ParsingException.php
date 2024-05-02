@@ -14,10 +14,15 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Exception\QueryLanguage;
 
 use Doctrine\Common\Lexer\Token;
+use Exception;
 
-final class ParsingException extends \Exception
+final class ParsingException extends Exception
 {
-    public function __construct(private string $expected, private string $found, private ?Token $token, private ?int $position = null)
+    public function __construct(
+        private readonly string $expected,
+        private readonly string $found,
+        private readonly ?Token $token,
+    )
     {
         $message = sprintf('Expected %s, found %s.', $expected, $found);
 
@@ -39,8 +44,4 @@ final class ParsingException extends \Exception
         return $this->token;
     }
 
-    public function getPosition(): ?int
-    {
-        return $this->position ?? $this->token->position ?? null;
-    }
 }

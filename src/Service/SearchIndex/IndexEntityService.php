@@ -49,22 +49,17 @@ final readonly class IndexEntityService implements IndexEntityServiceInterface
     {
         $entityName = strtolower($entityName);
 
+        $indexType = null;
         if (IndexName::ASSET->value === $entityName) {
-            return IndexType::ASSET;
+            $indexType = IndexType::ASSET;
+        } elseif (IndexName::DOCUMENT->value === $entityName) {
+            $indexType = IndexType::DOCUMENT;
+        } elseif (IndexName::DATA_OBJECT->value === $entityName) {
+            $indexType = IndexType::DATA_OBJECT;
+        } elseif ($this->elementService->classDefinitionExists($entityName)) {
+            $indexType = IndexType::DATA_OBJECT;
         }
 
-        if (IndexName::DOCUMENT->value === $entityName) {
-            return IndexType::DOCUMENT;
-        }
-
-        if (IndexName::DATA_OBJECT->value === $entityName) {
-            return IndexType::DATA_OBJECT;
-        }
-
-        if($this->elementService->classDefinitionExists($entityName)) {
-            return IndexType::DATA_OBJECT;
-        }
-
-        return null;
+        return $indexType;
     }
 }
