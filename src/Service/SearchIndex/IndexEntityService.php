@@ -1,6 +1,16 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under following license:
+ * - Pimcore Commercial License (PCL)
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
@@ -16,9 +26,9 @@ final readonly class IndexEntityService implements IndexEntityServiceInterface
     public function __construct(
         private SearchIndexConfigServiceInterface $searchIndexConfigService,
         private ElementServiceInterface $elementService,
-    )
-    {
+    ) {
     }
+
     public function getByEntityName(string $entityName): IndexEntity
     {
         return new IndexEntity(

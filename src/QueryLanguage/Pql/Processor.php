@@ -50,7 +50,7 @@ final readonly class Processor implements ProcessorInterface
                 $e->getExpected(),
                 $e->getFound(),
                 $e->getToken(),
-                    $e->getPosition() ?? strlen($query)
+                $e->getPosition() ?? strlen($query)
             );
         }
 

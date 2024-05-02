@@ -28,8 +28,7 @@ final readonly class ElementService implements ElementServiceInterface
 {
     public function __construct(
         private Connection $connection,
-    )
-    {
+    ) {
     }
 
     /**
@@ -54,6 +53,7 @@ final readonly class ElementService implements ElementServiceInterface
         } catch (Exception $e) {
             // do nothing
         }
+
         return false;
     }
 }
