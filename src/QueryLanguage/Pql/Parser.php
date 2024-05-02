@@ -197,8 +197,7 @@ final class Parser implements ParserInterface
         string $field,
         Token $operatorToken,
         Token $valueToken
-    ): ParseResultSubQuery
-    {
+    ): ParseResultSubQuery {
 
         $subQueryId = uniqid('subquery_', true);
         $fieldParts = explode(':', $field);

@@ -22,8 +22,7 @@ final class ParsingException extends Exception
         private readonly string $expected,
         private readonly string $found,
         private readonly ?Token $token,
-    )
-    {
+    ) {
         $message = sprintf('Expected %s, found %s.', $expected, $found);
 
         parent::__construct($message);
@@ -43,5 +42,4 @@ final class ParsingException extends Exception
     {
         return $this->token;
     }
-
 }

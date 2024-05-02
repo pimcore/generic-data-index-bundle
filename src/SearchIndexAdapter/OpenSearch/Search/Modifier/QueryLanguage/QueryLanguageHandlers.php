@@ -35,7 +35,7 @@ final readonly class QueryLanguageHandlers
 
     #[AsSearchModifierHandler]
     public function handlePqlFilter(
-        PqlFilter                      $pql,
+        PqlFilter $pql,
         SearchModifierContextInterface $context
     ): void {
 
