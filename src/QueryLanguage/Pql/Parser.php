@@ -109,7 +109,7 @@ final class Parser implements ParserInterface
             if ($token->isA(QueryTokenType::T_AND, QueryTokenType::T_OR)) {
                 $this->advance(); // Skip the logical operator
                 $rightExpr = $this->parseExpression($subQueries);
-                if ($token?->isA(QueryTokenType::T_AND)) {
+                if ($token->isA(QueryTokenType::T_AND)) {
                     $expr = ['bool' => ['must' => [$expr, $rightExpr]]];
                 } else {
                     $expr = ['bool' => ['should' => [$expr, $rightExpr], 'minimum_should_match' => 1]];
@@ -139,7 +139,7 @@ final class Parser implements ParserInterface
         }
 
         if ($token?->isA(QueryTokenType::T_QUERY_STRING)) {
-            return $this->pqlAdapter->translateToQueryStringQuery($token?->value);
+            return $this->pqlAdapter->translateToQueryStringQuery($token->value);
         }
 
         return $this->parseComparison($subQueries);
@@ -189,6 +189,7 @@ final class Parser implements ParserInterface
 
         $field = $this->pqlAdapter->transformFieldName($field, $this->indexEntity, $this->indexMapping);
 
+        /** @var QueryTokenType $operatorTokenType */
         return $this->pqlAdapter->translateOperatorToSearchQuery($operatorTokenType, $field, $valueToken->value);
     }
 
