@@ -85,13 +85,13 @@ final class Parser implements ParserInterface
     /**
      * @throws ParsingException
      */
-    private function expect(QueryTokenType $expectedType): void
+    private function expectRightParenthesis(): void
     {
         $this->validateCurrentTokenNotEmpty();
         $token = $this->currentToken();
-        if (!$token || !$token->isA($expectedType)) {
+        if (!$token || !$token->isA(QueryTokenType::T_RPAREN)) {
             $this->throwParsingException(
-                "token type `$expectedType->value`",
+                "token type `" . QueryTokenType::T_RPAREN->value . "`",
                 '`' . ($token['type']->value ?? 'null') . '`'
             );
         }
@@ -133,7 +133,7 @@ final class Parser implements ParserInterface
         if ($token?->isA(QueryTokenType::T_LPAREN)) {
             $this->advance(); // Skip '('
             $expr = $this->parseCondition($subQueries);
-            $this->expect(QueryTokenType::T_RPAREN); // Ensure ')' is present
+            $this->expectRightParenthesis(); // Ensure ')' is present
 
             return $expr;
         }
