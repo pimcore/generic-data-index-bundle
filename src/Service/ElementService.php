@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service;
 
+use Doctrine\DBAL\Connection;
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidElementTypeException;
 use Pimcore\Model\Asset;
@@ -22,8 +24,14 @@ use Pimcore\Model\Document;
 /**
  * @internal
  */
-final class ElementService implements ElementServiceInterface
+final readonly class ElementService implements ElementServiceInterface
 {
+    public function __construct(
+        private Connection $connection,
+    )
+    {
+    }
+
     /**
      * @throws InvalidElementTypeException
      */
@@ -35,5 +43,17 @@ final class ElementService implements ElementServiceInterface
             ElementType::DOCUMENT->value => Document::getById($id),
             default => throw new InvalidElementTypeException('Invalid element type: ' . $type)
         };
+    }
+
+    public function classDefinitionExists(string $name): bool
+    {
+        try {
+            if ($this->connection->fetchOne('SELECT id FROM classes where name=?', [$name])) {
+                return true;
+            }
+        } catch (Exception $e) {
+            // do nothing
+        }
+        return false;
     }
 }

@@ -29,4 +29,6 @@ interface ElementServiceInterface
      * @throws InvalidElementTypeException
      */
     public function getElementByType(int $id, string $type): Asset|AbstractObject|Document|null;
+
+    public function classDefinitionExists(string $name): bool;
 }

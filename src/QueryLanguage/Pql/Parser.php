@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\QueryLanguage\QueryTokenType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\QueryLanguage\ParsingException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuery;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ParserInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
 
@@ -32,13 +33,14 @@ final class Parser implements ParserInterface
         private readonly PqlAdapterInterface $pqlAdapter,
         /** @var Token[] */
         private readonly array $tokens = [],
+        private readonly ?IndexEntity $indexEntity = null,
         private readonly array $indexMapping = [],
     ) {
     }
 
-    public function apply(array $tokens, array $indexMapping): ParserInterface
+    public function apply(array $tokens, IndexEntity $indexEntity, array $indexMapping): ParserInterface
     {
-        return new Parser($this->pqlAdapter, $tokens, $indexMapping);
+        return new Parser($this->pqlAdapter, $tokens, $indexEntity, $indexMapping);
     }
 
     private function currentToken(): ?Token
@@ -57,7 +59,7 @@ final class Parser implements ParserInterface
     private function validateCurrentTokenNotEmpty(): void
     {
         if ($this->currentToken() === null) {
-            throw new ParsingException('some token', 'end of input. Seems query is truncated');
+            $this->throwParsingException('some token', 'end of input. Seems query is truncated');
         }
     }
 
@@ -69,7 +71,7 @@ final class Parser implements ParserInterface
         $this->validateCurrentTokenNotEmpty();
         $token = $this->currentToken();
         if (!$token || !$token->isA($expectedType)) {
-            throw new ParsingException("token type `{$expectedType->value}`", '`' . ($token['type']->value ?? 'null') . '`');
+            $this->throwParsingException("token type `{$expectedType->value}`", '`' . ($token['type']->value ?? 'null') . '`');
         }
         $this->advance();
     }
@@ -126,7 +128,7 @@ final class Parser implements ParserInterface
         $this->validateCurrentTokenNotEmpty();
 
         if (!$this->currentToken() || !$this->currentToken()->isA(QueryTokenType::T_FIELDNAME, QueryTokenType::T_RELATION_FIELD)) {
-            throw new ParsingException('an field name', '`' . ($this->currentToken()['value'] ?? 'null') . '`');
+            $this->throwParsingException('an field name', '`' . ($this->currentToken()['value'] ?? 'null') . '`');
         }
 
         $fieldType = $this->currentToken()['type'];
@@ -137,7 +139,7 @@ final class Parser implements ParserInterface
         $operatorToken = $this->currentToken();
 
         if ($operatorToken === null || !$operatorToken->isA(QueryTokenType::T_EQ, QueryTokenType::T_GT, QueryTokenType::T_LT, QueryTokenType::T_GTE, QueryTokenType::T_LTE, QueryTokenType::T_LIKE)) {
-            throw new ParsingException('a comparison operator', '`' . ($this->currentToken()['value'] ?? 'null') . '`');
+            $this->throwParsingException('a comparison operator', '`' . ($operatorToken['value'] ?? 'null') . '`');
         }
 
         $this->advance(); // Move to value
@@ -146,7 +148,7 @@ final class Parser implements ParserInterface
         // Adjusting expectation for the value type to include both strings and numerics
         $valueToken = $this->currentToken();
         if (!$valueToken || !in_array($valueToken['type'], [QueryTokenType::T_STRING, QueryTokenType::T_INTEGER, QueryTokenType::T_FLOAT])) {
-            throw new ParsingException('a string or numeric value', '`' . ($valueToken['value'] ?? 'null') . '`');
+            $this->throwParsingException('a string or numeric value', '`' . ($valueToken['value'] ?? 'null') . '`');
         }
 
         $this->advance(); // Prepare for next
@@ -157,10 +159,10 @@ final class Parser implements ParserInterface
 
         $operatorTokenType = $operatorToken->type;
         if (!$operatorTokenType instanceof QueryTokenType) {
-            throw new ParsingException(QueryTokenType::class, get_debug_type($operatorTokenType));
+            $this->throwParsingException(QueryTokenType::class, get_debug_type($operatorTokenType));
         }
 
-        $field = $this->pqlAdapter->transformFieldName($field, $this->indexMapping);
+        $field = $this->pqlAdapter->transformFieldName($field, $this->indexEntity, $this->indexMapping);
         return $this->pqlAdapter->translateOperatorToSearchQuery($operatorTokenType, $field, $valueToken->value);
     }
 
@@ -170,7 +172,7 @@ final class Parser implements ParserInterface
         $subQueryId = uniqid('subquery_');
         $fieldParts = explode(':', $field);
         $relationFieldPath = $fieldParts[0];
-        $relationFieldPath = $this->pqlAdapter->transformFieldName($relationFieldPath, $this->indexMapping);
+        $relationFieldPath = $this->pqlAdapter->transformFieldName($relationFieldPath, $this->indexEntity, $this->indexMapping);
 
         $targetPath = $fieldParts[1];
         $targetPathParts = explode('.', $targetPath);
@@ -206,5 +208,15 @@ final class Parser implements ParserInterface
         $query = $this->parseCondition($subQueries);
 
         return new ParseResult($query, $subQueries);
+    }
+
+    /**
+     * @throws ParsingException
+     */
+    private function throwParsingException(string $expected, string $found): void
+    {
+        $token = $this->currentToken();
+
+        throw new ParsingException($expected, $found, $token);
     }
 }

@@ -26,7 +26,7 @@ final readonly class MappingAnalyzerService implements MappingAnalyzerServiceInt
         $field = $fieldPathParts[0];
         $subField = $fieldPathParts[1] ?? null;
 
-        if (array_key_exists($field, $mapping['properties'])) {
+        if (array_key_exists($field, $mapping['properties'] ?? [])) {
             return empty($subField) || $this->fieldPathExistsInMapping($subField, $mapping['properties'][$field]);
         }
 

@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage;
 
 use Doctrine\Common\Lexer\Token;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 
 /**
  * @internal
@@ -24,7 +25,7 @@ interface ParserInterface
     /**
      * @param Token[] $tokens
      */
-    public function apply(array $tokens, array $indexMapping): ParserInterface;
+    public function apply(array $tokens, IndexEntity $indexEntity, array $indexMapping): ParserInterface;
 
     public function parse(): ParseResult;
 }

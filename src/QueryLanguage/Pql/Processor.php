@@ -13,7 +13,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\Pql;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\QueryLanguage\ParsingException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuery;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\LexerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ParserInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
@@ -33,15 +35,24 @@ final readonly class Processor implements ProcessorInterface
     ) {
     }
 
-    public function process(string $query, string $indexName): array
+    public function process(string $query, IndexEntity $indexEntity): array
     {
 
         $this->lexer->setQuery($query);
         $tokens = $this->lexer->getTokens();
 
-        $parseResult = $this->parser
-            ->apply($tokens, $this->searchIndexService->getMapping($indexName))
-            ->parse();
+        try {
+            $parseResult = $this->parser
+                ->apply($tokens, $indexEntity, $this->searchIndexService->getMapping($indexEntity->getIndexName()))
+                ->parse();
+        } catch (ParsingException $e) {
+            throw new ParsingException(
+                $e->getExpected(),
+                $e->getFound(),
+                $e->getToken(),
+                    $e->getPosition() ?? strlen($query)
+            );
+        }
 
         $resultQuery = $parseResult->getQuery();
 

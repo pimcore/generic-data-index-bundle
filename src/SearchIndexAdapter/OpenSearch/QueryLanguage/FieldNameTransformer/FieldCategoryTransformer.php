@@ -4,13 +4,14 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\MappingAnalyzerServiceInterface;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /**
  * @internal
  */
-#[AsTaggedItem(index: 'field_category_transformer', priority: 0)]
+#[AsTaggedItem(index: 'field_category_transformer', priority: 10)]
 final readonly class FieldCategoryTransformer implements FieldNameTransformerInterface
 {
     public function __construct(
@@ -19,7 +20,7 @@ final readonly class FieldCategoryTransformer implements FieldNameTransformerInt
     {
     }
 
-    public function transformFieldName(string $fieldName, array $indexMapping): ?string
+    public function transformFieldName(string $fieldName, IndexEntity $indexEntity, array $indexMapping): ?string
     {
         if ($this->mappingAnalyzerService->fieldPathExists($fieldName, $indexMapping)) {
             return null;

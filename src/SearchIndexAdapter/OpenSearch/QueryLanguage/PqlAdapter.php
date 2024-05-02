@@ -21,11 +21,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\SubQueryResultList;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer\FieldNameTransformerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\FetchIdsBySearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityServiceInterface;
 use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 
 /**
@@ -34,7 +35,7 @@ use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 final readonly class PqlAdapter implements PqlAdapterInterface
 {
     public function __construct(
-        private SearchIndexConfigServiceInterface $searchIndexConfigService,
+        private IndexEntityServiceInterface $indexEntityService,
         private FetchIdsBySearchServiceInterface $fetchIdsBySearchService,
         #[TaggedIterator(ServiceTag::PQL_FIELD_NAME_TRANSFORMER->value)]
         private iterable $fieldNameTransformers,
@@ -64,7 +65,12 @@ final readonly class PqlAdapter implements PqlAdapterInterface
         $list = new SubQueryResultList();
         foreach ($subQueries as $subQuery) {
 
-            $query = $processor->process($subQuery->getTargetQuery(), $this->getIndexNameFromEntityName($subQuery->getTargetType()));
+            $indexEntity = $this->indexEntityService->getByEntityName($subQuery->getTargetType());
+
+            $query = $processor->process(
+                $subQuery->getTargetQuery(),
+                $indexEntity,
+            );
 
             $search = new Search();
             $search
@@ -74,7 +80,7 @@ final readonly class PqlAdapter implements PqlAdapterInterface
                 $subQuery->getSubQueryId(),
                 $this->fetchIdsBySearchService->fetchAllIds(
                     $search,
-                    $this->getIndexNameFromEntityName($subQuery->getTargetType())
+                    $indexEntity->getIndexName()
                 )
             );
         }
@@ -93,11 +99,11 @@ final readonly class PqlAdapter implements PqlAdapterInterface
         ];
     }
 
-    public function transformFieldName(string $fieldName, array $indexMapping): string
+    public function transformFieldName(string $fieldName, IndexEntity $indexEntity, array $indexMapping): string
     {
         /** @var FieldNameTransformerInterface $transformer */
         foreach($this->fieldNameTransformers as $transformer) {
-            if ($transformedFieldName = $transformer->transformFieldName($fieldName, $indexMapping)) {
+            if ($transformedFieldName = $transformer->transformFieldName($fieldName, $indexEntity, $indexMapping)) {
                 $fieldName = $transformedFieldName;
                 if ($transformer->stopPropagation()) {
                     break;
@@ -106,10 +112,5 @@ final readonly class PqlAdapter implements PqlAdapterInterface
         }
 
         return $fieldName;
-    }
-
-    private function getIndexNameFromEntityName(string $entityName): string
-    {
-        return $this->searchIndexConfigService->getIndexName($entityName);
     }
 }

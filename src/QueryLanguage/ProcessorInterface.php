@@ -13,10 +13,12 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
+
 /**
  * @internal
  */
 interface ProcessorInterface
 {
-    public function process(string $query, string $indexName): array;
+    public function process(string $query, IndexEntity $indexEntity): array;
 }

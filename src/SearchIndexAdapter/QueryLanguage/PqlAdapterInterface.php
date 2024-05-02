@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\QueryLanguage\QueryTokenType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\SubQueryResultList;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
 
 /**
@@ -38,5 +39,5 @@ interface PqlAdapterInterface
      * Transforms the field name to the format/structure used in the search index.
      * E.g. transforms "id" to "system_fields.id"
      */
-    public function transformFieldName(string $fieldName, array $indexMapping): string;
+    public function transformFieldName(string $fieldName, IndexEntity $indexEntity, array $indexMapping): string;
 }
