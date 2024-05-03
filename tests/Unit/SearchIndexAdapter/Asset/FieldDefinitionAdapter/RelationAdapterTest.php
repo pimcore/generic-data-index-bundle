@@ -159,6 +159,11 @@ final class RelationAdapterTest extends Unit
             ],
         ], $search->toArray());
 
+        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $adapter = (new RelationAdapter(
+            $searchIndexConfigServiceInterfaceMock,
+        ))->setType('object');
+
         $filter = new AssetMetaDataFilter('test', 'object', 1);
         $search = new Search();
         $adapter->applySearchFilter($filter, $search);
@@ -174,6 +179,12 @@ final class RelationAdapterTest extends Unit
                 ],
             ],
         ], $search->toArray());
+
+        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $adapter = (new RelationAdapter(
+            $searchIndexConfigServiceInterfaceMock,
+        ))->setType('document');
+
         $filter = new AssetMetaDataFilter('test', 'document', 1);
         $search = new Search();
         $adapter->applySearchFilter($filter, $search);
