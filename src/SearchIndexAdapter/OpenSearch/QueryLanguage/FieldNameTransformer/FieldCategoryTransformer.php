@@ -33,7 +33,7 @@ final readonly class FieldCategoryTransformer implements FieldNameTransformerInt
     ) {
     }
 
-    public function transformFieldName(string $fieldName, IndexEntity $indexEntity, array $indexMapping): ?string
+    public function transformFieldName(string $fieldName, array $indexMapping, ?IndexEntity $targetEntity): ?string
     {
         if ($this->mappingAnalyzerService->fieldPathExists($fieldName, $indexMapping)) {
             return null;

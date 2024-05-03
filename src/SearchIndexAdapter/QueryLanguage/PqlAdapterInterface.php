@@ -42,5 +42,5 @@ interface PqlAdapterInterface
      * Transforms the field name to the format/structure used in the search index.
      * E.g. transforms "id" to "system_fields.id"
      */
-    public function transformFieldName(string $fieldName, IndexEntity $indexEntity, array $indexMapping): string;
+    public function transformFieldName(string $fieldName, array $indexMapping, ?IndexEntity $targetEntity): string;
 }

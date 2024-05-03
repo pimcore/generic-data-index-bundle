@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\MappingAnalyzerServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformerInterface;
@@ -31,9 +32,13 @@ final readonly class ImageGalleryTransformer implements FieldNameTransformerInte
     ) {
     }
 
-    public function transformFieldName(string $fieldName, IndexEntity $indexEntity, array $indexMapping): ?string
+    public function transformFieldName(string $fieldName, array $indexMapping, ?IndexEntity $targetEntity): ?string
     {
         if (!$this->mappingAnalyzerService->fieldPathExists($fieldName, $indexMapping)) {
+            return null;
+        }
+
+        if ($targetEntity && $targetEntity->getIndexType() !== IndexType::ASSET) {
             return null;
         }
 

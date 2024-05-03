@@ -23,7 +23,7 @@ interface FieldNameTransformerInterface
     /**
      * Returns null if the transformer does not apply to the given field name.
      */
-    public function transformFieldName(string $fieldName, IndexEntity $indexEntity, array $indexMapping): ?string;
+    public function transformFieldName(string $fieldName, array $indexMapping, ?IndexEntity $targetEntity): ?string;
 
     /**
      * Stops the propagation of the field name transformation if the current transformer was applied.

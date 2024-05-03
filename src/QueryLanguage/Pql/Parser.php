@@ -18,9 +18,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\QueryLanguage\QueryTokenType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\QueryLanguage\ParsingException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuery;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ParserInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityServiceInterface;
 
 /**
  * @internal
@@ -50,16 +50,16 @@ final class Parser implements ParserInterface
 
     public function __construct(
         private readonly PqlAdapterInterface $pqlAdapter,
+        private readonly IndexEntityServiceInterface $indexEntityService,
         /** @var Token[] */
         private readonly array $tokens = [],
-        private readonly ?IndexEntity $indexEntity = null,
         private readonly array $indexMapping = [],
     ) {
     }
 
-    public function apply(array $tokens, IndexEntity $indexEntity, array $indexMapping): ParserInterface
+    public function apply(array $tokens, array $indexMapping): ParserInterface
     {
-        return new Parser($this->pqlAdapter, $tokens, $indexEntity, $indexMapping);
+        return new Parser($this->pqlAdapter, $this->indexEntityService, $tokens, $indexMapping);
     }
 
     private function currentToken(): ?Token
@@ -187,7 +187,7 @@ final class Parser implements ParserInterface
             $this->throwParsingException(QueryTokenType::class, get_debug_type($operatorTokenType));
         }
 
-        $field = $this->pqlAdapter->transformFieldName($field, $this->indexEntity, $this->indexMapping);
+        $field = $this->pqlAdapter->transformFieldName($field, $this->indexMapping, null);
 
         /** @var QueryTokenType $operatorTokenType */
         return $this->pqlAdapter->translateOperatorToSearchQuery($operatorTokenType, $field, $valueToken->value);
@@ -203,11 +203,6 @@ final class Parser implements ParserInterface
         $subQueryId = uniqid('subquery_', true);
         $fieldParts = explode(':', $field);
         $relationFieldPath = $fieldParts[0];
-        $relationFieldPath = $this->pqlAdapter->transformFieldName(
-            $relationFieldPath,
-            $this->indexEntity,
-            $this->indexMapping
-        );
 
         $targetPath = $fieldParts[1];
         $targetPathParts = explode('.', $targetPath);
@@ -219,6 +214,12 @@ final class Parser implements ParserInterface
         if ($valueToken->type === QueryTokenType::T_STRING) {
             $value = '"' . $value . '"';
         }
+
+        $relationFieldPath = $this->pqlAdapter->transformFieldName(
+            $relationFieldPath,
+            $this->indexMapping,
+            $this->indexEntityService->getByEntityName($targetType),
+        );
 
         $subQuery = new ParseResultSubQuery(
             $subQueryId,

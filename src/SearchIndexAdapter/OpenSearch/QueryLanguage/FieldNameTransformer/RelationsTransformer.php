@@ -32,13 +32,13 @@ final readonly class RelationsTransformer implements FieldNameTransformerInterfa
     ) {
     }
 
-    public function transformFieldName(string $fieldName, IndexEntity $indexEntity, array $indexMapping): ?string
+    public function transformFieldName(string $fieldName, array $indexMapping, ?IndexEntity $targetEntity): ?string
     {
-        if (!$this->mappingAnalyzerService->fieldPathExists($fieldName, $indexMapping)) {
+        if ($targetEntity === null || !$this->mappingAnalyzerService->fieldPathExists($fieldName, $indexMapping)) {
             return null;
         }
 
-        $addon = match($indexEntity->getIndexType()) {
+        $addon = match($targetEntity->getIndexType()) {
             IndexType::DATA_OBJECT => 'object',
             IndexType::ASSET => 'asset',
             IndexType::DOCUMENT => 'document',

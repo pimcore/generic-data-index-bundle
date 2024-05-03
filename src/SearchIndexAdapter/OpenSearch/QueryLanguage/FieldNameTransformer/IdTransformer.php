@@ -31,7 +31,7 @@ final readonly class IdTransformer implements FieldNameTransformerInterface
     ) {
     }
 
-    public function transformFieldName(string $fieldName, IndexEntity $indexEntity, array $indexMapping): ?string
+    public function transformFieldName(string $fieldName, array $indexMapping, ?IndexEntity $targetEntity): ?string
     {
         if (!$this->mappingAnalyzerService->fieldPathExists($fieldName, $indexMapping)) {
             return null;
