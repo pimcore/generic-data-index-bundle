@@ -56,8 +56,7 @@ final class RelationAdapterTest extends Unit
         $image->setId(1);
 
         $this->assertSame([
-            'type' => 'asset',
-            'id' => 1,
+           'asset' => [1],
         ], $adapter->normalize($image));
     }
 
