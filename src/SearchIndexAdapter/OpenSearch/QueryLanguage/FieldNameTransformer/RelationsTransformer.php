@@ -20,9 +20,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLan
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /**
+ * Used by relation data types to transform the field name to the correct element type relation field.
+ *
  * @internal
  */
-#[AsTaggedItem(index: 'relations_transformer', priority: 0)]
+#[AsTaggedItem(priority: 0)]
 final readonly class RelationsTransformer implements FieldNameTransformerInterface
 {
     public function __construct(

@@ -19,12 +19,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLan
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /**
- * Used for image and video data types to transform the field name to the id field.
+ * Used for the image gallery data type.
  *
  * @internal
  */
-#[AsTaggedItem(priority: 5)]
-final readonly class IdTransformer implements FieldNameTransformerInterface
+#[AsTaggedItem(priority: 6)]
+final readonly class ImageGalleryTransformer implements FieldNameTransformerInterface
 {
     public function __construct(
         private MappingAnalyzerServiceInterface $mappingAnalyzerService
@@ -37,7 +37,7 @@ final readonly class IdTransformer implements FieldNameTransformerInterface
             return null;
         }
 
-        $fullFieldName = $fieldName . '.id';
+        $fullFieldName = $fieldName . '.assets';
         if ($this->mappingAnalyzerService->fieldPathExists($fullFieldName, $indexMapping)) {
             return $fullFieldName;
         }
