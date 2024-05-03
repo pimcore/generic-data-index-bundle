@@ -55,7 +55,7 @@ final class RelationAdapter extends AbstractAdapter
 
     protected function getSearchFilterFieldPath(AssetMetaDataFilter|AssetMetaDataAggregation $filter): string
     {
-        return parent::getSearchFilterFieldPath($filter) . '.id';
+        return parent::getSearchFilterFieldPath($filter) . '.' . $filter->getType();
     }
 
     protected function isValidScalar(mixed $value): bool
