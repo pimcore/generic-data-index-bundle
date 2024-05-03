@@ -301,7 +301,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         foreach ($workspaces as $workspace => $permission) {
 
             $workspaceObject = (new User\Workspace\Asset())
-                ->setView($permission)
+                ->setList($permission)
                 ->setCpath($workspace)
                 ->setCid(Db::get()->fetchOne('select id from assets where concat(path, filename) = ?', [$workspace]))
                 ->setUserId($user->getId());
