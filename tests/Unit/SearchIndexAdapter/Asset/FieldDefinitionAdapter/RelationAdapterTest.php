@@ -118,7 +118,7 @@ final class RelationAdapterTest extends Unit
                 'bool' => [
                     'filter' => [
                         'term' => [
-                            'standard_fields.test.default.id' => 1,
+                            'standard_fields.test.default.asset' => 1,
                         ],
                     ],
                 ],
@@ -134,7 +134,7 @@ final class RelationAdapterTest extends Unit
                 'bool' => [
                     'filter' => [
                         'term' => [
-                            'standard_fields.test.en.id' => 2,
+                            'standard_fields.test.en.asset' => 2,
                         ],
                     ],
                 ],
@@ -150,7 +150,38 @@ final class RelationAdapterTest extends Unit
                 'bool' => [
                     'filter' => [
                         'terms' => [
-                            'standard_fields.test.en.id' => [1, 2],
+                            'standard_fields.test.en.asset' => [1, 2],
+                        ],
+                    ],
+                ],
+            ],
+        ], $search->toArray());
+
+        $filter = new AssetMetaDataFilter('test', 'object', 1);
+        $search = new Search();
+        $adapter->applySearchFilter($filter, $search);
+
+        $this->assertSame([
+            'query' => [
+                'bool' => [
+                    'filter' => [
+                        'term' => [
+                            'standard_fields.test.default.object' => 1,
+                        ],
+                    ],
+                ],
+            ],
+        ], $search->toArray());
+        $filter = new AssetMetaDataFilter('test', 'document', 1);
+        $search = new Search();
+        $adapter->applySearchFilter($filter, $search);
+
+        $this->assertSame([
+            'query' => [
+                'bool' => [
+                    'filter' => [
+                        'term' => [
+                            'standard_fields.test.default.document' => 1,
                         ],
                     ],
                 ],
