@@ -35,11 +35,14 @@ final class RelationAdapterTest extends Unit
 
         $this->assertSame([
             'properties' => [
-                'id' => [
+                'object' => [
                     'type' => 'long',
                 ],
-                'type' => [
-                    'type' => 'keyword',
+                'asset' => [
+                    'type' => 'long',
+                ],
+                'document' => [
+                    'type' => 'long',
                 ],
             ],
         ], $adapter->getIndexMapping());
@@ -56,8 +59,7 @@ final class RelationAdapterTest extends Unit
         $image->setId(1);
 
         $this->assertSame([
-            'type' => 'asset',
-            'id' => 1,
+           'asset' => [1],
         ], $adapter->normalize($image));
     }
 
@@ -118,7 +120,7 @@ final class RelationAdapterTest extends Unit
                 'bool' => [
                     'filter' => [
                         'term' => [
-                            'standard_fields.test.default.id' => 1,
+                            'standard_fields.test.default.asset' => 1,
                         ],
                     ],
                 ],
@@ -134,7 +136,7 @@ final class RelationAdapterTest extends Unit
                 'bool' => [
                     'filter' => [
                         'term' => [
-                            'standard_fields.test.en.id' => 2,
+                            'standard_fields.test.en.asset' => 2,
                         ],
                     ],
                 ],
@@ -150,7 +152,49 @@ final class RelationAdapterTest extends Unit
                 'bool' => [
                     'filter' => [
                         'terms' => [
-                            'standard_fields.test.en.id' => [1, 2],
+                            'standard_fields.test.en.asset' => [1, 2],
+                        ],
+                    ],
+                ],
+            ],
+        ], $search->toArray());
+
+        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $adapter = (new RelationAdapter(
+            $searchIndexConfigServiceInterfaceMock,
+        ))->setType('object');
+
+        $filter = new AssetMetaDataFilter('test', 'object', 1);
+        $search = new Search();
+        $adapter->applySearchFilter($filter, $search);
+
+        $this->assertSame([
+            'query' => [
+                'bool' => [
+                    'filter' => [
+                        'term' => [
+                            'standard_fields.test.default.object' => 1,
+                        ],
+                    ],
+                ],
+            ],
+        ], $search->toArray());
+
+        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $adapter = (new RelationAdapter(
+            $searchIndexConfigServiceInterfaceMock,
+        ))->setType('document');
+
+        $filter = new AssetMetaDataFilter('test', 'document', 1);
+        $search = new Search();
+        $adapter->applySearchFilter($filter, $search);
+
+        $this->assertSame([
+            'query' => [
+                'bool' => [
+                    'filter' => [
+                        'term' => [
+                            'standard_fields.test.default.document' => 1,
                         ],
                     ],
                 ],

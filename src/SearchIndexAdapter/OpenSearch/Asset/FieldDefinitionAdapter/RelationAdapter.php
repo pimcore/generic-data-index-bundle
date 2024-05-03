@@ -29,11 +29,14 @@ final class RelationAdapter extends AbstractAdapter
     {
         return [
             'properties' => [
-                'id' => [
+                'object' => [
                     'type' => AttributeType::LONG->value,
                 ],
-                'type' => [
-                    'type' => AttributeType::KEYWORD->value,
+                'asset' => [
+                    'type' => AttributeType::LONG->value,
+                ],
+                'document' => [
+                    'type' => AttributeType::LONG->value,
                 ],
             ],
         ];
@@ -43,8 +46,7 @@ final class RelationAdapter extends AbstractAdapter
     {
         if($value instanceof ElementInterface) {
             return [
-                'type' => Service::getElementType($value),
-                'id' => $value->getId(),
+                Service::getElementType($value) => [$value->getId()],
             ];
         }
 
@@ -53,7 +55,7 @@ final class RelationAdapter extends AbstractAdapter
 
     protected function getSearchFilterFieldPath(AssetMetaDataFilter|AssetMetaDataAggregation $filter): string
     {
-        return parent::getSearchFilterFieldPath($filter) . '.id';
+        return parent::getSearchFilterFieldPath($filter) . '.' . $filter->getType();
     }
 
     protected function isValidScalar(mixed $value): bool
