@@ -44,7 +44,6 @@ final readonly class AssetMetadataDefaultLanguageTransformer implements FieldNam
             return null;
         }
 
-
         $fullFieldName = $fieldName . '.' . MappingProperty::NOT_LOCALIZED_KEY;
         if ($this->mappingAnalyzerService->fieldPathExists($fullFieldName, $indexMapping)) {
             return $fullFieldName;
