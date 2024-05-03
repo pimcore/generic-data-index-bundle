@@ -35,11 +35,14 @@ final class RelationAdapterTest extends Unit
 
         $this->assertSame([
             'properties' => [
-                'id' => [
+                'object' => [
                     'type' => 'long',
                 ],
-                'type' => [
-                    'type' => 'keyword',
+                'asset' => [
+                    'type' => 'long',
+                ],
+                'document' => [
+                    'type' => 'long',
                 ],
             ],
         ], $adapter->getIndexMapping());
