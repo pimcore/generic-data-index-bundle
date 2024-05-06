@@ -19,6 +19,7 @@ use Exception;
 final class ParsingException extends Exception
 {
     public function __construct(
+        private readonly string $query,
         private readonly string $expected,
         private readonly string $found,
         private readonly ?Token $token,
@@ -26,6 +27,11 @@ final class ParsingException extends Exception
         $message = sprintf('Expected %s, found %s.', $expected, $found);
 
         parent::__construct($message);
+    }
+
+    public function getQuery(): string
+    {
+        return $this->query;
     }
 
     public function getExpected(): string
@@ -41,5 +47,10 @@ final class ParsingException extends Exception
     public function getToken(): ?Token
     {
         return $this->token;
+    }
+
+    public function getPosition(): int
+    {
+        return $this->token->position ?? strlen($this->query);
     }
 }

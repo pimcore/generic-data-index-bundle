@@ -41,7 +41,7 @@ final readonly class Processor implements ProcessorInterface
         $tokens = $this->lexer->getTokens();
 
         $parseResult = $this->parser
-            ->apply($tokens, $this->searchIndexService->getMapping($indexEntity->getIndexName()))
+            ->apply($query, $tokens, $this->searchIndexService->getMapping($indexEntity->getIndexName()))
             ->parse();
 
         $resultQuery = $parseResult->getQuery();

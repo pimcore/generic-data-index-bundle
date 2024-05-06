@@ -25,7 +25,7 @@ interface ParserInterface
     /**
      * @param Token[] $tokens
      */
-    public function apply(array $tokens, array $indexMapping): ParserInterface;
+    public function apply(string $query, array $tokens, array $indexMapping): ParserInterface;
 
     /**
      * @throws ParsingException
