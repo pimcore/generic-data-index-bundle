@@ -29,8 +29,3 @@ Commercial Distributions - must be used in accordance with the terms and conditi
 contained in a separate written agreement between you and Pimcore GmbH. 
 For more information about the Pimcore Commercial License (PCL) please contact info@pimcore.com.
 
-
-Please see also (files in this directory):  
-[Licensing FAQ - license-faq.md](license-faq.md)  
-[GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007 - gpl-3.0.txt](gpl-3.0.txt)  
-[Libraries used by Pimcore including their own licenses - 3rd-party-licenses.md](3rd-party-licenses.md)  
