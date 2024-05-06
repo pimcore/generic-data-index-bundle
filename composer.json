@@ -1,6 +1,6 @@
 {
   "name": "pimcore/generic-data-index-bundle",
-  "license": "proprietary",
+  "license": "GPL-3.0-or-later",
   "type": "pimcore-bundle",
   "description": "Pimcore Generic data index Bundle",
   "config": {
