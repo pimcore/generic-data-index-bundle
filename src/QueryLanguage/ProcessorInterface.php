@@ -16,9 +16,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\QueryLanguage\ParsingException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 
-/**
- * @internal
- */
 interface ProcessorInterface
 {
     /**
