@@ -42,6 +42,11 @@ exclude:
   - name: PhpMethodNamingConventionInspection
     paths:
         - src/Migrations
+  - name: PhpDqlBuilderUnknownModelInspection
+    paths:
+      - src/Repository/IndexQueueRepository.php
+      - src/Service/SearchIndex/IndexService/ElementTypeAdapter/AssetTypeAdapter.php
+      - src/Service/SearchIndex/IndexService/ElementTypeAdapter/DataObjectTypeAdapter.php
 include:
   - name: PhpTaintFunctionInspection
   - name: PhpVulnerablePathsInspection
