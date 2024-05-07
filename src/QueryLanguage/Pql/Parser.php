@@ -244,6 +244,10 @@ final class Parser implements ParserInterface
         $subQueries = [];
         $query = $this->parseCondition($subQueries);
 
+        if($token = $this->currentToken()) {
+            $this->throwParsingException('end of input', '`' . ($token['value'] ?? 'null') . '`');
+        }
+
         return new ParseResult($query, $subQueries);
     }
 

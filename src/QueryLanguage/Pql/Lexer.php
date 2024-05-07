@@ -92,9 +92,15 @@ class Lexer extends AbstractLexer implements LexerInterface
                 $tokenType = $this->isIntegerString($value) ? QueryTokenType::T_INTEGER : QueryTokenType::T_FLOAT;
 
                 break;
-            case in_arrayi($value[0], ['"', "'"]):
+            case strlen($value)>1 && $value[0] === "'" && $value[strlen($value)-1] === "'":
                 $value = substr($value, 1, -1);
-                $value = str_replace(["''", '""'], ["'", '"'], $value);
+                $value = str_replace(["''"], ["'"], $value);
+                $tokenType = QueryTokenType::T_STRING;
+
+                break;
+            case strlen($value)>1 && $value[0] === '"' && $value[strlen($value)-1] === '"':
+                $value = substr($value, 1, -1);
+                $value = str_replace(['""'], ['"'], $value);
                 $tokenType = QueryTokenType::T_STRING;
 
                 break;
