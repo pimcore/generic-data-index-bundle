@@ -150,8 +150,10 @@ final readonly class PermissionService implements PermissionServiceInterface
 
         $properties = $permissions->getClassProperties();
         foreach ($properties as $property => $value) {
-            $setter = 'set' . ucfirst($property);
-            $permissions->$setter(true);
+            if (is_bool($value)) {
+                $setter = 'set' . ucfirst($property);
+                $permissions->$setter(true);
+            }
         }
 
         return $permissions;
