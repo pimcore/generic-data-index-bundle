@@ -23,7 +23,7 @@ use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Document;
 use Pimcore\Model\Element\ElementInterface;
-use Pimcore\Model\UserInterface;
+use Pimcore\Model\User;
 
 /**
  * @internal
@@ -41,7 +41,7 @@ final readonly class ElementPermissionService implements ElementPermissionServic
     public function isAllowed(
         string $permission,
         ElementInterface $element,
-        UserInterface $user
+        User $user
     ): bool {
         return match (true) {
             $element instanceof Asset => $this->isAssetAllowed($permission, $element, $user),
@@ -54,7 +54,7 @@ final readonly class ElementPermissionService implements ElementPermissionServic
     private function isAssetAllowed(
         string $permission,
         Asset $asset,
-        UserInterface $user
+        User $user
     ): bool {
         $assetResult = $this->assetSearchService->byId($asset->getId(), $user);
         if (!$assetResult) {
@@ -72,7 +72,7 @@ final readonly class ElementPermissionService implements ElementPermissionServic
     private function isDataObjectAllowed(
         DataObject $dataObject,
         string $permission,
-        UserInterface $user
+        User $user
     ): bool {
         $dataObjectResult = $this->dataObjectSearchService->byId($dataObject->getId(), $user);
         if (!$dataObjectResult) {
@@ -90,7 +90,7 @@ final readonly class ElementPermissionService implements ElementPermissionServic
     private function isDocumentAllowed(
         Document $document,
         string $permission,
-        UserInterface $user
+        User $user
     ): bool {
         $documentResult = $this->documentSearchService->byId($document->getId(), $user);
         if (!$documentResult) {

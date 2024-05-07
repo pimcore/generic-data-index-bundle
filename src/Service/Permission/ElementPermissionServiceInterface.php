@@ -17,13 +17,13 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
 use Pimcore\Model\Element\ElementInterface;
-use Pimcore\Model\UserInterface;
+use Pimcore\Model\User;
 
 interface ElementPermissionServiceInterface
 {
     public function isAllowed(
         string $permission,
         ElementInterface $element,
-        UserInterface $user
+        User $user
     ): bool;
 }
