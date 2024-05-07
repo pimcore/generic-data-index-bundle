@@ -66,6 +66,7 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
             $assetResult = $this->assetSearchService->byId($asset->getId(), $user);
         } catch (AssetSearchException $e) {
             $this->logger->error('Asset search failed in the element permission check: ' . $e->getMessage());
+
             return false;
         }
 
@@ -92,6 +93,7 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
             $this->logger->error(
                 'Data Object search failed in the element permission check: ' . $e->getMessage()
             );
+
             return false;
         }
 
@@ -118,6 +120,7 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
             $this->logger->error(
                 'Document search failed in the element permission check: ' . $e->getMessage()
             );
+
             return false;
         }
 

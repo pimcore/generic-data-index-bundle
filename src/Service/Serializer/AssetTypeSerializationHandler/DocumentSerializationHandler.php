@@ -28,6 +28,7 @@ use Pimcore\Model\Asset\Image;
 class DocumentSerializationHandler extends AbstractHandler
 {
     use LoggerAwareTrait;
+
     /**
      * @throws Exception
      */
