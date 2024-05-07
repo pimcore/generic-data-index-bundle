@@ -66,28 +66,21 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
             search: $this->searchProvider->createDocumentSearch()
         );
 
-        try {
-            return new DocumentSearchResult(
-                items: $this->searchHelper->hydrateSearchResultHits(
-                    $searchResult,
-                    $childrenCounts,
-                    $documentSearch->getUser()
-                ),
-                pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
-                    searchResult: $searchResult,
-                    page: $documentSearch->getPage(),
-                    pageSize: $documentSearch->getPageSize()
-                ),
-                aggregations:  $searchResult->getAggregations(),
-            );
-        } catch (Exception $e) {
-            throw new DocumentSearchException($e->getMessage());
-        }
+        return new DocumentSearchResult(
+            items: $this->searchHelper->hydrateSearchResultHits(
+                $searchResult,
+                $childrenCounts,
+                $documentSearch->getUser()
+            ),
+            pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
+                searchResult: $searchResult,
+                page: $documentSearch->getPage(),
+                pageSize: $documentSearch->getPageSize()
+            ),
+            aggregations:  $searchResult->getAggregations(),
+        );
     }
 
-    /**
-     * @throws Exception
-     */
     public function byId(
         int $id,
         ?User $user = null,
@@ -111,9 +104,6 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
         return $searchResult;
     }
 
-    /**
-     * @throws Exception
-     */
     private function searchDocumentById(int $id, ?User $user = null): ?DocumentSearchResultItem
     {
         $documentSearch = $this->searchProvider->createDocumentSearch();

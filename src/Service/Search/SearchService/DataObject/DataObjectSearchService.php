@@ -69,28 +69,21 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
             search: $this->searchProvider->createAssetSearch()
         );
 
-        try {
-            return new DataObjectSearchResult(
-                items: $this->searchHelper->hydrateSearchResultHits(
-                    $searchResult,
-                    $childrenCounts,
-                    $dataObjectSearch->getUser()
-                ),
-                pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
-                    searchResult: $searchResult,
-                    page: $dataObjectSearch->getPage(),
-                    pageSize: $dataObjectSearch->getPageSize()
-                ),
-                aggregations: $searchResult->getAggregations(),
-            );
-        } catch (Exception $e) {
-            throw new DataObjectSearchException($e->getMessage());
-        }
+        return new DataObjectSearchResult(
+            items: $this->searchHelper->hydrateSearchResultHits(
+                $searchResult,
+                $childrenCounts,
+                $dataObjectSearch->getUser()
+            ),
+            pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
+                searchResult: $searchResult,
+                page: $dataObjectSearch->getPage(),
+                pageSize: $dataObjectSearch->getPageSize()
+            ),
+            aggregations: $searchResult->getAggregations(),
+        );
     }
 
-    /**
-     * @throws Exception
-     */
     public function byId(
         int $id,
         ?User $user = null,
@@ -114,9 +107,6 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
         return $searchResult;
     }
 
-    /**
-     * @throws Exception
-     */
     private function searchObjectById(int $id, ?User $user = null): ?DataObjectSearchResultItem
     {
         $dataObjectSearch = $this->searchProvider->createDataObjectSearch();

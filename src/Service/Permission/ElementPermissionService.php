@@ -16,7 +16,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
-use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
@@ -24,8 +23,11 @@ use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Document;
 use Pimcore\Model\Element\ElementInterface;
-use Pimcore\Model\User;
+use Pimcore\Model\UserInterface;
 
+/**
+ * @internal
+ */
 final readonly class ElementPermissionService implements ElementPermissionServiceInterface
 {
     public function __construct(
@@ -36,13 +38,10 @@ final readonly class ElementPermissionService implements ElementPermissionServic
     ) {
     }
 
-    /**
-     * @throws Exception
-     */
     public function isAllowed(
         string $permission,
         ElementInterface $element,
-        User $user
+        UserInterface $user
     ): bool {
         return match (true) {
             $element instanceof Asset => $this->isAssetAllowed($permission, $element, $user),
@@ -52,13 +51,10 @@ final readonly class ElementPermissionService implements ElementPermissionServic
         };
     }
 
-    /**
-     * @throws Exception
-     */
     private function isAssetAllowed(
         string $permission,
         Asset $asset,
-        User $user
+        UserInterface $user
     ): bool {
         $assetResult = $this->assetSearchService->byId($asset->getId(), $user);
         if (!$assetResult) {
@@ -73,13 +69,10 @@ final readonly class ElementPermissionService implements ElementPermissionServic
         return $this->permissionService->getPermissionValue($assetPermissions, $permission);
     }
 
-    /**
-     * @throws Exception
-     */
     private function isDataObjectAllowed(
         DataObject $dataObject,
         string $permission,
-        User $user
+        UserInterface $user
     ): bool {
         $dataObjectResult = $this->dataObjectSearchService->byId($dataObject->getId(), $user);
         if (!$dataObjectResult) {
@@ -94,13 +87,10 @@ final readonly class ElementPermissionService implements ElementPermissionServic
         return $this->permissionService->getPermissionValue($permissions, $permission);
     }
 
-    /**
-     * @throws Exception
-     */
     private function isDocumentAllowed(
         Document $document,
         string $permission,
-        User $user
+        UserInterface $user
     ): bool {
         $documentResult = $this->documentSearchService->byId($document->getId(), $user);
         if (!$documentResult) {

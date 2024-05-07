@@ -18,7 +18,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Ass
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\UserPermissionTypes;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\AssetSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
@@ -44,9 +43,6 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
     ) {
     }
 
-    /**
-     * @throws Exception
-     */
     public function search(SearchInterface $assetSearch): AssetSearchResult
     {
         $assetSearch = $this->searchHelper->addSearchRestrictions(
@@ -66,28 +62,21 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
             search: $this->searchProvider->createAssetSearch()
         );
 
-        try {
-            return new AssetSearchResult(
-                items: $this->searchHelper->hydrateSearchResultHits(
-                    $searchResult,
-                    $childrenCounts,
-                    $assetSearch->getUser()
-                ),
-                pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
-                    searchResult: $searchResult,
-                    page: $assetSearch->getPage(),
-                    pageSize: $assetSearch->getPageSize()
-                ),
-                aggregations: $searchResult->getAggregations(),
-            );
-        } catch (Exception $e) {
-            throw new AssetSearchException($e->getMessage());
-        }
+        return new AssetSearchResult(
+            items: $this->searchHelper->hydrateSearchResultHits(
+                $searchResult,
+                $childrenCounts,
+                $assetSearch->getUser()
+            ),
+            pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
+                searchResult: $searchResult,
+                page: $assetSearch->getPage(),
+                pageSize: $assetSearch->getPageSize()
+            ),
+            aggregations: $searchResult->getAggregations(),
+        );
     }
 
-    /**
-     * @throws Exception
-     */
     public function byId(
         int $id,
         ?User $user = null,
@@ -111,9 +100,6 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
         return $searchResult;
     }
 
-    /**
-     * @throws Exception
-     */
     private function searchAssetById(int $id, ?User $user = null): ?AssetSearchResultItem
     {
         $assetSearch = $this->searchProvider->createAssetSearch();
