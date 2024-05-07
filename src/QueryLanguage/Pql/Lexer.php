@@ -55,6 +55,7 @@ class Lexer extends AbstractLexer implements LexerInterface
     private const REGEX_STRING_SINGLE_QUOTE = "'(?:[^']|'')*'";
 
     private const REGEX_STRING_DOUBLE_QUOTE = '"(?:[^"]|"")*"';
+    private const REGEX_OPERATOR = '>=|<=|=|>|<|like';
 
     /**
      * Lexical catchable patterns.
@@ -68,8 +69,7 @@ class Lexer extends AbstractLexer implements LexerInterface
             self::REGEX_NUMBERS,
             self::REGEX_STRING_SINGLE_QUOTE,
             self::REGEX_STRING_DOUBLE_QUOTE,
-
-            //TODO add regex for operators
+            self::REGEX_OPERATOR,
             //TODO add regex for ( )
         ];
     }
@@ -93,6 +93,12 @@ class Lexer extends AbstractLexer implements LexerInterface
         switch (true) {
             case is_numeric($value):
                 $tokenType = $this->isIntegerString($value) ? QueryTokenType::T_INTEGER : QueryTokenType::T_FLOAT;
+
+                if ($tokenType === QueryTokenType::T_INTEGER) {
+                    $value = (int)$value;
+                } else {
+                    $value = (float)$value;
+                }
 
                 break;
             case strlen($value)>1 && $value[0] === "'" && $value[strlen($value)-1] === "'":
