@@ -16,7 +16,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject;
 
-use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResult;
@@ -31,7 +30,7 @@ interface DataObjectSearchServiceInterface
     public function search(DataObjectSearchInterface $dataObjectSearch): DataObjectSearchResult;
 
     /**
-     * @throws Exception
+     * @throws DataObjectSearchException
      */
     public function byId(int $id, ?User $user = null): ?DataObjectSearchResultItem;
 }

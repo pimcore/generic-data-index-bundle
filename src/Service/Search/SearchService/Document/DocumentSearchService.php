@@ -86,7 +86,7 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
     }
 
     /**
-     * @throws Exception
+     * @throws DocumentSearchException
      */
     public function byId(
         int $id,
@@ -112,7 +112,7 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
     }
 
     /**
-     * @throws Exception
+     * @throws DocumentSearchException
      */
     private function searchDocumentById(int $id, ?User $user = null): ?DocumentSearchResultItem
     {

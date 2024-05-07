@@ -16,7 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset;
 
-use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\AssetSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
@@ -25,12 +25,12 @@ use Pimcore\Model\User;
 interface AssetSearchServiceInterface
 {
     /**
-     * @throws Exception
+     * @throws AssetSearchException
      */
     public function search(SearchInterface $assetSearch): AssetSearchResult;
 
     /**
-     * @throws Exception
+     * @throws AssetSearchException
      */
     public function byId(int $id, ?User $user = null): ?AssetSearchResultItem;
 }

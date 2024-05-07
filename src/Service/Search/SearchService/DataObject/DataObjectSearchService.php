@@ -89,7 +89,7 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
     }
 
     /**
-     * @throws Exception
+     * @throws DataObjectSearchException
      */
     public function byId(
         int $id,
@@ -115,7 +115,7 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
     }
 
     /**
-     * @throws Exception
+     * @throws DataObjectSearchException
      */
     private function searchObjectById(int $id, ?User $user = null): ?DataObjectSearchResultItem
     {

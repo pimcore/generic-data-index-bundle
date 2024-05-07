@@ -45,7 +45,7 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
     }
 
     /**
-     * @throws Exception
+     * @throws AssetSearchException
      */
     public function search(SearchInterface $assetSearch): AssetSearchResult
     {
@@ -86,7 +86,7 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
     }
 
     /**
-     * @throws Exception
+     * @throws AssetSearchException
      */
     public function byId(
         int $id,
@@ -112,7 +112,7 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
     }
 
     /**
-     * @throws Exception
+     * @throws AssetSearchException
      */
     private function searchAssetById(int $id, ?User $user = null): ?AssetSearchResultItem
     {
