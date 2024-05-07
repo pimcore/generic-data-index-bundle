@@ -20,12 +20,14 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField\Asset\DocumentSystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Asset\Document;
 use Pimcore\Model\Asset\Image;
 
 class DocumentSerializationHandler extends AbstractHandler
 {
+    use LoggerAwareTrait;
     /**
      * @throws Exception
      */
@@ -49,8 +51,18 @@ class DocumentSerializationHandler extends AbstractHandler
             ->setPageCount(DocumentSystemField::PAGE_COUNT->getData($indexData));
     }
 
-    private function getImageThumbnail(Document $document): string
+    private function getImageThumbnail(Document $document): ?string
     {
-        return $document->getImageThumbnail(Image\Thumbnail\Config::getPreviewConfig())->getPath();
+        try {
+            return $document->getImageThumbnail(Image\Thumbnail\Config::getPreviewConfig())->getPath();
+        } catch (Exception $e) {
+            $this->logger->error('Thumbnail generation failed for document asset: ' .
+                $document->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
     }
 }

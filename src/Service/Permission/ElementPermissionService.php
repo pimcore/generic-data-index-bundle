@@ -16,9 +16,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\AssetSearchException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectSearchException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DocumentSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Document;
@@ -28,13 +32,15 @@ use Pimcore\Model\User;
 /**
  * @internal
  */
-final readonly class ElementPermissionService implements ElementPermissionServiceInterface
+final class ElementPermissionService implements ElementPermissionServiceInterface
 {
+    use LoggerAwareTrait;
+
     public function __construct(
-        private AssetSearchServiceInterface $assetSearchService,
-        private DataObjectSearchServiceInterface $dataObjectSearchService,
-        private DocumentSearchServiceInterface $documentSearchService,
-        private PermissionServiceInterface $permissionService
+        private readonly AssetSearchServiceInterface $assetSearchService,
+        private readonly DataObjectSearchServiceInterface $dataObjectSearchService,
+        private readonly DocumentSearchServiceInterface $documentSearchService,
+        private readonly PermissionServiceInterface $permissionService
     ) {
     }
 
@@ -56,7 +62,13 @@ final readonly class ElementPermissionService implements ElementPermissionServic
         Asset $asset,
         User $user
     ): bool {
-        $assetResult = $this->assetSearchService->byId($asset->getId(), $user);
+        try {
+            $assetResult = $this->assetSearchService->byId($asset->getId(), $user);
+        } catch (AssetSearchException $e) {
+            $this->logger->error('Asset search failed in the element permission check: ' . $e->getMessage());
+            return false;
+        }
+
         if (!$assetResult) {
             return false;
         }
@@ -74,7 +86,15 @@ final readonly class ElementPermissionService implements ElementPermissionServic
         string $permission,
         User $user
     ): bool {
-        $dataObjectResult = $this->dataObjectSearchService->byId($dataObject->getId(), $user);
+        try {
+            $dataObjectResult = $this->dataObjectSearchService->byId($dataObject->getId(), $user);
+        } catch (DataObjectSearchException $e) {
+            $this->logger->error(
+                'Data Object search failed in the element permission check: ' . $e->getMessage()
+            );
+            return false;
+        }
+
         if (!$dataObjectResult) {
             return false;
         }
@@ -92,7 +112,15 @@ final readonly class ElementPermissionService implements ElementPermissionServic
         string $permission,
         User $user
     ): bool {
-        $documentResult = $this->documentSearchService->byId($document->getId(), $user);
+        try {
+            $documentResult = $this->documentSearchService->byId($document->getId(), $user);
+        } catch (DocumentSearchException $e) {
+            $this->logger->error(
+                'Document search failed in the element permission check: ' . $e->getMessage()
+            );
+            return false;
+        }
+
         if (!$documentResult) {
             return false;
         }

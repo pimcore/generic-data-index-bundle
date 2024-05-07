@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DocumentSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
@@ -23,7 +24,13 @@ use Pimcore\Model\User;
 
 interface DocumentSearchServiceInterface
 {
+    /**
+     * @throws DocumentSearchException
+     */
     public function search(SearchInterface $documentSearch): DocumentSearchResult;
 
+    /**
+     * @throws DocumentSearchException
+     */
     public function byId(int $id, ?User $user = null): ?DocumentSearchResultItem;
 }

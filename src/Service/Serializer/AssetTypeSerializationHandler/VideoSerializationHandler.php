@@ -20,12 +20,15 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField\Asset\VideoSystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Asset\Image;
 use Pimcore\Model\Asset\Video;
 
 class VideoSerializationHandler extends AbstractHandler
 {
+    use LoggerAwareTrait;
+
     /**
      * @throws Exception
      */
@@ -52,8 +55,18 @@ class VideoSerializationHandler extends AbstractHandler
             ->setHeight(VideoSystemField::HEIGHT->getData($indexData));
     }
 
-    private function getImageThumbnail(Video $video): string
+    private function getImageThumbnail(Video $video): ?string
     {
-        return $video->getImageThumbnail(Image\Thumbnail\Config::getPreviewConfig())->getPath();
+        try {
+            return $video->getImageThumbnail(Image\Thumbnail\Config::getPreviewConfig())->getPath();
+        } catch (Exception $e) {
+            $this->logger->error('Thumbnail generation failed for video asset: ' .
+                $video->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
     }
 }
