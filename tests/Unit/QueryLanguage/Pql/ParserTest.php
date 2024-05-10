@@ -17,6 +17,9 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\QueryLanguage\Pql;
 
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\QueryLanguage\ParsingException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\Pql\Lexer;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\Pql\Parser;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\PqlAdapter;
@@ -89,9 +92,8 @@ final class ParserTest extends Unit
         );
     }
 
-    public function testParseExpression(): void
+    public function testParseCondition(): void
     {
-
         $this->assertQueryResult(
             'color = "red" or series = "E-Type"',
             [
@@ -104,6 +106,22 @@ final class ParserTest extends Unit
                 ],
             ]
         );
+
+        $this->assertQueryResult(
+            'color = "red" and series = "E-Type"',
+            [
+                'bool' => [
+                    'must' => [
+                        ['match' => ['color' => 'red']],
+                        ['match' => ['series' => 'E-Type']],
+                    ],
+                ],
+            ]
+        );
+    }
+
+    public function testParseExpression(): void
+    {
 
         $this->assertQueryResult(
             '(color = "red" or series = "E-Type")',
@@ -208,7 +226,7 @@ final class ParserTest extends Unit
         );
     }
 
-    public function testParseQueryString(): void
+    public function testQueryString(): void
     {
         $this->assertQueryResult(
             'Query("color:(red or blue)")',
@@ -252,16 +270,221 @@ final class ParserTest extends Unit
         );
     }
 
+    public function testCreateSubQuery(): void
+    {
+        $this->assertSubQueryResult(
+            'manufactorer:Manufactorer.name = "Jaguar"',
+            [
+                'relationFieldPath' => 'manufactorer',
+                'targetType' => 'Manufactorer',
+                'targetQuery' => 'name = "Jaguar"',
+            ]
+        );
+
+        $this->assertSubQueryResult(
+            'mainImage:Asset.id > 17',
+            [
+                'relationFieldPath' => 'mainImage',
+                'targetType' => 'Asset',
+                'targetQuery' => 'id > 17',
+            ]
+        );
+
+        $this->assertSubQueriesResult(
+            'manufactorer:Manufactorer.name = "Jaguar" or mainImage:Asset.id > 17',
+            [
+                'bool' => [
+                    'should' => [
+                        [
+                            'relationFieldPath' => 'manufactorer',
+                            'targetType' => 'Manufactorer',
+                            'targetQuery' => 'name = "Jaguar"',
+                        ],
+                        [
+                            'relationFieldPath' => 'mainImage',
+                            'targetType' => 'Asset',
+                            'targetQuery' => 'id > 17',
+                        ],
+                    ],
+                    'minimum_should_match' => 1,
+                ],
+            ],
+            [
+                [
+                    'relationFieldPath' => 'manufactorer',
+                    'targetType' => 'Manufactorer',
+                    'targetQuery' => 'name = "Jaguar"',
+                ],
+                [
+                    'relationFieldPath' => 'mainImage',
+                    'targetType' => 'Asset',
+                    'targetQuery' => 'id > 17',
+                ],
+            ]
+        );
+
+        $this->assertSubQueriesResult(
+            'age < 1980 and ((manufactorer:Manufactorer.name = "Jaguar" or age < 1970) and mainImage:Asset.id > 17)',
+            [
+                'bool' => [
+                    'must' => [
+                        ['range' => ['age' => ['lt' => 1980]]],
+                        [
+                            'bool' => [
+                                'must' => [
+                                    [
+                                        'bool' => [
+                                            'should' => [
+                                                [
+                                                    'relationFieldPath' => 'manufactorer',
+                                                    'targetType' => 'Manufactorer',
+                                                    'targetQuery' => 'name = "Jaguar"',
+                                                ],
+                                                ['range' => ['age' => ['lt' => 1970]]],
+                                            ],
+                                            'minimum_should_match' => 1,
+                                        ],
+                                    ],
+                                    [
+                                        'relationFieldPath' => 'mainImage',
+                                        'targetType' => 'Asset',
+                                        'targetQuery' => 'id > 17',
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            [
+                [
+                    'relationFieldPath' => 'manufactorer',
+                    'targetType' => 'Manufactorer',
+                    'targetQuery' => 'name = "Jaguar"',
+                ],
+                [
+                    'relationFieldPath' => 'mainImage',
+                    'targetType' => 'Asset',
+                    'targetQuery' => 'id > 17',
+                ],
+            ]
+        );
+    }
+
+    public function testParseError1(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('end of input. Seems query is truncated');
+        $this->parseQuery('color = "red" and');
+    }
+    public function testParseError2(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('Expected a field name, found `or`');
+        $this->parseQuery('color = "red" and or');
+    }
+
+    public function testParseError3(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('end of input. Seems query is truncated');
+        $this->parseQuery('color = "red" and (age < 1970 or series = "E-Type"');
+    }
+    public function testParseError4(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('Expected a string or numeric value, found `red`');
+        $this->parseQuery('color = red');
+    }
+
+    public function testParseError5(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('Expected a string or numeric value, found `(`');
+        $this->parseQuery('color = (Color.name = red)');
+    }
+
+    public function testParseError6(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('Expected a comparison operator, found `:`');
+        $this->parseQuery('manufacturer:Manufactorer = "Jaguar"');
+    }
+    public function testParseError7(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('Expected a string or numeric value, found `"`');
+        $this->parseQuery('manufacturer:Manufactorer.name = "Jaguar');
+    }
+
+    private function parseQuery(string $query): void
+    {
+        $parser = $this->createParser();
+        $lexer = new Lexer();
+        $lexer->setQuery($query);
+        $tokens = $lexer->getTokens();
+        $parser = $parser->apply($query, $tokens, []);
+        $parser->parse();
+    }
+
     private function assertQueryResult(string $query, array $result): void
     {
         $parser = $this->createParser();
         $lexer = new Lexer();
         $lexer->setQuery($query);
         $tokens = $lexer->getTokens();
-        $parser = $parser->apply($query, $tokens, $this->getCarMapping());
+        $parser = $parser->apply($query, $tokens, []);
         $parseResult = $parser->parse();
-        $this->assertEmpty($parseResult->getSubQueries());
         $this->assertSame($result, $parseResult->getQuery());
+        $this->assertEmpty($parseResult->getSubQueries());
+    }
+    private function assertSubQueryResult(string $query, array $subQuery): void
+    {
+        $parser = $this->createParser();
+        $lexer = new Lexer();
+        $lexer->setQuery($query);
+        $tokens = $lexer->getTokens();
+        $parser = $parser->apply($query, $tokens, []);
+        $parseResult = $parser->parse();
+        $this->assertSame($this->subQueryToArray($parseResult->getQuery()), $subQuery);
+        $this->assertSame($this->subQueriesToArray($parseResult), [$subQuery]);
+    }
+    private function assertSubQueriesResult(string $queryString, array $query, array $subQueries): void
+    {
+        $parser = $this->createParser();
+        $lexer = new Lexer();
+        $lexer->setQuery($queryString);
+        $tokens = $lexer->getTokens();
+        $parser = $parser->apply($queryString, $tokens, []);
+        $parseResult = $parser->parse();
+        $resultQuery = $parseResult->getQuery();
+        array_walk_recursive(
+            $resultQuery,
+            function (&$value) {
+                if ($value instanceof ParseResultSubQuery) {
+                    $value = $this->subQueryToArray($value);
+                }
+            }
+        );
+        $this->assertSame($query, $resultQuery);
+        $this->assertSame($subQueries, $this->subQueriesToArray($parseResult));
+    }
+
+    private function subQueriesToArray(ParseResult $parseResult): array
+    {
+        return array_values(array_map(
+            fn(ParseResultSubQuery $query) => $this->subQueryToArray($query),
+            $parseResult->getSubQueries()
+        ));
+    }
+
+    private function subQueryToArray(ParseResultSubQuery $query): array
+    {
+        return [
+            'relationFieldPath' => $query->getRelationFieldPath(),
+            'targetType' => $query->getTargetType(),
+            'targetQuery' => $query->getTargetQuery(),
+        ];
     }
 
     private function createParser(): Parser
@@ -281,924 +504,5 @@ final class ParserTest extends Unit
             $pqlAdapter,
             $indexEntityService
         );
-    }
-
-    private function getCarMapping(): array
-    {
-        $mapping = <<<JSON
-{
-  "pimcore_car-odd": {
-    "mappings": {
-      "properties": {
-        "custom_fields": {
-          "properties": {
-            "PortalEngineBundle": {
-              "properties": {
-                "standard_fields": {
-                  "properties": {
-                    "bodyStyle": {
-                      "properties": {
-                        "id": {
-                          "type": "long"
-                        },
-                        "name": {
-                          "type": "text",
-                          "fields": {
-                            "keyword": {
-                              "type": "keyword"
-                            }
-                          }
-                        },
-                        "type": {
-                          "type": "keyword"
-                        }
-                      }
-                    },
-                    "categories": {
-                      "properties": {
-                        "id": {
-                          "type": "long"
-                        },
-                        "name": {
-                          "type": "text",
-                          "fields": {
-                            "keyword": {
-                              "type": "keyword"
-                            }
-                          }
-                        },
-                        "type": {
-                          "type": "keyword"
-                        }
-                      }
-                    },
-                    "manufacturer": {
-                      "properties": {
-                        "id": {
-                          "type": "long"
-                        },
-                        "name": {
-                          "type": "text",
-                          "fields": {
-                            "keyword": {
-                              "type": "keyword"
-                            }
-                          }
-                        },
-                        "type": {
-                          "type": "keyword"
-                        }
-                      }
-                    }
-                  }
-                },
-                "system_fields": {
-                  "properties": {
-                    "collections": {
-                      "type": "keyword"
-                    },
-                    "name": {
-                      "properties": {
-                        "de": {
-                          "type": "keyword"
-                        },
-                        "en": {
-                          "type": "keyword"
-                        },
-                        "fr": {
-                          "type": "keyword"
-                        }
-                      }
-                    },
-                    "publicShares": {
-                      "type": "keyword"
-                    },
-                    "thumbnail": {
-                      "type": "keyword"
-                    }
-                  }
-                }
-              }
-            },
-            "assetDependencies": {
-              "type": "integer"
-            }
-          }
-        },
-        "standard_fields": {
-          "properties": {
-            "attributes": {
-              "properties": {
-                "Bodywork": {
-                  "properties": {
-                    "cargoCapacity": {
-                      "properties": {
-                        "unitId": {
-                          "type": "text"
-                        },
-                        "value": {
-                          "type": "float"
-                        }
-                      }
-                    },
-                    "numberOfDoors": {
-                      "type": "float"
-                    },
-                    "numberOfSeats": {
-                      "type": "float"
-                    }
-                  }
-                },
-                "Dimensions": {
-                  "properties": {
-                    "length": {
-                      "properties": {
-                        "unitId": {
-                          "type": "text"
-                        },
-                        "value": {
-                          "type": "float"
-                        }
-                      }
-                    },
-                    "weight": {
-                      "properties": {
-                        "unitId": {
-                          "type": "text"
-                        },
-                        "value": {
-                          "type": "float"
-                        }
-                      }
-                    },
-                    "wheelbase": {
-                      "properties": {
-                        "unitId": {
-                          "type": "text"
-                        },
-                        "value": {
-                          "type": "float"
-                        }
-                      }
-                    },
-                    "width": {
-                      "properties": {
-                        "unitId": {
-                          "type": "text"
-                        },
-                        "value": {
-                          "type": "float"
-                        }
-                      }
-                    }
-                  }
-                },
-                "Engine": {
-                  "properties": {
-                    "capacity": {
-                      "properties": {
-                        "unitId": {
-                          "type": "text"
-                        },
-                        "value": {
-                          "type": "float"
-                        }
-                      }
-                    },
-                    "cylinders": {
-                      "type": "float"
-                    },
-                    "engineLocation": {
-                      "type": "text",
-                      "fields": {
-                        "analyzed": {
-                          "type": "text",
-                          "analyzer": "standard",
-                          "search_analyzer": "generic_data_index_whitespace_analyzer"
-                        },
-                        "analyzed_ngram": {
-                          "type": "text",
-                          "analyzer": "generic_data_index_ngram_analyzer",
-                          "search_analyzer": "generic_data_index_whitespace_analyzer"
-                        },
-                        "keyword": {
-                          "type": "keyword"
-                        }
-                      }
-                    },
-                    "power": {
-                      "properties": {
-                        "unitId": {
-                          "type": "text"
-                        },
-                        "value": {
-                          "type": "float"
-                        }
-                      }
-                    }
-                  }
-                },
-                "Transmission": {
-                  "properties": {
-                    "wheelDrive": {
-                      "type": "text",
-                      "fields": {
-                        "analyzed": {
-                          "type": "text",
-                          "analyzer": "standard",
-                          "search_analyzer": "generic_data_index_whitespace_analyzer"
-                        },
-                        "analyzed_ngram": {
-                          "type": "text",
-                          "analyzer": "generic_data_index_ngram_analyzer",
-                          "search_analyzer": "generic_data_index_whitespace_analyzer"
-                        },
-                        "keyword": {
-                          "type": "keyword"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "bodyStyle": {
-              "properties": {
-                "asset": {
-                  "type": "long"
-                },
-                "document": {
-                  "type": "long"
-                },
-                "object": {
-                  "type": "long"
-                }
-              }
-            },
-            "carClass": {
-              "type": "text",
-              "fields": {
-                "analyzed": {
-                  "type": "text",
-                  "analyzer": "standard",
-                  "search_analyzer": "generic_data_index_whitespace_analyzer"
-                },
-                "analyzed_ngram": {
-                  "type": "text",
-                  "analyzer": "generic_data_index_ngram_analyzer",
-                  "search_analyzer": "generic_data_index_whitespace_analyzer"
-                },
-                "keyword": {
-                  "type": "keyword"
-                }
-              }
-            },
-            "categories": {
-              "properties": {
-                "asset": {
-                  "type": "long"
-                },
-                "document": {
-                  "type": "long"
-                },
-                "object": {
-                  "type": "long"
-                }
-              }
-            },
-            "color": {
-              "type": "text",
-              "fields": {
-                "analyzed": {
-                  "type": "text",
-                  "analyzer": "standard",
-                  "search_analyzer": "generic_data_index_whitespace_analyzer"
-                },
-                "analyzed_ngram": {
-                  "type": "text",
-                  "analyzer": "generic_data_index_ngram_analyzer",
-                  "search_analyzer": "generic_data_index_whitespace_analyzer"
-                },
-                "keyword": {
-                  "type": "keyword"
-                }
-              }
-            },
-            "country": {
-              "type": "text",
-              "fields": {
-                "analyzed": {
-                  "type": "text",
-                  "analyzer": "standard",
-                  "search_analyzer": "generic_data_index_whitespace_analyzer"
-                },
-                "analyzed_ngram": {
-                  "type": "text",
-                  "analyzer": "generic_data_index_ngram_analyzer",
-                  "search_analyzer": "generic_data_index_whitespace_analyzer"
-                },
-                "keyword": {
-                  "type": "keyword"
-                }
-              }
-            },
-            "description": {
-              "properties": {
-                "de": {
-                  "type": "text",
-                  "fields": {
-                    "analyzed": {
-                      "type": "text",
-                      "analyzer": "standard",
-                      "search_analyzer": "generic_data_index_whitespace_analyzer"
-                    },
-                    "analyzed_ngram": {
-                      "type": "text",
-                      "analyzer": "generic_data_index_ngram_analyzer",
-                      "search_analyzer": "generic_data_index_whitespace_analyzer"
-                    },
-                    "keyword": {
-                      "type": "keyword"
-                    }
-                  }
-                },
-                "en": {
-                  "type": "text",
-                  "fields": {
-                    "analyzed": {
-                      "type": "text",
-                      "analyzer": "standard",
-                      "search_analyzer": "generic_data_index_whitespace_analyzer"
-                    },
-                    "analyzed_ngram": {
-                      "type": "text",
-                      "analyzer": "generic_data_index_ngram_analyzer",
-                      "search_analyzer": "generic_data_index_whitespace_analyzer"
-                    },
-                    "keyword": {
-                      "type": "keyword"
-                    }
-                  }
-                },
-                "fr": {
-                  "type": "text",
-                  "fields": {
-                    "analyzed": {
-                      "type": "text",
-                      "analyzer": "standard",
-                      "search_analyzer": "generic_data_index_whitespace_analyzer"
-                    },
-                    "analyzed_ngram": {
-                      "type": "text",
-                      "analyzer": "generic_data_index_ngram_analyzer",
-                      "search_analyzer": "generic_data_index_whitespace_analyzer"
-                    },
-                    "keyword": {
-                      "type": "keyword"
-                    }
-                  }
-                }
-              }
-            },
-            "gallery": {
-              "properties": {
-                "assets": {
-                  "type": "long"
-                },
-                "details": {
-                  "type": "nested",
-                  "properties": {
-                    "crop": {
-                      "properties": {
-                        "cropHeight": {
-                          "type": "float"
-                        },
-                        "cropLeft": {
-                          "type": "float"
-                        },
-                        "cropPercent": {
-                          "type": "boolean"
-                        },
-                        "cropTop": {
-                          "type": "float"
-                        },
-                        "cropWidth": {
-                          "type": "float"
-                        }
-                      }
-                    },
-                    "hotspots": {
-                      "type": "nested",
-                      "properties": {
-                        "data": {
-                          "type": "flat_object"
-                        },
-                        "height": {
-                          "type": "float"
-                        },
-                        "left": {
-                          "type": "float"
-                        },
-                        "name": {
-                          "type": "text",
-                          "fields": {
-                            "analyzed": {
-                              "type": "text",
-                              "analyzer": "standard",
-                              "search_analyzer": "generic_data_index_whitespace_analyzer"
-                            },
-                            "analyzed_ngram": {
-                              "type": "text",
-                              "analyzer": "generic_data_index_ngram_analyzer",
-                              "search_analyzer": "generic_data_index_whitespace_analyzer"
-                            },
-                            "keyword": {
-                              "type": "keyword"
-                            }
-                          }
-                        },
-                        "top": {
-                          "type": "float"
-                        },
-                        "width": {
-                          "type": "float"
-                        }
-                      }
-                    },
-                    "image": {
-                      "properties": {
-                        "id": {
-                          "type": "long"
-                        },
-                        "type": {
-                          "type": "keyword"
-                        }
-                      }
-                    },
-                    "marker": {
-                      "type": "nested",
-                      "properties": {
-                        "data": {
-                          "type": "flat_object"
-                        },
-                        "left": {
-                          "type": "float"
-                        },
-                        "name": {
-                          "type": "text",
-                          "fields": {
-                            "analyzed": {
-                              "type": "text",
-                              "analyzer": "standard",
-                              "search_analyzer": "generic_data_index_whitespace_analyzer"
-                            },
-                            "analyzed_ngram": {
-                              "type": "text",
-                              "analyzer": "generic_data_index_ngram_analyzer",
-                              "search_analyzer": "generic_data_index_whitespace_analyzer"
-                            },
-                            "keyword": {
-                              "type": "keyword"
-                            }
-                          }
-                        },
-                        "top": {
-                          "type": "float"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "genericImages": {
-              "properties": {
-                "assets": {
-                  "type": "long"
-                },
-                "details": {
-                  "type": "nested",
-                  "properties": {
-                    "crop": {
-                      "properties": {
-                        "cropHeight": {
-                          "type": "float"
-                        },
-                        "cropLeft": {
-                          "type": "float"
-                        },
-                        "cropPercent": {
-                          "type": "boolean"
-                        },
-                        "cropTop": {
-                          "type": "float"
-                        },
-                        "cropWidth": {
-                          "type": "float"
-                        }
-                      }
-                    },
-                    "hotspots": {
-                      "type": "nested",
-                      "properties": {
-                        "data": {
-                          "type": "flat_object"
-                        },
-                        "height": {
-                          "type": "float"
-                        },
-                        "left": {
-                          "type": "float"
-                        },
-                        "name": {
-                          "type": "text",
-                          "fields": {
-                            "analyzed": {
-                              "type": "text",
-                              "analyzer": "standard",
-                              "search_analyzer": "generic_data_index_whitespace_analyzer"
-                            },
-                            "analyzed_ngram": {
-                              "type": "text",
-                              "analyzer": "generic_data_index_ngram_analyzer",
-                              "search_analyzer": "generic_data_index_whitespace_analyzer"
-                            },
-                            "keyword": {
-                              "type": "keyword"
-                            }
-                          }
-                        },
-                        "top": {
-                          "type": "float"
-                        },
-                        "width": {
-                          "type": "float"
-                        }
-                      }
-                    },
-                    "image": {
-                      "properties": {
-                        "id": {
-                          "type": "long"
-                        },
-                        "type": {
-                          "type": "keyword"
-                        }
-                      }
-                    },
-                    "marker": {
-                      "type": "nested",
-                      "properties": {
-                        "data": {
-                          "type": "flat_object"
-                        },
-                        "left": {
-                          "type": "float"
-                        },
-                        "name": {
-                          "type": "text",
-                          "fields": {
-                            "analyzed": {
-                              "type": "text",
-                              "analyzer": "standard",
-                              "search_analyzer": "generic_data_index_whitespace_analyzer"
-                            },
-                            "analyzed_ngram": {
-                              "type": "text",
-                              "analyzer": "generic_data_index_ngram_analyzer",
-                              "search_analyzer": "generic_data_index_whitespace_analyzer"
-                            },
-                            "keyword": {
-                              "type": "keyword"
-                            }
-                          }
-                        },
-                        "top": {
-                          "type": "float"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "location": {
-              "properties": {
-                "latitude": {
-                  "type": "float"
-                },
-                "longitude": {
-                  "type": "float"
-                }
-              }
-            },
-            "mainImageTest": {
-              "properties": {
-                "id": {
-                  "type": "long"
-                },
-                "type": {
-                  "type": "keyword"
-                }
-              }
-            },
-            "manufacturer": {
-              "properties": {
-                "asset": {
-                  "type": "long"
-                },
-                "document": {
-                  "type": "long"
-                },
-                "object": {
-                  "type": "long"
-                }
-              }
-            },
-            "name": {
-              "properties": {
-                "de": {
-                  "type": "text",
-                  "fields": {
-                    "analyzed": {
-                      "type": "text",
-                      "analyzer": "standard",
-                      "search_analyzer": "generic_data_index_whitespace_analyzer"
-                    },
-                    "analyzed_ngram": {
-                      "type": "text",
-                      "analyzer": "generic_data_index_ngram_analyzer",
-                      "search_analyzer": "generic_data_index_whitespace_analyzer"
-                    },
-                    "keyword": {
-                      "type": "keyword"
-                    }
-                  }
-                },
-                "en": {
-                  "type": "text",
-                  "fields": {
-                    "analyzed": {
-                      "type": "text",
-                      "analyzer": "standard",
-                      "search_analyzer": "generic_data_index_whitespace_analyzer"
-                    },
-                    "analyzed_ngram": {
-                      "type": "text",
-                      "analyzer": "generic_data_index_ngram_analyzer",
-                      "search_analyzer": "generic_data_index_whitespace_analyzer"
-                    },
-                    "keyword": {
-                      "type": "keyword"
-                    }
-                  }
-                },
-                "fr": {
-                  "type": "text",
-                  "fields": {
-                    "analyzed": {
-                      "type": "text",
-                      "analyzer": "standard",
-                      "search_analyzer": "generic_data_index_whitespace_analyzer"
-                    },
-                    "analyzed_ngram": {
-                      "type": "text",
-                      "analyzer": "generic_data_index_ngram_analyzer",
-                      "search_analyzer": "generic_data_index_whitespace_analyzer"
-                    },
-                    "keyword": {
-                      "type": "keyword"
-                    }
-                  }
-                }
-              }
-            },
-            "objectType": {
-              "type": "text",
-              "fields": {
-                "analyzed": {
-                  "type": "text",
-                  "analyzer": "standard",
-                  "search_analyzer": "generic_data_index_whitespace_analyzer"
-                },
-                "analyzed_ngram": {
-                  "type": "text",
-                  "analyzer": "generic_data_index_ngram_analyzer",
-                  "search_analyzer": "generic_data_index_whitespace_analyzer"
-                },
-                "keyword": {
-                  "type": "keyword"
-                }
-              }
-            },
-            "productionYear": {
-              "type": "float"
-            },
-            "saleInformation": {
-              "properties": {
-                "SaleInformation": {
-                  "properties": {
-                    "availabilityPieces": {
-                      "type": "float"
-                    },
-                    "availabilityType": {
-                      "type": "text",
-                      "fields": {
-                        "analyzed": {
-                          "type": "text",
-                          "analyzer": "standard",
-                          "search_analyzer": "generic_data_index_whitespace_analyzer"
-                        },
-                        "analyzed_ngram": {
-                          "type": "text",
-                          "analyzer": "generic_data_index_ngram_analyzer",
-                          "search_analyzer": "generic_data_index_whitespace_analyzer"
-                        },
-                        "keyword": {
-                          "type": "keyword"
-                        }
-                      }
-                    },
-                    "condition": {
-                      "type": "text",
-                      "fields": {
-                        "analyzed": {
-                          "type": "text",
-                          "analyzer": "standard",
-                          "search_analyzer": "generic_data_index_whitespace_analyzer"
-                        },
-                        "analyzed_ngram": {
-                          "type": "text",
-                          "analyzer": "generic_data_index_ngram_analyzer",
-                          "search_analyzer": "generic_data_index_whitespace_analyzer"
-                        },
-                        "keyword": {
-                          "type": "keyword"
-                        }
-                      }
-                    },
-                    "milage": {
-                      "properties": {
-                        "unitId": {
-                          "type": "text"
-                        },
-                        "value": {
-                          "type": "float"
-                        }
-                      }
-                    },
-                    "priceInEUR": {
-                      "type": "float"
-                    }
-                  }
-                }
-              }
-            },
-            "series": {
-              "type": "text",
-              "fields": {
-                "analyzed": {
-                  "type": "text",
-                  "analyzer": "standard",
-                  "search_analyzer": "generic_data_index_whitespace_analyzer"
-                },
-                "analyzed_ngram": {
-                  "type": "text",
-                  "analyzer": "generic_data_index_ngram_analyzer",
-                  "search_analyzer": "generic_data_index_whitespace_analyzer"
-                },
-                "keyword": {
-                  "type": "keyword"
-                }
-              }
-            },
-            "urlSlug": {
-              "type": "nested",
-              "properties": {
-                "siteId": {
-                  "type": "keyword"
-                },
-                "slug": {
-                  "type": "text"
-                }
-              }
-            }
-          }
-        },
-        "system_fields": {
-          "properties": {
-            "checksum": {
-              "type": "long"
-            },
-            "className": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                  "type": "keyword",
-                  "ignore_above": 256
-                }
-              }
-            },
-            "classname": {
-              "type": "keyword"
-            },
-            "creationDate": {
-              "type": "date"
-            },
-            "fullPath": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                  "type": "keyword"
-                }
-              },
-              "analyzer": "generic_data_index_path_analyzer"
-            },
-            "hasWorkflowWithPermissions": {
-              "type": "boolean"
-            },
-            "id": {
-              "type": "long"
-            },
-            "isLocked": {
-              "type": "boolean"
-            },
-            "key": {
-              "type": "keyword",
-              "fields": {
-                "analyzed": {
-                  "type": "text",
-                  "analyzer": "standard",
-                  "search_analyzer": "generic_data_index_whitespace_analyzer"
-                },
-                "analyzed_ngram": {
-                  "type": "text",
-                  "analyzer": "generic_data_index_ngram_analyzer",
-                  "search_analyzer": "generic_data_index_whitespace_analyzer"
-                }
-              }
-            },
-            "lock": {
-              "type": "keyword"
-            },
-            "modificationDate": {
-              "type": "date"
-            },
-            "parentId": {
-              "type": "long"
-            },
-            "parentTags": {
-              "type": "integer"
-            },
-            "path": {
-              "type": "text",
-              "fields": {
-                "keyword": {
-                  "type": "keyword"
-                }
-              },
-              "analyzer": "generic_data_index_path_analyzer"
-            },
-            "pathLevel": {
-              "type": "integer"
-            },
-            "pathLevels": {
-              "type": "nested",
-              "properties": {
-                "level": {
-                  "type": "integer"
-                },
-                "name": {
-                  "type": "keyword"
-                }
-              }
-            },
-            "published": {
-              "type": "boolean"
-            },
-            "tags": {
-              "type": "integer"
-            },
-            "thumbnail": {
-              "type": "keyword"
-            },
-            "type": {
-              "type": "keyword"
-            },
-            "userModification": {
-              "type": "integer"
-            },
-            "userOwner": {
-              "type": "integer"
-            }
-          }
-        }
-      }
-    }
-  }
-}
-JSON;
-
-        return json_decode($mapping, true);
     }
 }

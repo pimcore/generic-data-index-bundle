@@ -159,7 +159,7 @@ final class Parser implements ParserInterface
         $this->validateCurrentTokenNotEmpty();
 
         if (!$this->currentToken() || !$this->currentToken()->isA(...self::FIELD_NAME_TOKENS)) {
-            $this->throwParsingException('an field name', '`' . ($this->currentToken()['value'] ?? 'null') . '`');
+            $this->throwParsingException('a field name', '`' . ($this->currentToken()['value'] ?? 'null') . '`');
         }
 
         $fieldType = $this->currentToken()['type'];
