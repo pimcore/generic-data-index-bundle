@@ -55,6 +55,7 @@ class Lexer extends AbstractLexer implements LexerInterface
     private const REGEX_STRING_SINGLE_QUOTE = "'(?:[^']|'')*'";
 
     private const REGEX_STRING_DOUBLE_QUOTE = '"(?:[^"]|"")*"';
+
     private const REGEX_OPERATOR = '>=|<=|=|>|<|like';
 
     /**
