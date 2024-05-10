@@ -17,14 +17,10 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\QueryLanguage\Pql;
 
 use Codeception\Test\Unit;
-use Doctrine\Common\Lexer\Token;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\QueryLanguage\QueryTokenType;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResult;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\Pql\Lexer;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\Pql\Parser;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\PqlAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\FetchIdsBySearchServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -39,56 +35,56 @@ final class ParserTest extends Unit
         $this->assertQueryResult(
             'color = "red"',
             [
-                'match' => ['color' => 'red']
+                'match' => ['color' => 'red'],
             ]
         );
 
         $this->assertQueryResult(
             'price > 27',
             [
-                'range' => ['price' => ['gt' => 27]]
+                'range' => ['price' => ['gt' => 27]],
             ]
         );
 
         $this->assertQueryResult(
             'price < 30',
             [
-                'range' => ['price' => ['lt' => 30]]
+                'range' => ['price' => ['lt' => 30]],
             ]
         );
 
         $this->assertQueryResult(
             'price >= 27',
             [
-                'range' => ['price' => ['gte' => 27]]
+                'range' => ['price' => ['gte' => 27]],
             ]
         );
 
         $this->assertQueryResult(
             'price <= 30',
             [
-                'range' => ['price' => ['lte' => 30]]
+                'range' => ['price' => ['lte' => 30]],
             ]
         );
 
         $this->assertQueryResult(
             'name like "Jaguar*"',
             [
-                'wildcard' => ['name' => 'Jaguar?']
+                'wildcard' => ['name' => 'Jaguar?'],
             ]
         );
 
         $this->assertQueryResult(
             'name like "Jag*ar*"',
             [
-                'wildcard' => ['name' => 'Jag?ar?']
+                'wildcard' => ['name' => 'Jag?ar?'],
             ]
         );
 
         $this->assertQueryResult(
             'name like "Jaguar"',
             [
-                'wildcard' => ['name' => 'Jaguar']
+                'wildcard' => ['name' => 'Jaguar'],
             ]
         );
     }
@@ -102,10 +98,10 @@ final class ParserTest extends Unit
                 'bool' => [
                     'should' => [
                         ['match' => ['color' => 'red']],
-                        ['match' => ['series' => 'E-Type']]
+                        ['match' => ['series' => 'E-Type']],
                     ],
                     'minimum_should_match' => 1,
-                ]
+                ],
             ]
         );
 
@@ -115,10 +111,10 @@ final class ParserTest extends Unit
                 'bool' => [
                     'should' => [
                         ['match' => ['color' => 'red']],
-                        ['match' => ['series' => 'E-Type']]
+                        ['match' => ['series' => 'E-Type']],
                     ],
                     'minimum_should_match' => 1,
-                ]
+                ],
             ]
         );
 
@@ -132,14 +128,14 @@ final class ParserTest extends Unit
                             'bool' => [
                                 'should' => [
                                     ['match' => ['color' => 'red']],
-                                    ['match' => ['series' => 'E-Type']]
+                                    ['match' => ['series' => 'E-Type']],
                                 ],
                                 'minimum_should_match' => 1,
-                            ]
+                            ],
                         ],
-                        ['match' => ['name' => 'Jaguar']]
-                    ]
-                ]
+                        ['match' => ['name' => 'Jaguar']],
+                    ],
+                ],
             ]
         );
         $this->assertQueryResult(
@@ -152,14 +148,14 @@ final class ParserTest extends Unit
                             'bool' => [
                                 'should' => [
                                     ['match' => ['color' => 'red']],
-                                    ['match' => ['series' => 'E-Type']]
+                                    ['match' => ['series' => 'E-Type']],
                                 ],
                                 'minimum_should_match' => 1,
-                            ]
+                            ],
                         ],
-                        ['match' => ['name' => 'Jaguar']]
-                    ]
-                ]
+                        ['match' => ['name' => 'Jaguar']],
+                    ],
+                ],
             ]
         );
 
@@ -173,13 +169,13 @@ final class ParserTest extends Unit
                             'bool' => [
                                 'must' => [
                                     ['match' => ['series' => 'E-Type']],
-                                    ['match' => ['name' => 'Jaguar']]
-                                ]
-                            ]
-                        ]
+                                    ['match' => ['name' => 'Jaguar']],
+                                ],
+                            ],
+                        ],
                     ],
                     'minimum_should_match' => 1,
-                ]
+                ],
             ]
         );
 
@@ -196,18 +192,18 @@ final class ParserTest extends Unit
                                         'bool' => [
                                             'must' => [
                                                 ['match' => ['series' => 'E-Type']],
-                                                ['match' => ['name' => 'Jaguar']]
-                                            ]
-                                        ]
+                                                ['match' => ['name' => 'Jaguar']],
+                                            ],
+                                        ],
                                     ],
-                                    ['range' => ['price' => ['gt' => 100]]]
+                                    ['range' => ['price' => ['gt' => 100]]],
                                 ],
                                 'minimum_should_match' => 1,
-                            ]
-                        ]
+                            ],
+                        ],
                     ],
                     'minimum_should_match' => 1,
-                ]
+                ],
             ]
         );
     }
@@ -218,8 +214,8 @@ final class ParserTest extends Unit
             'Query("color:(red or blue)")',
             [
                 'query_string' => [
-                    'query' => 'color:(red or blue)'
-                ]
+                    'query' => 'color:(red or blue)',
+                ],
             ]
         );
 
@@ -231,11 +227,11 @@ final class ParserTest extends Unit
                         ['match' => ['series' => 'Jaguar']],
                         [
                             'query_string' => [
-                                'query' => 'color:(red or blue)'
-                            ]
-                        ]
-                    ]
-                ]
+                                'query' => 'color:(red or blue)',
+                            ],
+                        ],
+                    ],
+                ],
             ]
         );
 
@@ -246,12 +242,12 @@ final class ParserTest extends Unit
                     'must' => [
                         [
                             'query_string' => [
-                                'query' => 'color:(red or blue)'
-                            ]
+                                'query' => 'color:(red or blue)',
+                            ],
                         ],
-                        ['range' => ['price' => ['gt' => 1000.23]]]
-                    ]
-                ]
+                        ['range' => ['price' => ['gt' => 1000.23]]],
+                    ],
+                ],
             ]
         );
     }
@@ -1202,6 +1198,7 @@ final class ParserTest extends Unit
   }
 }
 JSON;
+
         return json_decode($mapping, true);
     }
 }
