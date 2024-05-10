@@ -58,6 +58,8 @@ class Lexer extends AbstractLexer implements LexerInterface
 
     private const REGEX_OPERATOR = '>=|<=|=|>|<|like';
 
+    private const REGEX_PARANTHESES = '\(|\)';
+
     /**
      * Lexical catchable patterns.
      */
@@ -71,7 +73,7 @@ class Lexer extends AbstractLexer implements LexerInterface
             self::REGEX_STRING_SINGLE_QUOTE,
             self::REGEX_STRING_DOUBLE_QUOTE,
             self::REGEX_OPERATOR,
-            //TODO add regex for ( )
+            self::REGEX_PARANTHESES,
         ];
     }
 
