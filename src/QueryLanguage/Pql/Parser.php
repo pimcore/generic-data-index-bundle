@@ -245,7 +245,6 @@ final class Parser implements ParserInterface
      */
     public function parse(): ParseResult
     {
-
         $subQueries = [];
         $query = $this->parseCondition($subQueries);
 
