@@ -1,6 +1,19 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under two different licenses:
+ * - GNU General Public License version 3 (GPLv3)
+ * - Pimcore Commercial License (PCL)
+ * Full copyright and license information is available in
+ * LICENSE.md which is distributed with this source code.
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer;
 
 use Codeception\Test\Unit;
@@ -20,13 +33,13 @@ final class RelationsTransformerTest extends Unit
             $this->makeEmpty(MappingAnalyzerServiceInterface::class, [
                 'fieldPathExists' => function (string $fieldName, array $indexMapping) {
                     return in_array($fieldName, ['relation', 'relation.object', 'relation.document', 'relation.asset']);
-                }
+                },
             ])
         );
 
-        $assetEntity = new IndexEntity('','',IndexType::ASSET);
-        $documentEntity = new IndexEntity('','',IndexType::DOCUMENT);
-        $dataObjectEntity = new IndexEntity('','',IndexType::DATA_OBJECT);
+        $assetEntity = new IndexEntity('', '', IndexType::ASSET);
+        $documentEntity = new IndexEntity('', '', IndexType::DOCUMENT);
+        $dataObjectEntity = new IndexEntity('', '', IndexType::DATA_OBJECT);
 
         $this->assertEquals(
             'relation.asset',
