@@ -1,0 +1,68 @@
+<?php
+declare(strict_types=1);
+
+namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\OpenSearch\QueryLanguage;
+
+use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\PqlAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\FetchIdsBySearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+
+/**
+ * @internal
+ */
+final class PqlAdapterTest extends Unit
+{
+    public function testTransformFieldName(): void
+    {
+        $fieldNameTransformer1 = $this->makeEmpty(FieldNameTransformerInterface::class, [
+            'stopPropagation' => false,
+            'transformFieldName' => function () {
+                return 'transformer-1';
+            }
+        ]);
+
+        $fieldNameTransformer2 = $this->makeEmpty(FieldNameTransformerInterface::class, [
+            'stopPropagation' => true,
+            'transformFieldName' => function () {
+                return 'transformer-2';
+            }
+        ]);
+
+        $pqlAdapter = $this->createPqlAdapter([$fieldNameTransformer1, $fieldNameTransformer2]);
+        $this->assertEquals(
+            'transformer-2',
+            $pqlAdapter->transformFieldName('test', [], null)
+        );
+
+        $pqlAdapter = $this->createPqlAdapter([$fieldNameTransformer2, $fieldNameTransformer1]);
+        $this->assertEquals(
+            'transformer-2',
+            $pqlAdapter->transformFieldName('test', [], null)
+        );
+
+        $pqlAdapter = $this->createPqlAdapter([$fieldNameTransformer1]);
+        $this->assertEquals(
+            'transformer-1',
+            $pqlAdapter->transformFieldName('test', [], null)
+        );
+    }
+
+
+    private function createPqlAdapter(array $fieldNameTransformers): PqlAdapter
+    {
+        $indexEntityService = new IndexEntityService(
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
+            $this->makeEmpty(ElementServiceInterface::class),
+        );
+
+        return new PqlAdapter(
+            $indexEntityService,
+            $this->makeEmpty(FetchIdsBySearchServiceInterface::class),
+            $fieldNameTransformers
+        );
+    }
+}
