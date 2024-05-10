@@ -377,6 +377,7 @@ final class ParserTest extends Unit
         $this->expectExceptionMessage('end of input. Seems query is truncated');
         $this->parseQuery('color = "red" and');
     }
+
     public function testParseError2(): void
     {
         $this->expectException(ParsingException::class);
@@ -390,6 +391,7 @@ final class ParserTest extends Unit
         $this->expectExceptionMessage('end of input. Seems query is truncated');
         $this->parseQuery('color = "red" and (age < 1970 or series = "E-Type"');
     }
+
     public function testParseError4(): void
     {
         $this->expectException(ParsingException::class);
@@ -410,6 +412,7 @@ final class ParserTest extends Unit
         $this->expectExceptionMessage('Expected a comparison operator, found `:`');
         $this->parseQuery('manufacturer:Manufactorer = "Jaguar"');
     }
+
     public function testParseError7(): void
     {
         $this->expectException(ParsingException::class);
@@ -438,6 +441,7 @@ final class ParserTest extends Unit
         $this->assertSame($result, $parseResult->getQuery());
         $this->assertEmpty($parseResult->getSubQueries());
     }
+
     private function assertSubQueryResult(string $query, array $subQuery): void
     {
         $parser = $this->createParser();
@@ -449,6 +453,7 @@ final class ParserTest extends Unit
         $this->assertSame($this->subQueryToArray($parseResult->getQuery()), $subQuery);
         $this->assertSame($this->subQueriesToArray($parseResult), [$subQuery]);
     }
+
     private function assertSubQueriesResult(string $queryString, array $query, array $subQueries): void
     {
         $parser = $this->createParser();
@@ -473,7 +478,7 @@ final class ParserTest extends Unit
     private function subQueriesToArray(ParseResult $parseResult): array
     {
         return array_values(array_map(
-            fn(ParseResultSubQuery $query) => $this->subQueryToArray($query),
+            fn (ParseResultSubQuery $query) => $this->subQueryToArray($query),
             $parseResult->getSubQueries()
         ));
     }
