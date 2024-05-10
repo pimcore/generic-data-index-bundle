@@ -18,33 +18,33 @@ final class LexerTest extends Unit
         $lexer = new Lexer();
 
         $testCases = [
-            'standard_fields.series = "foo"' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field = "foo"' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
             ],
-            'standard_fields.series LIKE "foo*"' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field LIKE "foo*"' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_LIKE, 'value' => 'LIKE'],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo*'],
             ],
-            'standard_fields.series >= 42' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field >= 42' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_GTE, 'value' => '>='],
                 ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
             ],
-            'standard_fields.series <= 42' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field <= 42' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_LTE, 'value' => '<='],
                 ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
             ],
-            'standard_fields.series > 42' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field > 42' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_GT, 'value' => '>'],
                 ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
             ],
-            'standard_fields.series < 42' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field < 42' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_LT, 'value' => '<'],
                 ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
             ],
@@ -61,20 +61,51 @@ final class LexerTest extends Unit
         $lexer = new Lexer();
 
         $testCases = [
-            'standard_fields.series = "foo"' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field = "foo"' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
             ],
-            'standard_fields.series = 42' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field = 42' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
             ],
-            'standard_fields.series = 42.42' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field = 42.42' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_FLOAT, 'value' => 42.42],
+            ],
+        ];
+
+        foreach ($testCases as $testCase => $expected) {
+            $lexer->setQuery($testCase);
+            $tokens = $lexer->getTokens();
+            $this->assertTokens($expected, $tokens, $testCase);
+        }
+    }
+
+    public function testGetTokensQueryString(): void
+    {
+        $lexer = new Lexer();
+
+        $testCases = [
+            'Query("standard_fields.color:(red or blue)")' => [
+                ['type' => QueryTokenType::T_QUERY_STRING, 'value' => 'standard_fields.color:(red or blue)'],
+            ],
+            'price > 100 and Query("standard_fields.color:(red or blue)")' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'price'],
+                ['type' => QueryTokenType::T_GT, 'value' => '>'],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => 100],
+                ['type' => QueryTokenType::T_AND, 'value' => 'and'],
+                ['type' => QueryTokenType::T_QUERY_STRING, 'value' => 'standard_fields.color:(red or blue)'],
+            ],
+            'Query("standard_fields.color:(red or blue)") and age < 1970' => [
+                ['type' => QueryTokenType::T_QUERY_STRING, 'value' => 'standard_fields.color:(red or blue)'],
+                ['type' => QueryTokenType::T_AND, 'value' => 'and'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
+                ['type' => QueryTokenType::T_LT, 'value' => '<'],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => 1970],
             ],
         ];
 
@@ -90,142 +121,142 @@ final class LexerTest extends Unit
         $lexer = new Lexer();
 
         $testCases = [
-            'standard_fields.series = "foo"' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field = "foo"' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
             ],
-            "standard_fields.series = 'foo'" => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            "my_field = 'foo'" => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
             ],
-            '(standard_fields.series = "foo" or standard_fields.name = "bar")' => [
+            '(my_field = "foo" or name = "bar")' => [
                 ['type' => QueryTokenType::T_LPAREN, 'value' => '('],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
                 ['type' => QueryTokenType::T_OR, 'value' => 'or'],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.name'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'name'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'bar'],
                 ['type' => QueryTokenType::T_RPAREN, 'value' => ')'],
             ],
-            'standard_fields.series = "foo" and standard_fields.name = "bar"' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field = "foo" and name = "bar"' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.name'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'name'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'bar'],
             ],
-            'standard_fields.series = "foo" and standard_fields.name = "bar" and standard_fields.age = 42' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field = "foo" and name = "bar" and age = 42' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.name'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'name'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'bar'],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.age'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
             ],
-            'standard_fields.series = "foo" and standard_fields.name = "bar" and standard_fields.age = 42 and standard_fields.price = 42.42' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field = "foo" and name = "bar" and age = 42 and price = 42.42' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.name'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'name'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'bar'],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.age'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.price'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'price'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_FLOAT, 'value' => 42.42],
             ],
-            'standard_fields.series = "foo" and (standard_fields.name = "bar" or standard_fields.age = 42)' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field = "foo" and (name = "bar" or age = 42)' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
                 ['type' => QueryTokenType::T_LPAREN, 'value' => '('],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.name'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'name'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'bar'],
                 ['type' => QueryTokenType::T_OR, 'value' => 'or'],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.age'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
                 ['type' => QueryTokenType::T_RPAREN, 'value' => ')'],
             ],
-            'standard_fields.series = "foo" and (standard_fields.name = "bar" or standard_fields.age = 42) and standard_fields.price = 42.42' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field = "foo" and (name = "bar" or age = 42) and price = 42.42' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
                 ['type' => QueryTokenType::T_LPAREN, 'value' => '('],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.name'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'name'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'bar'],
                 ['type' => QueryTokenType::T_OR, 'value' => 'or'],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.age'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
                 ['type' => QueryTokenType::T_RPAREN, 'value' => ')'],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.price'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'price'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_FLOAT, 'value' => 42.42],
             ],
-            'standard_fields.series = "foo" and (standard_fields.name = "bar" or (standard_fields.age > 42 and standard_fields.price > 42.42))' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field = "foo" and (name = "bar" or (age > 42 and price > 42.42))' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
                 ['type' => QueryTokenType::T_LPAREN, 'value' => '('],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.name'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'name'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'bar'],
                 ['type' => QueryTokenType::T_OR, 'value' => 'or'],
                 ['type' => QueryTokenType::T_LPAREN, 'value' => '('],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.age'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
                 ['type' => QueryTokenType::T_GT, 'value' => '>'],
                 ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.price'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'price'],
                 ['type' => QueryTokenType::T_GT, 'value' => '>'],
                 ['type' => QueryTokenType::T_FLOAT, 'value' => 42.42],
                 ['type' => QueryTokenType::T_RPAREN, 'value' => ')'],
                 ['type' => QueryTokenType::T_RPAREN, 'value' => ')'],
             ],
-            'standard_fields.series LIKE "foo"' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field LIKE "foo"' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_LIKE, 'value' => 'LIKE'],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
             ],
-            'standard_fields.series LIKE "foo" and standard_fields.name = "bar"' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field LIKE "foo" and name = "bar"' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_LIKE, 'value' => 'LIKE'],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.name'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'name'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'bar'],
             ],
-            'standard_fields.series LIKE "foo*"' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.series'],
+            'my_field LIKE "foo*"' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_LIKE, 'value' => 'LIKE'],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo*'],
             ],
-            'standard_fields.age >= 42' => [
-                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'standard_fields.age'],
+            'age >= 42' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
                 ['type' => QueryTokenType::T_GTE, 'value' => '>='],
                 ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
             ],
