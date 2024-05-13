@@ -199,6 +199,7 @@ final class Parser implements ParserInterface
         $value = $valueToken->isA(...self::NUMERIC_TOKENS)
             ? $this->stringToNumber($valueToken->value)
             : $valueToken->value;
+
         return $this->pqlAdapter->translateOperatorToSearchQuery($operatorTokenType, $field, $value);
     }
 
@@ -207,6 +208,7 @@ final class Parser implements ParserInterface
         if (!is_numeric($string)) {
             return 0;
         }
+
         return str_contains($string, '.') ? (float)$string : (int)$string;
     }
 
