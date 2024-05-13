@@ -44,22 +44,22 @@ final class LexerTest extends Unit
             'my_field >= 42' => [
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_GTE, 'value' => '>='],
-                ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => '42'],
             ],
             'my_field <= 42' => [
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_LTE, 'value' => '<='],
-                ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => '42'],
             ],
             'my_field > 42' => [
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_GT, 'value' => '>'],
-                ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => '42'],
             ],
             'my_field < 42' => [
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_LT, 'value' => '<'],
-                ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => '42'],
             ],
         ];
 
@@ -83,12 +83,12 @@ final class LexerTest extends Unit
             'my_field = 42' => [
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
-                ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => '42'],
             ],
             'my_field = 42.42' => [
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
-                ['type' => QueryTokenType::T_FLOAT, 'value' => 42.42],
+                ['type' => QueryTokenType::T_FLOAT, 'value' => '42.42'],
             ],
         ];
 
@@ -110,7 +110,7 @@ final class LexerTest extends Unit
             'price > 100 and Query("standard_fields.color:(red or blue)")' => [
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'price'],
                 ['type' => QueryTokenType::T_GT, 'value' => '>'],
-                ['type' => QueryTokenType::T_INTEGER, 'value' => 100],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => '100'],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
                 ['type' => QueryTokenType::T_QUERY_STRING, 'value' => 'standard_fields.color:(red or blue)'],
             ],
@@ -119,7 +119,7 @@ final class LexerTest extends Unit
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
                 ['type' => QueryTokenType::T_LT, 'value' => '<'],
-                ['type' => QueryTokenType::T_INTEGER, 'value' => 1970],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => '1970'],
             ],
         ];
 
@@ -176,7 +176,7 @@ final class LexerTest extends Unit
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
-                ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => '42'],
             ],
             'my_field = "foo" and name = "bar" and age = 42 and price = 42.42' => [
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
@@ -189,11 +189,11 @@ final class LexerTest extends Unit
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
-                ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => '42'],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'price'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
-                ['type' => QueryTokenType::T_FLOAT, 'value' => 42.42],
+                ['type' => QueryTokenType::T_FLOAT, 'value' => '42.42'],
             ],
             'my_field = "foo" and (name = "bar" or age = 42)' => [
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
@@ -207,7 +207,7 @@ final class LexerTest extends Unit
                 ['type' => QueryTokenType::T_OR, 'value' => 'or'],
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
-                ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => '42'],
                 ['type' => QueryTokenType::T_RPAREN, 'value' => ')'],
             ],
             'my_field = "foo" and (name = "bar" or age = 42) and price = 42.42' => [
@@ -222,12 +222,12 @@ final class LexerTest extends Unit
                 ['type' => QueryTokenType::T_OR, 'value' => 'or'],
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
-                ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => '42'],
                 ['type' => QueryTokenType::T_RPAREN, 'value' => ')'],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'price'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
-                ['type' => QueryTokenType::T_FLOAT, 'value' => 42.42],
+                ['type' => QueryTokenType::T_FLOAT, 'value' => '42.42'],
             ],
             'my_field = "foo" and (name = "bar" or (age > 42 and price > 42.42))' => [
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
@@ -242,11 +242,11 @@ final class LexerTest extends Unit
                 ['type' => QueryTokenType::T_LPAREN, 'value' => '('],
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
                 ['type' => QueryTokenType::T_GT, 'value' => '>'],
-                ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => '42'],
                 ['type' => QueryTokenType::T_AND, 'value' => 'and'],
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'price'],
                 ['type' => QueryTokenType::T_GT, 'value' => '>'],
-                ['type' => QueryTokenType::T_FLOAT, 'value' => 42.42],
+                ['type' => QueryTokenType::T_FLOAT, 'value' => '42.42'],
                 ['type' => QueryTokenType::T_RPAREN, 'value' => ')'],
                 ['type' => QueryTokenType::T_RPAREN, 'value' => ')'],
             ],
@@ -272,7 +272,7 @@ final class LexerTest extends Unit
             'age >= 42' => [
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
                 ['type' => QueryTokenType::T_GTE, 'value' => '>='],
-                ['type' => QueryTokenType::T_INTEGER, 'value' => 42],
+                ['type' => QueryTokenType::T_INTEGER, 'value' => '42'],
             ],
         ];
 
