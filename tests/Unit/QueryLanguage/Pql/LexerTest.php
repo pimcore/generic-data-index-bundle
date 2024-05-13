@@ -99,6 +99,30 @@ final class LexerTest extends Unit
         }
     }
 
+    public function testGetTokensStringValue(): void
+    {
+        $lexer = new Lexer();
+
+        $testCases = [
+            'my_field = "foo"' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
+                ['type' => QueryTokenType::T_EQ, 'value' => '='],
+                ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
+            ],
+            "my_field = 'foo'" => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
+                ['type' => QueryTokenType::T_EQ, 'value' => '='],
+                ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
+            ],
+        ];
+
+        foreach ($testCases as $testCase => $expected) {
+            $lexer->setQuery($testCase);
+            $tokens = $lexer->getTokens();
+            $this->assertTokens($expected, $tokens, $testCase);
+        }
+    }
+
     public function testGetTokensQueryString(): void
     {
         $lexer = new Lexer();
