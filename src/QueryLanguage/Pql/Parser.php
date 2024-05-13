@@ -145,7 +145,7 @@ final class Parser implements ParserInterface
         if ($token?->isA(QueryTokenType::T_QUERY_STRING)) {
             $this->advance();
 
-            return $this->pqlAdapter->translateToQueryStringQuery($token?->value);
+            return $this->pqlAdapter->translateToQueryStringQuery($token?->value); //@phpstan-ignore-line
         }
 
         return $this->parseComparison($subQueries);
