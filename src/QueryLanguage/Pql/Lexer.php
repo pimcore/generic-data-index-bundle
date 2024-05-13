@@ -97,12 +97,6 @@ class Lexer extends AbstractLexer implements LexerInterface
             case is_numeric($value):
                 $tokenType = $this->isIntegerString($value) ? QueryTokenType::T_INTEGER : QueryTokenType::T_FLOAT;
 
-                if ($tokenType === QueryTokenType::T_INTEGER) {
-                    $value = (int)$value;
-                } else {
-                    $value = (float)$value;
-                }
-
                 break;
             case strlen($value)>1 && $value[0] === "'" && $value[strlen($value)-1] === "'":
                 $value = substr($value, 1, -1);

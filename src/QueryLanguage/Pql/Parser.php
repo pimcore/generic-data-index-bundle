@@ -145,7 +145,7 @@ final class Parser implements ParserInterface
         if ($token?->isA(QueryTokenType::T_QUERY_STRING)) {
             $this->advance();
 
-            return $this->pqlAdapter->translateToQueryStringQuery($token->value);
+            return $this->pqlAdapter->translateToQueryStringQuery($token?->value);
         }
 
         return $this->parseComparison($subQueries);
@@ -196,7 +196,18 @@ final class Parser implements ParserInterface
         $field = $this->pqlAdapter->transformFieldName($field, $this->indexMapping, null);
 
         /** @var QueryTokenType $operatorTokenType */
-        return $this->pqlAdapter->translateOperatorToSearchQuery($operatorTokenType, $field, $valueToken->value);
+        $value = $valueToken->isA(...self::NUMERIC_TOKENS)
+            ? $this->stringToNumber($valueToken->value)
+            : $valueToken->value;
+        return $this->pqlAdapter->translateOperatorToSearchQuery($operatorTokenType, $field, $value);
+    }
+
+    private function stringToNumber(string $string): int|float
+    {
+        if (!is_numeric($string)) {
+            return 0;
+        }
+        return str_contains($string, '.') ? (float)$string : (int)$string;
     }
 
     private function createSubQuery(
@@ -208,9 +219,8 @@ final class Parser implements ParserInterface
 
         $subQueryId = uniqid('subquery_', true);
         $fieldParts = explode(':', $field);
-        $relationFieldPath = $fieldParts[0];
+        [$relationFieldPath, $targetPath] = $fieldParts;
 
-        $targetPath = $fieldParts[1];
         $targetPathParts = explode('.', $targetPath);
 
         $targetType = array_shift($targetPathParts);
