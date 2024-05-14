@@ -73,14 +73,20 @@ final class ParserTest extends Unit
         $this->assertQueryResult(
             'name like "Jaguar*"',
             [
-                'wildcard' => ['name' => 'Jaguar?'],
+                'wildcard' => ['name' => 'Jaguar*'],
             ]
         );
 
         $this->assertQueryResult(
             'name like "Jag*ar*"',
             [
-                'wildcard' => ['name' => 'Jag?ar?'],
+                'wildcard' => ['name' => 'Jag*ar*'],
+            ]
+        );
+        $this->assertQueryResult(
+            'name like "Jag?ar"',
+            [
+                'wildcard' => ['name' => 'Jag?ar'],
             ]
         );
 

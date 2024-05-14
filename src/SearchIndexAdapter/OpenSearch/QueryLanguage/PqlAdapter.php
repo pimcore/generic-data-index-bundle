@@ -52,7 +52,7 @@ final readonly class PqlAdapter implements PqlAdapterInterface
             QueryTokenType::T_LT => ['range' => [$field => ['lt' => $value]]],
             QueryTokenType::T_GTE => ['range' => [$field => ['gte' => $value]]],
             QueryTokenType::T_LTE => ['range' => [$field => ['lte' => $value]]],
-            QueryTokenType::T_LIKE => ['wildcard' => [$field => str_replace('*', '?', $value)]],
+            QueryTokenType::T_LIKE => ['wildcard' => [$field => ['value' => $value, 'case_insensitive' => true]]],
             default => throw new InvalidArgumentException('Unknown operator: ' . $operator->value)
         };
     }
