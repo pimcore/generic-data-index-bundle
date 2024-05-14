@@ -101,7 +101,7 @@ All examples are based on the `Car` data object class of the [Pimcore Demo](http
 | `manufacturer:Manufacturer.name = "Alfa" and productionYear > 1965` | All Alfa cars produced after 1965.                                                                                        |
 | `genericImages:Asset.fullPath like "/Car Images/vw/*"`              | All cars with a image linked in the `genericImages` image gallery which is contained in the asset folder `/Car Images/vw`. |
 | `color = "red" or color = "blue"`                                   | All red or blue cars using standard PQL syntax.                                                                           |
-| `Query("standard_fields.color:(red or blue)`                        | All red or blue cars using simple query string syntax.                                                                    |
+| `Query("standard_fields.color:(red or blue)")`                      | All red or blue cars using simple query string syntax.                                                                    |
 
 
 ## Limitations
