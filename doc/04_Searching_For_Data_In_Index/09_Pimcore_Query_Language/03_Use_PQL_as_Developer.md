@@ -1,5 +1,7 @@
 # Use Pimcore Query Language (PQL) as a Developer
 
+## Execute searches based on PQL queries
+
 If you want to use the Pimcore Query Language (PQL) as a developer to search for data in the Pimcore Generic Data Index, you can use one of the following methods:
 
 #### 1. Search Modifier for the Generic Data Index search services
@@ -23,11 +25,15 @@ $query = $queryLanguageProcessor->process(
 // $query is now a valid OpenSearch query array which can be used to search in the index
 ```
 
-#### Exception Handling
+## Exception Handling
 
 In both cases, the PQL processor will throw an exception if the PQL query is invalid. The exception message will contain detailed information about the error. Especially when you would like to allow users to enter PQL queries, you should catch the exception and provide a user-friendly error feedback. 
 
 ##### Example
+
+This example will produce a error message like this:
+
+![PQL Syntax Error](../../img/pql-syntax-error.png)
 
 ```php
 ## Catching the exception
@@ -59,7 +65,7 @@ try {
 <html lang="en">
 <head>
     <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
 
     <style>
         .pql-syntax-error {
@@ -93,7 +99,3 @@ try {
 </body>
 </html>
 ```
-
-This example will produce a error message like this:
-
-![PQL Syntax Error](../../img/pql-syntax-error.png)
