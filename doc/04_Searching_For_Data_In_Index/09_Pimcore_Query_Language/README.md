@@ -77,3 +77,7 @@ The PQL allows passing OpenSearch [query string queries](https://opensearch.org/
 
 * Max possible results of sub queries is 65.000, see also [terms query documentation](https://opensearch.org/docs/latest/query-dsl/term/terms/#:~:text=By%20default%2C%20the%20maximum%20number,of%20terms%20in%20the%20query.).
 * Filtering for asset metadata fields is only possible if they are defined as predefined asset metadata or via the asset metadata class definitions bundle. Custom asset metadata fields directly defined on single assets are not supported.
+
+## Further Reading
+
+- [Use PQL as a Developer](./03_Use_PQL_as_Developer.md).
