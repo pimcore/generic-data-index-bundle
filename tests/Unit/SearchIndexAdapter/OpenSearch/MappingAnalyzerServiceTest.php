@@ -61,20 +61,20 @@ final class MappingAnalyzerServiceTest extends Unit
                                     'fields' => [
                                         'keyword' => [
                                             'type' => 'keyword',
-                                            'ignore_above' => 256
-                                        ]
-                                    ]
+                                            'ignore_above' => 256,
+                                        ],
+                                    ],
                                 ],
                                 'fieldB' => [
                                     'type' => 'text',
                                     'fields' => [
                                         'keyword' => [
                                             'type' => 'keyword',
-                                            'ignore_above' => 256
-                                        ]
-                                    ]
-                                ]
-                            ]
+                                            'ignore_above' => 256,
+                                        ],
+                                    ],
+                                ],
+                            ],
                         ],
                         'standard_fields' => [
                             'properties' => [
@@ -83,25 +83,24 @@ final class MappingAnalyzerServiceTest extends Unit
                                     'fields' => [
                                         'keyword' => [
                                             'type' => 'keyword',
-                                            'ignore_above' => 256
-                                        ]
-                                    ]
+                                            'ignore_above' => 256,
+                                        ],
+                                    ],
                                 ],
                                 'field2' => [
                                     'type' => 'text',
                                     'fields' => [
                                         'keyword' => [
                                             'type' => 'keyword',
-                                            'ignore_above' => 256
-                                        ]
-                                    ]
-                                ]
-                            ]
-                        ]
-                    ]
-                ]
-            ]
+                                            'ignore_above' => 256,
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ];
     }
-
 }
