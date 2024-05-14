@@ -22,14 +22,14 @@ QUERY_STRING_QUERY = "QUERY('" STRING "')"
 
 ### Operators
 
-| Operator | Description                                                                                                          | Examples                               |
-|----------|----------------------------------------------------------------------------------------------------------------------|----------------------------------------|
-| `=`        | equal                                                                                                                | `field = "value"`                        |
-| `<`        | smaller than                                                                                                         | `field < 100`                            |
-| `<=`       | smaller or equal than                                                                                                | `field <= 100`                           |
-| `=>`       | bigger or equal than                                                                                                 | `field >= 100`                           |
-| `>`        | bigger than                                                                                                          | `field > 100`                            |
-| `LIKE`     | equal with wildcard support<br><em>* matches zero or more characters</em><br><em>? matches any single character</em> | `field like "val*"`<br>`field like "val?e"` |
+| Operator | Description                                                                                                            | Examples                               |
+|----------|------------------------------------------------------------------------------------------------------------------------|----------------------------------------|
+| `=`        | equal                                                                                                                  | `field = "value"`                        |
+| `<`        | smaller than                                                                                                           | `field < 100`                            |
+| `<=`       | smaller or equal than                                                                                                  | `field <= 100`                           |
+| `=>`       | bigger or equal than                                                                                                   | `field >= 100`                           |
+| `>`        | bigger than                                                                                                            | `field > 100`                            |
+| `LIKE`     | equal with wildcard support<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em> | `field like "val*"`<br>`field like "val?e"` |
 
 ### AND / OR / Brackets
 
