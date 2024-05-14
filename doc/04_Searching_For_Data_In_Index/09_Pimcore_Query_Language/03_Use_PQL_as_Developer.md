@@ -22,3 +22,78 @@ $query = $queryLanguageProcessor->process(
 
 // $query is now a valid OpenSearch query array which can be used to search in the index
 ```
+
+#### Exception Handling
+
+In both cases, the PQL processor will throw an exception if the PQL query is invalid. The exception message will contain detailed information about the error. Especially when you would like to allow users to enter PQL queries, you should catch the exception and provide a user-friendly error feedback. 
+
+##### Example
+
+```php
+## Catching the exception
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\QueryLanguage\ParsingException;
+
+try {
+    $pqlQuery = 'series = "E-Type"
+        and color "red"';
+
+    $query = $queryLanguageProcessor->process(
+        $pqlQuery, // The PQL query
+        $indexEntityService->getByEntityName('Car') // 'Asset', 'Document' or the name of the data object class
+    );
+} catch (ParsingException $e) {
+    // Provide user-friendly error feedback
+    return $twig->render('pql-syntax-error.html.twig', [
+        'error' => $e->getMessage(),
+        'syntaxBeforeError' => substr($e->getQuery(), 0, $e->getPosition()),
+        'syntaxAfterError' => substr($e->getQuery(), $e->getPosition()),
+    ]);
+}
+```
+
+
+```twig
+{# pql-syntax-error.html.twig #}
+
+<!doctype html>
+<html lang="en">
+<head>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+
+    <style>
+        .pql-syntax-error {
+            line-height: 2em;
+        }
+
+        .pql-syntax-error-location {
+            position: absolute;
+        }
+
+        .pql-syntax-error-location span {
+            left: -0.5em;
+            position: absolute;
+            color: #f44336;
+            top: 15px;
+        }
+    </style>
+
+</head>
+<body>
+    <div class="container pt-5">
+        <div class="alert alert-danger">
+            <p><strong>{{ error }}</strong></p>
+            <div class="alert alert-light">
+                <div class="pql-syntax-error">
+                    {{ syntaxBeforeError|nl2br }}<span class="pql-syntax-error-location"><span>⇧</span></span>{{ syntaxAfterError|nl2br }}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+```
+
+This example will produce a error message like this:
+
+![PQL Syntax Error](../../img/pql-syntax-error.png)
