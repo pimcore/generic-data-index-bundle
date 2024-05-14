@@ -43,6 +43,10 @@ final readonly class MappingAnalyzerService implements MappingAnalyzerServiceInt
             return empty($subField) || $this->fieldPathExistsInMapping($subField, $mapping['properties'][$field]);
         }
 
+        if (array_key_exists($field, $mapping['fields'] ?? [])) {
+            return empty($subField) || $this->fieldPathExistsInMapping($subField, $mapping['fields'][$field]);
+        }
+
         return false;
     }
 }
