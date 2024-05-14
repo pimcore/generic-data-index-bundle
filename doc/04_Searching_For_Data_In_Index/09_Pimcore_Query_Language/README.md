@@ -91,17 +91,17 @@ The PQL allows passing OpenSearch [query string queries](https://opensearch.org/
 
 **Caution**: The automatic field detection is not supported for query string queries. So you have to use the full path for the field names.
 
-### Example Queries
+### Example PQL Queries
 
 All examples are based on the `Car` data object class of the [Pimcore Demo](https://pimcore.com/en/try).
 
-| Query                                                               | Description                                                                                                 | 
-|---------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
-| `series = "E-Type" AND (color = "green" OR productionYear < 1965)`  | All E-Type models which are green or produced before 1965.                                                  |
-| `manufacturer:Manufacturer.name = "Alfa" and productionYear > 1965` | All Alfa cars produced after 1965.                                                                          |
-| `genericImages:Asset.fullPath like "/Car Images/vw/*"`         | All cars with a image linked in the `genericImages` image gallery which is contained in asset folder "/Car Images/vw/". |
-| `color = "red" or color = "blue"`                                   | All red or blue cars using standard PQL syntax.                                                             |
-| `Query("standard_fields.color:(red or blue)`                        | All red or blue cars using simple query string syntax.                                                      |
+| Query                                                               | Description                                                                                                               | 
+|---------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| `series = "E-Type" AND (color = "green" OR productionYear < 1965)`  | All E-Type models which are green or produced before 1965.                                                                |
+| `manufacturer:Manufacturer.name = "Alfa" and productionYear > 1965` | All Alfa cars produced after 1965.                                                                                        |
+| `genericImages:Asset.fullPath like "/Car Images/vw/*"`              | All cars with a image linked in the `genericImages` image gallery which is contained in the asset folder `/Car Images/vw`. |
+| `color = "red" or color = "blue"`                                   | All red or blue cars using standard PQL syntax.                                                                           |
+| `Query("standard_fields.color:(red or blue)`                        | All red or blue cars using simple query string syntax.                                                                    |
 
 
 ## Limitations
