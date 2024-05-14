@@ -73,27 +73,27 @@ final class ParserTest extends Unit
         $this->assertQueryResult(
             'name like "Jaguar*"',
             [
-                'wildcard' => ['name' => 'Jaguar*'],
+                'wildcard' => ['name' => ['value' => 'Jaguar*', 'case_insensitive' => true]],
             ]
         );
 
         $this->assertQueryResult(
             'name like "Jag*ar*"',
             [
-                'wildcard' => ['name' => 'Jag*ar*'],
+                'wildcard' => ['name' => ['value' => 'Jag*ar*', 'case_insensitive' => true]],
             ]
         );
         $this->assertQueryResult(
             'name like "Jag?ar"',
             [
-                'wildcard' => ['name' => 'Jag?ar'],
+                'wildcard' => ['name' => ['value' => 'Jag?ar', 'case_insensitive' => true]],
             ]
         );
 
         $this->assertQueryResult(
             'name like "Jaguar"',
             [
-                'wildcard' => ['name' => 'Jaguar'],
+                'wildcard' => ['name' => ['value' => 'Jaguar', 'case_insensitive' => true]],
             ]
         );
     }
