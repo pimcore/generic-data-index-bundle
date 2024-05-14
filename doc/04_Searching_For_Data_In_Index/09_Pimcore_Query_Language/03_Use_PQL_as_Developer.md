@@ -91,7 +91,9 @@ try {
             <p><strong>{{ error }}</strong></p>
             <div class="alert alert-light">
                 <div class="pql-syntax-error">
-                    {{ syntaxBeforeError|nl2br }}<span class="pql-syntax-error-location"><span>⇧</span></span>{{ syntaxAfterError|nl2br }}
+                    {{ syntaxBeforeError|nl2br }}
+                    <span class="pql-syntax-error-location"><span>⇧</span></span>
+                    {{ syntaxAfterError|nl2br }}
                 </div>
             </div>
         </div>
