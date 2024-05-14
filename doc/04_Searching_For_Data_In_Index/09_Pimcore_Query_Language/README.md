@@ -29,7 +29,7 @@ QUERY_STRING_QUERY = "QUERY('" STRING "')"
 | `<=`       | smaller or equal than                                                                                        | `field <= 100`                           |
 | `=>`       | bigger or equal than                                                                                         | `field >= 100`                           |
 | `>`        | bigger than                                                                                                  | `field > 100`                            |
-| `LIKE`     | equal with wildcard support<br><em>* matches zero or more characters<br> ? matches any single character</em> | `field like "val*"<br>field like "val?e"` |
+| `LIKE`     | equal with wildcard support<br><em>* matches zero or more characters<br> ? matches any single character</em> | `field like "val*"`<br>`field like "val?e"` |
 
 ### AND / OR / Brackets
 
