@@ -83,9 +83,11 @@ name
 my_relation_field
 ```
 
+The entity name can be either 'Asset', 'Document' or the name of the data object class.
+
 ### Query String Query Filters
 
-The PQL allows passing OpenSearch [query string queries](https://opensearch.org/docs/latest/query-dsl/full-text/query-string/#query-string-syntax) directly to index. The query string query syntax provides even more flexibility to search in the index. Take a look at the [OpenSearch documentation](https://opensearch.org/docs/latest/query-dsl/full-text/query-string/#query-string-syntax) for more details.
+The PQL allows passing OpenSearch [query string queries](https://opensearch.org/docs/latest/query-dsl/full-text/query-string/#query-string-syntax) directly to the index. The query string query syntax provides even more flexibility to define the search criteria. Take a look at the [OpenSearch documentation](https://opensearch.org/docs/latest/query-dsl/full-text/query-string/#query-string-syntax) for more details.
 
 **Caution**: The automatic field detection is not supported for query string queries. So you have to use the full path for the field names.
 
