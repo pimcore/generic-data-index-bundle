@@ -106,7 +106,7 @@ All examples are based on the `Car` data object class of the [Pimcore Demo](http
 
 ## Limitations
 
-* Max possible results of sub queries is 65.000, see also [terms query documentation](https://opensearch.org/docs/latest/query-dsl/term/terms/#:~:text=By%20default%2C%20the%20maximum%20number,of%20terms%20in%20the%20query.).
+* Max possible results of sub queries is 65.000, see also [terms query documentation](https://opensearch.org/docs/latest/query-dsl/term/terms/).
 * Filtering for asset metadata fields is only possible if they are defined as predefined asset metadata or via the asset metadata class definitions bundle. Custom asset metadata fields directly defined on single assets are not supported.
 
 ## Further Reading
