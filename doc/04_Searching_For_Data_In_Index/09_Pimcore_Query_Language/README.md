@@ -4,6 +4,22 @@ Pimcore Query Language (PQL) is a query language that allows you to search for d
 
 ## Syntax
 
+Description of the PQL syntax:
+
+```
+CONDITION = EXPRESSION | CONDITION ("AND" | "OR") CONDITION
+EXPRESSION = "(" CONDITION ")" | COMPARISON | QUERY_STRING_QUERY
+COMPARISON = FIELDNAME OPERATOR VALUE | RELATION_COMPARISON
+RELATION_COMPARISON = RELATION_FIELD_NAME OPERATOR VALUE
+FIELDNAME = IDENTIFIER{.IDENTIFIER}                         
+RELATION_FIELD_NAME = FIELDNAME:ENTITYNAME.FIELDNAME      
+IDENTIFIER = [a-zA-Z_]\w*
+ENTITYNAME = [a-zA-Z_]\w*
+OPERATOR = "="|"<"|">"|">="|"<="|"LIKE"
+VALUE = INTEGER | FLOAT | "'" STRING "'" | '"' STRING '"'
+QUERY_STRING_QUERY = "QUERY('" STRING "')"
+```
+
 ### Operators
 
 | Operator | Description                                                                                                  | Examples                               |
