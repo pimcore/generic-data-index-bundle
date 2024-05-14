@@ -62,7 +62,7 @@ manufacturer:Company.country
 ### Field Names
 
 The field names are named and structured the same way like in the OpenSearch index. Nested field names are supported with a dot ('.') notation.
-As described [here](../05_Extending_Data_Index/06_Extend_Search_Index.md) the fields are separated into three sections (system_fields, standard_fields and custom_fields) and depending on the data type of a attribute the attribute value could be a nested structure with sub-attributes.
+As described [here](../../05_Extending_Data_Index/06_Extend_Search_Index.md) the fields are separated into three sections (system_fields, standard_fields and custom_fields) and depending on the data type of a attribute the attribute value could be a nested structure with sub-attributes.
 
 
 **Examples for field names with their full path in the index:**
@@ -90,6 +90,19 @@ The entity name can be either 'Asset', 'Document' or the name of the data object
 The PQL allows passing OpenSearch [query string queries](https://opensearch.org/docs/latest/query-dsl/full-text/query-string/#query-string-syntax) directly to the index. The query string query syntax provides even more flexibility to define the search criteria. Take a look at the [OpenSearch documentation](https://opensearch.org/docs/latest/query-dsl/full-text/query-string/#query-string-syntax) for more details.
 
 **Caution**: The automatic field detection is not supported for query string queries. So you have to use the full path for the field names.
+
+### Example Queries
+
+All examples are based on the `Car` data object class of the [Pimcore Demo](https://pimcore.com/en/try).
+
+| Query                                                               | Description                                                                                                 | 
+|---------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+| `series = "E-Type" AND (color = "green" OR productionYear < 1965)`  | All E-Type models which are green or produced before 1965.                                                  |
+| `manufacturer:Manufacturer.name = "Alfa" and productionYear > 1965` | All Alfa cars produced after 1965.                                                                          |
+| `genericImages:Asset.fullPath like "/Car Images/vw/*"`         | All cars with a image linked in the `genericImages` image gallery which is contained in asset folder "/Car Images/vw/". |
+| `color = "red" or color = "blue"`                                   | All red or blue cars using standard PQL syntax.                                                             |
+| `Query("standard_fields.color:(red or blue)`                        | All red or blue cars using simple query string syntax.                                                      |
+
 
 ## Limitations
 
