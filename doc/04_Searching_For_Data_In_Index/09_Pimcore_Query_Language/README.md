@@ -65,7 +65,7 @@ The field names are named and structured the same way like in the OpenSearch ind
 As described [here](../05_Extending_Data_Index/06_Extend_Search_Index.md) the fields are separated into three sections (system_fields, standard_fields and custom_fields) and depending on the data type of a attribute the attribute value could be a nested structure with sub-attributes.
 
 
-**Examples for field names with there full path in the index:**
+**Examples for field names with their full path in the index:**
 
 ```
 system_fields.id
