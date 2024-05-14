@@ -4,7 +4,7 @@ If you want to use the Pimcore Query Language (PQL) as a developer to search for
 
 #### 1. Search Modifier for the Generic Data Index search services
 
-You can use the `PqlFilter` search modifier to filter search results based on a PQL query. The [PqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/QueryLanguage/PqlFilter.php) search modifier can be used with the search services provided by the bundle. Take a look at the [Search Services documentation](../README.md) for details.
+You can use the [PqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/QueryLanguage/PqlFilter.php) search modifier to filter search results based on a PQL query. The `PqlFilter` search modifier can be used with the search services provided by the Generic Data Index bundle. Take a look at the [Search Services](../README.md) documentation for details.
 
 #### 2. Direct use of the PQL processor to get the search query
 
