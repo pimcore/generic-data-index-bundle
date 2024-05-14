@@ -73,14 +73,14 @@ try {
         }
 
         .pql-syntax-error-location {
-            position: absolute;
+            position: relative;
         }
 
         .pql-syntax-error-location span {
-            left: -0.5em;
             position: absolute;
+            left: -0.5em;
+            top: 10px;
             color: #f44336;
-            top: 15px;
         }
     </style>
 
