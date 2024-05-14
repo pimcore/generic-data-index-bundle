@@ -24,12 +24,12 @@ QUERY_STRING_QUERY = "QUERY('" STRING "')"
 
 | Operator | Description                                                                                                  | Examples                               |
 |----------|--------------------------------------------------------------------------------------------------------------|----------------------------------------|
-| =        | equal                                                                                                        | field = "value"                        |
-| <        | smaller than                                                                                                 | field < 100                            |
-| <=       | smaller or equal than                                                                                        | field <= 100                           |
-| =>       | bigger or equal than                                                                                         | field >= 100                           |
-| >        | bigger than                                                                                                  | field > 100                            |
-| LIKE     | equal with wildcard support<br><em>* matches zero or more characters<br> ? matches any single character</em> | field like "val*"<br>field like "val?e" |
+| `=`        | equal                                                                                                        | `field = "value"`                        |
+| `<`        | smaller than                                                                                                 | `field < 100`                            |
+| `<=`       | smaller or equal than                                                                                        | `field <= 100`                           |
+| `=>`       | bigger or equal than                                                                                         | `field >= 100`                           |
+| `>`        | bigger than                                                                                                  | `field > 100`                            |
+| `LIKE`     | equal with wildcard support<br><em>* matches zero or more characters<br> ? matches any single character</em> | `field like "val*"<br>field like "val?e"` |
 
 ### AND / OR / Brackets
 
@@ -106,7 +106,7 @@ All examples are based on the `Car` data object class of the [Pimcore Demo](http
 
 ## Limitations
 
-* Max possible results of sub queries is 65.000, see also [terms query documentation](https://opensearch.org/docs/latest/query-dsl/term/terms/).
+* When searching for related elements the maximum possible results amount of sub queries is 65.000, see also [terms query documentation](https://opensearch.org/docs/latest/query-dsl/term/terms/).
 * Filtering for asset metadata fields is only possible if they are defined as predefined asset metadata or via the asset metadata class definitions bundle. Custom asset metadata fields directly defined on single assets are not supported.
 
 ## Further Reading
