@@ -51,6 +51,10 @@ The search service respects the user permissions and user workspaces in connecti
 
 Details about permissions and workspaces can be found in the [permissions and workspaces documentation](08_Permissions_Workspaces/README.md).
 
+## Pimcore Query Language (PQL)
+The [Pimcore Query Language (PQL)](./09_Pimcore_Query_Language/README.md) is a query language which can be used to search for data in the Pimcore Generic Data Index.
+
+
 ## Debug OpenSearch Queries
 To debug the OpenSearch queries which are created by the search service, it is possible to use the following magic parameter in the URL (when debug mode is enabled):
 
