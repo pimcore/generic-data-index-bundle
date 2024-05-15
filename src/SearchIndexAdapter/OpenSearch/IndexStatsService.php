@@ -55,12 +55,12 @@ final class IndexStatsService implements IndexStatsServiceInterface
                             'field' => '_index',
                             'size' => 10000,
                             'order' => [
-                                '_key' => 'asc'
-                            ]
+                                '_key' => 'asc',
+                            ],
                         ],
-                    ]
-                ]
-            ]
+                    ],
+                ],
+            ],
         ]);
 
         $indices = [];
