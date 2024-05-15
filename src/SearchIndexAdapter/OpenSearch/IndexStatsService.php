@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 
 use Exception;
+use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Stats\IndexStats;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Stats\IndexStatsIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
@@ -30,9 +31,10 @@ final class IndexStatsService implements IndexStatsServiceInterface
     use LoggerAwareTrait;
 
     public function __construct(
-        protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
-        protected readonly IndexQueueRepository $indexQueueRepository,
-        protected readonly SearchIndexServiceInterface $openSearchService,
+        private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
+        private readonly IndexQueueRepository $indexQueueRepository,
+        private readonly SearchIndexServiceInterface $openSearchService,
+        private readonly Client $openSearchClient,
     ) {
     }
 
@@ -43,12 +45,31 @@ final class IndexStatsService implements IndexStatsServiceInterface
             $this->searchIndexConfigService->getIndexPrefix() . '*'
         );
 
+        $aggregationResult = $this->openSearchClient->search([
+            'index' => $this->searchIndexConfigService->getIndexPrefix() . '*',
+            'body' => [
+                'size' => 0,
+                'aggs' => [
+                    'indices' => [
+                        'terms' => [
+                            'field' => '_index',
+                            'size' => 10000,
+                            'order' => [
+                                '_key' => 'asc'
+                            ]
+                        ],
+                    ]
+                ]
+            ]
+        ]);
+
         $indices = [];
-        foreach ($allStats['indices'] as $indexName => $index) {
+        foreach ($aggregationResult['aggregations']['indices']['buckets'] as $bucket) {
+            $sizeInBytes = (int)($allStats['indices'][$bucket['key']]['total']['store']['size_in_bytes'] ?? 0);
             $indices[] = new IndexStatsIndex(
-                indexName: $indexName,
-                itemsCount: $index['total']['docs']['count'],
-                sizeInKb: round(((int)$index['total']['store']['size_in_bytes'] / 1024), 2)
+                indexName: $bucket['key'],
+                itemsCount: $bucket['doc_count'],
+                sizeInKb: round(($sizeInBytes / 1024), 2)
             );
         }
 
