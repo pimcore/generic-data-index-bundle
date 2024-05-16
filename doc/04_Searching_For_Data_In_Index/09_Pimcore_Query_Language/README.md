@@ -58,6 +58,7 @@ category:Category.name
 manufacturer:Company.country
 ```
 
+The entity name can be either 'Asset', 'Document' or the name of the data object class.
 
 ### Field Names
 
@@ -82,8 +83,6 @@ id
 name
 my_relation_field
 ```
-
-The entity name can be either 'Asset', 'Document' or the name of the data object class.
 
 ### Query String Query Filters
 
