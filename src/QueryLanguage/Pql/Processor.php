@@ -49,7 +49,7 @@ final readonly class Processor implements ProcessorInterface
 
         $resultQuery = $parseResult->getQuery();
 
-        $subQueryResults = $this->pqlAdapter->processSubQueries($this, $parseResult->getSubQueries());
+        $subQueryResults = $this->pqlAdapter->processSubQueries($this, $query, $parseResult->getSubQueries());
 
         if ($resultQuery instanceof ParseResultSubQuery) {
             return $this->pqlAdapter->transformSubQuery($resultQuery, $subQueryResults);

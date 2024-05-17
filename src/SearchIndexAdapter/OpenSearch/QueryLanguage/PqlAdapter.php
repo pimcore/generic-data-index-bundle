@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\ServiceTag;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\QueryLanguage\QueryTokenType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\ConditionType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\QueryLanguage\ParsingException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuery;
@@ -62,17 +63,29 @@ final readonly class PqlAdapter implements PqlAdapterInterface
         return ['query_string' => ['query' => $query]];
     }
 
-    public function processSubQueries(ProcessorInterface $processor, array $subQueries): SubQueryResultList
+    public function processSubQueries(ProcessorInterface $processor, string $originalQuery, array $subQueries): SubQueryResultList
     {
         $list = new SubQueryResultList();
         foreach ($subQueries as $subQuery) {
 
             $indexEntity = $this->indexEntityService->getByEntityName($subQuery->getTargetType());
 
-            $query = $processor->process(
-                $subQuery->getTargetQuery(),
-                $indexEntity,
-            );
+            try {
+                $query = $processor->process(
+                    $subQuery->getTargetQuery(),
+                    $indexEntity,
+                );
+            } catch(ParsingException $e) {
+                throw new ParsingException(
+                    $originalQuery,
+                    $e->getExpected(),
+                    $e->getFound(),
+                    $e->getToken(),
+                    $e->getMessage(),
+                    $subQuery->getPositionInOriginalQuery() + $e->getPosition()
+                );
+            }
+
 
             $search = new Search();
             $search

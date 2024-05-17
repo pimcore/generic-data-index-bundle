@@ -21,7 +21,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\QueryLanguage\QueryTokenType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\QueryLanguage\ParsingException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuery;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ParserInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\MappingAnalyzerServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityServiceInterface;
 
@@ -54,6 +56,7 @@ final class Parser implements ParserInterface
     public function __construct(
         private readonly PqlAdapterInterface $pqlAdapter,
         private readonly IndexEntityServiceInterface $indexEntityService,
+        private readonly MappingAnalyzerServiceInterface $mappingAnalyzerService,
         private readonly string $query = '',
         /** @var Token[] */
         private readonly array $tokens = [],
@@ -63,7 +66,7 @@ final class Parser implements ParserInterface
 
     public function apply(string $query, array $tokens, array $indexMapping): ParserInterface
     {
-        return new Parser($this->pqlAdapter, $this->indexEntityService, $query, $tokens, $indexMapping);
+        return new Parser($this->pqlAdapter, $this->indexEntityService, $this->mappingAnalyzerService, $query, $tokens, $indexMapping);
     }
 
     private function currentToken(): ?Token
@@ -162,8 +165,10 @@ final class Parser implements ParserInterface
             $this->throwParsingException('a field name', '`' . ($this->currentToken()['value'] ?? 'null') . '`');
         }
 
-        $fieldType = $this->currentToken()['type'];
-        $field = $this->currentToken()['value'];
+        /** @var Token $fieldToken */
+        $fieldToken = $this->currentToken();
+        $fieldType = $fieldToken['type'];
+        $field = $fieldToken['value'];
         $this->advance(); // Move to operator
         $this->validateCurrentTokenNotEmpty();
 
@@ -185,7 +190,7 @@ final class Parser implements ParserInterface
         $this->advance(); // Prepare for next
 
         if($fieldType === QueryTokenType::T_RELATION_FIELD) {
-            return $this->createSubQuery($subQueries, $field, $operatorToken, $valueToken);
+            return $this->createSubQuery($subQueries, $field, $fieldToken, $operatorToken, $valueToken);
         }
 
         $operatorTokenType = $operatorToken->type;
@@ -193,7 +198,7 @@ final class Parser implements ParserInterface
             $this->throwParsingException(QueryTokenType::class, get_debug_type($operatorTokenType));
         }
 
-        $field = $this->pqlAdapter->transformFieldName($field, $this->indexMapping, null);
+        $field = $this->handleFieldName($fieldToken, $field, $this->indexMapping, null);
 
         /** @var QueryTokenType $operatorTokenType */
         $value = $valueToken->isA(...self::NUMERIC_TOKENS)
@@ -201,6 +206,27 @@ final class Parser implements ParserInterface
             : $valueToken->value;
 
         return $this->pqlAdapter->translateOperatorToSearchQuery($operatorTokenType, $field, $value);
+    }
+
+    /**
+     * @throws ParsingException
+     */
+    private function handleFieldName(
+        Token $fieldToken,
+        string $fieldName,
+        array $indexMapping,
+        ?IndexEntity $targetEntity
+    ): string
+    {
+        $fieldName = $this->pqlAdapter->transformFieldName($fieldName, $indexMapping, $targetEntity);
+
+        // validate field name when index mapping is given
+        if (!empty($indexMapping) && !$this->mappingAnalyzerService->fieldPathExists($fieldName, $indexMapping)) {
+            $message = 'Field `' . $fieldName . '` not found';
+            $this->throwParsingException('a valid field name', '`' . $fieldName . '`', $message, $fieldToken);
+        }
+
+        return $fieldName;
     }
 
     private function stringToNumber(string $string): int|float
@@ -212,9 +238,13 @@ final class Parser implements ParserInterface
         return str_contains($string, '.') ? (float)$string : (int)$string;
     }
 
+    /**
+     * @throws ParsingException
+     */
     private function createSubQuery(
         array &$subQueries,
         string $field,
+        Token $fieldToken,
         Token $operatorToken,
         Token $valueToken
     ): ParseResultSubQuery {
@@ -233,17 +263,19 @@ final class Parser implements ParserInterface
             $value = '"' . $value . '"';
         }
 
-        $relationFieldPath = $this->pqlAdapter->transformFieldName(
+        $relationFieldPath = $this->handleFieldName(
+            $fieldToken,
             $relationFieldPath,
             $this->indexMapping,
-            $this->indexEntityService->getByEntityName($targetType),
+            $this->indexEntityService->getByEntityName($targetType)
         );
 
         $subQuery = new ParseResultSubQuery(
             $subQueryId,
             $relationFieldPath,
             $targetType,
-            $targetFieldname . ' ' . $operatorToken->value . ' ' . $value
+            $targetFieldname . ' ' . $operatorToken->value . ' ' . $value,
+            $fieldToken->position + strlen($field) - strlen($targetFieldname),
         );
 
         $subQueries[$subQueryId] = $subQuery;
@@ -270,10 +302,10 @@ final class Parser implements ParserInterface
     /**
      * @throws ParsingException
      */
-    private function throwParsingException(string $expected, string $found): void
+    private function throwParsingException(string $expected, string $found, ?string $message = null, ?Token $token = null): void
     {
-        $token = $this->currentToken();
+        $token = $token ?? $this->currentToken();
 
-        throw new ParsingException($this->query, $expected, $found, $token);
+        throw new ParsingException($this->query, $expected, $found, $token, $message);
     }
 }

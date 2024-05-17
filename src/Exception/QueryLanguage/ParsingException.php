@@ -26,10 +26,13 @@ final class ParsingException extends Exception
         private readonly string $expected,
         private readonly string $found,
         private readonly ?Token $token,
+        ?string $message = null,
+        private readonly ?int $position = null,
+        Exception $previous = null
     ) {
-        $message = sprintf('Expected %s, found %s.', $expected, $found);
+        $message = $message ?? sprintf('Expected %s, found %s.', $expected, $found);
 
-        parent::__construct($message);
+        parent::__construct($message, 0, $previous);
     }
 
     public function getQuery(): string
@@ -54,6 +57,6 @@ final class ParsingException extends Exception
 
     public function getPosition(): int
     {
-        return $this->token->position ?? strlen($this->query);
+        return $this->position ?? $this->token->position ?? strlen($this->query);
     }
 }

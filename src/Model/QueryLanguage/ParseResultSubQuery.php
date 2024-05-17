@@ -25,7 +25,8 @@ final readonly class ParseResultSubQuery
         private string $subQueryId,
         private string $relationFieldPath,
         private string $targetType,
-        private string $targetQuery
+        private string $targetQuery,
+        private int $positionInOriginalQuery,
     ) {
     }
 
@@ -47,5 +48,10 @@ final readonly class ParseResultSubQuery
     public function getTargetQuery(): string
     {
         return $this->targetQuery;
+    }
+
+    public function getPositionInOriginalQuery(): int
+    {
+        return $this->positionInOriginalQuery;
     }
 }
