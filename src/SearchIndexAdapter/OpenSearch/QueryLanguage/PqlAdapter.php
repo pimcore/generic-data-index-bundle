@@ -47,8 +47,13 @@ final readonly class PqlAdapter implements PqlAdapterInterface
 
     public function translateOperatorToSearchQuery(QueryTokenType $operator, string $field, mixed $value): array
     {
+        // term query works for keyword fields only
+        if ($operator === QueryTokenType::T_EQ && !str_ends_with($field, '.keyword')) {
+            return ['match' => [$field => $value]];
+        }
+
         return match($operator) {
-            QueryTokenType::T_EQ => ['match' => [$field => $value]],
+            QueryTokenType::T_EQ  => ['term' => [$field => $value]],
             QueryTokenType::T_GT => ['range' => [$field => ['gt' => $value]]],
             QueryTokenType::T_LT => ['range' => [$field => ['lt' => $value]]],
             QueryTokenType::T_GTE => ['range' => [$field => ['gte' => $value]]],
