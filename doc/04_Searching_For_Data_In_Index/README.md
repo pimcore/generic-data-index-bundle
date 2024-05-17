@@ -22,7 +22,7 @@ public function searchAction(SearchProviderInterface $searchProvider, AssetSearc
                 ->setPageSize(50)
                 ->setPage(1);
 
-   $searchResult = $asserSearchService->search($dataObjectSearch);
+   $searchResult = $asserSearchService->search($assetSearch);
 }
 ```
 
