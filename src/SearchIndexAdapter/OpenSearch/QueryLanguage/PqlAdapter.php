@@ -68,7 +68,11 @@ final readonly class PqlAdapter implements PqlAdapterInterface
         return ['query_string' => ['query' => $query]];
     }
 
-    public function processSubQueries(ProcessorInterface $processor, string $originalQuery, array $subQueries): SubQueryResultList
+    public function processSubQueries(
+        ProcessorInterface $processor,
+        string $originalQuery,
+        array $subQueries
+    ): SubQueryResultList
     {
         $list = new SubQueryResultList();
         foreach ($subQueries as $subQuery) {

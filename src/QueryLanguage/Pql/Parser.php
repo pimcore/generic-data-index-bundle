@@ -66,7 +66,14 @@ final class Parser implements ParserInterface
 
     public function apply(string $query, array $tokens, array $indexMapping): ParserInterface
     {
-        return new Parser($this->pqlAdapter, $this->indexEntityService, $this->mappingAnalyzerService, $query, $tokens, $indexMapping);
+        return new Parser(
+            $this->pqlAdapter,
+            $this->indexEntityService,
+            $this->mappingAnalyzerService,
+            $query,
+            $tokens,
+            $indexMapping
+        );
     }
 
     private function currentToken(): ?Token
@@ -301,7 +308,12 @@ final class Parser implements ParserInterface
     /**
      * @throws ParsingException
      */
-    private function throwParsingException(string $expected, string $found, ?string $message = null, ?Token $token = null): void
+    private function throwParsingException(
+        string $expected,
+        string $found,
+        ?string $message = null,
+        ?Token $token = null
+    ): void
     {
         $token = $token ?? $this->currentToken();
 
