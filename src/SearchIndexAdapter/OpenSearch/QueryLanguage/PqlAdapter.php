@@ -29,6 +29,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\FetchIdsBySearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityServiceInterface;
 use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 
@@ -40,6 +41,7 @@ final readonly class PqlAdapter implements PqlAdapterInterface
     public function __construct(
         private IndexEntityServiceInterface $indexEntityService,
         private FetchIdsBySearchServiceInterface $fetchIdsBySearchService,
+        private SearchIndexServiceInterface $searchIndexService,
         #[TaggedIterator(ServiceTag::PQL_FIELD_NAME_TRANSFORMER->value)]
         private iterable $fieldNameTransformers,
     ) {
@@ -78,6 +80,17 @@ final readonly class PqlAdapter implements PqlAdapterInterface
 
             $indexEntity = $this->indexEntityService->getByEntityName($subQuery->getTargetType());
 
+            if (!$this->searchIndexService->existsAlias($indexEntity->getIndexName())) {
+                throw new ParsingException(
+                    $originalQuery,
+                    'a valid entity name',
+                    '`' . $subQuery->getTargetType(). '`',
+                    null,
+                    null,
+                    $subQuery->getPositionInOriginalQuery() - strlen($subQuery->getTargetType()) - 1,
+                );
+            }
+
             try {
                 $query = $processor->process(
                     $subQuery->getTargetQuery(),
@@ -90,7 +103,8 @@ final readonly class PqlAdapter implements PqlAdapterInterface
                     $e->getFound(),
                     $e->getToken(),
                     $e->getMessage(),
-                    $subQuery->getPositionInOriginalQuery() + $e->getPosition()
+                    $subQuery->getPositionInOriginalQuery() + $e->getPosition(),
+                    $e
                 );
             }
 

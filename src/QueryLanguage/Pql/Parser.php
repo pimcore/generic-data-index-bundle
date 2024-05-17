@@ -26,6 +26,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ParserInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\MappingAnalyzerServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityServiceInterface;
+use Pimcore\Tool;
 
 /**
  * @internal
@@ -224,12 +225,30 @@ final class Parser implements ParserInterface
         array $indexMapping,
         ?IndexEntity $targetEntity
     ): string {
+        $originalFieldName = $fieldName;
         $fieldName = $this->pqlAdapter->transformFieldName($fieldName, $indexMapping, $targetEntity);
 
-        // validate field name when index mapping is given
-        if (!empty($indexMapping) && !$this->mappingAnalyzerService->fieldPathExists($fieldName, $indexMapping)) {
-            $message = 'Field `' . $fieldName . '` not found';
+        if (empty($indexMapping)) {
+            return $fieldName;
+        }
+
+        // validate if field name exists
+        if (!$this->mappingAnalyzerService->fieldPathExists($fieldName, $indexMapping)) {
+            $message = 'Field `' . $originalFieldName . '` not found';
             $this->throwParsingException('a valid field name', '`' . $fieldName . '`', $message, $fieldToken);
+        }
+
+        // validate if field name is localized
+        $defaultLocale = Tool::getDefaultLanguage();
+        $defaultLocaleSubField = $fieldName . '.' .$defaultLocale;
+        if ($this->mappingAnalyzerService->fieldPathExists($defaultLocaleSubField, $indexMapping)) {
+            $message = sprintf(
+                'Field `%s` is localized - please specify a language (e.g. `%s.%s`)',
+                $originalFieldName,
+                $originalFieldName,
+                $defaultLocale)
+            ;
+            $this->throwParsingException('a valid field name', '`' . $originalFieldName . '`', $message, $fieldToken);
         }
 
         return $fieldName;
