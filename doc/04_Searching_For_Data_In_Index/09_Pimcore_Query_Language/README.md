@@ -72,6 +72,7 @@ As described [here](../../05_Extending_Data_Index/06_Extend_Search_Index.md) the
 system_fields.id
 standard_fields.name
 standard_fields.my_relation_field.asset
+standard_fields.description.de
 ```
 
 To simplify the usage of the PQL the field names can be used without the full path in most of the cases. The PQL will automatically search in the index structure and try to detect the correct field. So normally it's enough to use the technical field name like used for example in the data object class or asset metadata attribute.
@@ -82,7 +83,10 @@ To simplify the usage of the PQL the field names can be used without the full pa
 id
 name
 my_relation_field
+description.de
 ```
+
+Localized fields can be accessed in the form 'field_name.{LOCALE}'.
 
 ### Query String Query Filters
 
