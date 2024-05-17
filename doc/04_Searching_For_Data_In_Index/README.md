@@ -11,13 +11,18 @@ Each search is based on a search service (depending on the element type) and a s
 
 - Example: This example loads all assets from the root folder (parent ID 1) and orders them by their full path.
 ```php
-public function searchAction(SearchProviderInterface $searchProvider)
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+
+public function searchAction(SearchProviderInterface $searchProvider, AssetSearchServiceInterface $asserSearchService)
 {
     $assetSearch = $searchProvider->createAssetSearch()
                 ->addModifier(new ParentIdFilter(1))
                 ->addModifier(new OrderByFullPath())
                 ->setPageSize(50)
                 ->setPage(1);
+
+   $searchResult = $asserSearchService->search($dataObjectSearch);
 }
 ```
 
@@ -25,7 +30,10 @@ public function searchAction(SearchProviderInterface $searchProvider)
 
 - Example: This example loads all data objects from the root folder (parent ID 1) with a specific class definition and orders them by their full path.
 ```php
-public function searchAction(SearchProviderInterface $searchProvider)
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
+
+public function searchAction(SearchProviderInterface $searchProvider, DataObjectSearchServiceInterface $dataObjectSearchService)
 {
     $dataObjectSearch = $searchProvider->createDataObjectSearch()
                 ->addModifier(new ParentIdFilter(1))
@@ -33,6 +41,8 @@ public function searchAction(SearchProviderInterface $searchProvider)
                 ->setClassDefinition($carClassDefinition)
                 ->setPageSize(50)
                 ->setPage(1);
+
+    $searchResult = $dataObjectSearchService->search($dataObjectSearch);
 }
 ```
 
