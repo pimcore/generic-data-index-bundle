@@ -22,6 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\Pql\Lexer;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\Pql\Parser;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\MappingAnalyzerServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\PqlAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\FetchIdsBySearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
@@ -513,7 +514,8 @@ final class ParserTest extends Unit
 
         return new Parser(
             $pqlAdapter,
-            $indexEntityService
+            $indexEntityService,
+            $this->makeEmpty(MappingAnalyzerServiceInterface::class),
         );
     }
 }
