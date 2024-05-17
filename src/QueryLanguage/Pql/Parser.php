@@ -313,8 +313,7 @@ final class Parser implements ParserInterface
         string $found,
         ?string $message = null,
         ?Token $token = null
-    ): void
-    {
+    ): void {
         $token = $token ?? $this->currentToken();
 
         throw new ParsingException($this->query, $expected, $found, $token, $message);

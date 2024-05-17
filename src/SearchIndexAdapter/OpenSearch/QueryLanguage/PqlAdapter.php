@@ -72,8 +72,7 @@ final readonly class PqlAdapter implements PqlAdapterInterface
         ProcessorInterface $processor,
         string $originalQuery,
         array $subQueries
-    ): SubQueryResultList
-    {
+    ): SubQueryResultList {
         $list = new SubQueryResultList();
         foreach ($subQueries as $subQuery) {
 
