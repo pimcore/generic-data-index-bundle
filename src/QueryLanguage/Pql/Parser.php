@@ -216,8 +216,7 @@ final class Parser implements ParserInterface
         string $fieldName,
         array $indexMapping,
         ?IndexEntity $targetEntity
-    ): string
-    {
+    ): string {
         $fieldName = $this->pqlAdapter->transformFieldName($fieldName, $indexMapping, $targetEntity);
 
         // validate field name when index mapping is given

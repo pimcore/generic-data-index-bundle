@@ -86,7 +86,6 @@ final readonly class PqlAdapter implements PqlAdapterInterface
                 );
             }
 
-
             $search = new Search();
             $search
                 ->addQuery(new BoolQuery([ConditionType::FILTER->value => $query]));
