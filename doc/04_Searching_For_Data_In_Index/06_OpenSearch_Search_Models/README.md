@@ -2,7 +2,7 @@
 
 OpenSearch search models can be used when individual OpenSearch queries are needed to streamline the creation of OpenSearch search JSONs.
 
-This is especially useful when you want to create your own [search modifiers](../05_Search_Modifiers/README.md).
+This is especially useful when you want to create your own [search modifiers](../05_Search_Modifiers/README.md) or when you would like to create services which should directly execute searches through the OpenSearch client. They are used by the Generic Data Index and its search services internally to handle the execution of search queries on a lower level.
 
 ## Example usage in search modifier
 
