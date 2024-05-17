@@ -86,7 +86,7 @@ my_relation_field
 description.de
 ```
 
-Localized fields can be accessed in the form 'field_name.{LOCALE}'.
+Localized fields can be accessed in the form 'field_name.locale' (e.g. description.de).
 
 ### Query String Query Filters
 
