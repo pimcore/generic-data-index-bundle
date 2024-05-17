@@ -22,7 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLan
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /**
- * Used for image and video data types to transform the field name to the id field.
+ * Used to filter based on a keyword subfield if available.
  *
  * @internal
  */
