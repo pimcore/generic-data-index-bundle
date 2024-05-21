@@ -1,6 +1,19 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under two different licenses:
+ * - GNU General Public License version 3 (GPLv3)
+ * - Pimcore Commercial License (PCL)
+ * Full copyright and license information is available in
+ * LICENSE.md which is distributed with this source code.
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\PqlAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\ConditionType;
@@ -22,8 +35,7 @@ final readonly class SubQueriesProcessor implements SubQueriesProcessorInterface
         private IndexEntityServiceInterface $indexEntityService,
         private SearchIndexServiceInterface $searchIndexService,
         private FetchIdsBySearchServiceInterface $fetchIdsBySearchService,
-    )
-    {
+    ) {
 
     }
 
@@ -31,8 +43,7 @@ final readonly class SubQueriesProcessor implements SubQueriesProcessorInterface
         ProcessorInterface $processor,
         string $originalQuery,
         array $subQueries
-    ): SubQueryResultList
-    {
+    ): SubQueryResultList {
         $list = new SubQueryResultList();
         foreach ($subQueries as $subQuery) {
 
@@ -81,5 +92,4 @@ final readonly class SubQueriesProcessor implements SubQueriesProcessorInterface
 
         return $list;
     }
-
 }
