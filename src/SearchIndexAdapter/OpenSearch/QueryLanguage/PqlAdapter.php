@@ -157,8 +157,7 @@ final readonly class PqlAdapter implements PqlAdapterInterface
         string $fieldName,
         array $indexMapping,
         ?IndexEntity $targetEntity = null
-    ): ?string
-    {
+    ): ?string {
         /** @var FieldNameValidatorInterface $validator */
         foreach ($this->fieldNameValidators as $validator) {
             $errorMessage = $validator->validateFieldName($originalFieldName, $fieldName, $indexMapping, $targetEntity);
@@ -166,6 +165,7 @@ final readonly class PqlAdapter implements PqlAdapterInterface
                 return $errorMessage;
             }
         }
+
         return null;
     }
 }
