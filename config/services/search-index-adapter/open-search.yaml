@@ -51,6 +51,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\PqlAdapter
 
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\PqlAdapter\SubQueriesProcessorInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\PqlAdapter\SubQueriesProcessor
+
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer\:
         resource: '../../../src/SearchIndexAdapter/OpenSearch/QueryLanguage/FieldNameTransformer'
         tags: ['pimcore.generic_data_index.pql_field_name_transformer']

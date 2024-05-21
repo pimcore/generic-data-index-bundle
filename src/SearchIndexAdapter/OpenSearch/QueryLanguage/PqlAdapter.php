@@ -18,19 +18,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Qu
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\ServiceTag;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\QueryLanguage\QueryTokenType;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\ConditionType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\QueryLanguage\ParsingException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\SubQueryResultList;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\FetchIdsBySearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\PqlAdapter\SubQueriesProcessorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityServiceInterface;
 use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 
 /**
@@ -39,9 +33,7 @@ use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
 final readonly class PqlAdapter implements PqlAdapterInterface
 {
     public function __construct(
-        private IndexEntityServiceInterface $indexEntityService,
-        private FetchIdsBySearchServiceInterface $fetchIdsBySearchService,
-        private SearchIndexServiceInterface $searchIndexService,
+        private SubQueriesProcessorInterface $subQueriesProcessor,
         #[TaggedIterator(ServiceTag::PQL_FIELD_NAME_TRANSFORMER->value)]
         private iterable $fieldNameTransformers,
         #[TaggedIterator(ServiceTag::PQL_FIELD_NAME_VALIDATOR->value)]
@@ -76,54 +68,9 @@ final readonly class PqlAdapter implements PqlAdapterInterface
         ProcessorInterface $processor,
         string $originalQuery,
         array $subQueries
-    ): SubQueryResultList {
-        $list = new SubQueryResultList();
-        foreach ($subQueries as $subQuery) {
-
-            $indexEntity = $this->indexEntityService->getByEntityName($subQuery->getTargetType());
-
-            if (!$this->searchIndexService->existsAlias($indexEntity->getIndexName())) {
-                throw new ParsingException(
-                    $originalQuery,
-                    'a valid entity name',
-                    '`' . $subQuery->getTargetType(). '`',
-                    null,
-                    null,
-                    $subQuery->getPositionInOriginalQuery() - strlen($subQuery->getTargetType()) - 1,
-                );
-            }
-
-            try {
-                $query = $processor->process(
-                    $subQuery->getTargetQuery(),
-                    $indexEntity,
-                );
-            } catch(ParsingException $e) {
-                throw new ParsingException(
-                    $originalQuery,
-                    $e->getExpected(),
-                    $e->getFound(),
-                    $e->getToken(),
-                    $e->getMessage(),
-                    $subQuery->getPositionInOriginalQuery() + $e->getPosition(),
-                    $e
-                );
-            }
-
-            $search = new Search();
-            $search
-                ->addQuery(new BoolQuery([ConditionType::FILTER->value => $query]));
-
-            $list->addResult(
-                $subQuery->getSubQueryId(),
-                $this->fetchIdsBySearchService->fetchAllIds(
-                    $search,
-                    $indexEntity->getIndexName()
-                )
-            );
-        }
-
-        return $list;
+    ): SubQueryResultList
+    {
+        return $this->subQueriesProcessor->processSubQueries($processor, $originalQuery, $subQueries);
     }
 
     public function transformSubQuery(ParseResultSubQuery $subQuery, SubQueryResultList $subQueryResults): array
