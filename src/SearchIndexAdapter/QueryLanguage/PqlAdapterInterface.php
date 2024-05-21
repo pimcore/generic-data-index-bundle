@@ -50,4 +50,14 @@ interface PqlAdapterInterface
      * E.g. transforms "id" to "system_fields.id"
      */
     public function transformFieldName(string $fieldName, array $indexMapping, ?IndexEntity $targetEntity): string;
+
+    /**
+     * Returns a error message if the field name is invalid
+     */
+    public function validateFieldName(
+        string $originalFieldName,
+        string $fieldName,
+        array $indexMapping,
+        ?IndexEntity $targetEntity = null
+    ): ?string;
 }

@@ -30,4 +30,5 @@ enum ServiceTag: string
     case DOCUMENT_TYPE_SERIALIZATION_HANDLER = 'pimcore.generic_data_index.document_type_serialization_handler';
     case ASSET_MAPPING_PROVIDER = 'pimcore.generic_data_index.asset.mapping_provider';
     case PQL_FIELD_NAME_TRANSFORMER = 'pimcore.generic_data_index.pql_field_name_transformer';
+    case PQL_FIELD_NAME_VALIDATOR = 'pimcore.generic_data_index.pql_field_name_validator';
 }

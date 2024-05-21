@@ -23,10 +23,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ParserInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\MappingAnalyzerServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityServiceInterface;
-use Pimcore\Tool;
 
 /**
  * @internal
@@ -57,7 +55,6 @@ final class Parser implements ParserInterface
     public function __construct(
         private readonly PqlAdapterInterface $pqlAdapter,
         private readonly IndexEntityServiceInterface $indexEntityService,
-        private readonly MappingAnalyzerServiceInterface $mappingAnalyzerService,
         private readonly string $query = '',
         /** @var Token[] */
         private readonly array $tokens = [],
@@ -70,7 +67,6 @@ final class Parser implements ParserInterface
         return new Parser(
             $this->pqlAdapter,
             $this->indexEntityService,
-            $this->mappingAnalyzerService,
             $query,
             $tokens,
             $indexMapping
@@ -232,23 +228,20 @@ final class Parser implements ParserInterface
             return $fieldName;
         }
 
-        // validate if field name exists
-        if (!$this->mappingAnalyzerService->fieldPathExists($fieldName, $indexMapping)) {
-            $message = 'Field `' . $originalFieldName . '` not found';
-            $this->throwParsingException('a valid field name', '`' . $fieldName . '`', $message, $fieldToken);
-        }
+        $errorMessage = $this->pqlAdapter->validateFieldName(
+            $originalFieldName,
+            $fieldName,
+            $indexMapping,
+            $targetEntity
+        );
 
-        // validate if field name is localized
-        $defaultLocale = Tool::getDefaultLanguage();
-        $defaultLocaleSubField = $fieldName . '.' .$defaultLocale;
-        if ($this->mappingAnalyzerService->fieldPathExists($defaultLocaleSubField, $indexMapping)) {
-            $message = sprintf(
-                'Field `%s` is localized - please specify a language (e.g. `%s.%s`)',
-                $originalFieldName,
-                $originalFieldName,
-                $defaultLocale)
-            ;
-            $this->throwParsingException('a valid field name', '`' . $originalFieldName . '`', $message, $fieldToken);
+        if ($errorMessage) {
+            $this->throwParsingException(
+                $targetEntity ? 'a valid relation field name' : 'a valid field name',
+                '`' . $originalFieldName . '`',
+                $errorMessage,
+                $fieldToken
+            );
         }
 
         return $fieldName;

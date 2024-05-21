@@ -54,3 +54,7 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer\:
         resource: '../../../src/SearchIndexAdapter/OpenSearch/QueryLanguage/FieldNameTransformer'
         tags: ['pimcore.generic_data_index.pql_field_name_transformer']
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameValidator\:
+        resource: '../../../src/SearchIndexAdapter/OpenSearch/QueryLanguage/FieldNameValidator'
+        tags: ['pimcore.generic_data_index.pql_field_name_validator']

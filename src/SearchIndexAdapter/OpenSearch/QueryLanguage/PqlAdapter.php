@@ -27,6 +27,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuer
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\SubQueryResultList;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\MappingAnalyzerServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\FetchIdsBySearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -42,8 +43,11 @@ final readonly class PqlAdapter implements PqlAdapterInterface
         private IndexEntityServiceInterface $indexEntityService,
         private FetchIdsBySearchServiceInterface $fetchIdsBySearchService,
         private SearchIndexServiceInterface $searchIndexService,
+        private MappingAnalyzerServiceInterface $mappingAnalyzerService,
         #[TaggedIterator(ServiceTag::PQL_FIELD_NAME_TRANSFORMER->value)]
         private iterable $fieldNameTransformers,
+        #[TaggedIterator(ServiceTag::PQL_FIELD_NAME_VALIDATOR->value)]
+        private iterable $fieldNameValidators,
     ) {
     }
 
@@ -148,5 +152,22 @@ final readonly class PqlAdapter implements PqlAdapterInterface
         }
 
         return $fieldName;
+    }
+
+    public function validateFieldName(
+        string $originalFieldName,
+        string $fieldName,
+        array $indexMapping,
+        ?IndexEntity $targetEntity = null
+    ): ?string
+    {
+        /** @var FieldNameValidatorInterface $validator */
+        foreach ($this->fieldNameValidators as $validator) {
+            $errorMessage = $validator->validateFieldName($originalFieldName, $fieldName, $indexMapping, $targetEntity);
+            if ($errorMessage) {
+                return $errorMessage;
+            }
+        }
+        return null;
     }
 }
