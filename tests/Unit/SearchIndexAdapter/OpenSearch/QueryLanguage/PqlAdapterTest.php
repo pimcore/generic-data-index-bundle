@@ -78,7 +78,7 @@ final class PqlAdapterTest extends Unit
             $this->makeEmpty(SearchIndexServiceInterface::class, [
                 'existsAlias' => true,
             ]),
-            [],
+            $fieldNameTransformers,
             []
         );
     }
