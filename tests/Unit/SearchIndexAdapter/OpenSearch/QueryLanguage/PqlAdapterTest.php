@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\Op
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\PqlAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\PqlAdapter\SubQueriesProcessorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\FetchIdsBySearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
@@ -67,17 +68,8 @@ final class PqlAdapterTest extends Unit
 
     private function createPqlAdapter(array $fieldNameTransformers): PqlAdapter
     {
-        $indexEntityService = new IndexEntityService(
-            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
-            $this->makeEmpty(ElementServiceInterface::class),
-        );
-
         return new PqlAdapter(
-            $indexEntityService,
-            $this->makeEmpty(FetchIdsBySearchServiceInterface::class),
-            $this->makeEmpty(SearchIndexServiceInterface::class, [
-                'existsAlias' => true,
-            ]),
+            $this->makeEmpty(SubQueriesProcessorInterface::class),
             $fieldNameTransformers,
             []
         );
