@@ -7,6 +7,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityService
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService
 

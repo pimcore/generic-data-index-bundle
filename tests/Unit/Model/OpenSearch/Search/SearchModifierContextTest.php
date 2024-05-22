@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Model\OpenSearch\Sear
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 
 /**
  * @internal
@@ -28,8 +29,10 @@ final class SearchModifierContextTest extends Unit
     public function testGetSearch(): void
     {
         $searchMock = $this->makeEmpty(OpenSearchSearchInterface::class);
-        $searchModifierContext = new SearchModifierContext($searchMock);
+        $assetSearchMock = $this->makeEmpty(SearchInterface::class);
+        $searchModifierContext = new SearchModifierContext($searchMock, $assetSearchMock);
 
         $this->assertSame($searchMock, $searchModifierContext->getSearch());
+        $this->assertSame($assetSearchMock, $searchModifierContext->getOriginalSearch());
     }
 }

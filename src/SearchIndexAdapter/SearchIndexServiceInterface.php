@@ -50,6 +50,8 @@ interface SearchIndexServiceInterface
 
     public function putMapping(array $params): array;
 
+    public function getMapping(string $indexName): array;
+
     public function countByAttributeValue(string $indexName, string $attribute, string $value): int;
 
     public function createPaginatedSearch(

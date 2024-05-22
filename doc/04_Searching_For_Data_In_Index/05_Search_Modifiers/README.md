@@ -31,6 +31,12 @@ $search->addModifier(new ParentIdFilter(1))
 |--------------------------------------------------------------------------------------------|-------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [ElementKeySearch](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/FullTextSearch/ElementKeySearch.php) | Full text search  | Search by element key like in the studio UI.<br/><br/>* can be used for wildcard searches - for example "Car*" to find all items starting with "Car". |
 
+### Query Language
+
+| Modifier                                                                                                                         | Modifier Category | Description                                                                               |
+|----------------------------------------------------------------------------------------------------------------------------------|-------------------|-------------------------------------------------------------------------------------------|
+| [PqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/QueryLanguage/PqlFilter.php) | Query Language    | Apply a [Pimcore Query Language (PQL)](../09_Pimcore_Query_Language/README.md) condition. |
+
 ### Sort Modifiers
 
 | Modifier                                                                            | Modifier Category      | Description                                                                                                                                                                                                                                             |

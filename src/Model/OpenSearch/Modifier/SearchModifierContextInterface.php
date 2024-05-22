@@ -17,8 +17,17 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 
 interface SearchModifierContextInterface
 {
+    /**
+     * Returns the OpenSearch search object.
+     */
     public function getSearch(): OpenSearchSearchInterface;
+
+    /**
+     * Returns the original search object.
+     */
+    public function getOriginalSearch(): SearchInterface;
 }
