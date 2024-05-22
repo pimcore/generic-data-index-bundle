@@ -39,7 +39,7 @@ final class QueueMessageService implements QueueMessageServiceInterface
         int $entriesCount,
         int $maxBatchSize
     ): void {
-        while(true) {
+        while (true) {
             $entries = $this->indexQueueRepository->getUnhandledIndexQueueEntries(
                 true,
                 $maxBatchSize

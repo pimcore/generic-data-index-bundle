@@ -198,7 +198,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
                     || in_array($classOrInterface, class_implements($type->getName()), true)
                 );
 
-        } catch(Exception) {
+        } catch (Exception) {
             return false;
         }
     }

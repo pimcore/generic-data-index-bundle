@@ -56,7 +56,7 @@ final class IndexQueueRepository
                 ->getOneOrNullResult();
 
             return $result !== null;
-        } catch(NonUniqueResultException) {
+        } catch (NonUniqueResultException) {
             return true;
         }
     }

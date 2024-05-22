@@ -70,8 +70,8 @@ final class PathService implements PathServiceInterface
 
         if ($countResult > $this->searchIndexConfigService->getMaxSynchronousChildrenRenameLimit()) {
             $msg = sprintf(
-                'Direct rewrite of children paths in OpenSearch was skipped as more than %s 
-                items need an update (%s items). 
+                'Direct rewrite of children paths in OpenSearch was skipped as more than %s
+                items need an update (%s items).
                 The index will be updated asynchronously via index update queue command cronjob.',
                 $this->searchIndexConfigService->getMaxSynchronousChildrenRenameLimit(),
                 $countResult

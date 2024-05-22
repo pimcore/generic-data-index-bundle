@@ -121,13 +121,11 @@ abstract class AbstractAdapter implements AdapterInterface
 
     protected function getSearchFilterFieldPath(AssetMetaDataFilter|AssetMetaDataAggregation $filter): string
     {
-        return implode('.',
-            [
+        return implode('.', [
                 FieldCategory::STANDARD_FIELDS->value,
                 $filter->getName(),
                 $filter->getLanguage() ?? MappingProperty::NOT_LOCALIZED_KEY,
-            ]
-        );
+       ]);
     }
 
     /**

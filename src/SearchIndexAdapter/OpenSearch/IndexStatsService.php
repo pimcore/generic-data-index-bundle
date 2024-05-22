@@ -62,7 +62,7 @@ final class IndexStatsService implements IndexStatsServiceInterface
     {
         try {
             return $this->indexQueueRepository->countIndexQueueEntries();
-        } catch(Exception $e) {
+        } catch (Exception $e) {
             $this->logger->error('Error while counting index queue entries: '. $e->getMessage());
         }
 

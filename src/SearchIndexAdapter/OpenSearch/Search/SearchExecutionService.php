@@ -75,14 +75,16 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
                 throw new ResultWindowTooLargeException(
                     $searchInformation,
                     'Result window too large: ' . $e->getMessage(),
-                    $e->getCode(), $e
+                    $e->getCode(),
+                    $e
                 );
             }
 
             throw new SearchFailedException(
                 $searchInformation,
                 'Search failed: ' . $e->getMessage(),
-                $e->getCode(), $e
+                $e->getCode(),
+                $e
             );
         }
 
