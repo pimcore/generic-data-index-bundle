@@ -116,7 +116,7 @@ final class AssetNormalizer implements NormalizerInterface
     {
         $result = [];
 
-        foreach($this->metadataProviderService->getSearchableMetaDataForAsset($asset) as $metadata) {
+        foreach ($this->metadataProviderService->getSearchableMetaDataForAsset($asset) as $metadata) {
             $data = $metadata['data'];
             $language = $metadata['language'] ?? null;
             $language = $language ?: MappingProperty::NOT_LOCALIZED_KEY;

@@ -24,7 +24,7 @@ trait SystemFieldTrait
     {
         $path = FieldCategory::SYSTEM_FIELDS->value . '.' . $this->value;
 
-        if($subField) {
+        if ($subField) {
             $path .= '.' . $subField;
         }
 

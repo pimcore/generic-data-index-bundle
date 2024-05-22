@@ -145,7 +145,7 @@ final class IndexQueueService implements IndexQueueServiceInterface
      */
     private function checkOperationValid(string $operation): void
     {
-        if(!in_array($operation, [
+        if (!in_array($operation, [
             IndexQueueOperation::UPDATE->value,
             IndexQueueOperation::DELETE->value,
         ], true)) {

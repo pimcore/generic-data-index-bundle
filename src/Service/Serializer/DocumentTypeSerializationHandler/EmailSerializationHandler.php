@@ -32,7 +32,7 @@ final class EmailSerializationHandler extends AbstractSerializationHandler
      */
     public function getAdditionalSystemFields(Document $document): array
     {
-        if(!$document instanceof Document\Email) {
+        if (!$document instanceof Document\Email) {
             return [];
         }
 

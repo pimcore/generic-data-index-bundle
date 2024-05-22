@@ -82,7 +82,7 @@ abstract class AbstractAdapter implements AdapterInterface
         $query = null;
         if ($this->isValidScalar($value)) {
             $query = new TermFilter($this->getSearchFilterFieldPath($filter), $value);
-        } elseif(is_array($value)) {
+        } elseif (is_array($value)) {
             try {
                 $this->validateArray($value);
             } catch (ValueError) {

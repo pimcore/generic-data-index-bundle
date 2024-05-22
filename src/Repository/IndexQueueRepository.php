@@ -109,11 +109,11 @@ final class IndexQueueRepository
      */
     public function deleteQueueEntries(array $entries): void
     {
-        foreach(array_chunk($entries, 500) as $chunk) {
+        foreach (array_chunk($entries, 500) as $chunk) {
             $condition = [];
 
             /** @var IndexQueue $entry */
-            foreach($chunk as $entry) {
+            foreach ($chunk as $entry) {
                 $condition[] = sprintf(
                     '(elementId = %s AND elementType = %s and operationTime = %s)',
                     $this->connection->quote($entry->getElementId()),
@@ -172,12 +172,12 @@ final class IndexQueueRepository
     {
         $sql = <<<SQL
             INSERT INTO 
-                %s (elementId, elementType, elementIndexName, operation, operationTime, dispatched) 
-                %s 
-                ON DUPLICATE KEY 
-                UPDATE 
-                    operation = VALUES(operation), 
-                    operationTime = VALUES(operationTime), 
+                %s (elementId, elementType, elementIndexName, operation, operationTime, dispatched)
+                %s
+                ON DUPLICATE KEY
+                UPDATE
+                    operation = VALUES(operation),
+                    operationTime = VALUES(operationTime),
                     dispatched = VALUES(dispatched)
         SQL;
 

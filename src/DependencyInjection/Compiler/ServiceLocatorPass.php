@@ -80,7 +80,7 @@ final class ServiceLocatorPass implements CompilerPassInterface
             ServiceTag::PQL_FIELD_NAME_VALIDATOR->value => FieldNameValidatorInterface::class,
         ];
 
-        foreach($definitionList as $serviceTagName => $interfaceName) {
+        foreach ($definitionList as $serviceTagName => $interfaceName) {
             foreach ($container->findTaggedServiceIds($serviceTagName) as $taggedServiceId => $tags) {
                 $definition = $container->getDefinition($taggedServiceId);
                 if (!is_subclass_of($definition->getClass(), $interfaceName)) {

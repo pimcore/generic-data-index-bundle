@@ -88,8 +88,8 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         }
 
         $result = [];
-        foreach($attributes as $attribute) {
-            foreach($languages as $language) {
+        foreach ($attributes as $attribute) {
+            foreach ($languages as $language) {
                 $localizedValue = $value->getLocalizedValue($attribute, $language);
                 $fieldDefinition = $value->getFieldDefinition($attribute);
                 $localizedValue =  $this->fieldDefinitionService->normalizeValue($fieldDefinition, $localizedValue);

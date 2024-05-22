@@ -74,7 +74,7 @@ final class BulkOperationService implements BulkOperationServiceInterface
      */
     public function commit(?string $refreshIndex = null): void
     {
-        if(!count($this->bulkOperationData)) {
+        if (!count($this->bulkOperationData)) {
             return;
         }
 
@@ -129,7 +129,7 @@ final class BulkOperationService implements BulkOperationServiceInterface
      */
     private function validateRefreshIndexMode(string $refreshIndex): void
     {
-        if(!in_array($refreshIndex, [
+        if (!in_array($refreshIndex, [
             RefreshIndexMode::REFRESH->value,
             RefreshIndexMode::NOT_REFRESH->value,
             RefreshIndexMode::WAIT_FOR->value,

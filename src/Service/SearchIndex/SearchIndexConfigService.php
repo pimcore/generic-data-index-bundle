@@ -86,7 +86,7 @@ final class SearchIndexConfigService implements SearchIndexConfigServiceInterfac
             $this->systemFieldsSettings[$elementType] ?? []
         );
 
-        foreach($systemFieldsSettings as &$systemFieldsSetting) {
+        foreach ($systemFieldsSettings as &$systemFieldsSetting) {
             if (!count($systemFieldsSetting['properties'])) {
                 unset($systemFieldsSetting['properties']);
             }

@@ -57,11 +57,11 @@ final class WildcardFilter extends BoolQuery implements AsSubQueryInterface
         $term = $this->term;
 
         if ($term !== '' && !str_contains($term, '*')) {
-            if($this->defaultWildcardMode === WildcardFilterMode::BOTH) {
+            if ($this->defaultWildcardMode === WildcardFilterMode::BOTH) {
                 $term = "*$term*";
-            } elseif($this->defaultWildcardMode === WildcardFilterMode::PREFIX) {
+            } elseif ($this->defaultWildcardMode === WildcardFilterMode::PREFIX) {
                 $term = "*$term";
-            } elseif($this->defaultWildcardMode === WildcardFilterMode::SUFFIX) {
+            } elseif ($this->defaultWildcardMode === WildcardFilterMode::SUFFIX) {
                 $term = "$term*";
             }
         }

@@ -48,10 +48,10 @@ class BoolQuery implements QueryInterface
     public function addCondition(string $type, array $params): BoolQuery
     {
         $this->params[$type] = $this->params[$type] ?? [];
-        if(!empty($this->params[$type]) && !array_is_list($this->params[$type])) {
+        if (!empty($this->params[$type]) && !array_is_list($this->params[$type])) {
             $this->params[$type] = [$this->params[$type]];
         }
-        if(array_is_list($params)) {
+        if (array_is_list($params)) {
             $this->params[$type] = array_merge($this->params[$type], $params);
         } else {
             $this->params[$type][] = $params;

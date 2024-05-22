@@ -129,7 +129,7 @@ final readonly class LocateInTreeService implements LocateInTreeServiceInterface
     private function calculatePageSize(int $count): int
     {
         $maxResultWindow = $this->searchIndexConfigService->getIndexSettings()['max_result_window'];
-        if($maxResultWindow > 10000) {
+        if ($maxResultWindow > 10000) {
             $maxResultWindow = 10000;
         }
         if ($count > 4*$maxResultWindow) {

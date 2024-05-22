@@ -84,8 +84,8 @@ readonly class AssetSearchResultDenormalizer implements DenormalizerInterface
     {
         $result = [];
 
-        foreach($standardFields as $language => $fields) {
-            foreach($fields as $fieldName => $fieldData) {
+        foreach ($standardFields as $language => $fields) {
+            foreach ($fields as $fieldName => $fieldData) {
 
                 $result[] = new AssetMetaData(
                     name: $fieldName,

@@ -27,7 +27,7 @@ final class BlockAdapter extends AbstractAdapter
     public function getIndexMapping(): array
     {
         $fieldDefinition = $this->getFieldDefinition();
-        if(!$fieldDefinition instanceof Block) {
+        if (!$fieldDefinition instanceof Block) {
             throw new InvalidArgumentException('FieldDefinition must be an instance of ' . Block::class);
         }
 

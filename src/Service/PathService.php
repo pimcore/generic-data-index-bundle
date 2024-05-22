@@ -99,7 +99,7 @@ final class PathService implements PathServiceInterface
     public function getAllParentPaths(array $paths): array
     {
         $paths = $this->removeSubPaths($paths);
-        if(count($paths) === 1 && $paths[0] === '/') {
+        if (count($paths) === 1 && $paths[0] === '/') {
             return [];
         }
         $result = [];

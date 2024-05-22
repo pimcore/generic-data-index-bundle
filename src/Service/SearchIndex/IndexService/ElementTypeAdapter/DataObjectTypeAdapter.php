@@ -53,7 +53,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
     public function getIndexNameShortByElement(ElementInterface $element): string
     {
         $classDefinition = null;
-        if($element instanceof Concrete) {
+        if ($element instanceof Concrete) {
             $classDefinition = $element->getClass();
         }
 
@@ -98,11 +98,11 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         int $operationTime,
         bool $includeElement = false
     ): ?QueryBuilder {
-        if(!$element instanceof Concrete) {
+        if (!$element instanceof Concrete) {
             return null;
         }
 
-        if(!$element->getClass()->getAllowInherit()) {
+        if (!$element->getClass()->getAllowInherit()) {
             if ($includeElement) {
                 return $this->dbConnection->createQueryBuilder()
                     ->select([

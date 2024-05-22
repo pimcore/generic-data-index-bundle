@@ -48,8 +48,8 @@ final readonly class MetadataProviderService implements MetadataProviderServiceI
         $result = [];
 
         $metaDataMap = $this->getMetaDataMap();
-        foreach($asset->getMetadata() as $metadata) {
-            if(is_array($metadata) && isset($metadata['data'], $metadata['name'], $metadata['type'])) {
+        foreach ($asset->getMetadata() as $metadata) {
+            if (is_array($metadata) && isset($metadata['data'], $metadata['name'], $metadata['type'])) {
                 $mappingProperty = $metaDataMap[$metadata['name']] ?? null;
                 $language = $metadata['language'] ?? null;
                 $language = $language ?: MappingProperty::NOT_LOCALIZED_KEY;
