@@ -96,9 +96,11 @@ class Lexer extends AbstractLexer implements LexerInterface
             case strlen($value)>1 && in_array($value[0], ["'", '"']) && $value[strlen($value)-1] === $value[0]:
                 $value = substr($value, 1, -1);
                 $value = str_replace(["''", '""'], ["'", '"'], $value);
+
                 return QueryTokenType::T_STRING;
             case str_starts_with(strtolower($value), 'query("'):
                 $value = substr($value, 7, -2);
+
                 return QueryTokenType::T_QUERY_STRING;
             case $value === '(':
                 return QueryTokenType::T_LPAREN;
