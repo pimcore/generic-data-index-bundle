@@ -155,8 +155,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
         ReflectionClass $handlerClass,
         string $methodName,
         string $serviceId
-    ): ReflectionMethod
-    {
+    ): ReflectionMethod {
         try {
             $method = $handlerClass->getMethod($methodName);
         } catch (ReflectionException) {

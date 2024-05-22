@@ -56,7 +56,6 @@ class DataObjectSearchResultItem
 
     private DataObjectPermissions $permissions;
 
-
     public function getId(): int
     {
         return $this->id;
