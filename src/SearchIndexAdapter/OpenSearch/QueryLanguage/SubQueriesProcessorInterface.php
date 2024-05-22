@@ -14,8 +14,10 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\PqlAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\QueryLanguage\ParsingException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\SubQueryResultList;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
 
@@ -24,6 +26,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
  */
 interface SubQueriesProcessorInterface
 {
+    /**
+     * @param ParseResultSubQuery[] $subQueries
+     *
+     * @throws ParsingException
+     */
     public function processSubQueries(
         ProcessorInterface $processor,
         string $originalQuery,
