@@ -57,7 +57,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
 
                 $handles = $this->guessHandledClasses($r, $serviceId, $method);
 
-                foreach($handles as $handledClass) {
+                foreach ($handles as $handledClass) {
                     $searchModifierServiceDefinition->addMethodCall(
                         method: 'addSearchModifierHandler',
                         arguments: [$handledClass, new Reference($serviceId), $method]
@@ -109,7 +109,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
         );
         //@todo check for ReflectionUnionType if !$searchModifierValid
 
-        if(!$searchModifierValid) {
+        if (!$searchModifierValid) {
             throw new RuntimeException(
                 sprintf(
                     'Invalid handler service "%s": argument "$%s" of method "%s::%s()" must have ' .
@@ -131,7 +131,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
             true
         );
 
-        if(!$contextTypeValid) {
+        if (!$contextTypeValid) {
             throw new RuntimeException(
                 sprintf(
                     'Invalid handler service "%s": argument "$%s" of method "%s::%s()" must have ' .
