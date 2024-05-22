@@ -92,41 +92,57 @@ class Lexer extends AbstractLexer implements LexerInterface
         // Check for specific words or characters to assign token types
         switch (true) {
             case is_numeric($value):
-                return $this->isIntegerString($value) ? QueryTokenType::T_INTEGER : QueryTokenType::T_FLOAT;
+                $typeToken = $this->isIntegerString($value) ? QueryTokenType::T_INTEGER : QueryTokenType::T_FLOAT;
+                break;
             case strlen($value)>1 && in_array($value[0], ["'", '"']) && $value[strlen($value)-1] === $value[0]:
                 $value = substr($value, 1, -1);
                 $value = str_replace(["''", '""'], ["'", '"'], $value);
-                return QueryTokenType::T_STRING;
+                $typeToken = QueryTokenType::T_STRING;
+                break;
             case str_starts_with(strtolower($value), 'query("'):
                 $value = substr($value, 7, -2);
-                return QueryTokenType::T_QUERY_STRING;
+                $typeToken = QueryTokenType::T_QUERY_STRING;
+                break;
             case $value === '(':
-                return QueryTokenType::T_LPAREN;
+                $typeToken = QueryTokenType::T_LPAREN;
+                break;
             case $value === ')':
-                return QueryTokenType::T_RPAREN;
+                $typeToken = QueryTokenType::T_RPAREN;
+                break;
             case strtolower($value) === 'and':
-                return QueryTokenType::T_AND;
+                $typeToken = QueryTokenType::T_AND;
+                break;
             case strtolower($value) === 'or':
-                return QueryTokenType::T_OR;
+                $typeToken = QueryTokenType::T_OR;
+                break;
             case $value === '=':
-                return QueryTokenType::T_EQ;
+                $typeToken = QueryTokenType::T_EQ;
+                break;
             case $value === '>':
-                return QueryTokenType::T_GT;
+                $typeToken = QueryTokenType::T_GT;
+                break;
             case $value === '<':
-                return QueryTokenType::T_LT;
+                $typeToken = QueryTokenType::T_LT;
+                break;
             case $value === '>=':
-                return QueryTokenType::T_GTE;
+                $typeToken = QueryTokenType::T_GTE;
+                break;
             case $value === '<=':
-                return QueryTokenType::T_LTE;
+                $typeToken = QueryTokenType::T_LTE;
+                break;
             case strtolower($value) === 'like':
-                return QueryTokenType::T_LIKE;
+                $typeToken = QueryTokenType::T_LIKE;
+                break;
             case preg_match('#' . self::REGEX_RELATION_FIELD . '#', $value):
-                return QueryTokenType::T_RELATION_FIELD;
+                $typeToken = QueryTokenType::T_RELATION_FIELD;
+                break;
             case preg_match('#' . self::REGEX_FIELD_NAME . '#', $value):
-                return QueryTokenType::T_FIELDNAME;
+                $typeToken = QueryTokenType::T_FIELDNAME;
+                break;
             default:
-                return QueryTokenType::T_NONE;
+                $typeToken = QueryTokenType::T_NONE;
         }
+        return $typeToken;
     }
 
     public function getTokens(): array

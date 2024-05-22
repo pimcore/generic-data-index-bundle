@@ -50,7 +50,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
             foreach ($tags as $tag) {
                 $className = $this->getServiceClass($container, $serviceId);
                 $r = $container->getReflectionClass($className);
-                if($r === null) {
+                if ($r === null) {
                     continue;
                 }
 
