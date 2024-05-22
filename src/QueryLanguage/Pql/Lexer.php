@@ -93,55 +93,71 @@ class Lexer extends AbstractLexer implements LexerInterface
         switch (true) {
             case is_numeric($value):
                 $typeToken = $this->isIntegerString($value) ? QueryTokenType::T_INTEGER : QueryTokenType::T_FLOAT;
+
                 break;
             case strlen($value)>1 && in_array($value[0], ["'", '"']) && $value[strlen($value)-1] === $value[0]:
                 $value = substr($value, 1, -1);
                 $value = str_replace(["''", '""'], ["'", '"'], $value);
                 $typeToken = QueryTokenType::T_STRING;
+
                 break;
             case str_starts_with(strtolower($value), 'query("'):
                 $value = substr($value, 7, -2);
                 $typeToken = QueryTokenType::T_QUERY_STRING;
+
                 break;
             case $value === '(':
                 $typeToken = QueryTokenType::T_LPAREN;
+
                 break;
             case $value === ')':
                 $typeToken = QueryTokenType::T_RPAREN;
+
                 break;
             case strtolower($value) === 'and':
                 $typeToken = QueryTokenType::T_AND;
+
                 break;
             case strtolower($value) === 'or':
                 $typeToken = QueryTokenType::T_OR;
+
                 break;
             case $value === '=':
                 $typeToken = QueryTokenType::T_EQ;
+
                 break;
             case $value === '>':
                 $typeToken = QueryTokenType::T_GT;
+
                 break;
             case $value === '<':
                 $typeToken = QueryTokenType::T_LT;
+
                 break;
             case $value === '>=':
                 $typeToken = QueryTokenType::T_GTE;
+
                 break;
             case $value === '<=':
                 $typeToken = QueryTokenType::T_LTE;
+
                 break;
             case strtolower($value) === 'like':
                 $typeToken = QueryTokenType::T_LIKE;
+
                 break;
             case preg_match('#' . self::REGEX_RELATION_FIELD . '#', $value):
                 $typeToken = QueryTokenType::T_RELATION_FIELD;
+
                 break;
             case preg_match('#' . self::REGEX_FIELD_NAME . '#', $value):
                 $typeToken = QueryTokenType::T_FIELDNAME;
+
                 break;
             default:
                 $typeToken = QueryTokenType::T_NONE;
         }
+
         return $typeToken;
     }
 
