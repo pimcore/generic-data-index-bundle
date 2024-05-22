@@ -45,7 +45,6 @@ class Lexer extends AbstractLexer implements LexerInterface
 {
     private const REGEX_FIELD_NAME = '[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*';
 
-    //const REGEX_RELATION_FIELD = '[a-zA-Z_]\w*(?:\:[a-zA-Z_]\w*)(?:\.[a-zA-Z_]\w*)*';
     private const REGEX_RELATION_FIELD = self::REGEX_FIELD_NAME . '(?:\:[a-zA-Z_]\w*)(?:\.[a-zA-Z_]\w*)+';
 
     private const REGEX_QUERY_STRING = 'query\(\"(?:.*?)\"\)';
@@ -90,76 +89,44 @@ class Lexer extends AbstractLexer implements LexerInterface
      */
     protected function getType(&$value): QueryTokenType
     {
-        $tokenType = QueryTokenType::T_NONE;
-
         // Check for specific words or characters to assign token types
         switch (true) {
             case is_numeric($value):
-                $tokenType = $this->isIntegerString($value) ? QueryTokenType::T_INTEGER : QueryTokenType::T_FLOAT;
-
-                break;
+                return $this->isIntegerString($value) ? QueryTokenType::T_INTEGER : QueryTokenType::T_FLOAT;
             case strlen($value)>1 && in_array($value[0], ["'", '"']) && $value[strlen($value)-1] === $value[0]:
                 $value = substr($value, 1, -1);
                 $value = str_replace(["''", '""'], ["'", '"'], $value);
-                $tokenType = QueryTokenType::T_STRING;
-
-                break;
+                return QueryTokenType::T_STRING;
             case str_starts_with(strtolower($value), 'query("'):
                 $value = substr($value, 7, -2);
-                $tokenType = QueryTokenType::T_QUERY_STRING;
-
-                break;
+                return QueryTokenType::T_QUERY_STRING;
             case $value === '(':
-                $tokenType = QueryTokenType::T_LPAREN;
-
-                break;
+                return QueryTokenType::T_LPAREN;
             case $value === ')':
-                $tokenType = QueryTokenType::T_RPAREN;
-
-                break;
+                return QueryTokenType::T_RPAREN;
             case strtolower($value) === 'and':
-                $tokenType = QueryTokenType::T_AND;
-
-                break;
+                return QueryTokenType::T_AND;
             case strtolower($value) === 'or':
-                $tokenType = QueryTokenType::T_OR;
-
-                break;
+                return QueryTokenType::T_OR;
             case $value === '=':
-                $tokenType = QueryTokenType::T_EQ;
-
-                break;
+                return QueryTokenType::T_EQ;
             case $value === '>':
-                $tokenType = QueryTokenType::T_GT;
-
-                break;
+                return QueryTokenType::T_GT;
             case $value === '<':
-                $tokenType = QueryTokenType::T_LT;
-
-                break;
+                return QueryTokenType::T_LT;
             case $value === '>=':
-                $tokenType = QueryTokenType::T_GTE;
-
-                break;
+                return QueryTokenType::T_GTE;
             case $value === '<=':
-                $tokenType = QueryTokenType::T_LTE;
-
-                break;
+                return QueryTokenType::T_LTE;
             case strtolower($value) === 'like':
-                $tokenType = QueryTokenType::T_LIKE;
-
-                break;
+                return QueryTokenType::T_LIKE;
             case preg_match('#' . self::REGEX_RELATION_FIELD . '#', $value):
-                $tokenType = QueryTokenType::T_RELATION_FIELD;
-
-                break;
+                return QueryTokenType::T_RELATION_FIELD;
             case preg_match('#' . self::REGEX_FIELD_NAME . '#', $value):
-                $tokenType = QueryTokenType::T_FIELDNAME;
-
-                break;
+                return QueryTokenType::T_FIELDNAME;
+            default:
+                return QueryTokenType::T_NONE;
         }
-
-        return $tokenType;
     }
 
     public function getTokens(): array
@@ -167,7 +134,6 @@ class Lexer extends AbstractLexer implements LexerInterface
         $tokens = [];
         $this->moveNext();
         while ($this->lookahead !== null) {
-            //p_r("Token: " . (string)$this->lookahead['type']->value . " - Value: " . $this->lookahead['value']);
             $tokens[] = $this->lookahead;
             $this->moveNext();
         }

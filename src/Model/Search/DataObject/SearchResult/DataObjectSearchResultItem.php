@@ -56,9 +56,6 @@ class DataObjectSearchResultItem
 
     private DataObjectPermissions $permissions;
 
-    public function __construct(
-    ) {
-    }
 
     public function getId(): int
     {

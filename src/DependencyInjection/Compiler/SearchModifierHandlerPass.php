@@ -24,6 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierIn
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
 use ReflectionClass;
 use ReflectionException;
+use ReflectionMethod;
 use ReflectionNamedType;
 use ReflectionUnionType;
 use Symfony\Component\DependencyInjection\ChildDefinition;
@@ -73,31 +74,7 @@ class SearchModifierHandlerPass implements CompilerPassInterface
         string $serviceId,
         string $methodName
     ): iterable {
-        try {
-            $method = $handlerClass->getMethod($methodName);
-        } catch (ReflectionException) {
-            throw new RuntimeException(
-                sprintf(
-                    'Invalid handler service "%s": class "%s" must have an "%s()" method.',
-                    $serviceId,
-                    $handlerClass->getName(),
-                    $methodName
-                )
-            );
-        }
-
-        if ($method->getNumberOfRequiredParameters() !== 2) {
-            throw new RuntimeException(
-                sprintf(
-                    'Invalid handler service "%s": method "%s::%s()" requires exactly two arguments, ' .
-                    'first one being the search modifier model it handles and ' .
-                    'second one the SearchModifierContext object.',
-                    $serviceId,
-                    $handlerClass->getName(),
-                    $methodName
-                )
-            );
-        }
+        $method = $this->getMethodFromHandlerClass($handlerClass, $methodName, $serviceId);
 
         $parameters = $method->getParameters();
 
@@ -172,6 +149,41 @@ class SearchModifierHandlerPass implements CompilerPassInterface
         }
 
         return [$searchModifierType->getName()];
+    }
+
+    private function getMethodFromHandlerClass(
+        ReflectionClass $handlerClass,
+        string $methodName,
+        string $serviceId
+    ): ReflectionMethod
+    {
+        try {
+            $method = $handlerClass->getMethod($methodName);
+        } catch (ReflectionException) {
+            throw new RuntimeException(
+                sprintf(
+                    'Invalid handler service "%s": class "%s" must have an "%s()" method.',
+                    $serviceId,
+                    $handlerClass->getName(),
+                    $methodName
+                )
+            );
+        }
+
+        if ($method->getNumberOfRequiredParameters() !== 2) {
+            throw new RuntimeException(
+                sprintf(
+                    'Invalid handler service "%s": method "%s::%s()" requires exactly two arguments, ' .
+                    'first one being the search modifier model it handles and ' .
+                    'second one the SearchModifierContext object.',
+                    $serviceId,
+                    $handlerClass->getName(),
+                    $methodName
+                )
+            );
+        }
+
+        return $method;
     }
 
     private function checkArgumentInstanceOf(

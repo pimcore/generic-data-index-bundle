@@ -20,6 +20,7 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface;
@@ -134,6 +135,8 @@ final class IndexQueueService implements IndexQueueServiceInterface
                 $this->indexService->deleteFromIndex($element);
 
                 break;
+            default:
+                throw new InvalidArgumentException(sprintf('Operation %s not valid', $operation));
         }
     }
 
