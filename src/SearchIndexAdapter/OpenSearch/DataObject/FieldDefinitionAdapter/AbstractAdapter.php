@@ -58,7 +58,7 @@ abstract class AbstractAdapter implements AdapterInterface
 
     public function normalize(mixed $value): mixed
     {
-        if($this->fieldDefinition instanceof NormalizerInterface) {
+        if ($this->fieldDefinition instanceof NormalizerInterface) {
             return $this->fieldDefinition->normalize($value);
         }
 

@@ -34,7 +34,7 @@ class DocumentSerializationHandler extends AbstractHandler
      */
     public function getAdditionalSystemFields(Asset $asset): array
     {
-        if(!$asset instanceof Document) {
+        if (!$asset instanceof Document) {
             return [];
         }
 

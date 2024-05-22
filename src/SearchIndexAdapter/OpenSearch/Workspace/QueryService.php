@@ -157,7 +157,7 @@ final class QueryService implements QueryServiceInterface
 
         $allowedMainPaths = $this->pathService->removeSubPaths($allowedPaths);
 
-        if(count($allowedMainPaths) === 1 && $allowedMainPaths[0] === '/') {
+        if (count($allowedMainPaths) === 1 && $allowedMainPaths[0] === '/') {
             $query->addCondition(
                 ConditionType::SHOULD->value,
                 [

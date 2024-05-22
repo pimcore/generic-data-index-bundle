@@ -56,10 +56,6 @@ class DocumentSearchResultItem
 
     private DocumentPermissions $permissions;
 
-    public function __construct(
-    ) {
-    }
-
     public function getId(): int
     {
         return $this->id;

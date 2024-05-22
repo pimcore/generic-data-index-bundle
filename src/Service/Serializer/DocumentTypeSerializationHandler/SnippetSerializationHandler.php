@@ -31,7 +31,7 @@ final class SnippetSerializationHandler extends AbstractSerializationHandler
      */
     public function getAdditionalSystemFields(Document $document): array
     {
-        if(!$document instanceof Document\Snippet) {
+        if (!$document instanceof Document\Snippet) {
             return [];
         }
 

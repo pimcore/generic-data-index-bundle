@@ -91,7 +91,8 @@ trait ElementNormalizerTrait
         $tag = new Tag();
 
         return $tag->getDao()->getTagsForElement(
-            Service::getElementType($element), $element->getId()
+            Service::getElementType($element),
+            $element->getId()
         );
 
     }

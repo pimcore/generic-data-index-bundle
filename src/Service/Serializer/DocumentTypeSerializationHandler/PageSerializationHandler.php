@@ -32,7 +32,7 @@ final class PageSerializationHandler extends AbstractSerializationHandler
      */
     public function getAdditionalSystemFields(Document $document): array
     {
-        if(!$document instanceof Document\Page) {
+        if (!$document instanceof Document\Page) {
             return [];
         }
 

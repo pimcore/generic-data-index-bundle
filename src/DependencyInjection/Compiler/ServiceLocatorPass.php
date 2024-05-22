@@ -18,6 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\ServiceTag;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameValidatorInterface;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Exception\AutowiringFailedException;
@@ -32,6 +33,12 @@ final class ServiceLocatorPass implements CompilerPassInterface
      * @param ContainerBuilder $container
      */
     public function process(ContainerBuilder $container): void
+    {
+        $this->handleServiceLocatorDefinitions($container);
+        $this->handleTaggedIteratorDefinitions($container);
+    }
+
+    private function handleServiceLocatorDefinitions(ContainerBuilder $container): void
     {
         $definitionList = [
             'pimcore.generic_data_index.object.search_index_field_definition_locator' =>
@@ -64,12 +71,16 @@ final class ServiceLocatorPass implements CompilerPassInterface
             $serviceLocator = $container->getDefinition($definitionId);
             $serviceLocator->setArgument(0, $arguments);
         }
+    }
 
+    private function handleTaggedIteratorDefinitions(ContainerBuilder $container): void
+    {
         $definitionList = [
             ServiceTag::PQL_FIELD_NAME_TRANSFORMER->value => FieldNameTransformerInterface::class,
+            ServiceTag::PQL_FIELD_NAME_VALIDATOR->value => FieldNameValidatorInterface::class,
         ];
 
-        foreach($definitionList as $serviceTagName => $interfaceName) {
+        foreach ($definitionList as $serviceTagName => $interfaceName) {
             foreach ($container->findTaggedServiceIds($serviceTagName) as $taggedServiceId => $tags) {
                 $definition = $container->getDefinition($taggedServiceId);
                 if (!is_subclass_of($definition->getClass(), $interfaceName)) {
@@ -80,6 +91,5 @@ final class ServiceLocatorPass implements CompilerPassInterface
                 }
             }
         }
-
     }
 }

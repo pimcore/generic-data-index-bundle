@@ -30,7 +30,7 @@ class ImageSerializationHandler extends AbstractHandler
 
     public function getAdditionalSystemFields(Asset $asset): array
     {
-        if(!$asset instanceof Image) {
+        if (!$asset instanceof Image) {
             return [];
         }
 

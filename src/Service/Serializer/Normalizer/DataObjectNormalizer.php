@@ -146,7 +146,7 @@ final class DataObjectNormalizer implements NormalizerInterface
             AbstractObject::setGetInheritedValues($inheritedValuesBackup);
             Localizedfield::setGetFallbackValues($fallbackLanguagesBackup);
 
-            if(isset($result['localizedfields'])) {
+            if (isset($result['localizedfields'])) {
                 $result = array_merge($result['localizedfields'], $result);
                 unset($result['localizedfields']);
             }

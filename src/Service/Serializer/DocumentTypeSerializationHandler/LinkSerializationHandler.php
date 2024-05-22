@@ -32,7 +32,7 @@ final class LinkSerializationHandler extends AbstractSerializationHandler
      */
     public function getAdditionalSystemFields(Document $document): array
     {
-        if(!$document instanceof Document\Link) {
+        if (!$document instanceof Document\Link) {
             return [];
         }
 

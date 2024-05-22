@@ -85,7 +85,7 @@ final readonly class PqlAdapter implements PqlAdapterInterface
     public function transformFieldName(string $fieldName, array $indexMapping, ?IndexEntity $targetEntity): string
     {
         /** @var FieldNameTransformerInterface $transformer */
-        foreach($this->fieldNameTransformers as $transformer) {
+        foreach ($this->fieldNameTransformers as $transformer) {
             if ($transformedFieldName = $transformer->transformFieldName($fieldName, $indexMapping, $targetEntity)) {
                 $fieldName = $transformedFieldName;
                 if ($transformer->stopPropagation()) {

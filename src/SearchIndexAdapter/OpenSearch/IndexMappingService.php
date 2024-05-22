@@ -143,7 +143,7 @@ readonly class IndexMappingService implements IndexMappingServiceInterface
     private function getMapping(Data $fieldDefinition): Mapping
     {
         $fieldDefinitionAdapter = $this->fieldDefinitionService->getFieldDefinitionAdapter($fieldDefinition);
-        if(!$fieldDefinitionAdapter) {
+        if (!$fieldDefinitionAdapter) {
             throw new InvalidMappingException(
                 'Invalid field definition adapter for field definition: ' . $fieldDefinition->getName()
             );

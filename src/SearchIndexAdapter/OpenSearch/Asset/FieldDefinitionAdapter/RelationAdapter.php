@@ -47,7 +47,7 @@ final class RelationAdapter extends AbstractAdapter
 
     public function normalize(mixed $value): ?array
     {
-        if($value instanceof ElementInterface) {
+        if ($value instanceof ElementInterface) {
             return [
                 Service::getElementType($value) => [$value->getId()],
             ];

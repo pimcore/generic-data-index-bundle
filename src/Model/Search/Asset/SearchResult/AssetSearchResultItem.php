@@ -59,10 +59,6 @@ class AssetSearchResultItem
 
     private AssetPermissions $permissions;
 
-    public function __construct(
-    ) {
-    }
-
     public function getId(): int
     {
         return $this->id;

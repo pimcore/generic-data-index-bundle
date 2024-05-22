@@ -65,7 +65,7 @@ final readonly class SubQueriesProcessor implements SubQueriesProcessorInterface
                     $subQuery->getTargetQuery(),
                     $indexEntity,
                 );
-            } catch(ParsingException $e) {
+            } catch (ParsingException $e) {
                 throw new ParsingException(
                     $originalQuery,
                     $e->getExpected(),

@@ -137,7 +137,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
             $this->logger->info("Creating index $indexName");
 
             $body = [];
-            if(!empty($this->searchIndexConfigService->getIndexSettings())) {
+            if (!empty($this->searchIndexConfigService->getIndexSettings())) {
                 $body['settings'] = $this->searchIndexConfigService->getIndexSettings();
             }
 

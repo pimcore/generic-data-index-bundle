@@ -73,7 +73,7 @@ final class DocumentTypeAdapter extends AbstractElementTypeAdapter
         ElementInterface $element,
         array $customFields
     ): UpdateIndexDataEventInterface {
-        if(!$element instanceof Document) {
+        if (!$element instanceof Document) {
             throw new InvalidArgumentException('Element must be of type Document');
         }
 

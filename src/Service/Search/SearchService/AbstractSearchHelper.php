@@ -98,12 +98,12 @@ abstract class AbstractSearchHelper implements SearchHelperInterface
         $searchResult = $this->performSearch($search, $indexName);
 
         $childrenCounts = [];
-        foreach($parentIds as $parentId) {
+        foreach ($parentIds as $parentId) {
             $childrenCounts[$parentId] = 0;
         }
 
         if ($aggregation = $searchResult->getAggregation($childrenCountAggregation->getAggregationName())) {
-            foreach($aggregation->getBuckets() as $bucket) {
+            foreach ($aggregation->getBuckets() as $bucket) {
                 $childrenCounts[$bucket->getKey()] = $bucket->getDocCount();
             }
         }

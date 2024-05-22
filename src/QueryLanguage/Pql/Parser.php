@@ -193,7 +193,7 @@ final class Parser implements ParserInterface
 
         $this->advance(); // Prepare for next
 
-        if($fieldType === QueryTokenType::T_RELATION_FIELD) {
+        if ($fieldType === QueryTokenType::T_RELATION_FIELD) {
             return $this->createSubQuery($subQueries, $field, $fieldToken, $operatorToken, $valueToken);
         }
 
@@ -310,7 +310,7 @@ final class Parser implements ParserInterface
         $subQueries = [];
         $query = $this->parseCondition($subQueries);
 
-        if($token = $this->currentToken()) {
+        if ($token = $this->currentToken()) {
             $this->throwParsingException('end of input', '`' . ($token['value'] ?? 'null') . '`');
         }
 

@@ -37,7 +37,7 @@ final readonly class RelationValidator implements FieldNameValidatorInterface
     ): ?string {
         if ($targetEntity) {
             $isValidRelationField = false;
-            foreach(['assets', 'asset', 'object', 'document'] as $type) {
+            foreach (['assets', 'asset', 'object', 'document'] as $type) {
 
                 if (str_ends_with($fieldName, '.' . $type)) {
                     $isValidRelationField = true;

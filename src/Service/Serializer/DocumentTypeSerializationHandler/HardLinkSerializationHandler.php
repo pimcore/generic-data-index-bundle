@@ -32,7 +32,7 @@ final class HardLinkSerializationHandler extends AbstractSerializationHandler
      */
     public function getAdditionalSystemFields(Document $document): array
     {
-        if(!$document instanceof Document\Hardlink) {
+        if (!$document instanceof Document\Hardlink) {
             return [];
         }
 

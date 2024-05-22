@@ -34,7 +34,7 @@ class VideoSerializationHandler extends AbstractHandler
      */
     public function getAdditionalSystemFields(Asset $asset): array
     {
-        if(!$asset instanceof Video) {
+        if (!$asset instanceof Video) {
             return [];
         }
 

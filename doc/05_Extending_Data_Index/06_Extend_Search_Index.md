@@ -89,7 +89,7 @@ class FileSizeIndexSubscriber implements EventSubscriberInterface
     public function onUpdateIndexData(UpdateIndexDataEvent $event)
     {
         $asset = $event->getAsset();
-        if($asset instanceof Folder) {
+        if ($asset instanceof Folder) {
             return;
         }
 
@@ -98,9 +98,9 @@ class FileSizeIndexSubscriber implements EventSubscriberInterface
 
         $fileSize = $event->getAsset()->getFileSize();
         $fileSizeSelection = null;
-        if($fileSize < 3*1000) {
+        if ($fileSize < 3*1000) {
             $fileSizeSelection = 'small';
-        } elseif($fileSize <= 3*1000*1000) {
+        } elseif ($fileSize <= 3*1000*1000) {
             $fileSizeSelection = 'medium';
         } else {
             $fileSizeSelection = 'big';
@@ -174,7 +174,7 @@ class CarOwnerSubscriber implements EventSubscriberInterface
     public function onUpdateIndexData(UpdateIndexDataEvent $event)
     {
         $car = $event->getDataObject();
-        if(!$car instanceof Car) {
+        if (!$car instanceof Car) {
             return;
         }
 
@@ -188,7 +188,7 @@ class CarOwnerSubscriber implements EventSubscriberInterface
 
     public function onExtractMapping(ExtractMappingEvent $event)
     {
-        if($event->getClassDefinition()->getId() !== 'CAR') {
+        if ($event->getClassDefinition()->getId() !== 'CAR') {
             return;
         }
 
