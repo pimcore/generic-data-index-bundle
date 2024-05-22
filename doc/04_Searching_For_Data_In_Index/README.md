@@ -4,6 +4,7 @@ The Generic Data Index bundle adds standardized and flexible services to search 
 
 Each search is based on a search service (depending on the element type) and a search model defining the search query. The search models can be created with the [SearchProviderInterface](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Service/Search/SearchService/SearchProviderInterface.php)
 
+The regular way to search for assets, data objects or documents is to use the related search service.
 
 ## Asset Search Service
 
@@ -11,13 +12,18 @@ Each search is based on a search service (depending on the element type) and a s
 
 - Example: This example loads all assets from the root folder (parent ID 1) and orders them by their full path.
 ```php
-public function searchAction(SearchProviderInterface $searchProvider)
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+
+public function searchAction(SearchProviderInterface $searchProvider, AssetSearchServiceInterface $asserSearchService)
 {
     $assetSearch = $searchProvider->createAssetSearch()
                 ->addModifier(new ParentIdFilter(1))
                 ->addModifier(new OrderByFullPath())
                 ->setPageSize(50)
                 ->setPage(1);
+
+   $searchResult = $asserSearchService->search($assetSearch);
 }
 ```
 
@@ -25,7 +31,10 @@ public function searchAction(SearchProviderInterface $searchProvider)
 
 - Example: This example loads all data objects from the root folder (parent ID 1) with a specific class definition and orders them by their full path.
 ```php
-public function searchAction(SearchProviderInterface $searchProvider)
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
+
+public function searchAction(SearchProviderInterface $searchProvider, DataObjectSearchServiceInterface $dataObjectSearchService)
 {
     $dataObjectSearch = $searchProvider->createDataObjectSearch()
                 ->addModifier(new ParentIdFilter(1))
@@ -33,16 +42,38 @@ public function searchAction(SearchProviderInterface $searchProvider)
                 ->setClassDefinition($carClassDefinition)
                 ->setPageSize(50)
                 ->setPage(1);
+
+    $searchResult = $dataObjectSearchService->search($dataObjectSearch);
+}
+```
+
+
+## Document Search Service
+
+- Example: This example loads all documents from the root folder (parent ID 1) and orders them by their full path.
+```php
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
+
+public function searchAction(SearchProviderInterface $searchProvider, DocumentSearchServiceInterface $documentSearchService)
+{
+    $documentSearch = $searchProvider->createDocumentSearch()
+                ->addModifier(new ParentIdFilter(1))
+                ->addModifier(new OrderByFullPath())
+                ->setPageSize(50)
+                ->setPage(1);
+
+    $searchResult = $documentSearchService->search($documentSearch);
 }
 ```
 
 ## Search Modifiers
 
 To influence the data which gets fetched its possible to use so-called search modifiers.
-Find out details about search modifiers in the [search modifiers documentation](05_Search_Modifiers/README.md).
+Find out details about search modifiers in the [search modifiers documentation](05_Search_Modifiers/README.md). There you will also find information on how to create your own custom search modifiers.
 
 ## OpenSearch Search Models
-OpenSearch search models can be used when individual OpenSearch queries are needed to streamline the creation of OpenSearch search JSONs.
+The search services mentioned above offer a flexible and structured way to search for assets, data objects and documents. Nevertheless if there are requirements which are not covered by the search services it might be needed to develop your own customized open search queries. The OpenSearch search models offer a streamlined way for executing such customized search queries. They are also used by the search services internally to create the executed OpenSearch search queries.
 
 Take a look at the dedicated [OpenSearch search models documentation](06_OpenSearch_Search_Models/README.md) to find out more.
 
