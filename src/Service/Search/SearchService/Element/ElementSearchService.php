@@ -50,17 +50,11 @@ final readonly class ElementSearchService implements ElementSearchServiceInterfa
             indexName: $this->globalIndexAliasService->getElementSearchAliasName()
         );
 
-        $childrenCounts = $this->searchHelper->getChildrenCounts(
-            searchResult: $searchResult,
-            indexName: $this->globalIndexAliasService->getElementSearchAliasName(),
-            search: $this->searchProvider->createElementSearch()
-        );
-
         try {
             return new ElementSearchResult(
                 items: $this->searchHelper->hydrateSearchResultHits(
                     $searchResult,
-                    $childrenCounts,
+                    [],
                     $elementSearch->getUser()
                 ),
                 pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(

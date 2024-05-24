@@ -71,6 +71,8 @@ public function searchAction(SearchProviderInterface $searchProvider, DocumentSe
 
 The element search service can be used to search for assets, data objects and documents at the same time.
 
+**Hint:** the element search does not support the calculation of the `hasChildren` attributes. This means that the `hasChildren` attribute will always be `false` for all elements.
+
 - Example: This example loads all elements and orders them by their full path.
 ```php
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
