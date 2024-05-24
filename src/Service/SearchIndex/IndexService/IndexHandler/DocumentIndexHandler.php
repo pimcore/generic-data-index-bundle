@@ -39,11 +39,9 @@ final class DocumentIndexHandler extends AbstractIndexHandler
         IndexMappingServiceInterface $indexMappingService,
         private readonly DocumentTypeAdapter $documentAdapter,
         private readonly GlobalIndexAliasServiceInterface $globalIndexAliasService,
-    )
-    {
+    ) {
         parent::__construct($searchIndexService, $searchIndexConfigService, $eventDispatcher, $indexMappingService);
     }
-
 
     protected function extractMappingProperties(mixed $context = null): array
     {

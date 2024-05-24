@@ -20,7 +20,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultHit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -57,8 +56,7 @@ final class SearchHelper extends AbstractSearchHelper
         SearchResultHit $searchResultHit,
         array $childrenCounts,
         ?User $user = null
-    ): ElementSearchResultItemInterface
-    {
+    ): ElementSearchResultItemInterface {
         $source = $searchResultHit->getSource();
 
         $source[FieldCategory::SYSTEM_FIELDS->value][SystemField::HAS_CHILDREN->value] =
@@ -79,6 +77,4 @@ final class SearchHelper extends AbstractSearchHelper
 
         return $result;
     }
-
-
 }

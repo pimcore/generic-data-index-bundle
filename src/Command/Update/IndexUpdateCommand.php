@@ -121,6 +121,7 @@ final class IndexUpdateCommand extends AbstractCommand
 
         if ($input->getOption(self::UPDATE_GLOBAL_ALIASES_ONLY)) {
             $this->updateGlobalIndexAliases();
+
             return self::SUCCESS;
         }
 

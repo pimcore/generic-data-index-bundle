@@ -1,10 +1,22 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under two different licenses:
+ * - GNU General Public License version 3 (GPLv3)
+ * - Pimcore Commercial License (PCL)
+ * Full copyright and license information is available in
+ * LICENSE.md which is distributed with this source code.
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Doctrine\DBAL\Connection;
-use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 
@@ -17,8 +29,7 @@ final readonly class GlobalIndexAliasService implements GlobalIndexAliasServiceI
         private Connection $connection,
         private SearchIndexConfigServiceInterface $searchIndexConfigService,
         private IndexAliasServiceInterface $indexAliasService,
-    )
-    {
+    ) {
     }
 
     public function updateDataObjectAlias(): void
@@ -97,14 +108,14 @@ final readonly class GlobalIndexAliasService implements GlobalIndexAliasServiceI
     {
         $classAliases = $this->getAliasesForAllClasses();
 
-        return array_values(array_filter($aliases, static function(array $alias) use ($classAliases) {
+        return array_values(array_filter($aliases, static function (array $alias) use ($classAliases) {
             return in_array($alias['alias'], $classAliases, true);
         }));
     }
 
     private function filterByAliasName(array $aliases, string $aliasName): array
     {
-        return array_values(array_filter($aliases, static function(array $alias) use ($aliasName) {
+        return array_values(array_filter($aliases, static function (array $alias) use ($aliasName) {
             return $alias['alias'] === $aliasName;
         }));
     }
@@ -112,14 +123,15 @@ final readonly class GlobalIndexAliasService implements GlobalIndexAliasServiceI
     private function getAliasesForAllClasses(): array
     {
         $classes = $this->connection->fetchFirstColumn('select name from classes');
-        return array_map(function(string $class) {
+
+        return array_map(function (string $class) {
             return $this->searchIndexConfigService->getIndexName($class);
         }, $classes);
     }
 
     private function getIndexNamesFromAliases(array $aliases): array
     {
-        return array_map(static function(array $alias) {
+        return array_map(static function (array $alias) {
             return $alias['index'];
         }, $aliases);
     }

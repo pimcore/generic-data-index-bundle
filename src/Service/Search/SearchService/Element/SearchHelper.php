@@ -52,8 +52,7 @@ final class SearchHelper extends AbstractSearchHelper
         SearchResultHit $searchResultHit,
         array $childrenCounts,
         ?User $user = null
-    ): ElementSearchResultItemInterface
-    {
+    ): ElementSearchResultItemInterface {
         $elementType = SystemField::ELEMENT_TYPE->getData($searchResultHit->getSource());
 
         return match($elementType) {

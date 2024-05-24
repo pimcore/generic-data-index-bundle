@@ -39,11 +39,9 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
         IndexMappingServiceInterface $indexMappingService,
         private readonly DataObjectTypeAdapter $dataObjectTypeAdapter,
         private readonly GlobalIndexAliasServiceInterface $globalIndexAliasService,
-    )
-    {
+    ) {
         parent::__construct($searchIndexService, $searchIndexConfigService, $eventDispatcher, $indexMappingService);
     }
-
 
     protected function extractMappingProperties(mixed $context = null): array
     {
@@ -67,7 +65,6 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
         $this->globalIndexAliasService->addToDataObjectAlias($currentIndexFullName);
         $this->globalIndexAliasService->addToElementSearchAlias($currentIndexFullName);
     }
-
 
     private function extractMappingByClassDefinition(ClassDefinition $classDefinition): array
     {

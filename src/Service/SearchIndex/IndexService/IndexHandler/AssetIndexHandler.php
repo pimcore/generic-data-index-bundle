@@ -40,11 +40,9 @@ final class AssetIndexHandler extends AbstractIndexHandler
         private readonly AssetTypeAdapter $assetAdapter,
         private readonly MetadataProviderServiceInterface $metadataProviderService,
         private readonly GlobalIndexAliasServiceInterface $globalIndexAliasService,
-    )
-    {
+    ) {
         parent::__construct($searchIndexService, $searchIndexConfigService, $eventDispatcher, $indexMappingService);
     }
-
 
     protected function extractMappingProperties(mixed $context = null): array
     {

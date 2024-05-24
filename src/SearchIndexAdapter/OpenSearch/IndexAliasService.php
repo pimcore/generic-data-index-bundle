@@ -1,6 +1,19 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under two different licenses:
+ * - GNU General Public License version 3 (GPLv3)
+ * - Pimcore Commercial License (PCL)
+ * Full copyright and license information is available in
+ * LICENSE.md which is distributed with this source code.
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 
 use OpenSearch\Client;
@@ -15,8 +28,7 @@ final class IndexAliasService implements IndexAliasServiceInterface
     public function __construct(
         private readonly Client $openSearchClient,
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
-    )
-    {
+    ) {
     }
 
     public function addAlias(string $aliasName, string $indexName): array
@@ -32,6 +44,7 @@ final class IndexAliasService implements IndexAliasServiceInterface
             ],
         ];
         p_r($params);
+
         return $this->openSearchClient->indices()->updateAliases($params);
     }
 
@@ -49,7 +62,7 @@ final class IndexAliasService implements IndexAliasServiceInterface
     public function getAllAliases(): array
     {
         return $this->openSearchClient->cat()->aliases([
-            'name' => $this->searchIndexConfigService->getIndexPrefix() . '*'
+            'name' => $this->searchIndexConfigService->getIndexPrefix() . '*',
         ]);
     }
 
@@ -71,8 +84,8 @@ final class IndexAliasService implements IndexAliasServiceInterface
             $actions[] = [
                 'add' => [
                     'index' => $index,
-                    'alias' => $alias
-                ]
+                    'alias' => $alias,
+                ],
             ];
         }
 
@@ -80,20 +93,19 @@ final class IndexAliasService implements IndexAliasServiceInterface
             $actions[] = [
                 'remove' => [
                     'index' => $index,
-                    'alias' => $alias
-                ]
+                    'alias' => $alias,
+                ],
             ];
         }
 
         if (!empty($actions)) {
             return $this->openSearchClient->indices()->updateAliases([
                 'body' => [
-                    'actions' => $actions
-                ]
+                    'actions' => $actions,
+                ],
             ]);
         }
 
         return null;
     }
-
 }

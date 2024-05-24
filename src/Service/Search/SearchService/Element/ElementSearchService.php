@@ -37,14 +37,13 @@ final readonly class ElementSearchService implements ElementSearchServiceInterfa
     ) {
     }
 
-
     public function search(SearchInterface $elementSearch): ElementSearchResult
     {
-       /* $documentSearch = $this->searchHelper->addSearchRestrictions(
-            search: $elementSearch,
-            userPermission: UserPermissionTypes::DOCUMENTS->value,
-            workspaceType: DocumentWorkspace::WORKSPACE_TYPE
-        );*/
+        /* $documentSearch = $this->searchHelper->addSearchRestrictions(
+             search: $elementSearch,
+             userPermission: UserPermissionTypes::DOCUMENTS->value,
+             workspaceType: DocumentWorkspace::WORKSPACE_TYPE
+         );*/
 
         $searchResult = $this->searchHelper->performSearch(
             search: $elementSearch,
