@@ -21,7 +21,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\ElementSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\SearchResult\ElementSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface;
 
 /**
@@ -33,7 +32,6 @@ final readonly class ElementSearchService implements ElementSearchServiceInterfa
         private GlobalIndexAliasServiceInterface $globalIndexAliasService,
         private PaginationInfoServiceInterface $paginationInfoService,
         private SearchHelper $searchHelper,
-        private SearchProviderInterface $searchProvider
     ) {
     }
 
