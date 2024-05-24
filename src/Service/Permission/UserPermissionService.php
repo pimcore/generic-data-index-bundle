@@ -25,13 +25,16 @@ final class UserPermissionService implements UserPermissionServiceInterface
         User $user,
         string $userPermission
     ): void {
-        if (!$user->isAdmin() && !$this->hasPermission($user, $userPermission)) {
+        if (!$this->hasPermission($user, $userPermission)) {
             throw new UserPermissionException('User does not have permission to view assets');
         }
     }
 
     public function hasPermission(User $user, string $permission): bool
     {
+        if ($user->isAdmin()) {
+            return true;
+        }
         $permissions = $user->getPermissions();
         if (in_array($permission, $permissions)) {
             return true;

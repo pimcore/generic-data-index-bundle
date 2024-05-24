@@ -16,8 +16,26 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
+use Pimcore\ValueObject\Integer\PositiveInteger;
 
-final class RequiredByFilter implements SearchModifierInterface
+final readonly class RequiredByFilter implements SearchModifierInterface
 {
+    private PositiveInteger $id;
+
+    public function __construct(int $id, private ElementType $elementType)
+    {
+        $this->id = new PositiveInteger($id);
+    }
+
+    public function getId(): int
+    {
+        return $this->id->getValue();
+    }
+
+    public function getElementType(): ElementType
+    {
+        return $this->elementType;
+    }
 }
