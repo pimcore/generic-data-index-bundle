@@ -24,9 +24,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifi
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermsFilter;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\ExcludeFoldersFilter;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiredByFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiresFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface;
@@ -38,16 +35,14 @@ final readonly class DependencyFilters
 {
     public function __construct(
         private ElementSearchServiceInterface $elementSearchService,
-    )
-    {
+    ) {
     }
 
     #[AsSearchModifierHandler]
     public function handleRequiredByFilter(
         RequiredByFilter $requiredByFilter,
         SearchModifierContextInterface $context
-    ): void
-    {
+    ): void {
         $context->getSearch()->addQuery(
             new TermFilter(
                 field: SystemField::DEPENDENCIES->getPath($requiredByFilter->getElementType()->getShortValue()),
@@ -60,8 +55,7 @@ final readonly class DependencyFilters
     public function handleRequiresFilter(
         RequiresFilter $requiresFilter,
         SearchModifierContextInterface $context
-    ): void
-    {
+    ): void {
         $element = $this->elementSearchService->byId(
             $requiresFilter->getElementType(),
             $requiresFilter->getId(),
@@ -86,8 +80,8 @@ final readonly class DependencyFilters
                         new TermFilter(
                             field: SystemField::ELEMENT_TYPE->getPath(),
                             term: ElementType::fromShortValue($elementType)->value,
-                        )
-                    ]
+                        ),
+                    ],
                 ]))->toArray(true)
             );
         }
@@ -100,6 +94,7 @@ final readonly class DependencyFilters
                     term: 0,
                 )
             );
+
             return;
         }
 
