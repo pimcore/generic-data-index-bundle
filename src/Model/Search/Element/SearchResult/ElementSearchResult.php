@@ -16,7 +16,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\SearchResult;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Paging\PaginationInfo;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultAggregation;
