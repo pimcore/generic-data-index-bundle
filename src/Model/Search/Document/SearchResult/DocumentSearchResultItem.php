@@ -16,9 +16,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermissions;
 
-class DocumentSearchResultItem
+class DocumentSearchResultItem implements ElementSearchResultItemInterface
 {
     private int $id;
 
@@ -55,6 +57,11 @@ class DocumentSearchResultItem
     private array $searchIndexData;
 
     private DocumentPermissions $permissions;
+
+    public function getElementType(): ElementType
+    {
+        return ElementType::DOCUMENT;
+    }
 
     public function getId(): int
     {

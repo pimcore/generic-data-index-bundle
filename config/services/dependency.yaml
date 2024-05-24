@@ -1,0 +1,8 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    public: false
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyService

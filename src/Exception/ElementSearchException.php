@@ -14,15 +14,13 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Exception;
+
+use RuntimeException;
 
 /**
  * @internal
  */
-enum IndexName: string
+final class ElementSearchException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
 {
-    case ASSET = 'asset';
-    case DATA_OBJECT = 'data-object';
-    case DOCUMENT = 'document';
-    case ELEMENT_SEARCH = 'element-search';
 }

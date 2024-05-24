@@ -133,24 +133,6 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
 
     }
 
-    public function testPutAlias(): void
-    {
-
-        /** @var OpenSearchService $openSearchService */
-        $openSearchService = $this->tester->grabService(SearchIndexServiceInterface::class);
-        /** @var Client $openSearchClient */
-        $openSearchClient = $this->tester->grabService('generic-data-index.opensearch-client');
-
-        $openSearchService->createIndex('test_index');
-        $openSearchService->createIndex('test_index2');
-        $openSearchService->putAlias('test_index_alias', 'test_index');
-        $openSearchService->putAlias('test_index_alias', 'test_index2');
-        $this->assertTrue($openSearchClient->indices()->existsAlias(['name' => 'test_index_alias', 'index' => 'test_index']));
-        $this->assertTrue($openSearchClient->indices()->existsAlias(['name' => 'test_index_alias', 'index' => 'test_index2']));
-        $openSearchService->deleteIndex('test_index');
-        $openSearchService->deleteIndex('test_index2');
-    }
-
     public function testExistsAlias(): void
     {
         /** @var OpenSearchService $openSearchService */

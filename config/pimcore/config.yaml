@@ -57,6 +57,8 @@ pimcore_generic_data_index:
       general:
         id:
           type: long
+        elementType:
+          type: keyword
         parentId:
           type: long
         creationDate:
@@ -113,6 +115,15 @@ pimcore_generic_data_index:
           type: boolean
         hasWorkflowWithPermissions:
           type: boolean
+        dependencies:
+          type: object
+          properties:
+            asset:
+              type: long
+            document:
+              type: long
+            object:
+              type: long
       document:
         published:
           type: boolean

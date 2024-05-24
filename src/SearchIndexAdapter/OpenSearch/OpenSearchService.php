@@ -25,6 +25,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug\SearchInformati
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\SearchExecutionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -46,6 +47,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly Client $openSearchClient,
         private readonly SearchExecutionServiceInterface $searchExecutionService,
+        private readonly IndexAliasServiceInterface $indexAliasService,
     ) {
     }
 
@@ -160,40 +162,14 @@ final class OpenSearchService implements SearchIndexServiceInterface
         return $this;
     }
 
-    public function addAlias(string $aliasName, string $indexName): OpenSearchService
+    public function addAlias(string $aliasName, string $indexName): array
     {
-        $params['body'] = [
-            'actions' => [
-                [
-                    'add' => [
-                        'index' => $indexName,
-                        'alias' => $aliasName,
-                    ],
-                ],
-            ],
-        ];
-        $this->openSearchClient->indices()->updateAliases($params);
-
-        return $this;
-    }
-
-    public function putAlias(string $aliasName, string $indexName): array
-    {
-        return $this->openSearchClient->indices()->putAlias([
-            'name' => $aliasName,
-            'index' => $indexName,
-        ]);
+        return $this->indexAliasService->addAlias($aliasName, $indexName);
     }
 
     public function existsAlias(string $aliasName, string $indexName = null): bool
     {
-        return $this->openSearchClient->indices()->existsAlias([
-            'name' => $aliasName,
-            'index' => $indexName,
-            'client' => [
-                'ignore' => [404],
-            ],
-        ]);
+        return $this->indexAliasService->existsAlias($aliasName, $indexName);
     }
 
     public function existsIndex(string $indexName): bool
@@ -208,10 +184,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
 
     public function deleteAlias(string $indexName, string $aliasName): array
     {
-        return $this->openSearchClient->indices()->deleteAlias([
-            'name' => $aliasName,
-            'index' => $indexName,
-        ]);
+        return $this->indexAliasService->deleteAlias($indexName, $aliasName);
     }
 
     public function getDocument(string $index, int $id, bool $ignore404 = false): array

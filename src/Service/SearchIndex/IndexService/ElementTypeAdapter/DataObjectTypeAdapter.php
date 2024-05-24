@@ -21,6 +21,7 @@ use Doctrine\DBAL\Query\QueryBuilder;
 use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
@@ -64,7 +65,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
     {
         return match (true) {
             $context instanceof ClassDefinition => $context->getName(),
-            $context === DataObjectIndexHandler::DATA_OBJECT_INDEX_ALIAS => $context,
+            $context === IndexName::DATA_OBJECT->value => $context,
             default => 'data_object_folders',
         };
     }

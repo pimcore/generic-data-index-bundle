@@ -67,6 +67,26 @@ public function searchAction(SearchProviderInterface $searchProvider, DocumentSe
 }
 ```
 
+## Element Search Service
+
+The element search service can be used to search for assets, data objects and documents at the same time.
+
+- Example: This example loads all elements and orders them by their full path.
+```php
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface;
+
+public function searchAction(SearchProviderInterface $searchProvider, ElementSearchServiceInterface $elementSearchService)
+{
+    $elementSearch = $searchProvider->createElementSearch()
+                ->addModifier(new OrderByFullPath())
+                ->setPageSize(50)
+                ->setPage(1);
+
+    $searchResult = $elementSearchService->search($elementSearch);
+}
+```
+
 ## Search Modifiers
 
 To influence the data which gets fetched its possible to use so-called search modifiers.

@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Command\Update;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IdNotFoundException;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
 use Pimcore\Console\AbstractCommand;
@@ -42,9 +43,13 @@ final class IndexUpdateCommand extends AbstractCommand
 
     private const OPTION_RECREATE_INDEX = 'recreate_index';
 
+    private const UPDATE_GLOBAL_ALIASES_ONLY = 'update-global-aliases-only';
+
     private IndexUpdateServiceInterface $indexUpdateService;
 
     private EnqueueServiceInterface $enqueueService;
+
+    private GlobalIndexAliasServiceInterface $globalIndexAliasService;
 
     #[Required]
     public function setIndexUpdateService(IndexUpdateServiceInterface $indexUpdateService): void
@@ -56,6 +61,12 @@ final class IndexUpdateCommand extends AbstractCommand
     public function setEnqueueService(EnqueueServiceInterface $enqueueService): void
     {
         $this->enqueueService = $enqueueService;
+    }
+
+    #[Required]
+    public function setGlobalIndexAliasService(GlobalIndexAliasServiceInterface $globalIndexAliasService): void
+    {
+        $this->globalIndexAliasService = $globalIndexAliasService;
     }
 
     protected function configure(): void
@@ -83,6 +94,13 @@ final class IndexUpdateCommand extends AbstractCommand
                 'Delete and recreate search indices',
                 null
             )
+            ->addOption(
+                self::UPDATE_GLOBAL_ALIASES_ONLY,
+                null,
+                InputOption::VALUE_NONE,
+                'Updates the global index aliases for data-object and element-search indices only.',
+                null
+            )
             ->setDescription(
                 'Updates index/mapping for all classDefinitions/asset without ' .
                 'deleting them. Adds there elements to index queue.'
@@ -99,6 +117,11 @@ final class IndexUpdateCommand extends AbstractCommand
             throw new CommandAlreadyRunningException(
                 'The command is already running in another process.'
             );
+        }
+
+        if ($input->getOption(self::UPDATE_GLOBAL_ALIASES_ONLY)) {
+            $this->updateGlobalIndexAliases();
+            return self::SUCCESS;
         }
 
         $this->indexUpdateService->setReCreateIndex($input->getOption(self::OPTION_RECREATE_INDEX));
@@ -173,11 +196,22 @@ final class IndexUpdateCommand extends AbstractCommand
         );
 
         $this->enqueueService->dispatchQueueMessages(true);
+        $this->updateGlobalIndexAliases();
 
         $this->release();
 
         $this->output->writeln('<info>Finished</info>', OutputInterface::VERBOSITY_VERBOSE);
 
         return self::SUCCESS;
+    }
+
+    private function updateGlobalIndexAliases(): void
+    {
+        $this->output->writeln(
+            '<info>Update global aliases</info>',
+            OutputInterface::VERBOSITY_VERBOSE
+        );
+        $this->globalIndexAliasService->updateDataObjectAlias();
+        $this->globalIndexAliasService->updateElementSearchAlias();
     }
 }

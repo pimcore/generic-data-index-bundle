@@ -16,9 +16,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
 
-class DataObjectSearchResultItem
+class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 {
     private int $id;
 
@@ -55,6 +57,11 @@ class DataObjectSearchResultItem
     private array $searchIndexData;
 
     private DataObjectPermissions $permissions;
+
+    public function getElementType(): ElementType
+    {
+        return ElementType::DATA_OBJECT;
+    }
 
     public function getId(): int
     {

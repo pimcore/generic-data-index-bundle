@@ -17,11 +17,13 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree\ChildrenCountAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\WorkspaceQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\OrderByPageNumber;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultHit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\UserPermissionServiceInterface;
@@ -111,9 +113,23 @@ abstract class AbstractSearchHelper implements SearchHelperInterface
         return $childrenCounts;
     }
 
-    abstract public function hydrateSearchResultHits(
+    public function hydrateSearchResultHits(
         SearchResult $searchResult,
         array $childrenCounts,
         ?User $user = null
-    ): array;
+    ): array {
+        $results = [];
+
+        foreach ($searchResult->getHits() as $hit) {
+            $results[] = $this->hydrateSearchResultHit($hit, $childrenCounts, $user);
+        }
+
+        return $results;
+    }
+
+    abstract public function hydrateSearchResultHit(
+        SearchResultHit $searchResultHit,
+        array $childrenCounts,
+        ?User $user = null
+    ): ElementSearchResultItemInterface;
 }

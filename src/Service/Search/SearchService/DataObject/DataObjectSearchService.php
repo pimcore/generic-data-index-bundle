@@ -18,6 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Dat
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\UserPermissionTypes;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResult;
@@ -50,7 +51,7 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
      */
     public function search(DataObjectSearchInterface $dataObjectSearch): DataObjectSearchResult
     {
-        $indexContext = $dataObjectSearch->getClassDefinition() ?: DataObjectIndexHandler::DATA_OBJECT_INDEX_ALIAS;
+        $indexContext = $dataObjectSearch->getClassDefinition() ?: IndexName::DATA_OBJECT->value;
 
         $search = $this->searchHelper->addSearchRestrictions(
             search: $dataObjectSearch,

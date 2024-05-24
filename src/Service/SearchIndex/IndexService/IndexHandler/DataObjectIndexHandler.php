@@ -18,19 +18,32 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractMappingEvent;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
-use Symfony\Contracts\Service\Attribute\Required;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * @internal
  */
 final class DataObjectIndexHandler extends AbstractIndexHandler
 {
-    public const DATA_OBJECT_INDEX_ALIAS = 'data-object';
+    public function __construct(
+        SearchIndexServiceInterface $searchIndexService,
+        SearchIndexConfigServiceInterface $searchIndexConfigService,
+        EventDispatcherInterface $eventDispatcher,
+        IndexMappingServiceInterface $indexMappingService,
+        private readonly DataObjectTypeAdapter $dataObjectTypeAdapter,
+        private readonly GlobalIndexAliasServiceInterface $globalIndexAliasService,
+    )
+    {
+        parent::__construct($searchIndexService, $searchIndexConfigService, $eventDispatcher, $indexMappingService);
+    }
 
-    private DataObjectTypeAdapter $dataObjectTypeAdapter;
 
     protected function extractMappingProperties(mixed $context = null): array
     {
@@ -43,20 +56,18 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
         );
     }
 
-    protected function createIndex(mixed $context, string $aliasName): void
-    {
-        parent::createIndex($context, $aliasName);
-
-        $this->searchIndexService->putAlias(
-            $this->searchIndexConfigService->getIndexName(self::DATA_OBJECT_INDEX_ALIAS),
-            $this->getCurrentFullIndexName($context)
-        );
-    }
-
     protected function getAliasIndexName(mixed $context = null): string
     {
         return $this->dataObjectTypeAdapter->getAliasIndexName($context);
     }
+
+    protected function createGlobalIndexAliases(mixed $context = null): void
+    {
+        $currentIndexFullName = $this->getCurrentFullIndexName($context);
+        $this->globalIndexAliasService->addToDataObjectAlias($currentIndexFullName);
+        $this->globalIndexAliasService->addToElementSearchAlias($currentIndexFullName);
+    }
+
 
     private function extractMappingByClassDefinition(ClassDefinition $classDefinition): array
     {
@@ -80,13 +91,7 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
         return $mappingProperties;
     }
 
-    #[Required]
-    public function setDataObjectTypeAdapter(DataObjectTypeAdapter $dataObjectTypeAdapter): void
-    {
-        $this->dataObjectTypeAdapter = $dataObjectTypeAdapter;
-    }
-
-    public function fireEventAndGetCustomFieldsMapping(ClassDefinition $classDefinition, array $customFields): array
+    private function fireEventAndGetCustomFieldsMapping(ClassDefinition $classDefinition, array $customFields): array
     {
         $extractMappingEvent = new ExtractMappingEvent($classDefinition, $customFields);
         $this->eventDispatcher->dispatch($extractMappingEvent);

@@ -16,8 +16,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultHit;
 use Pimcore\Model\User;
 
 /**
@@ -47,4 +49,10 @@ interface SearchHelperInterface
         array $childrenCounts,
         ?User $user = null
     ): array;
+
+    public function hydrateSearchResultHit(
+        SearchResultHit $searchResultHit,
+        array $childrenCounts,
+        ?User $user = null
+    ): ElementSearchResultItemInterface;
 }
