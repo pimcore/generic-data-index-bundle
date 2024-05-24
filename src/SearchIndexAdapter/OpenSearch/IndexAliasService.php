@@ -43,7 +43,6 @@ final class IndexAliasService implements IndexAliasServiceInterface
                 ],
             ],
         ];
-        p_r($params);
 
         return $this->openSearchClient->indices()->updateAliases($params);
     }
