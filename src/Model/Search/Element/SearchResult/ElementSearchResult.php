@@ -61,7 +61,7 @@ final readonly class ElementSearchResult
     public function getIds(): array
     {
         return array_map(
-            static fn (DocumentSearchResultItem $item) => $item->getId(),
+            static fn (ElementSearchResultItemInterface $item) => $item->getId(),
             $this->items
         );
     }
