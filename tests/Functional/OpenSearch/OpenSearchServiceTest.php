@@ -139,7 +139,7 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
         $openSearchService = $this->tester->grabService(SearchIndexServiceInterface::class);
 
         $openSearchService->createIndex('test_index');
-        $openSearchService->putAlias('test_index_alias', 'test_index');
+        $openSearchService->addAlias('test_index_alias', 'test_index');
 
         $this->assertTrue($openSearchService->existsAlias('test_index_alias', 'test_index'));
         $this->assertFalse($openSearchService->existsAlias('test_index_alias', 'test_index2'));
@@ -165,7 +165,7 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
         $openSearchService = $this->tester->grabService(SearchIndexServiceInterface::class);
 
         $openSearchService->createIndex('test_index');
-        $openSearchService->putAlias('test_index_alias', 'test_index');
+        $openSearchService->addAlias('test_index_alias', 'test_index');
         $this->assertTrue($openSearchService->existsAlias('test_index_alias', 'test_index'));
         $openSearchService->deleteAlias('test_index', 'test_index_alias');
         $this->assertFalse($openSearchService->existsAlias('test_index_alias', 'test_index'));
