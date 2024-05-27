@@ -23,8 +23,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\ElementWorkspacesQuery;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\OrderByPageNumber;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultHit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -47,7 +45,8 @@ final readonly class SearchHelper implements ElementSearchHelperInterface
     ) {
     }
 
-    public function addSearchRestrictions(SearchInterface $search): SearchInterface {
+    public function addSearchRestrictions(SearchInterface $search): SearchInterface
+    {
         $user = $search->getUser();
         if (!$user) {
             return $search;
