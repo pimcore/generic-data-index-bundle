@@ -26,7 +26,7 @@ final class UserPermissionService implements UserPermissionServiceInterface
         string $userPermission
     ): void {
         if (!$this->hasPermission($user, $userPermission)) {
-            throw new UserPermissionException('User does not have permission to view assets');
+            throw new UserPermissionException('User does not have permission to view ' . $userPermission);
         }
     }
 

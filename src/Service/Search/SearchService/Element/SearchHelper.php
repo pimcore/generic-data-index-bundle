@@ -16,39 +16,54 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\ElementWorkspacesQuery;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\OrderByPageNumber;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultHit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\UserPermissionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\AbstractSearchHelper;
 use Pimcore\Model\User;
 
 /**
  * @internal
  */
-final class SearchHelper extends AbstractSearchHelper
+final readonly class SearchHelper implements ElementSearchHelperInterface
 {
+    use SearchService\Traits\SearchHelperTrait;
+
     public function __construct(
-        private readonly SearchService\Asset\SearchHelper $assetSearchHelper,
-        private readonly SearchService\Document\SearchHelper $documentSearchHelper,
-        private readonly SearchService\DataObject\SearchHelper $dataObjecttSearchHelper,
-        private readonly SearchIndexServiceInterface $searchIndexService,
-        private readonly SearchModifierServiceInterface $searchModifierService,
-        private readonly UserPermissionServiceInterface $userPermissionService,
+        private SearchService\Asset\SearchHelper $assetSearchHelper,
+        private SearchService\Document\SearchHelper $documentSearchHelper,
+        private SearchService\DataObject\SearchHelper $dataObjectSearchHelper,
+        private SearchIndexServiceInterface $searchIndexService,
+        private SearchModifierServiceInterface $searchModifierService,
     ) {
-        parent::__construct(
-            $this->searchIndexService,
-            $this->searchModifierService,
-            $this->userPermissionService
-        );
     }
 
-    public function hydrateSearchResultHit(
+    public function addSearchRestrictions(SearchInterface $search): SearchInterface {
+        $user = $search->getUser();
+        if (!$user) {
+            return $search;
+        }
+
+        if (!$user->isAdmin()) {
+            $search->addModifier(new ElementWorkspacesQuery(
+                $user,
+                PermissionTypes::LIST->value
+            ));
+        }
+
+        return $search;
+    }
+
+    private function hydrateSearchResultHit(
         SearchResultHit $searchResultHit,
         array $childrenCounts,
         ?User $user = null
@@ -56,7 +71,7 @@ final class SearchHelper extends AbstractSearchHelper
         $elementType = SystemField::ELEMENT_TYPE->getData($searchResultHit->getSource());
 
         return match($elementType) {
-            ElementType::DATA_OBJECT->value => $this->dataObjecttSearchHelper->hydrateSearchResultHit(
+            ElementType::DATA_OBJECT->value => $this->dataObjectSearchHelper->hydrateSearchResultHit(
                 $searchResultHit,
                 $childrenCounts,
                 $user

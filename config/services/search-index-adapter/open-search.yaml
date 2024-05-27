@@ -53,6 +53,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Workspace\QueryServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Workspace\QueryService
 
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Workspace\ElementWorkspacesQueryServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Workspace\ElementWorkspacesQueryService
+
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\PqlAdapter
 

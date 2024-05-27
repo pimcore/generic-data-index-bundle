@@ -27,6 +27,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultH
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\UserPermissionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Traits\SearchHelperTrait;
 use Pimcore\Model\User;
 
 /**
@@ -34,6 +35,8 @@ use Pimcore\Model\User;
  */
 abstract class AbstractSearchHelper implements SearchHelperInterface
 {
+    use SearchHelperTrait;
+
     public function __construct(
         private readonly SearchIndexServiceInterface $searchIndexService,
         private readonly SearchModifierServiceInterface $searchModifierService,
@@ -61,22 +64,6 @@ abstract class AbstractSearchHelper implements SearchHelperInterface
         }
 
         return $search;
-    }
-
-    public function performSearch(SearchInterface $search, string $indexName): SearchResult
-    {
-        $adapterSearch = $this->searchIndexService->createPaginatedSearch(
-            $search->getPage(),
-            $search->getPageSize(),
-            $search->isAggregationsOnly()
-        );
-
-        $search->addModifier(new OrderByPageNumber($indexName, $search));
-        $this->searchModifierService->applyModifiersFromSearch($search, $adapterSearch);
-
-        return $this
-            ->searchIndexService
-            ->search($adapterSearch, $indexName);
     }
 
     /**
@@ -111,20 +98,6 @@ abstract class AbstractSearchHelper implements SearchHelperInterface
         }
 
         return $childrenCounts;
-    }
-
-    public function hydrateSearchResultHits(
-        SearchResult $searchResult,
-        array $childrenCounts,
-        ?User $user = null
-    ): array {
-        $results = [];
-
-        foreach ($searchResult->getHits() as $hit) {
-            $results[] = $this->hydrateSearchResultHit($hit, $childrenCounts, $user);
-        }
-
-        return $results;
     }
 
     abstract public function hydrateSearchResultHit(

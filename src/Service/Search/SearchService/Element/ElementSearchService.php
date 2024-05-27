@@ -37,7 +37,7 @@ final readonly class ElementSearchService implements ElementSearchServiceInterfa
     public function __construct(
         private GlobalIndexAliasServiceInterface $globalIndexAliasService,
         private PaginationInfoServiceInterface $paginationInfoService,
-        private SearchHelper $searchHelper,
+        private ElementSearchHelperInterface $searchHelper,
         private DataObjectSearchServiceInterface $dataObjectSearchService,
         private AssetSearchServiceInterface $assetSearchService,
         private DocumentSearchServiceInterface $documentSearchService,
@@ -46,15 +46,11 @@ final readonly class ElementSearchService implements ElementSearchServiceInterfa
 
     public function search(SearchInterface $elementSearch): ElementSearchResult
     {
-        /* $documentSearch = $this->searchHelper->addSearchRestrictions(
-             search: $elementSearch,
-             userPermission: UserPermissionTypes::DOCUMENTS->value,
-             workspaceType: DocumentWorkspace::WORKSPACE_TYPE
-         );*/
+        $elementSearch = $this->searchHelper->addSearchRestrictions($elementSearch);
 
         $searchResult = $this->searchHelper->performSearch(
-            search: $elementSearch,
-            indexName: $this->globalIndexAliasService->getElementSearchAliasName()
+            $elementSearch,
+            $this->globalIndexAliasService->getElementSearchAliasName()
         );
 
         try {
@@ -84,7 +80,7 @@ final readonly class ElementSearchService implements ElementSearchServiceInterfa
                 ElementType::ASSET => $this->assetSearchService->byId($id, $user),
                 ElementType::DATA_OBJECT => $this->dataObjectSearchService->byId($id, $user),
             };
-        } catch(Exception $e) {
+        } catch (Exception $e) {
             throw new ElementSearchException($e->getMessage(), 0, $e);
         }
 
