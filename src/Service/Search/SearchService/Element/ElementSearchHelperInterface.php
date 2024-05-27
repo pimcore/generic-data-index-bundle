@@ -28,5 +28,9 @@ interface ElementSearchHelperInterface
 
     public function performSearch(SearchInterface $search, string $indexName): SearchResult;
 
-    public function hydrateSearchResultHits(SearchResult $searchResult, array $childrenCounts, ?User $user = null): array;
+    public function hydrateSearchResultHits(
+        SearchResult $searchResult,
+        array $childrenCounts,
+        ?User $user = null
+    ): array;
 }

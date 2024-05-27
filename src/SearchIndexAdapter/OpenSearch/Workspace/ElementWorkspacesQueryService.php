@@ -65,7 +65,8 @@ final readonly class ElementWorkspacesQueryService implements ElementWorkspacesQ
             $workspaceQuery = new BoolQuery([
                 ConditionType::FILTER->value => [
                     new TermFilter(
-                        SystemField::ELEMENT_TYPE->getPath(), ElementType::fromShortValue($workspaceType)->value
+                        SystemField::ELEMENT_TYPE->getPath(),
+                        ElementType::fromShortValue($workspaceType)->value
                     ),
                     $this->workspaceQueryService->getWorkspaceQuery($workspaceType, $user, $permission),
                 ],
