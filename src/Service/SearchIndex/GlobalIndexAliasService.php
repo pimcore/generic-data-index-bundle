@@ -36,15 +36,20 @@ final readonly class GlobalIndexAliasService implements GlobalIndexAliasServiceI
     {
         $aliases = $this->indexAliasService->getAllAliases();
 
-        $existingClassAliases = $this->filterClassAliases($aliases);
+        $dataObjectIndexAliases = $this->filterClassAliases($aliases);
         $existingIndicesInDataObjectAlias = $this->filterByAliasName(
             $aliases,
             $this->getDataObjectAliasName()
         );
 
+        $dataObjectIndexAliases = array_merge(
+            $dataObjectIndexAliases,
+            $this->filterByAliasName($aliases, $this->searchIndexConfigService->getIndexName(IndexName::DATA_OBJECT_FOLDER->value))
+        );
+
         $this->indexAliasService->updateAliases(
             $this->getDataObjectAliasName(),
-            $this->getIndexNamesFromAliases($existingClassAliases),
+            $this->getIndexNamesFromAliases($dataObjectIndexAliases),
             $this->getIndexNamesFromAliases($existingIndicesInDataObjectAlias)
         );
 
@@ -64,6 +69,11 @@ final readonly class GlobalIndexAliasService implements GlobalIndexAliasServiceI
         $elementSearchIndexAliases = array_merge(
             $elementSearchIndexAliases,
             $this->filterByAliasName($aliases, $this->searchIndexConfigService->getIndexName(IndexName::DOCUMENT->value))
+        );
+
+        $elementSearchIndexAliases = array_merge(
+            $elementSearchIndexAliases,
+            $this->filterByAliasName($aliases, $this->searchIndexConfigService->getIndexName(IndexName::DATA_OBJECT_FOLDER->value))
         );
 
         $existingIndicesInElementSearchAlias =  $this->filterByAliasName(
