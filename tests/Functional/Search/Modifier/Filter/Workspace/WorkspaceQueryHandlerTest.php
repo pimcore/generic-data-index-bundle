@@ -18,6 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Db;
 use Pimcore\Model\Asset;
@@ -314,6 +315,49 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-object-folder-3/sub-folder-3/sub-sub-folder-3/sub-sub-sub-folder-3',
         ], $user);
 
+
+        $user = $this->createUserWithWorkspaces(
+            [
+                '/test-asset-folder-1' => true,
+                '/test-asset-folder-2' => true,
+            ],
+            [
+                '/test-document-folder-2' => true,
+            ],
+            [
+                '/test-object-folder-3' => true,
+            ]
+        );
+
+        $user->setPermission('assets', false)->save();
+
+        $this->assertElementSearchResultFolders([
+            '/',
+            '/test-document-folder-2',
+            '/test-document-folder-2/sub-folder-2',
+            '/test-document-folder-2/sub-folder-2/sub-sub-folder-2',
+            '/test-document-folder-2/sub-folder-2/sub-sub-folder-2/sub-sub-sub-folder-2',
+            '/',
+            '/test-object-folder-3',
+            '/test-object-folder-3/sub-folder-3',
+            '/test-object-folder-3/sub-folder-3/sub-sub-folder-3',
+            '/test-object-folder-3/sub-folder-3/sub-sub-folder-3/sub-sub-sub-folder-3',
+        ], $user);
+
+        $user->setPermission('documents', false)->save();
+
+        $this->assertElementSearchResultFolders([
+            '/',
+            '/test-object-folder-3',
+            '/test-object-folder-3/sub-folder-3',
+            '/test-object-folder-3/sub-folder-3/sub-sub-folder-3',
+            '/test-object-folder-3/sub-folder-3/sub-sub-folder-3/sub-sub-sub-folder-3',
+        ], $user);
+
+        $user->setPermission('objects', false)->save();
+
+        $this->assertElementSearchResultFolders([], $user);
+
     }
 
     private function assertAssetSearchResultFolders(array $expectedPaths, User $user)
@@ -341,7 +385,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
 
     private function assertElementSearchResultFolders(array $expectedPaths, User $user)
     {
-        /** @var AssetSearchServiceInterface $searchService */
+        /** @var ElementSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.element-search-service');
         /** @var SearchProviderInterface $searchProvider */
         $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
@@ -392,6 +436,8 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         $user = new User();
         $user
             ->setPermission('assets', true)
+            ->setPermission('documents', true)
+            ->setPermission('objects', true)
             ->setUsername('test-user-' . uniqid())
             ->save();
 
