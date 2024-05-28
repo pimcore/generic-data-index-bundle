@@ -25,7 +25,6 @@ use Symfony\Contracts\EventDispatcher\Event;
  */
 final class ExtractFolderMappingEvent extends Event
 {
-
     public function __construct(private array $customFieldsMapping)
     {
     }

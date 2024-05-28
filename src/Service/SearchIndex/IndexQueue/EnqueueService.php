@@ -136,7 +136,6 @@ final readonly class EnqueueService implements EnqueueServiceInterface
         return $this;
     }
 
-
     /**
      * @throws EnqueueElementsException
      */
