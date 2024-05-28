@@ -14,6 +14,8 @@ The regular way to search for assets, data objects or documents is to use the re
 ```php
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 
 public function searchAction(SearchProviderInterface $searchProvider, AssetSearchServiceInterface $asserSearchService)
 {
@@ -33,6 +35,8 @@ public function searchAction(SearchProviderInterface $searchProvider, AssetSearc
 ```php
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 
 public function searchAction(SearchProviderInterface $searchProvider, DataObjectSearchServiceInterface $dataObjectSearchService)
 {
@@ -54,6 +58,8 @@ public function searchAction(SearchProviderInterface $searchProvider, DataObject
 ```php
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 
 public function searchAction(SearchProviderInterface $searchProvider, DocumentSearchServiceInterface $documentSearchService)
 {
@@ -73,14 +79,17 @@ The element search service can be used to search for assets, data objects and do
 
 **Hint:** the element search does not support the calculation of the `hasChildren` attributes. This means that the `hasChildren` attribute will always be `false` for all elements.
 
-- Example: This example loads all elements and orders them by their full path.
+- Example: This example loads all elements which are required by the asset ID 123 and orders them by their full path.
 ```php
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiredByFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 
 public function searchAction(SearchProviderInterface $searchProvider, ElementSearchServiceInterface $elementSearchService)
 {
     $elementSearch = $searchProvider->createElementSearch()
+                ->addModifier(new RequiredByFilter(123, ElementType::ASSET))
                 ->addModifier(new OrderByFullPath())
                 ->setPageSize(50)
                 ->setPage(1);

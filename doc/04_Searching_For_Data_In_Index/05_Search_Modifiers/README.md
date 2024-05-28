@@ -21,7 +21,8 @@ $search->addModifier(new ParentIdFilter(1))
 | [PathFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Tree/PathFilter.php)                     | Tree related filters      | Filter by path (depending on use case for all levels or direct children only and with or without the parent item included)                                                                                                                                                                                             |
 | [TagFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Tree/TagFilter.php)                       | Tree related filters      | Filter by tag IDs (it is also possible to include child tags)                                                                                                                                                                                                                                                          |
 | [AssetMetaDataFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Asset/AssetMetaDataFilter.php)  | Asset filters             | Filter by asset meta data attribute. The format of the `$data` which needs to be passed depends on the type of the meta data attribute and is handled by its [field definition adapter](https://github.com/pimcore/generic-data-index-bundle/tree/1.x/src/SearchIndexAdapter/OpenSearch/Asset/FieldDefinitionAdapter). |
-| [WorkspaceFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Workspaces/WorkspaceQuery.php)      | Workspace related filters | Filter based on the user workspaces and permissions (this query is added to the search by default)                                                                                                                                                                                                                     |
+| [WorkspaceQuery](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Workspaces/WorkspaceQuery.php)      | Workspace related filters | Filter based on the user workspaces and permissions for a defined element type (this query is added to the asset/document/data object search by default)                                                                                                                                                               |
+| [ElementWorkspacesQuery](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Workspaces/WorkspaceQuery.php)      | Workspace related filters | Filter based on the user workspaces and permissions respecting all element types (this query is added to the element search by default)                                                                                                                                                                                |
 
 
 
@@ -30,6 +31,14 @@ $search->addModifier(new ParentIdFilter(1))
 | Modifier                                                                                   | Modifier Category | Description                                                                                                                                           |
 |--------------------------------------------------------------------------------------------|-------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [ElementKeySearch](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/FullTextSearch/ElementKeySearch.php) | Full text search  | Search by element key like in the studio UI.<br/><br/>* can be used for wildcard searches - for example "Car*" to find all items starting with "Car". |
+
+### Dependencies
+
+| Modifier                                                                                                                                       | Modifier Category | Description                                               |
+|------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|-----------------------------------------------------------|
+| [RequiresFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Dependency/RequiresFilter.php) | Dependencies      | Get all elements which the given element requires.        |
+| [RequiredByFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Dependency/RequiredByFilter.php)    | Dependencies      | Get all elements which are required by the given element. |
+
 
 ### Query Language
 
