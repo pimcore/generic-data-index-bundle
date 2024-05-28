@@ -23,6 +23,7 @@ enum IndexName: string
 {
     case ASSET = 'asset';
     case DATA_OBJECT = 'data-object';
+    case DATA_OBJECT_FOLDER = 'data-object-folder';
     case DOCUMENT = 'document';
     case ELEMENT_SEARCH = 'element-search';
 }

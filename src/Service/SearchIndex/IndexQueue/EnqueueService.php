@@ -113,6 +113,30 @@ final readonly class EnqueueService implements EnqueueServiceInterface
         return $this;
     }
 
+    public function enqueueDataObjectFolders(): EnqueueServiceInterface
+    {
+        try {
+            $selectQuery = $this->indexQueueRepository->generateSelectQuery(
+                'objects',
+                [
+                    ElementType::DATA_OBJECT->value,
+                    IndexName::DATA_OBJECT_FOLDER->value,
+                    IndexQueueOperation::UPDATE->value,
+                    $this->timeService->getCurrentMillisecondTimestamp(),
+                    0,
+                ],
+            )->where('type = "folder"');
+            $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
+        } catch (Exception $e) {
+            throw new EnqueueElementsException(
+                $e->getMessage()
+            );
+        }
+
+        return $this;
+    }
+
+
     /**
      * @throws EnqueueElementsException
      */

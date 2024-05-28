@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractFolderMappingEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractMappingEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -45,11 +46,7 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
 
     protected function extractMappingProperties(mixed $context = null): array
     {
-        if (!$context instanceof ClassDefinition) {
-            return [];
-        }
-
-        return $this->extractMappingByClassDefinition(
+        return $this->extractMapping(
             $context
         );
     }
@@ -66,16 +63,14 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
         $this->globalIndexAliasService->addToElementSearchAlias($currentIndexFullName);
     }
 
-    private function extractMappingByClassDefinition(ClassDefinition $classDefinition): array
+    private function extractMapping(?ClassDefinition $classDefinition = null): array
     {
         $mappingProperties = [
             FieldCategory::SYSTEM_FIELDS->value => [
                 'properties' => $this->searchIndexConfigService
                     ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELD_DATA_OBJECT),
             ],
-            FieldCategory::STANDARD_FIELDS->value => $this->indexMappingService->getMappingForFieldDefinitions(
-                $classDefinition->getFieldDefinitions()
-            ),
+            FieldCategory::STANDARD_FIELDS->value => $this->getStandardFieldsMapping($classDefinition),
             FieldCategory::CUSTOM_FIELDS->value => [],
         ];
 
@@ -88,9 +83,25 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
         return $mappingProperties;
     }
 
-    private function fireEventAndGetCustomFieldsMapping(ClassDefinition $classDefinition, array $customFields): array
+    private function getStandardFieldsMapping(?ClassDefinition $classDefinition): array
     {
-        $extractMappingEvent = new ExtractMappingEvent($classDefinition, $customFields);
+        if ($classDefinition === null) {
+            return [];
+        }
+
+        return $this->indexMappingService->getMappingForFieldDefinitions(
+            $classDefinition->getFieldDefinitions()
+        );
+    }
+
+    private function fireEventAndGetCustomFieldsMapping(?ClassDefinition $classDefinition, array $customFields): array
+    {
+        if($classDefinition === null) {
+            $extractMappingEvent = new ExtractFolderMappingEvent($customFields);
+        } else {
+            $extractMappingEvent = new ExtractMappingEvent($classDefinition, $customFields);
+        }
+
         $this->eventDispatcher->dispatch($extractMappingEvent);
 
         return $extractMappingEvent->getCustomFieldsMapping();

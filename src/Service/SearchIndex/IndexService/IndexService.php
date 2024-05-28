@@ -163,7 +163,7 @@ final class IndexService implements IndexServiceInterface
                 FieldCategory::CUSTOM_FIELDS->value => $customFields,
             ];
         } catch (Exception|ExceptionInterface $e) {
-            throw new IndexDataException($e->getMessage());
+            throw new IndexDataException($e->getMessage(), 0, $e);
         }
 
     }

@@ -22,12 +22,14 @@ use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
+use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateFolderIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\DataObjectNormalizer;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\Concrete;
+use Pimcore\Model\DataObject\Folder;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 
@@ -65,7 +67,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         return match (true) {
             $context instanceof ClassDefinition => $context->getName(),
             $context === IndexName::DATA_OBJECT->value => $context,
-            default => 'data_object_folders',
+            default => IndexName::DATA_OBJECT_FOLDER->value,
         };
     }
 
@@ -152,10 +154,13 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         ElementInterface $element,
         array $customFields
     ): UpdateIndexDataEventInterface {
-        if (!$element instanceof Concrete) {
-            throw new InvalidArgumentException('Element must be instance of ' . Concrete::class);
+        if ($element instanceof Folder) {
+            return new UpdateFolderIndexDataEvent($element, $customFields);
+        }
+        if ($element instanceof Concrete) {
+            return new UpdateIndexDataEvent($element, $customFields);
         }
 
-        return new UpdateIndexDataEvent($element, $customFields);
+        throw new InvalidArgumentException('Element must be instance of ' . AbstractObject::class);
     }
 }

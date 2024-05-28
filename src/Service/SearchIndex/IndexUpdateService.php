@@ -48,6 +48,7 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
     public function updateAll(): IndexUpdateService
     {
         $this
+            ->updateDataObjectFolders()
             ->updateClassDefinitions()
             ->updateAssets()
             ->updateDocuments();
@@ -97,9 +98,29 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
             ->enqueueService
             ->enqueueByClassDefinition($classDefinition);
 
-        //@todo $this
-        //    ->dataObjectIndexService
-        //    ->addClassDefinitionToAlias($classDefinition, ElasticSearchAlias::CLASS_DEFINITIONS);
+        return $this;
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function updateDataObjectFolders(): IndexUpdateService
+    {
+        if ($this->reCreateIndex) {
+            $this->dataObjectIndexHandler
+                ->deleteIndex();
+        }
+
+        $this
+            ->dataObjectIndexHandler
+            ->updateMapping(
+                forceCreateIndex: $this->reCreateIndex
+            );
+
+        //add dataObjects to update queue
+        $this
+            ->enqueueService
+            ->enqueueDataObjectFolders();
 
         return $this;
     }
