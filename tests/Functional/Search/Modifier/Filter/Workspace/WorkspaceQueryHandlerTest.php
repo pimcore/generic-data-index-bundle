@@ -315,7 +315,6 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-object-folder-3/sub-folder-3/sub-sub-folder-3/sub-sub-sub-folder-3',
         ], $user);
 
-
         $user = $this->createUserWithWorkspaces(
             [
                 '/test-asset-folder-1' => true,
