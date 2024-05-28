@@ -48,12 +48,14 @@ readonly class DataObjectSearchResultDenormalizer implements DenormalizerInterfa
             $searchResultItem = new DataObjectSearchResultItem();
         }
 
+        $published = SystemField::TYPE->getData($data) === 'folder' || SystemField::PUBLISHED->getData($data);
+
         return $searchResultItem
             ->setId(SystemField::ID->getData($data))
             ->setClassName(SystemField::CLASS_NAME->getData($data) ?? '')
             ->setParentId(SystemField::PARENT_ID->getData($data))
             ->setType(SystemField::TYPE->getData($data))
-            ->setPublished(SystemField::PUBLISHED->getData($data))
+            ->setPublished($published)
             ->setKey(SystemField::KEY->getData($data))
             ->setPath(SystemField::PATH->getData($data))
             ->setFullPath(SystemField::FULL_PATH->getData($data))
