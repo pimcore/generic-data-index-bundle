@@ -314,7 +314,6 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-object-folder-3/sub-folder-3/sub-sub-folder-3/sub-sub-sub-folder-3',
         ], $user);
 
-
     }
 
     private function assertAssetSearchResultFolders(array $expectedPaths, User $user)
@@ -387,6 +386,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
 
         return $user;
     }
+
     private function createUserWithWorkspaces(array $assetWorkspaces, array $documentWorkspaces, array $objectWorkspaces): User
     {
         $user = new User();
