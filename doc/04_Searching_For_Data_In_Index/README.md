@@ -33,10 +33,10 @@ public function searchAction(SearchProviderInterface $searchProvider, AssetSearc
 
 - Example: This example loads all data objects from the root folder (parent ID 1) with a specific class definition and orders them by their full path.
 ```php
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 
 public function searchAction(SearchProviderInterface $searchProvider, DataObjectSearchServiceInterface $dataObjectSearchService)
 {
@@ -56,10 +56,10 @@ public function searchAction(SearchProviderInterface $searchProvider, DataObject
 
 - Example: This example loads all documents from the root folder (parent ID 1) and orders them by their full path.
 ```php
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 
 public function searchAction(SearchProviderInterface $searchProvider, DocumentSearchServiceInterface $documentSearchService)
 {
@@ -81,10 +81,11 @@ The element search service can be used to search for assets, data objects and do
 
 - Example: This example loads all elements which are required by the asset ID 123 and orders them by their full path.
 ```php
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiredByFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 
 public function searchAction(SearchProviderInterface $searchProvider, ElementSearchServiceInterface $elementSearchService)
 {
