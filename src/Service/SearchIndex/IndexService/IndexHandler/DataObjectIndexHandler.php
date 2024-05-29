@@ -17,39 +17,37 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractFolderMappingEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractMappingEvent;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
-use Symfony\Contracts\Service\Attribute\Required;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * @internal
  */
 final class DataObjectIndexHandler extends AbstractIndexHandler
 {
-    public const DATA_OBJECT_INDEX_ALIAS = 'data-object';
-
-    private DataObjectTypeAdapter $dataObjectTypeAdapter;
+    public function __construct(
+        SearchIndexServiceInterface $searchIndexService,
+        SearchIndexConfigServiceInterface $searchIndexConfigService,
+        EventDispatcherInterface $eventDispatcher,
+        IndexMappingServiceInterface $indexMappingService,
+        private readonly DataObjectTypeAdapter $dataObjectTypeAdapter,
+        private readonly GlobalIndexAliasServiceInterface $globalIndexAliasService,
+    ) {
+        parent::__construct($searchIndexService, $searchIndexConfigService, $eventDispatcher, $indexMappingService);
+    }
 
     protected function extractMappingProperties(mixed $context = null): array
     {
-        if (!$context instanceof ClassDefinition) {
-            return [];
-        }
-
-        return $this->extractMappingByClassDefinition(
+        return $this->extractMapping(
             $context
-        );
-    }
-
-    protected function createIndex(mixed $context, string $aliasName): void
-    {
-        parent::createIndex($context, $aliasName);
-
-        $this->searchIndexService->putAlias(
-            $this->searchIndexConfigService->getIndexName(self::DATA_OBJECT_INDEX_ALIAS),
-            $this->getCurrentFullIndexName($context)
         );
     }
 
@@ -58,16 +56,21 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
         return $this->dataObjectTypeAdapter->getAliasIndexName($context);
     }
 
-    private function extractMappingByClassDefinition(ClassDefinition $classDefinition): array
+    protected function createGlobalIndexAliases(mixed $context = null): void
+    {
+        $currentIndexFullName = $this->getCurrentFullIndexName($context);
+        $this->globalIndexAliasService->addToDataObjectAlias($currentIndexFullName);
+        $this->globalIndexAliasService->addToElementSearchAlias($currentIndexFullName);
+    }
+
+    private function extractMapping(?ClassDefinition $classDefinition = null): array
     {
         $mappingProperties = [
             FieldCategory::SYSTEM_FIELDS->value => [
                 'properties' => $this->searchIndexConfigService
                     ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELD_DATA_OBJECT),
             ],
-            FieldCategory::STANDARD_FIELDS->value => $this->indexMappingService->getMappingForFieldDefinitions(
-                $classDefinition->getFieldDefinitions()
-            ),
+            FieldCategory::STANDARD_FIELDS->value => $this->getStandardFieldsMapping($classDefinition),
             FieldCategory::CUSTOM_FIELDS->value => [],
         ];
 
@@ -80,15 +83,25 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
         return $mappingProperties;
     }
 
-    #[Required]
-    public function setDataObjectTypeAdapter(DataObjectTypeAdapter $dataObjectTypeAdapter): void
+    private function getStandardFieldsMapping(?ClassDefinition $classDefinition): array
     {
-        $this->dataObjectTypeAdapter = $dataObjectTypeAdapter;
+        if ($classDefinition === null) {
+            return [];
+        }
+
+        return $this->indexMappingService->getMappingForFieldDefinitions(
+            $classDefinition->getFieldDefinitions()
+        );
     }
 
-    public function fireEventAndGetCustomFieldsMapping(ClassDefinition $classDefinition, array $customFields): array
+    private function fireEventAndGetCustomFieldsMapping(?ClassDefinition $classDefinition, array $customFields): array
     {
-        $extractMappingEvent = new ExtractMappingEvent($classDefinition, $customFields);
+        if ($classDefinition === null) {
+            $extractMappingEvent = new ExtractFolderMappingEvent($customFields);
+        } else {
+            $extractMappingEvent = new ExtractMappingEvent($classDefinition, $customFields);
+        }
+
         $this->eventDispatcher->dispatch($extractMappingEvent);
 
         return $extractMappingEvent->getCustomFieldsMapping();

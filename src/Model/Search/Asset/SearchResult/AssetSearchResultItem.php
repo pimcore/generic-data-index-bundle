@@ -16,9 +16,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 
-class AssetSearchResultItem
+class AssetSearchResultItem implements ElementSearchResultItemInterface
 {
     private int $id;
 
@@ -58,6 +60,11 @@ class AssetSearchResultItem
     private array $searchIndexData;
 
     private AssetPermissions $permissions;
+
+    public function getElementType(): ElementType
+    {
+        return ElementType::ASSET;
+    }
 
     public function getId(): int
     {
@@ -172,7 +179,7 @@ class AssetSearchResultItem
         return $this->userModification;
     }
 
-    public function setUserModification(int $userModification): AssetSearchResultItem
+    public function setUserModification(?int $userModification): AssetSearchResultItem
     {
         $this->userModification = $userModification;
 

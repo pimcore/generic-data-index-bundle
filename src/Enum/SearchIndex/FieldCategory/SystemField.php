@@ -26,6 +26,7 @@ enum SystemField: string
     use FieldCategory\SystemField\SystemFieldTrait;
 
     case ID = 'id';
+    case ELEMENT_TYPE = 'elementType';
     case PARENT_ID = 'parentId';
     case CREATION_DATE = 'creationDate';
     case MODIFICATION_DATE = 'modificationDate';
@@ -47,6 +48,7 @@ enum SystemField: string
     case IS_LOCKED = 'isLocked';
     case HAS_WORKFLOW_WITH_PERMISSIONS = 'hasWorkflowWithPermissions';
     case FILE_SIZE = 'fileSize';
+    case DEPENDENCIES = 'dependencies';
 
     /**
      * Not persisted in search index but dynamically calculated

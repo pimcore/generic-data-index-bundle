@@ -13,8 +13,10 @@ will find code examples below.
 This event can be used to store additional fields in the search index. Depending on if you would like to index additional
 data for assets or data objects use one of the following two events.
 
-* `Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\UpdateIndexDataEvent`
-* `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent`
+* `Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\UpdateIndexDataEvent` (assets)
+* `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent` (concrete data object classes)
+* `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateFolderIndexDataEvent` (data object folders)
+* `Pimcore\Bundle\GenericDataIndexBundle\Event\Document\UpdateIndexDataEvent` (documents)
 
 If you take a look at the source of an indexed document within search index you will find a structure like this:
 
@@ -53,8 +55,10 @@ they are searchable through the full text search (depending on the mapping of th
 With this event it's possible to define the [mapping](https://opensearch.org/docs/latest/field-types/)
 of the additional custom fields. Again there are separate events for assets and data objects.
 
-* `Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent`
-* `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractMappingEvent`
+* `Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent` (assets)
+* `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractMappingEvent` (concrete data object classes)
+* `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractFolderMappingEvent` (data object folders)
+* `Pimcore\Bundle\GenericDataIndexBundle\Event\Document\ExtractMappingEvent` (documents)
 
 
 ### Example 1: Assets

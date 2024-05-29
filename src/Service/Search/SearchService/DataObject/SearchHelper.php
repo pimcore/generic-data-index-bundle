@@ -19,7 +19,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Dat
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResult;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultHit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionServiceInterface;
@@ -51,35 +52,29 @@ final class SearchHelper extends AbstractSearchHelper
         );
     }
 
-    public function hydrateSearchResultHits(
-        SearchResult $searchResult,
+    public function hydrateSearchResultHit(
+        SearchResultHit $searchResultHit,
         array $childrenCounts,
         ?User $user = null
-    ): array {
-        $results = [];
+    ): ElementSearchResultItemInterface {
+        $source = $searchResultHit->getSource();
 
-        foreach ($searchResult->getHits() as $hit) {
-            $source = $hit->getSource();
+        $source[FieldCategory::SYSTEM_FIELDS->value][SystemField::HAS_CHILDREN->value] =
+            ($childrenCounts[$searchResultHit->getId()] ?? 0) > 0;
 
-            $source[FieldCategory::SYSTEM_FIELDS->value][SystemField::HAS_CHILDREN->value] =
-                ($childrenCounts[$hit->getId()] ?? 0) > 0;
+        $result = $this->denormalizer->denormalize(
+            $source,
+            DataObjectSearchResult::class
+        );
 
-            $result = $this->denormalizer->denormalize(
-                $source,
-                DataObjectSearchResult::class
-            );
+        $this->runtimeCacheResolver->save($result, self::OBJECT_SEARCH . '_' . $result->getId());
+        $result->setPermissions(
+            $this->permissionService->getDataObjectPermissions(
+                $result,
+                $user
+            )
+        );
 
-            $this->runtimeCacheResolver->save($result, self::OBJECT_SEARCH . '_' . $result->getId());
-            $result->setPermissions(
-                $this->permissionService->getDataObjectPermissions(
-                    $result,
-                    $user
-                )
-            );
-
-            $results[] = $result;
-        }
-
-        return $results;
+        return $result;
     }
 }

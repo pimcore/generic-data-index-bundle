@@ -69,6 +69,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             $this->getAliasIndexName($context),
             $mappingProperties ?: $this->extractMappingProperties($context)
         );
+        $this->createGlobalIndexAliases($context);
     }
 
     public function deleteIndex(mixed $context = null): void
@@ -131,5 +132,11 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             ->createIndex($fullIndexName)
             ->addAlias($aliasName, $fullIndexName)
         ;
+
+        $this->createGlobalIndexAliases($context);
+    }
+
+    protected function createGlobalIndexAliases(mixed $context = null): void
+    {
     }
 }

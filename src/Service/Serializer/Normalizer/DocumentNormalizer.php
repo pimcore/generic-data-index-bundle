@@ -16,9 +16,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\StandardField\Document\DocumentStandardField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandlerService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
@@ -35,6 +37,7 @@ final class DocumentNormalizer implements NormalizerInterface
     public function __construct(
         private readonly DocumentTypeSerializationHandlerService $documentTypeSerializationHandlerService,
         private readonly WorkflowServiceInterface $workflowService,
+        private readonly DependencyServiceInterface $dependencyService,
     ) {
     }
 
@@ -80,6 +83,7 @@ final class DocumentNormalizer implements NormalizerInterface
 
         $systemFields = [
             SystemField::ID->value => $document->getId(),
+            SystemField::ELEMENT_TYPE->value => ElementType::DOCUMENT->value,
             SystemField::PARENT_ID->value => $document->getParentId(),
             SystemField::CREATION_DATE->value => $this->formatTimestamp($document->getCreationDate()),
             SystemField::MODIFICATION_DATE->value => $this->formatTimestamp($document->getModificationDate()),
@@ -98,6 +102,7 @@ final class DocumentNormalizer implements NormalizerInterface
             SystemField::IS_LOCKED->value => $document->isLocked(),
             SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
                 $this->workflowService->hasWorkflowWithPermissions($document),
+            SystemField::DEPENDENCIES->value => $this->dependencyService->getRequiresDependencies($document),
         ];
 
         if ($handler = $this->documentTypeSerializationHandlerService->getSerializationHandler($document->getType())) {

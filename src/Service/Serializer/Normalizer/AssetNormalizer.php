@@ -16,10 +16,12 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataProviderServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandlerService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
@@ -39,6 +41,7 @@ final class AssetNormalizer implements NormalizerInterface
         private readonly FieldDefinitionServiceInterface $fieldDefinitionService,
         private readonly WorkflowServiceInterface $workflowService,
         private readonly MetadataProviderServiceInterface $metadataProviderService,
+        private readonly DependencyServiceInterface $dependencyService,
     ) {
     }
 
@@ -84,6 +87,7 @@ final class AssetNormalizer implements NormalizerInterface
 
         $systemFields = [
             SystemField::ID->value => $asset->getId(),
+            SystemField::ELEMENT_TYPE->value => ElementType::ASSET->value,
             SystemField::PARENT_ID->value => $asset->getParentId(),
             SystemField::CREATION_DATE->value => $this->formatTimestamp($asset->getCreationDate()),
             SystemField::MODIFICATION_DATE->value => $this->formatTimestamp($asset->getModificationDate()),
@@ -103,6 +107,7 @@ final class AssetNormalizer implements NormalizerInterface
             SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
                 $this->workflowService->hasWorkflowWithPermissions($asset),
             SystemField::FILE_SIZE->value => $asset->getFileSize(),
+            SystemField::DEPENDENCIES->value => $this->dependencyService->getRequiresDependencies($asset),
         ];
 
         if ($handler = $this->assetTypeSerializationHandlerService->getSerializationHandler($asset->getType())) {

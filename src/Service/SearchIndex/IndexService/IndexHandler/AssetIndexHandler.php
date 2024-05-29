@@ -18,19 +18,31 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataProviderServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
-use Symfony\Contracts\Service\Attribute\Required;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * @internal
  */
 final class AssetIndexHandler extends AbstractIndexHandler
 {
-    private AssetTypeAdapter $assetAdapter;
-
-    private MetadataProviderServiceInterface $metadataProviderService;
+    public function __construct(
+        SearchIndexServiceInterface $searchIndexService,
+        SearchIndexConfigServiceInterface $searchIndexConfigService,
+        EventDispatcherInterface $eventDispatcher,
+        IndexMappingServiceInterface $indexMappingService,
+        private readonly AssetTypeAdapter $assetAdapter,
+        private readonly MetadataProviderServiceInterface $metadataProviderService,
+        private readonly GlobalIndexAliasServiceInterface $globalIndexAliasService,
+    ) {
+        parent::__construct($searchIndexService, $searchIndexConfigService, $eventDispatcher, $indexMappingService);
+    }
 
     protected function extractMappingProperties(mixed $context = null): array
     {
@@ -59,17 +71,10 @@ final class AssetIndexHandler extends AbstractIndexHandler
         return $this->assetAdapter->getAliasIndexName($context);
     }
 
-    #[Required]
-    public function setAssetAdapter(AssetTypeAdapter $assetAdapter): void
+    protected function createGlobalIndexAliases(mixed $context = null): void
     {
-        $this->assetAdapter = $assetAdapter;
-    }
-
-    #[Required]
-    public function setMetadataProviderService(
-        MetadataProviderServiceInterface $metadataProviderService
-    ): void {
-        $this->metadataProviderService = $metadataProviderService;
+        $currentIndexFullName = $this->getCurrentFullIndexName($context);
+        $this->globalIndexAliasService->addToElementSearchAlias($currentIndexFullName);
     }
 
     private function fireEventAndGetCustomFieldsMapping($customFields): array

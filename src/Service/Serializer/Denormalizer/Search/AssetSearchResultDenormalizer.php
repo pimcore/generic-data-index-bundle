@@ -60,7 +60,7 @@ readonly class AssetSearchResultDenormalizer implements DenormalizerInterface
             ->setFullPath(SystemField::FULL_PATH->getData($data))
             ->setMimeType(SystemField::MIME_TYPE->getData($data))
             ->setFileSize(SystemField::FILE_SIZE->getData($data))
-            ->setUserOwner(SystemField::USER_OWNER->getData($data))
+            ->setUserOwner(SystemField::USER_OWNER->getData($data) ?? 0)
             ->setUserModification(SystemField::USER_MODIFICATION->getData($data))
             ->setLocked(SystemField::LOCKED->getData($data))
             ->setIsLocked(SystemField::IS_LOCKED->getData($data))

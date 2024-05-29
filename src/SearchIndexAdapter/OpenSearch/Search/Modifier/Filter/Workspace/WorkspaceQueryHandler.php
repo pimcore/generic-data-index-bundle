@@ -18,7 +18,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Se
 
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch\AsSearchModifierHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\ElementWorkspacesQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Workspaces\WorkspaceQuery;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Workspace\ElementWorkspacesQueryServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Workspace\QueryServiceInterface;
 
 /**
@@ -27,7 +29,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Workspace\QueryServ
 final readonly class WorkspaceQueryHandler
 {
     public function __construct(
-        private QueryServiceInterface $workspaceQueryService
+        private QueryServiceInterface $workspaceQueryService,
+        private ElementWorkspacesQueryServiceInterface $elementWorkspacesQueryService
     ) {
     }
 
@@ -45,6 +48,23 @@ final readonly class WorkspaceQueryHandler
                 workspaceType: $workspaceQuery->getWorkspaceType(),
                 user: $workspaceQuery->getUser(),
                 permission: $workspaceQuery->getPermission()
+            )
+        );
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleElementWorkspacesQuery(
+        ElementWorkspacesQuery $elementWorkspacesQuery,
+        SearchModifierContextInterface $context
+    ): void {
+        if (!$elementWorkspacesQuery->getUser()) {
+            return;
+        }
+
+        $context->getSearch()->addQuery(
+            $this->elementWorkspacesQueryService->getWorkspaceQuery(
+                user: $elementWorkspacesQuery->getUser(),
+                permission: $elementWorkspacesQuery->getPermission()
             )
         );
     }

@@ -56,7 +56,7 @@ readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
             ->setPath(SystemField::PATH->getData($data))
             ->setPublished(SystemField::PUBLISHED->getData($data))
             ->setFullPath(SystemField::FULL_PATH->getData($data))
-            ->setUserOwner(SystemField::USER_OWNER->getData($data))
+            ->setUserOwner(SystemField::USER_OWNER->getData($data) ?? 0)
             ->setUserModification(SystemField::USER_MODIFICATION->getData($data))
             ->setLocked(SystemField::LOCKED->getData($data))
             ->setIsLocked(SystemField::IS_LOCKED->getData($data))

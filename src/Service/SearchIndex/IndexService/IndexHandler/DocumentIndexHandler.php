@@ -19,16 +19,29 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\StandardField\Document\DocumentStandardField;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
-use Symfony\Contracts\Service\Attribute\Required;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * @internal
  */
 final class DocumentIndexHandler extends AbstractIndexHandler
 {
-    private DocumentTypeAdapter $documentAdapter;
+    public function __construct(
+        SearchIndexServiceInterface $searchIndexService,
+        SearchIndexConfigServiceInterface $searchIndexConfigService,
+        EventDispatcherInterface $eventDispatcher,
+        IndexMappingServiceInterface $indexMappingService,
+        private readonly DocumentTypeAdapter $documentAdapter,
+        private readonly GlobalIndexAliasServiceInterface $globalIndexAliasService,
+    ) {
+        parent::__construct($searchIndexService, $searchIndexConfigService, $eventDispatcher, $indexMappingService);
+    }
 
     protected function extractMappingProperties(mixed $context = null): array
     {
@@ -52,10 +65,10 @@ final class DocumentIndexHandler extends AbstractIndexHandler
         return $this->documentAdapter->getAliasIndexName($context);
     }
 
-    #[Required]
-    public function setDocumentAdapter(DocumentTypeAdapter $documentAdapter): void
+    protected function createGlobalIndexAliases(mixed $context = null): void
     {
-        $this->documentAdapter = $documentAdapter;
+        $currentIndexFullName = $this->getCurrentFullIndexName($context);
+        $this->globalIndexAliasService->addToElementSearchAlias($currentIndexFullName);
     }
 
     private function getMappingForStandardFields(): array

@@ -17,10 +17,12 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectNormalizerException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
 use Pimcore\Model\DataObject\AbstractObject;
@@ -39,6 +41,7 @@ final class DataObjectNormalizer implements NormalizerInterface
     public function __construct(
         private readonly FieldDefinitionServiceInterface $fieldDefinitionService,
         private readonly WorkflowServiceInterface $workflowService,
+        private readonly DependencyServiceInterface $dependencyService,
     ) {
     }
 
@@ -92,6 +95,7 @@ final class DataObjectNormalizer implements NormalizerInterface
 
         $result = [
             SystemField::ID->value => $dataObject->getId(),
+            SystemField::ELEMENT_TYPE->value => ElementType::DATA_OBJECT->value,
             SystemField::PARENT_ID->value => $dataObject->getParentId(),
             SystemField::CREATION_DATE->value => $this->formatTimestamp($dataObject->getCreationDate()),
             SystemField::MODIFICATION_DATE->value => $this->formatTimestamp($dataObject->getModificationDate()),
@@ -109,6 +113,7 @@ final class DataObjectNormalizer implements NormalizerInterface
             SystemField::IS_LOCKED->value => $dataObject->isLocked(),
             SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
                 $this->workflowService->hasWorkflowWithPermissions($dataObject),
+            SystemField::DEPENDENCIES->value => $this->dependencyService->getRequiresDependencies($dataObject),
         ];
 
         if ($dataObject instanceof Concrete) {

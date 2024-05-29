@@ -40,6 +40,11 @@ interface EnqueueServiceInterface
     /**
      * @throws EnqueueElementsException
      */
+    public function enqueueDataObjectFolders(): self;
+
+    /**
+     * @throws EnqueueElementsException
+     */
     public function enqueueAssets(): self;
 
     /**

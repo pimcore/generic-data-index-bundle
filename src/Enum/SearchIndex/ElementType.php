@@ -16,12 +16,25 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex;
 
-/**
- * @internal
- */
 enum ElementType: string
 {
     case ASSET = 'asset';
     case DATA_OBJECT = 'dataObject';
     case DOCUMENT = 'document';
+
+    public function getShortValue(): string
+    {
+        return match ($this) {
+            self::DATA_OBJECT => 'object',
+            default => $this->value,
+        };
+    }
+
+    public static function fromShortValue(string $shortValue): self
+    {
+        return match ($shortValue) {
+            'object' => self::DATA_OBJECT,
+            default => self::from($shortValue),
+        };
+    }
 }

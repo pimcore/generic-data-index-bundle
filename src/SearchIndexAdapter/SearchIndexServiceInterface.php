@@ -38,9 +38,7 @@ interface SearchIndexServiceInterface
 
     public function createIndex(string $indexName, array $mappings = null): self;
 
-    public function addAlias(string $aliasName, string $indexName): self;
-
-    public function putAlias(string $aliasName, string $indexName): array;
+    public function addAlias(string $aliasName, string $indexName): array;
 
     public function existsAlias(string $aliasName, string $indexName = null): bool;
 

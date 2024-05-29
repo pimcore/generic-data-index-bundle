@@ -26,4 +26,6 @@ interface SearchProviderInterface
     public function createDataObjectSearch(): DataObjectSearchInterface;
 
     public function createDocumentSearch(): SearchInterface;
+
+    public function createElementSearch(): SearchInterface;
 }
