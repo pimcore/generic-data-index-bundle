@@ -96,7 +96,7 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
 
     private function fireEventAndGetCustomFieldsMapping(?ClassDefinition $classDefinition, array $customFields): array
     {
-        if($classDefinition === null) {
+        if ($classDefinition === null) {
             $extractMappingEvent = new ExtractFolderMappingEvent($customFields);
         } else {
             $extractMappingEvent = new ExtractMappingEvent($classDefinition, $customFields);
