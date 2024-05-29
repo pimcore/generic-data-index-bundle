@@ -16,6 +16,7 @@
 namespace Functional\SearchIndex;
 
 use OpenSearch\Common\Exceptions\Missing404Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -140,6 +141,28 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
         $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
         $this->assertEquals($object->getKey(), $response['_source']['system_fields']['key']);
+    }
+
+    public function testFolderIndexing()
+    {
+        $object = TestHelper::createObjectFolder();
+        $indexName = $this->searchIndexConfigService->getIndexName(IndexName::DATA_OBJECT_FOLDER->value);
+
+        // check indexed
+        $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
+        $this->assertEquals($object->getId(), $response['_source']['system_fields']['id']);
+
+        $object->setKey('my-test-folder');
+        $object->save();
+
+        $indexName = $this->searchIndexConfigService->getIndexName(IndexName::DATA_OBJECT_FOLDER->value);
+        $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
+        $this->assertEquals('my-test-folder', $response['_source']['system_fields']['key']);
+
+        $object->delete();
+
+        $this->expectException(Missing404Exception::class);
+        $this->tester->checkIndexEntry($object->getId(), $indexName);
     }
 
     public function testDataObjectSearch()
