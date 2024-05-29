@@ -42,10 +42,8 @@ final readonly class GlobalIndexAliasService implements GlobalIndexAliasServiceI
             $this->getDataObjectAliasName()
         );
 
-        $dataObjectIndexAliases = array_merge(
-            $dataObjectIndexAliases,
-            $this->filterByAliasName($aliases, $this->searchIndexConfigService->getIndexName(IndexName::DATA_OBJECT_FOLDER->value))
-        );
+        $this
+            ->addAliasIfExists($existingIndicesInDataObjectAlias, $aliases, IndexName::DATA_OBJECT_FOLDER->value);
 
         $this->indexAliasService->updateAliases(
             $this->getDataObjectAliasName(),
@@ -61,20 +59,10 @@ final readonly class GlobalIndexAliasService implements GlobalIndexAliasServiceI
 
         $elementSearchIndexAliases = $this->filterClassAliases($aliases);
 
-        $elementSearchIndexAliases = array_merge(
-            $elementSearchIndexAliases,
-            $this->filterByAliasName($aliases, $this->searchIndexConfigService->getIndexName(IndexName::ASSET->value))
-        );
-
-        $elementSearchIndexAliases = array_merge(
-            $elementSearchIndexAliases,
-            $this->filterByAliasName($aliases, $this->searchIndexConfigService->getIndexName(IndexName::DOCUMENT->value))
-        );
-
-        $elementSearchIndexAliases = array_merge(
-            $elementSearchIndexAliases,
-            $this->filterByAliasName($aliases, $this->searchIndexConfigService->getIndexName(IndexName::DATA_OBJECT_FOLDER->value))
-        );
+        $this
+            ->addAliasIfExists($elementSearchIndexAliases, $aliases, IndexName::ASSET->value)
+            ->addAliasIfExists($elementSearchIndexAliases, $aliases, IndexName::DOCUMENT->value)
+            ->addAliasIfExists($elementSearchIndexAliases, $aliases, IndexName::DATA_OBJECT_FOLDER->value);
 
         $existingIndicesInElementSearchAlias =  $this->filterByAliasName(
             $aliases,
@@ -112,6 +100,23 @@ final readonly class GlobalIndexAliasService implements GlobalIndexAliasServiceI
     public function getElementSearchAliasName(): string
     {
         return $this->searchIndexConfigService->getIndexName(IndexName::ELEMENT_SEARCH->value);
+    }
+
+    private function addAliasIfExists(
+        array &$aliasList,
+        array $existingAliases,
+        string $aliasShortName
+    ): GlobalIndexAliasService
+    {
+        $aliasList = array_merge(
+            $aliasList,
+            $this->filterByAliasName(
+                $existingAliases,
+                $this->searchIndexConfigService->getIndexName($aliasShortName)
+            )
+        );
+
+        return $this;
     }
 
     private function filterClassAliases(array $aliases): array
