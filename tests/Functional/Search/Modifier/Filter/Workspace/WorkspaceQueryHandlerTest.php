@@ -42,9 +42,9 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
     protected function _after()
     {
         TestHelper::cleanUp();
-        // $this->tester->flushIndex();
-        // $this->tester->cleanupIndex();
-        // $this->tester->flushIndex();
+        $this->tester->flushIndex();
+        $this->tester->cleanupIndex();
+        $this->tester->flushIndex();
     }
 
     // tests
