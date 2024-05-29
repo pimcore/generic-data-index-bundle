@@ -18,9 +18,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Exception;
 
 use RuntimeException;
 
-/**
- * @internal
- */
 final class AssetSearchException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
 {
 }
