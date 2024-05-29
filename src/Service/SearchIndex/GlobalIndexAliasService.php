@@ -106,8 +106,7 @@ final readonly class GlobalIndexAliasService implements GlobalIndexAliasServiceI
         array &$aliasList,
         array $existingAliases,
         string $aliasShortName
-    ): GlobalIndexAliasService
-    {
+    ): GlobalIndexAliasService {
         $aliasList = array_merge(
             $aliasList,
             $this->filterByAliasName(
