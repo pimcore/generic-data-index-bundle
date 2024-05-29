@@ -42,9 +42,9 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
     protected function _after()
     {
         TestHelper::cleanUp();
-        $this->tester->flushIndex();
-        $this->tester->cleanupIndex();
-        $this->tester->flushIndex();
+       # $this->tester->flushIndex();
+       # $this->tester->cleanupIndex();
+       # $this->tester->flushIndex();
     }
 
     // tests
@@ -521,7 +521,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
 
     private function createTestDocumentFolders(): void
     {
-        $folder = Document\Folder::getByPath('/');
+        $folder = Document::getByPath('/');
         $folder?->save();
 
         $folders = [
