@@ -30,8 +30,9 @@ jobs:
         strategy:
             matrix:
                 include:
-                    - { php-version: 8.2, dependencies: lowest, pimcore_version: "", experimental: false }
-                    - { php-version: 8.2, dependencies: highest, pimcore_version: "", experimental: false }
+                    - { php-version: "8.2", dependencies: "lowest", pimcore_version: "", experimental: false }
+                    - { php-version: "8.3", dependencies: "highest", pimcore_version: "", experimental: false }
+                    - { php-version: "8.3", dependencies: "highest", pimcore_version: "11.x-dev as 11.99.9", experimental: true }                    
 
         services:
             mariadb:
@@ -89,6 +90,14 @@ jobs:
                   mkdir src
                   chmod 755 .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
                   .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
+
+            - name: "Update Pimcore version"
+              env:
+                  PIMCORE_VERSION: "${{ matrix.pimcore_version }}"
+              run: |
+                  if [ ! -z "$PIMCORE_VERSION" ]; then
+                      composer require --no-update pimcore/pimcore:"${PIMCORE_VERSION}"
+                  fi  
 
             -   name: "Install dependencies with Composer"
                 uses: "ramsey/composer-install@v2"
