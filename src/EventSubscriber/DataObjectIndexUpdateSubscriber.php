@@ -30,7 +30,7 @@ use Pimcore\Event\DataObjectEvents;
 use Pimcore\Event\Model\DataObject\ClassDefinitionEvent;
 use Pimcore\Event\Model\DataObjectEvent;
 use Pimcore\Model\DataObject\AbstractObject;
-use Pimcore\Model\Webservice\Data\DataObject\Folder;
+use Pimcore\Model\DataObject\Folder;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
