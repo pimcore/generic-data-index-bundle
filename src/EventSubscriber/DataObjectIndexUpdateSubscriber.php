@@ -30,6 +30,7 @@ use Pimcore\Event\DataObjectEvents;
 use Pimcore\Event\Model\DataObject\ClassDefinitionEvent;
 use Pimcore\Event\Model\DataObjectEvent;
 use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\Webservice\Data\DataObject\Folder;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -75,6 +76,10 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
             return;
         }
 
+        if ($event->getObject() instanceof Folder) {
+            return;
+        }
+
         $inheritanceBackup = AbstractObject::getGetInheritedValues();
         AbstractObject::setGetInheritedValues(true);
 
@@ -93,6 +98,10 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
     public function deleteDataObject(DataObjectEvent $event): void
     {
         if (!$this->installer->isInstalled()) {
+            return;
+        }
+
+        if ($event->getObject() instanceof Folder) {
             return;
         }
 
