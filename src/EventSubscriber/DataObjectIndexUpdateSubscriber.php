@@ -76,7 +76,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
             return;
         }
 
-        if ($event->getObject() instanceof Folder) {
+        if (!$this->isIndexable($event->getObject())) {
             return;
         }
 
@@ -101,7 +101,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
             return;
         }
 
-        if ($event->getObject() instanceof Folder) {
+        if (!$this->isIndexable($event->getObject())) {
             return;
         }
 
@@ -169,5 +169,10 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         } catch (Exception $e) {
             $this->logger->error($e->getMessage());
         }
+    }
+    
+    private function isIndexable(AbstractObject $object): bool
+    {
+        return !($object instanceof Folder);
     }
 }
