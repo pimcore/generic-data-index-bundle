@@ -170,7 +170,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
             $this->logger->error($e->getMessage());
         }
     }
-    
+
     private function isIndexable(AbstractObject $object): bool
     {
         return !($object instanceof Folder);
