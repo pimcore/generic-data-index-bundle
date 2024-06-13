@@ -30,6 +30,7 @@ use Pimcore\Event\DataObjectEvents;
 use Pimcore\Event\Model\DataObject\ClassDefinitionEvent;
 use Pimcore\Event\Model\DataObjectEvent;
 use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\DataObject\Folder;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -75,6 +76,10 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
             return;
         }
 
+        if (!$this->isIndexable($event->getObject())) {
+            return;
+        }
+
         $inheritanceBackup = AbstractObject::getGetInheritedValues();
         AbstractObject::setGetInheritedValues(true);
 
@@ -93,6 +98,10 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
     public function deleteDataObject(DataObjectEvent $event): void
     {
         if (!$this->installer->isInstalled()) {
+            return;
+        }
+
+        if (!$this->isIndexable($event->getObject())) {
             return;
         }
 
@@ -160,5 +169,10 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         } catch (Exception $e) {
             $this->logger->error($e->getMessage());
         }
+    }
+
+    private function isIndexable(AbstractObject $object): bool
+    {
+        return !($object instanceof Folder);
     }
 }
