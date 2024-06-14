@@ -16,9 +16,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowService\WorkflowDummyUser;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Workflow\Manager;
-use Symfony\Component\Security\Core\Authentication\Token\NullToken;
+use Symfony\Component\Security\Core\Authentication\Token\PreAuthenticatedToken;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
 /**
@@ -36,7 +37,7 @@ final readonly class WorkflowService implements WorkflowServiceInterface
     {
         $resetToken = false;
         if (!$this->tokenStorage->getToken()) {
-            $this->tokenStorage->setToken(new NullToken());
+            $this->tokenStorage->setToken(new PreAuthenticatedToken(new WorkflowDummyUser(), 'main'));
             $resetToken = true;
         }
 
