@@ -30,6 +30,7 @@ final readonly class WorkflowDummyUser implements UserInterface
 
     public function eraseCredentials(): void
     {
+        // not needed for dummy user
     }
 
     public function getUserIdentifier(): string
