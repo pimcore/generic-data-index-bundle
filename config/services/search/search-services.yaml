@@ -27,3 +27,9 @@ services:
 
   Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\IndexNameResolverInterface:
       class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\IndexNameResolver
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\TransformToAdapterSearchServiceInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\TransformToAdapterSearchService
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchResultIdListServiceInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchResultIdListService

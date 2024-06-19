@@ -16,10 +16,12 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\ElementSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
@@ -49,6 +51,10 @@ final readonly class IndexNameResolver implements IndexNameResolverInterface
 
         if ($search instanceof DocumentSearch) {
             return $this->documentTypeAdapter->getAliasIndexName();
+        }
+
+        if ($search instanceof ElementSearch) {
+            return IndexName::ELEMENT_SEARCH->value;
         }
 
         throw new InvalidArgumentException('Unsupported search type: ' . get_class($search));
