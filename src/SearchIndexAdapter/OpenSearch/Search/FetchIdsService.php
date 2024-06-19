@@ -35,7 +35,6 @@ final readonly class FetchIdsService implements FetchIdsServiceInterface
 
     public function fetchIdsForCurrentPage(AdapterSearchInterface $search, string $indexName): array
     {
-        $search = clone $search;
         $search = $this->validateSearch($search);
         $search = clone $search;
         $search->setSource(false);

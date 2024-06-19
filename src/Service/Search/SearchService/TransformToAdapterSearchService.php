@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearch;
@@ -50,6 +51,7 @@ final readonly class TransformToAdapterSearchService implements TransformToAdapt
                 => $this->documentSearchHelper->createAdapterSearch($search, $index, $enableOrderByPageNumber),
             $search instanceof ElementSearch
                 => $this->elementSearchHelper->createAdapterSearch($search, $index, $enableOrderByPageNumber),
+            default => throw new InvalidArgumentException('Unsupported search type ' . get_class($search)),
         };
     }
 }
