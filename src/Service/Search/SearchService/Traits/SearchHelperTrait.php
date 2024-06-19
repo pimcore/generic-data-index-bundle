@@ -40,8 +40,7 @@ trait SearchHelperTrait
         SearchInterface $search,
         string $indexName,
         bool $enableOrderByPageNumber = false
-    ): AdapterSearchInterface
-    {
+    ): AdapterSearchInterface {
         $adapterSearch = $this->searchIndexService->createPaginatedSearch(
             $search->getPage(),
             $search->getPageSize(),

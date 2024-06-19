@@ -37,7 +37,7 @@ final readonly class FetchIdsService implements FetchIdsServiceInterface
     {
         $search = clone $search;
         $search = $this->validateSearch($search);
-        $search = clone($search);
+        $search = clone $search;
         $search->setSource(false);
 
         return $this->searchIndexService
@@ -58,6 +58,7 @@ final readonly class FetchIdsService implements FetchIdsServiceInterface
         if (!$search instanceof OpenSearchSearchInterface) {
             throw new InvalidArgumentException('Search must be an instance of OpenSearchSearchInterface');
         }
+
         return $search;
     }
 }
