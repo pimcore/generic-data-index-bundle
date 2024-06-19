@@ -107,6 +107,7 @@ Find out details about search modifiers in the [search modifiers documentation](
 ## Retrieve IDs only instead of full objects
 
 If you only want to retrieve your search results as list of IDs for your `AssetSearch`, `DataObjectSearch` or `DocumentSearch` you can use the `SearchResultIdListServiceInterface` to retrieve the IDs only.
+
 ```php
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
