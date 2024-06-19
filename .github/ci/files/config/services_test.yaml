@@ -15,3 +15,7 @@ services:
   Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\LocateInTreeServiceInterface:
     class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\LocateInTreeService
     public: true
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchResultIdListServiceInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchResultIdListService
+    public: true
