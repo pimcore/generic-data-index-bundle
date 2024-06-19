@@ -36,7 +36,11 @@ trait SearchHelperTrait
             ->search($adapterSearch, $indexName);
     }
 
-    public function createAdapterSearch(SearchInterface $search, string $indexName, bool $enableOrderByPageNumber = false): AdapterSearchInterface
+    public function createAdapterSearch(
+        SearchInterface $search,
+        string $indexName,
+        bool $enableOrderByPageNumber = false
+    ): AdapterSearchInterface
     {
         $adapterSearch = $this->searchIndexService->createPaginatedSearch(
             $search->getPage(),

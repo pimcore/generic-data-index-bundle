@@ -23,6 +23,7 @@ final readonly class FetchIdsService implements FetchIdsServiceInterface
 
     public function fetchIdsForCurrentPage(AdapterSearchInterface $search, string $indexName): array
     {
+        $search = $this->validateSearch($search);
         $search = clone($search);
         $search->setSource(false);
         return $this->searchIndexService
@@ -34,11 +35,16 @@ final readonly class FetchIdsService implements FetchIdsServiceInterface
 
     public function fetchAllIds(AdapterSearchInterface $search, string $indexName, bool $sortById = true): array
     {
-        if (!$search instanceof OpenSearchSearchInterface) {
-            throw new InvalidArgumentException('Search must be an instance of OpenSearchSearchInterface');
-        }
+        $search = $this->validateSearch($search);
 
         return $this->fetchIdsBySearchService->fetchAllIds($search, $indexName, $sortById);
     }
 
+    private function validateSearch(AdapterSearchInterface $search): OpenSearchSearchInterface
+    {
+        if (!$search instanceof OpenSearchSearchInterface) {
+            throw new InvalidArgumentException('Search must be an instance of OpenSearchSearchInterface');
+        }
+        return $search;
+    }
 }
