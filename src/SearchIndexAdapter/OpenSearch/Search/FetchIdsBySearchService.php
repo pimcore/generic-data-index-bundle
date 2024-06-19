@@ -34,7 +34,7 @@ final readonly class FetchIdsBySearchService implements FetchIdsBySearchServiceI
 
     public function fetchAllIds(OpenSearchSearchInterface $search, string $indexName, bool $sortById = true): array
     {
-        $search = clone($search);
+        $search = clone $search;
         if ($sortById) {
             $search->setSortList(new FieldSortList([new FieldSort(SystemField::ID->getPath())]));
         }
