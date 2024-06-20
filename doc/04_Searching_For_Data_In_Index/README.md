@@ -104,6 +104,29 @@ public function searchAction(SearchProviderInterface $searchProvider, ElementSea
 To influence the data which gets fetched its possible to use so-called search modifiers.
 Find out details about search modifiers in the [search modifiers documentation](05_Search_Modifiers/README.md). There you will also find information on how to create your own custom search modifiers.
 
+## Retrieve IDs only instead of full objects
+
+If you only want to retrieve your search results as list of IDs for your `AssetSearch`, `DataObjectSearch` or `DocumentSearch` you can use the `SearchResultIdListServiceInterface` to retrieve the IDs only.
+
+```php
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchResultIdListServiceInterface;
+
+public function searchAction(SearchProviderInterface $searchProvider, SearchResultIdListServiceInterface $searchResultIdListService)
+{
+    $dataObjectSearch = $searchProvider->createDataObjectSearch()
+                ->addModifier(new ParentIdFilter(1))
+                ->addModifier(new OrderByFullPath())
+                ->setPageSize(50)
+                ->setPage(1);
+
+    $allIds = $searchResultIdListService->getAllIds($dataObjectSearch); // returns an ordered array of IDs for the full search result without pagination
+    $idsOnPage = $searchResultIdListService->getIdsForCurrentPage($dataObjectSearch); // returns an ordered array of IDs for the current page
+}
+```
+
 ## OpenSearch Search Models
 The search services mentioned above offer a flexible and structured way to search for assets, data objects and documents. Nevertheless if there are requirements which are not covered by the search services it might be needed to develop your own customized open search queries. The OpenSearch search models offer a streamlined way for executing such customized search queries. They are also used by the search services internally to create the executed OpenSearch search queries.
 

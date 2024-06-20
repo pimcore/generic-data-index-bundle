@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Traits;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\OrderByPageNumber;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
@@ -28,18 +29,31 @@ trait SearchHelperTrait
 {
     public function performSearch(SearchInterface $search, string $indexName): SearchResult
     {
+        $adapterSearch = $this->createAdapterSearch($search, $indexName, true);
+
+        return $this
+            ->searchIndexService
+            ->search($adapterSearch, $indexName);
+    }
+
+    public function createAdapterSearch(
+        SearchInterface $search,
+        string $indexName,
+        bool $enableOrderByPageNumber = false
+    ): AdapterSearchInterface {
         $adapterSearch = $this->searchIndexService->createPaginatedSearch(
             $search->getPage(),
             $search->getPageSize(),
             $search->isAggregationsOnly()
         );
 
-        $search->addModifier(new OrderByPageNumber($indexName, $search));
+        if ($enableOrderByPageNumber) {
+            $search->addModifier(new OrderByPageNumber($indexName, $search));
+        }
+
         $this->searchModifierService->applyModifiersFromSearch($search, $adapterSearch);
 
-        return $this
-            ->searchIndexService
-            ->search($adapterSearch, $indexName);
+        return $adapterSearch;
     }
 
     public function hydrateSearchResultHits(
