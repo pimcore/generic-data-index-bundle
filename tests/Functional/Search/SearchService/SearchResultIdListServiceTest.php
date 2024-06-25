@@ -66,6 +66,15 @@ final class SearchResultIdListServiceTest extends \Codeception\Test\Unit
         );
 
         $this->assertEquals([$asset3->getId(), $asset2->getId()], $assetIds);
+
+        $assetIds = $searchResultIdListService->getAllIds(
+            (new AssetSearch())
+                ->addModifier(new OrderByFullPath(SortDirection::DESC))
+                ->setPage(1)
+                ->setPageSize(2)
+        );
+
+        $this->assertEquals([$asset3->getId(), $asset2->getId(), $asset->getId()], $assetIds);
     }
 
     public function testSearchDataObjectIdList(): void
@@ -93,6 +102,16 @@ final class SearchResultIdListServiceTest extends \Codeception\Test\Unit
         );
 
         $this->assertEquals([$object3->getId(), $object2->getId()], $objectIds);
+
+        $objectIds = $searchResultIdListService->getAllIds(
+            (new DataObjectSearch())
+                ->setClassDefinition($object1->getClass())
+                ->addModifier(new OrderByFullPath(SortDirection::DESC))
+                ->setPage(1)
+                ->setPageSize(2)
+        );
+
+        $this->assertEquals([$object3->getId(), $object2->getId(), $object1->getId()], $objectIds);
     }
 
     public function testSearchDocumentIdList(): void
@@ -118,6 +137,15 @@ final class SearchResultIdListServiceTest extends \Codeception\Test\Unit
         );
 
         $this->assertEquals([$document3->getId(), $document2->getId()], $documentIds);
+
+        $documentIds = $searchResultIdListService->getAllIds(
+            (new DocumentSearch())
+                ->addModifier(new OrderByFullPath(SortDirection::DESC))
+                ->setPage(1)
+                ->setPageSize(2)
+        );
+
+        $this->assertEquals([$document3->getId(), $document2->getId(), $document1->getId()], $documentIds);
     }
 
     private function assertIdArrayEquals(array $ids1, array $ids2): void
