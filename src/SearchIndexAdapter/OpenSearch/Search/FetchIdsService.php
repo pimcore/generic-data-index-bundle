@@ -16,8 +16,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSort;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSortList;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\FetchIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -45,11 +48,16 @@ final readonly class FetchIdsService implements FetchIdsServiceInterface
         ;
     }
 
-    public function fetchAllIds(AdapterSearchInterface $search, string $indexName, bool $sortById = true): array
+    public function fetchAllIds(AdapterSearchInterface $search, string $indexName): array
     {
         $search = $this->validateSearch($search);
 
-        return $this->fetchIdsBySearchService->fetchAllIds($search, $indexName, $sortById);
+        // if sort is not defined sort by id to be able to fetch all ids using search after
+        if ($search->getSortList()->isEmpty()) {
+            $search->setSortList(new FieldSortList([new FieldSort(SystemField::ID->getPath())]));
+        }
+
+        return $this->fetchIdsBySearchService->fetchAllIds($search, $indexName, false);
     }
 
     private function validateSearch(AdapterSearchInterface $search): OpenSearchSearchInterface
