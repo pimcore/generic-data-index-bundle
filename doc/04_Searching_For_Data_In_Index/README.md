@@ -122,8 +122,8 @@ public function searchAction(SearchProviderInterface $searchProvider, SearchResu
                 ->setPageSize(50)
                 ->setPage(1);
 
-    $allIds = $searchResultIdListService->getAllIds($dataObjectSearch); // returns an ordered array of IDs for the full search result without pagination
-    $idsOnPage = $searchResultIdListService->getIdsForCurrentPage($dataObjectSearch); // returns an ordered array of IDs for the current page
+    $allIds = $searchResultIdListService->getAllIds($dataObjectSearch); // returns an array of IDs for the full search result without pagination
+    $idsOnPage = $searchResultIdListService->getIdsForCurrentPage($dataObjectSearch); // returns an array of IDs for the current page
 }
 ```
 

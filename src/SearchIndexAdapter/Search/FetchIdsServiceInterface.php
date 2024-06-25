@@ -25,5 +25,5 @@ interface FetchIdsServiceInterface
 {
     public function fetchIdsForCurrentPage(AdapterSearchInterface $search, string $indexName): array;
 
-    public function fetchAllIds(AdapterSearchInterface $search, string $indexName, bool $sortById = true): array;
+    public function fetchAllIds(AdapterSearchInterface $search, string $indexName): array;
 }

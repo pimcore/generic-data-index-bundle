@@ -21,7 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterfac
 interface SearchResultIdListServiceInterface
 {
     /**
-     * Returns all IDs for all pages that match the search criteria ordered by ID.
+     * Returns all IDs for all pages that match the search criteria ordered by defined sort order.
      */
     public function getAllIds(SearchInterface $search): array;
 
