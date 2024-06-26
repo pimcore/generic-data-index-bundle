@@ -37,13 +37,14 @@ final readonly class GlobalIndexAliasService implements GlobalIndexAliasServiceI
         $aliases = $this->indexAliasService->getAllAliases();
 
         $dataObjectIndexAliases = $this->filterClassAliases($aliases);
+
+        $this
+            ->addAliasIfExists($dataObjectIndexAliases, $aliases, IndexName::DATA_OBJECT_FOLDER->value);
+
         $existingIndicesInDataObjectAlias = $this->filterByAliasName(
             $aliases,
             $this->getDataObjectAliasName()
         );
-
-        $this
-            ->addAliasIfExists($existingIndicesInDataObjectAlias, $aliases, IndexName::DATA_OBJECT_FOLDER->value);
 
         $this->indexAliasService->updateAliases(
             $this->getDataObjectAliasName(),
