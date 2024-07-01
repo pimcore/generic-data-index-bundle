@@ -33,3 +33,6 @@ services:
 
   Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchResultIdListServiceInterface:
     class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchResultIdListService
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\AssetLazyLoadingHandlerInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\AssetLazyLoadingHandler

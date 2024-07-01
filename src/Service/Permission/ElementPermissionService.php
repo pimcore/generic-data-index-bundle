@@ -22,6 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\DocumentSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\AssetToSearchResultItemTransformerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
@@ -37,7 +38,7 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
     use LoggerAwareTrait;
 
     public function __construct(
-        private readonly AssetSearchServiceInterface $assetSearchService,
+        private readonly AssetToSearchResultItemTransformerInterface $assetTransformer,
         private readonly DataObjectSearchServiceInterface $dataObjectSearchService,
         private readonly DocumentSearchServiceInterface $documentSearchService,
         private readonly PermissionServiceInterface $permissionService
@@ -62,17 +63,7 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
         Asset $asset,
         User $user
     ): bool {
-        try {
-            $assetResult = $this->assetSearchService->byId($asset->getId(), $user);
-        } catch (AssetSearchException $e) {
-            $this->logger->error('Asset search failed in the element permission check: ' . $e->getMessage());
-
-            return false;
-        }
-
-        if (!$assetResult) {
-            return false;
-        }
+        $assetResult = $this->assetTransformer->transform($asset, $user);
 
         $assetPermissions = $this->permissionService->getAssetPermissions(
             $assetResult,

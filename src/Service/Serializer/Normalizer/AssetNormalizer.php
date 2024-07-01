@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
@@ -34,6 +35,7 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
  */
 final class AssetNormalizer implements NormalizerInterface
 {
+
     use ElementNormalizerTrait;
 
     public function __construct(
@@ -47,14 +49,16 @@ final class AssetNormalizer implements NormalizerInterface
 
     public function normalize(mixed $object, string $format = null, array $context = []): array
     {
+        $skipLazyLoadedFields = SerializerContext::SKIP_LAZY_LOADED_FIELDS->containedInContext($context);
+
         $asset = $object;
 
         if ($asset instanceof Asset\Folder) {
-            return $this->normalizeFolder($asset);
+            return $this->normalizeFolder($asset, $skipLazyLoadedFields);
         }
 
         if ($asset instanceof Asset) {
-            return $this->normalizeAsset($asset);
+            return $this->normalizeAsset($asset, $skipLazyLoadedFields);
         }
 
         return [];
@@ -65,26 +69,24 @@ final class AssetNormalizer implements NormalizerInterface
         return $data instanceof Asset;
     }
 
-    private function normalizeFolder(Asset\Folder $folder): array
+    private function normalizeFolder(Asset\Folder $folder, bool $skipLazyLoadedFields): array
     {
         return [
-            FieldCategory::SYSTEM_FIELDS->value => $this->normalizeSystemFields($folder),
+            FieldCategory::SYSTEM_FIELDS->value => $this->normalizeSystemFields($folder, $skipLazyLoadedFields),
             FieldCategory::STANDARD_FIELDS->value => [],
         ];
     }
 
-    private function normalizeAsset(Asset $asset): array
+    private function normalizeAsset(Asset $asset, bool $skipLazyLoadedFields): array
     {
         return [
-            FieldCategory::SYSTEM_FIELDS->value => $this->normalizeSystemFields($asset),
+            FieldCategory::SYSTEM_FIELDS->value => $this->normalizeSystemFields($asset, $skipLazyLoadedFields),
             FieldCategory::STANDARD_FIELDS->value => $this->normalizeStandardFields($asset),
         ];
     }
 
-    private function normalizeSystemFields(Asset $asset): array
+    private function normalizeSystemFields(Asset $asset, bool $skipLazyLoadedFields): array
     {
-        $pathLevels = $this->extractPathLevels($asset);
-
         $systemFields = [
             SystemField::ID->value => $asset->getId(),
             SystemField::ELEMENT_TYPE->value => ElementType::ASSET->value,
@@ -93,22 +95,29 @@ final class AssetNormalizer implements NormalizerInterface
             SystemField::MODIFICATION_DATE->value => $this->formatTimestamp($asset->getModificationDate()),
             SystemField::TYPE->value => $asset->getType(),
             SystemField::KEY->value => $asset->getKey(),
-            SystemField::PATH->value => $asset->getPath(),
             SystemField::FULL_PATH->value => $asset->getRealFullPath(),
-            SystemField::PATH_LEVELS->value => $pathLevels,
-            SystemField::PATH_LEVEL->value => count($pathLevels),
-            SystemField::TAGS->value => $this->extractTagIds($asset),
-            SystemField::PARENT_TAGS->value => $this->extractParentTagIds($asset),
+            SystemField::PATH->value => $asset->getPath(),
             SystemField::MIME_TYPE->value => $asset->getMimeType(),
             SystemField::USER_OWNER->value => $asset->getUserOwner(),
             SystemField::USER_MODIFICATION->value => $asset->getUserModification(),
             SystemField::LOCKED->value => $asset->getLocked(),
             SystemField::IS_LOCKED->value => $asset->isLocked(),
-            SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
-                $this->workflowService->hasWorkflowWithPermissions($asset),
-            SystemField::FILE_SIZE->value => $asset->getFileSize(),
-            SystemField::DEPENDENCIES->value => $this->dependencyService->getRequiresDependencies($asset),
         ];
+
+        if (!$skipLazyLoadedFields) {
+            $pathLevels = $this->extractPathLevels($asset);
+
+            $systemFields = array_merge($systemFields, [
+                SystemField::FILE_SIZE->value => $asset->getFileSize(),
+                SystemField::DEPENDENCIES->value => $this->dependencyService->getRequiresDependencies($asset),
+                SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
+                    $this->workflowService->hasWorkflowWithPermissions($asset),
+                SystemField::PATH_LEVELS->value => $pathLevels,
+                SystemField::PATH_LEVEL->value => count($pathLevels),
+                SystemField::TAGS->value => $this->extractTagIds($asset),
+                SystemField::PARENT_TAGS->value => $this->extractParentTagIds($asset),
+            ]);
+        }
 
         if ($handler = $this->assetTypeSerializationHandlerService->getSerializationHandler($asset->getType())) {
             $systemFields = array_merge($systemFields, $handler->getAdditionalSystemFields($asset));
