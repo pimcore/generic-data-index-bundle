@@ -157,6 +157,8 @@ class Configuration implements ConfigurationInterface
                     ->end()
                     ->scalarNode('analyzer')
                     ->end()
+                    ->scalarNode('ignore_above')
+                    ->end()
                     ->append($this->buildVariableNode('properties'))
                     ->append($this->buildVariableNode('fields'))
                 ->end()
