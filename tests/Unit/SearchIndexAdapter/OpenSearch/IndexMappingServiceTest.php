@@ -167,6 +167,7 @@ final class IndexMappingServiceTest extends Unit
                     ],
                     'keyword' => [
                         'type' => 'keyword',
+                        'ignore_above' => 1024,
                     ],
                 ],
             ],
