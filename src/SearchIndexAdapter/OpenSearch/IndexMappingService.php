@@ -63,6 +63,7 @@ readonly class IndexMappingService implements IndexMappingServiceInterface
                 [
                     'keyword' => [
                         'type' => AttributeType::KEYWORD->value,
+                        'ignore_above' => 1024,
                     ],
                 ]
             ),
@@ -111,6 +112,7 @@ readonly class IndexMappingService implements IndexMappingServiceInterface
                         ],
                         'type' => [
                             'type' => AttributeType::KEYWORD->value,
+                            'ignore_above' => 1024,
                         ],
                     ],
                 ],

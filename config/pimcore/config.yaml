@@ -197,6 +197,7 @@ pimcore_generic_data_index:
           type: float
         text:
           type: keyword
+          ignore_above: 256
           fields:
             analyzed_ngram:
               type: text
