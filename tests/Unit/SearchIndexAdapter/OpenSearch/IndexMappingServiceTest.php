@@ -213,6 +213,7 @@ final class IndexMappingServiceTest extends Unit
                                 'fields' => [
                                     'keyword' => [
                                         'type' => 'keyword',
+                                        'ignore_above' => 1024,
                                     ],
                                 ],
                             ],
@@ -241,6 +242,7 @@ final class IndexMappingServiceTest extends Unit
                                 'fields' => [
                                     'keyword' => [
                                         'type' => 'keyword',
+                                        'ignore_above' => 1024,
                                     ],
                                 ],
                             ],
