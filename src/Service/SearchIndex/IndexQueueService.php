@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\HandleIndexQueueEntriesException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
@@ -110,7 +111,7 @@ final class IndexQueueService implements IndexQueueServiceInterface
             $this->indexQueueRepository->deleteQueueEntries($entries);
 
         } catch (Exception $e) {
-            $this->logger->warning('handleIndexQueueEntry failed! Error: ' . $e->getMessage());
+           throw new HandleIndexQueueEntriesException('handleIndexQueueEntry failed! Error: ' . $e->getMessage(), 0, $e);
         }
     }
 
