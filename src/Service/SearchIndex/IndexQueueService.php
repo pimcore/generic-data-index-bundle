@@ -111,7 +111,7 @@ final class IndexQueueService implements IndexQueueServiceInterface
             $this->indexQueueRepository->deleteQueueEntries($entries);
 
         } catch (Exception $e) {
-           throw new HandleIndexQueueEntriesException('handleIndexQueueEntry failed! Error: ' . $e->getMessage(), 0, $e);
+            throw new HandleIndexQueueEntriesException('handleIndexQueueEntry failed! Error: ' . $e->getMessage(), 0, $e);
         }
     }
 
