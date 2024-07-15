@@ -77,6 +77,7 @@ final class TableAdapter extends AbstractAdapter
         ) {
             return $this->getFieldDefinition()->columnConfig;
         }
+
         return [];
     }
 
