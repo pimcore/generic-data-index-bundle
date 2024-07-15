@@ -44,7 +44,7 @@ final class TableAdapter extends AbstractAdapter
                 'properties' => [],
             ];
 
-            foreach ($this->getFieldDefinition()->columnConfig as $columnConfig) {
+            foreach ($this->getColumnConfig() as $columnConfig) {
                 $mapping['properties'][$columnConfig['key']] = $this->indexMappingService->getMappingForTextKeyword(
                     $this->searchIndexConfigService->getSearchAnalyzerAttributes()
                 );
@@ -59,13 +59,24 @@ final class TableAdapter extends AbstractAdapter
 
     private function hasIntegerColumnsOnly(): bool
     {
-        foreach ($this->getFieldDefinition()->columnConfig as $columnConfig) {
+        foreach ($this->getColumnConfig() as $columnConfig) {
             if (filter_var($columnConfig['key'], FILTER_VALIDATE_INT) === false) {
                 return false;
             }
         }
 
         return true;
+    }
+
+    private function getColumnConfig(): array
+    {
+        if (
+            property_exists($this->getFieldDefinition(), 'columnConfig')
+            && is_array($this->getFieldDefinition()->columnConfig)
+        ) {
+            return $this->getFieldDefinition()->columnConfig;
+        }
+        return [];
     }
 
     private function isColumnConfigActivated(): bool
