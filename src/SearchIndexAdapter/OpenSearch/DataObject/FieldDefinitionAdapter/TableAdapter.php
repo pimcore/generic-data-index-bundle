@@ -49,6 +49,7 @@ final class TableAdapter extends AbstractAdapter
                     $this->searchIndexConfigService->getSearchAnalyzerAttributes()
                 );
             }
+
             return $mapping;
         }
 
