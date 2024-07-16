@@ -16,13 +16,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler;
 
-use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField\Asset\ImageSystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Asset\Image;
+use Throwable;
 
 class ImageSerializationHandler extends AbstractHandler
 {
@@ -53,7 +53,7 @@ class ImageSerializationHandler extends AbstractHandler
     {
         try {
             return $image->getThumbnail(Image\Thumbnail\Config::getPreviewConfig())->getPath();
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $this->logger->error('Thumbnail generation failed for image asset: ' .
                 $image->getId() .
                 ' error ' .
