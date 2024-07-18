@@ -59,7 +59,7 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 
     private DataObjectPermissions $permissions;
 
-    private readonly DataObjectLazyLoadingHandlerInterface $lazyLoadingHandler;
+    private DataObjectLazyLoadingHandlerInterface $lazyLoadingHandler;
 
     public function getElementType(): ElementType
     {

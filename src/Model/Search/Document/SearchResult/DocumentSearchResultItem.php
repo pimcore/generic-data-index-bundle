@@ -59,7 +59,7 @@ class DocumentSearchResultItem implements ElementSearchResultItemInterface
 
     private DocumentPermissions $permissions;
 
-    private readonly DocumentLazyLoadingHandlerInterface $lazyLoadingHandler;
+    private DocumentLazyLoadingHandlerInterface $lazyLoadingHandler;
 
     public function getElementType(): ElementType
     {

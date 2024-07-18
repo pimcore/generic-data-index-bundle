@@ -62,7 +62,7 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
 
     private AssetPermissions $permissions;
 
-    private readonly AssetLazyLoadingHandlerInterface $lazyLoadingHandler;
+    private AssetLazyLoadingHandlerInterface $lazyLoadingHandler;
 
     public function getElementType(): ElementType
     {
