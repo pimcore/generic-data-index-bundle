@@ -16,12 +16,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectSearchException;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\DocumentSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\AssetToSearchResultItemTransformerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\DataObjectToSearchResultItemTransformerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\DocumentToSearchResultItemTransformerInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Document;
@@ -31,15 +28,14 @@ use Pimcore\Model\User;
 /**
  * @internal
  */
-final class ElementPermissionService implements ElementPermissionServiceInterface
+final readonly class ElementPermissionService implements ElementPermissionServiceInterface
 {
-    use LoggerAwareTrait;
 
     public function __construct(
-        private readonly AssetToSearchResultItemTransformerInterface $assetTransformer,
-        private readonly DataObjectToSearchResultItemTransformerInterface $dataObjectTransformer,
-        private readonly DocumentToSearchResultItemTransformerInterface $documentTransformer,
-        private readonly PermissionServiceInterface $permissionService
+        private AssetToSearchResultItemTransformerInterface $assetTransformer,
+        private DataObjectToSearchResultItemTransformerInterface $dataObjectTransformer,
+        private DocumentToSearchResultItemTransformerInterface $documentTransformer,
+        private PermissionServiceInterface $permissionService
     ) {
     }
 
@@ -61,10 +57,10 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
         Asset $asset,
         User $user
     ): bool {
-        $assetResult = $this->assetTransformer->transform($asset, $user);
+        $assetSearchResultItem = $this->assetTransformer->transform($asset, $user);
 
         $assetPermissions = $this->permissionService->getAssetPermissions(
-            $assetResult,
+            $assetSearchResultItem,
             $user
         );
 
@@ -76,22 +72,10 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
         string $permission,
         User $user
     ): bool {
-        try {
-            $dataObjectResult = $this->dataObjectTransformer->transform($dataObject, $user);
-        } catch (DataObjectSearchException $e) {
-            $this->logger->error(
-                'Data Object search failed in the element permission check: ' . $e->getMessage()
-            );
-
-            return false;
-        }
-
-        if (!$dataObjectResult) {
-            return false;
-        }
+        $dataObjectSearchResultItem = $this->dataObjectTransformer->transform($dataObject, $user);
 
         $permissions = $this->permissionService->getDataObjectPermissions(
-            $dataObjectResult,
+            $dataObjectSearchResultItem,
             $user
         );
 
@@ -103,22 +87,10 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
         string $permission,
         User $user
     ): bool {
-        try {
-            $documentResult = $this->documentTransformer->transform($document, $user);
-        } catch (DocumentSearchException $e) {
-            $this->logger->error(
-                'Document search failed in the element permission check: ' . $e->getMessage()
-            );
-
-            return false;
-        }
-
-        if (!$documentResult) {
-            return false;
-        }
+        $documentSearchResultItem = $this->documentTransformer->transform($document, $user);
 
         $permissions = $this->permissionService->getDocumentPermissions(
-            $documentResult,
+            $documentSearchResultItem,
             $user
         );
 
