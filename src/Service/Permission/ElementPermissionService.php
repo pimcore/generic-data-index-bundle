@@ -18,9 +18,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DocumentSearchException;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\AssetToSearchResultItemTransformerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\DataObjectToSearchResultItemTransformerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\DocumentToSearchResultItemTransformerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
@@ -37,8 +37,8 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
 
     public function __construct(
         private readonly AssetToSearchResultItemTransformerInterface $assetTransformer,
-        private readonly DataObjectSearchServiceInterface $dataObjectSearchService,
-        private readonly DocumentSearchServiceInterface $documentSearchService,
+        private readonly DataObjectToSearchResultItemTransformerInterface $dataObjectTransformer,
+        private readonly DocumentToSearchResultItemTransformerInterface $documentTransformer,
         private readonly PermissionServiceInterface $permissionService
     ) {
     }
@@ -77,7 +77,7 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
         User $user
     ): bool {
         try {
-            $dataObjectResult = $this->dataObjectSearchService->byId($dataObject->getId(), $user);
+            $dataObjectResult = $this->dataObjectTransformer->transform($dataObject, $user);
         } catch (DataObjectSearchException $e) {
             $this->logger->error(
                 'Data Object search failed in the element permission check: ' . $e->getMessage()
@@ -104,7 +104,7 @@ final class ElementPermissionService implements ElementPermissionServiceInterfac
         User $user
     ): bool {
         try {
-            $documentResult = $this->documentSearchService->byId($document->getId(), $user);
+            $documentResult = $this->documentTransformer->transform($document, $user);
         } catch (DocumentSearchException $e) {
             $this->logger->error(
                 'Document search failed in the element permission check: ' . $e->getMessage()
