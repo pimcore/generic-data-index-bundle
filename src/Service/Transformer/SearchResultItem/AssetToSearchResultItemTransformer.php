@@ -32,9 +32,9 @@ use Symfony\Component\Serializer\Exception\ExceptionInterface;
 final readonly class AssetToSearchResultItemTransformer implements AssetToSearchResultItemTransformerInterface
 {
     public function __construct(
-        private AssetLazyLoadingHandlerInterface $assetLazyLoadingHandler,
-        private AssetNormalizer $assetNormalizer,
-        private AssetSearchResultDenormalizer $assetSearchResultDenormalizer,
+        private AssetLazyLoadingHandlerInterface $lazyLoadingHandler,
+        private AssetNormalizer $normalizer,
+        private AssetSearchResultDenormalizer $denormalizer,
         private PermissionServiceInterface $permissionService,
     ) {
     }
@@ -42,29 +42,19 @@ final readonly class AssetToSearchResultItemTransformer implements AssetToSearch
     public function transform(Asset $asset, ?User $user = null): AssetSearchResultItem
     {
         try {
-            $data = $this->assetNormalizer->normalize(
-                $asset,
-                null,
-                SerializerContext::SKIP_LAZY_LOADED_FIELDS->createContext()
-            );
+            $context = SerializerContext::SKIP_LAZY_LOADED_FIELDS->createContext();
 
-            $searchResultItem = $this->assetSearchResultDenormalizer->denormalize(
-                $data,
+            $searchResultItem = $this->denormalizer->denormalize(
+                $this->normalizer->normalize($asset, null, $context),
                 AssetSearchResultItem::class,
                 null,
-                SerializerContext::SKIP_LAZY_LOADED_FIELDS->createContext()
+                $context
             );
 
-            $searchResultItem = $this->assetLazyLoadingHandler->apply($searchResultItem, $user);
+            return $this->lazyLoadingHandler
+                ->apply($searchResultItem, $user)
+                ->setPermissions($this->permissionService->getAssetPermissions($searchResultItem, $user));
 
-            $searchResultItem->setPermissions(
-                $this->permissionService->getAssetPermissions(
-                    $searchResultItem,
-                    $user
-                )
-            );
-
-            return $searchResultItem;
         } catch (Exception|ExceptionInterface $e) {
             throw new SearchResultItemTransformationException(
                 'Error transforming asset to search result item',

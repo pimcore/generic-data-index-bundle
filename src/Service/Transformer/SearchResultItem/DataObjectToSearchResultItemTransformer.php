@@ -31,9 +31,9 @@ use Pimcore\Model\User;
 final readonly class DataObjectToSearchResultItemTransformer implements DataObjectToSearchResultItemTransformerInterface
 {
     public function __construct(
-        private DataObjectLazyLoadingHandlerInterface $dataObjectLazyLoadingHandler,
-        private DataObjectNormalizer $dataObjectNormalizer,
-        private DataObjectSearchResultDenormalizer $dataObjectSearchResultDenormalizer,
+        private DataObjectLazyLoadingHandlerInterface $lazyLoadingHandler,
+        private DataObjectNormalizer $normalizer,
+        private DataObjectSearchResultDenormalizer $denormalizer,
         private PermissionServiceInterface $permissionService,
     ) {
     }
@@ -41,29 +41,19 @@ final readonly class DataObjectToSearchResultItemTransformer implements DataObje
     public function transform(DataObject $dataObject, ?User $user = null): DataObjectSearchResultItem
     {
         try {
-            $data = $this->dataObjectNormalizer->normalize(
-                $dataObject,
-                null,
-                SerializerContext::SKIP_LAZY_LOADED_FIELDS->createContext()
-            );
+            $context = SerializerContext::SKIP_LAZY_LOADED_FIELDS->createContext();
 
-            $searchResultItem = $this->dataObjectSearchResultDenormalizer->denormalize(
-                $data,
+            $searchResultItem = $this->denormalizer->denormalize(
+                $this->normalizer->normalize($dataObject, null, $context),
                 DataObjectSearchResultItem::class,
                 null,
                 SerializerContext::SKIP_LAZY_LOADED_FIELDS->createContext()
             );
 
-            $searchResultItem = $this->dataObjectLazyLoadingHandler->apply($searchResultItem, $user);
+            return $this->lazyLoadingHandler
+                ->apply($searchResultItem, $user)
+                ->setPermissions($this->permissionService->getDataObjectPermissions($searchResultItem, $user));
 
-            $searchResultItem->setPermissions(
-                $this->permissionService->getDataObjectPermissions(
-                    $searchResultItem,
-                    $user
-                )
-            );
-
-            return $searchResultItem;
         } catch (Exception $e) {
             throw new SearchResultItemTransformationException(
                 'Error transforming data object to search result item',

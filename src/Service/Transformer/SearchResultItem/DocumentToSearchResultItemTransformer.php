@@ -33,9 +33,9 @@ use Symfony\Component\Serializer\Exception\ExceptionInterface;
 final readonly class DocumentToSearchResultItemTransformer implements DocumentToSearchResultItemTransformerInterface
 {
     public function __construct(
-        private DocumentLazyLoadingHandlerInterface $documentLazyLoadingHandler,
-        private DocumentNormalizer $documentNormalizer,
-        private DocumentSearchResultDenormalizer $documentSearchResultDenormalizer,
+        private DocumentLazyLoadingHandlerInterface $lazyLoadingHandler,
+        private DocumentNormalizer $normalizer,
+        private DocumentSearchResultDenormalizer $denormalizer,
         private PermissionServiceInterface $permissionService,
     ) {
     }
@@ -43,29 +43,19 @@ final readonly class DocumentToSearchResultItemTransformer implements DocumentTo
     public function transform(Document $document, ?User $user = null): DocumentSearchResultItem
     {
         try {
-            $data = $this->documentNormalizer->normalize(
-                $document,
-                null,
-                SerializerContext::SKIP_LAZY_LOADED_FIELDS->createContext()
-            );
+            $context = SerializerContext::SKIP_LAZY_LOADED_FIELDS->createContext();
 
-            $searchResultItem = $this->documentSearchResultDenormalizer->denormalize(
-                $data,
+            $searchResultItem = $this->denormalizer->denormalize(
+                $this->normalizer->normalize($document,null, $context),
                 DataObjectSearchResultItem::class,
                 null,
-                SerializerContext::SKIP_LAZY_LOADED_FIELDS->createContext()
+                $context
             );
 
-            $searchResultItem = $this->documentLazyLoadingHandler->apply($searchResultItem, $user);
+            return $this->lazyLoadingHandler
+                ->apply($searchResultItem, $user)
+                ->setPermissions($this->permissionService->getDocumentPermissions($searchResultItem, $user));
 
-            $searchResultItem->setPermissions(
-                $this->permissionService->getDocumentPermissions(
-                    $searchResultItem,
-                    $user
-                )
-            );
-
-            return $searchResultItem;
         } catch (Exception|ExceptionInterface $e) {
             throw new SearchResultItemTransformationException(
                 'Error transforming document to search result item',
