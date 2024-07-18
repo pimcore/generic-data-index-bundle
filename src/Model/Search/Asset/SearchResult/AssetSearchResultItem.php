@@ -291,6 +291,10 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
 
     public function getSearchIndexData(): array
     {
+        if (!isset($this->searchIndexData)) {
+            $this->lazyLoad();
+        }
+
         return $this->searchIndexData;
     }
 

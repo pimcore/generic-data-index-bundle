@@ -19,6 +19,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchRe
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DataObjectLazyLoadingHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DataObjectLazyLoadingHandlerInterface;
 
 class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 {
@@ -57,6 +59,8 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
     private array $searchIndexData;
 
     private DataObjectPermissions $permissions;
+
+    private readonly DataObjectLazyLoadingHandlerInterface $lazyLoadingHandler;
 
     public function getElementType(): ElementType
     {
@@ -233,6 +237,10 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 
     public function isHasWorkflowWithPermissions(): bool
     {
+        if (!isset($this->workflowWithPermissions)) {
+            $this->lazyLoad();
+        }
+
         return $this->workflowWithPermissions;
     }
 
@@ -245,6 +253,10 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 
     public function isHasChildren(): bool
     {
+        if (!isset($this->hasChildren)) {
+            $this->lazyLoad();
+        }
+
         return $this->hasChildren;
     }
 
@@ -257,6 +269,10 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 
     public function getSearchIndexData(): array
     {
+        if (!isset($this->searchIndexData)) {
+            $this->lazyLoad();
+        }
+
         return $this->searchIndexData;
     }
 
@@ -277,5 +293,21 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
         $this->permissions = $permissions;
 
         return $this;
+    }
+
+    public function withLazyLoadingHandler(
+        ?DataObjectLazyLoadingHandlerInterface $lazyLoadingHandler
+    ): DataObjectSearchResultItem
+    {
+        $clone = clone $this;
+        $clone->lazyLoadingHandler = $lazyLoadingHandler;
+        return $clone;
+    }
+
+    private function lazyLoad(): void
+    {
+        if (isset($this->lazyLoadingHandler)) {
+            $this->lazyLoadingHandler->lazyLoad($this);
+        }
     }
 }

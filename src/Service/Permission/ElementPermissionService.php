@@ -22,7 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\DocumentSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\AssetToSearchResultItemTransformerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\AssetToSearchResultItemTransformerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;

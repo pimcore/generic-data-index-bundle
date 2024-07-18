@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
