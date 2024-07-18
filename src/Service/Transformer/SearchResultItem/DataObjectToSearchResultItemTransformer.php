@@ -47,7 +47,7 @@ final readonly class DataObjectToSearchResultItemTransformer implements DataObje
                 $this->normalizer->normalize($dataObject, null, $context),
                 DataObjectSearchResultItem::class,
                 null,
-                SerializerContext::SKIP_LAZY_LOADED_FIELDS->createContext()
+                $context
             );
 
             return $this->lazyLoadingHandler
