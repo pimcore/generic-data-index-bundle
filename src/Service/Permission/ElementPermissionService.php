@@ -30,7 +30,6 @@ use Pimcore\Model\User;
  */
 final readonly class ElementPermissionService implements ElementPermissionServiceInterface
 {
-
     public function __construct(
         private AssetToSearchResultItemTransformerInterface $assetTransformer,
         private DataObjectToSearchResultItemTransformerInterface $dataObjectTransformer,
