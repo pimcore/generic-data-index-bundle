@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\StandardField\Document\DocumentStandardField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandlerService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
@@ -43,14 +44,16 @@ final class DocumentNormalizer implements NormalizerInterface
 
     public function normalize(mixed $object, string $format = null, array $context = []): array
     {
+        $skipLazyLoadedFields = SerializerContext::SKIP_LAZY_LOADED_FIELDS->containedInContext($context);
+
         $document = $object;
 
         if ($document instanceof Document\Folder) {
-            return $this->normalizeFolder($document);
+            return $this->normalizeFolder($document, $skipLazyLoadedFields);
         }
 
         if ($document instanceof Document) {
-            return $this->normalizeDocument($document);
+            return $this->normalizeDocument($document, $skipLazyLoadedFields);
         }
 
         return [];
@@ -61,23 +64,23 @@ final class DocumentNormalizer implements NormalizerInterface
         return $data instanceof Document;
     }
 
-    private function normalizeFolder(Document\Folder $folder): array
+    private function normalizeFolder(Document\Folder $folder, bool $skipLazyLoadedFields): array
     {
         return [
-            FieldCategory::SYSTEM_FIELDS->value => $this->normalizeSystemFields($folder),
+            FieldCategory::SYSTEM_FIELDS->value => $this->normalizeSystemFields($folder, $skipLazyLoadedFields),
             FieldCategory::STANDARD_FIELDS->value => [],
         ];
     }
 
-    private function normalizeDocument(Document $document): array
+    private function normalizeDocument(Document $document, bool $skipLazyLoadedFields): array
     {
         return [
-            FieldCategory::SYSTEM_FIELDS->value => $this->normalizeSystemFields($document),
+            FieldCategory::SYSTEM_FIELDS->value => $this->normalizeSystemFields($document, $skipLazyLoadedFields),
             FieldCategory::STANDARD_FIELDS->value => $this->normalizeStandardFields($document),
         ];
     }
 
-    private function normalizeSystemFields(Document $document): array
+    private function normalizeSystemFields(Document $document, bool $skipLazyLoadedFields): array
     {
         $pathLevels = $this->extractPathLevels($document);
 
@@ -92,21 +95,26 @@ final class DocumentNormalizer implements NormalizerInterface
             SystemField::KEY->value => $document->getKey(),
             SystemField::PATH->value => $document->getPath(),
             SystemField::FULL_PATH->value => $document->getRealFullPath(),
-            SystemField::PATH_LEVELS->value => $pathLevels,
-            SystemField::PATH_LEVEL->value => count($pathLevels),
-            SystemField::TAGS->value => $this->extractTagIds($document),
-            SystemField::PARENT_TAGS->value => $this->extractParentTagIds($document),
             SystemField::USER_OWNER->value => $document->getUserOwner(),
             SystemField::USER_MODIFICATION->value => $document->getUserModification(),
             SystemField::LOCKED->value => $document->getLocked(),
             SystemField::IS_LOCKED->value => $document->isLocked(),
-            SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
-                $this->workflowService->hasWorkflowWithPermissions($document),
-            SystemField::DEPENDENCIES->value => $this->dependencyService->getRequiresDependencies($document),
         ];
 
         if ($handler = $this->documentTypeSerializationHandlerService->getSerializationHandler($document->getType())) {
             $systemFields = array_merge($systemFields, $handler->getAdditionalSystemFields($document));
+        }
+
+        if (!$skipLazyLoadedFields) {
+            $systemFields = array_merge($systemFields, [
+                SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
+                    $this->workflowService->hasWorkflowWithPermissions($document),
+                SystemField::DEPENDENCIES->value => $this->dependencyService->getRequiresDependencies($document),
+                SystemField::PATH_LEVELS->value => $pathLevels,
+                SystemField::PATH_LEVEL->value => count($pathLevels),
+                SystemField::TAGS->value => $this->extractTagIds($document),
+                SystemField::PARENT_TAGS->value => $this->extractParentTagIds($document),
+            ]);
         }
 
         return $systemFields;

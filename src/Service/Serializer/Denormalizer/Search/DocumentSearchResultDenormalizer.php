@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandlerService;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
@@ -48,7 +49,7 @@ readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
             $searchResultItem = new DocumentSearchResultItem();
         }
 
-        return $searchResultItem
+        $searchResultItem
             ->setId(SystemField::ID->getData($data))
             ->setParentId(SystemField::PARENT_ID->getData($data))
             ->setType(SystemField::TYPE->getData($data))
@@ -61,10 +62,16 @@ readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
             ->setLocked(SystemField::LOCKED->getData($data))
             ->setIsLocked(SystemField::IS_LOCKED->getData($data))
             ->setCreationDate(strtotime(SystemField::CREATION_DATE->getData($data)))
-            ->setModificationDate(strtotime(SystemField::MODIFICATION_DATE->getData($data)))
-            ->setHasWorkflowWithPermissions(SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data))
+            ->setModificationDate(strtotime(SystemField::MODIFICATION_DATE->getData($data)));
+
+        if (SerializerContext::SKIP_LAZY_LOADED_FIELDS->containedInContext($context)) {
+            return $searchResultItem;
+        }
+
+        return $searchResultItem
             ->setHasChildren(SystemField::HAS_CHILDREN->getData($data))
-            ->setSearchIndexData($data);
+            ->setSearchIndexData($data)
+            ->setHasWorkflowWithPermissions(SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data));
     }
 
     public function supportsDenormalization(mixed $data, string $type, string $format = null): bool

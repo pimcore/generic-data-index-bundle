@@ -25,9 +25,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\ElementPermissionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\AssetToSearchResultItemTransformerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\DataObjectToSearchResultItemTransformerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\DocumentToSearchResultItemTransformerInterface;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
 use Pimcore\Model\Document;
@@ -102,14 +102,14 @@ final class ElementPermissionServiceTest extends Unit
     private function getElementPermissionService(bool $permissionValue = true): ElementPermissionService
     {
         return new ElementPermissionService(
-            $this->makeEmpty(AssetSearchServiceInterface::class, [
-                'byId' => $this->assetSearchResultItem,
+            $this->makeEmpty(AssetToSearchResultItemTransformerInterface::class, [
+                'transform' => $this->assetSearchResultItem,
             ]),
-            $this->makeEmpty(DataObjectSearchServiceInterface::class, [
-                'byId' => $this->dataObjectSearchResultItem,
+            $this->makeEmpty(DataObjectToSearchResultItemTransformerInterface::class, [
+                'transform' => $this->dataObjectSearchResultItem,
             ]),
-            $this->makeEmpty(DocumentSearchServiceInterface::class, [
-                'byId' => $this->documentSearchResultItem,
+            $this->makeEmpty(DocumentToSearchResultItemTransformerInterface::class, [
+                'transform' => $this->documentSearchResultItem,
             ]),
             $this->makeEmpty(PermissionServiceInterface::class, [
                 'getAssetPermissions' => new AssetPermissions(),

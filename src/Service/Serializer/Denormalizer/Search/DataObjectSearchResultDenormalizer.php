@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DataObjectTypeSerializationHandlerService;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
@@ -50,7 +51,7 @@ readonly class DataObjectSearchResultDenormalizer implements DenormalizerInterfa
 
         $published = SystemField::TYPE->getData($data) === 'folder' || SystemField::PUBLISHED->getData($data);
 
-        return $searchResultItem
+        $searchResultItem
             ->setId(SystemField::ID->getData($data))
             ->setClassName(SystemField::CLASS_NAME->getData($data) ?? '')
             ->setParentId(SystemField::PARENT_ID->getData($data))
@@ -64,10 +65,17 @@ readonly class DataObjectSearchResultDenormalizer implements DenormalizerInterfa
             ->setLocked(SystemField::LOCKED->getData($data))
             ->setIsLocked(SystemField::IS_LOCKED->getData($data))
             ->setCreationDate(strtotime(SystemField::CREATION_DATE->getData($data)))
-            ->setModificationDate(strtotime(SystemField::MODIFICATION_DATE->getData($data)))
+            ->setModificationDate(strtotime(SystemField::MODIFICATION_DATE->getData($data)));
+
+        if (SerializerContext::SKIP_LAZY_LOADED_FIELDS->containedInContext($context)) {
+            return $searchResultItem;
+        }
+
+        return $searchResultItem
             ->setHasWorkflowWithPermissions(SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data))
             ->setHasChildren(SystemField::HAS_CHILDREN->getData($data))
             ->setSearchIndexData($data);
+
     }
 
     public function supportsDenormalization(mixed $data, string $type, string $format = null): bool

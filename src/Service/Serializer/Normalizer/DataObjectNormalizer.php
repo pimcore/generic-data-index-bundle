@@ -20,6 +20,7 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectNormalizerException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
@@ -52,14 +53,16 @@ final class DataObjectNormalizer implements NormalizerInterface
      */
     public function normalize(mixed $object, string $format = null, array $context = []): array
     {
+        $skipLazyLoadedFields = SerializerContext::SKIP_LAZY_LOADED_FIELDS->containedInContext($context);
+
         $dataObject = $object;
 
         if ($dataObject instanceof Folder) {
-            return $this->normalizeFolder($dataObject);
+            return $this->normalizeFolder($dataObject, $skipLazyLoadedFields);
         }
 
         if ($dataObject instanceof Concrete) {
-            return $this->normalizeDataObject($dataObject);
+            return $this->normalizeDataObject($dataObject, $skipLazyLoadedFields);
         }
 
         return [];
@@ -70,10 +73,10 @@ final class DataObjectNormalizer implements NormalizerInterface
         return $data instanceof AbstractObject;
     }
 
-    private function normalizeFolder(Folder $folder): array
+    private function normalizeFolder(Folder $folder, bool $skipLazyLoadedFields): array
     {
         return [
-            FieldCategory::SYSTEM_FIELDS->value => $this->normalizeSystemFields($folder),
+            FieldCategory::SYSTEM_FIELDS->value => $this->normalizeSystemFields($folder, $skipLazyLoadedFields),
             FieldCategory::STANDARD_FIELDS->value => [],
         ];
     }
@@ -81,15 +84,15 @@ final class DataObjectNormalizer implements NormalizerInterface
     /**
      * @throws Exception
      */
-    private function normalizeDataObject(Concrete $dataObject): array
+    private function normalizeDataObject(Concrete $dataObject, bool $skipLazyLoadedFields): array
     {
         return [
-            FieldCategory::SYSTEM_FIELDS->value => $this->normalizeSystemFields($dataObject),
+            FieldCategory::SYSTEM_FIELDS->value => $this->normalizeSystemFields($dataObject, $skipLazyLoadedFields),
             FieldCategory::STANDARD_FIELDS->value => $this->normalizeStandardFields($dataObject),
         ];
     }
 
-    private function normalizeSystemFields(AbstractObject $dataObject): array
+    private function normalizeSystemFields(AbstractObject $dataObject, bool $skipLazyLoadedFields): array
     {
         $pathLevels = $this->extractPathLevels($dataObject);
 
@@ -103,23 +106,28 @@ final class DataObjectNormalizer implements NormalizerInterface
             SystemField::KEY->value => $dataObject->getKey(),
             SystemField::PATH->value => $dataObject->getPath(),
             SystemField::FULL_PATH->value => $dataObject->getRealFullPath(),
-            SystemField::PATH_LEVELS->value => $pathLevels,
-            SystemField::PATH_LEVEL->value => count($pathLevels),
-            SystemField::TAGS->value => $this->extractTagIds($dataObject),
-            SystemField::PARENT_TAGS->value => $this->extractParentTagIds($dataObject),
             SystemField::USER_OWNER->value => $dataObject->getUserOwner(),
             SystemField::USER_MODIFICATION->value => $dataObject->getUserModification(),
             SystemField::LOCKED->value => $dataObject->getLocked(),
             SystemField::IS_LOCKED->value => $dataObject->isLocked(),
-            SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
-                $this->workflowService->hasWorkflowWithPermissions($dataObject),
-            SystemField::DEPENDENCIES->value => $this->dependencyService->getRequiresDependencies($dataObject),
         ];
 
         if ($dataObject instanceof Concrete) {
             $result = array_merge($result, [
                 SystemField::CLASS_NAME->value => $dataObject->getClassName(),
                 SystemField::PUBLISHED->value => $dataObject->getPublished(),
+            ]);
+        }
+
+        if (!$skipLazyLoadedFields) {
+            $result = array_merge($result, [
+                SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
+                    $this->workflowService->hasWorkflowWithPermissions($dataObject),
+                SystemField::DEPENDENCIES->value => $this->dependencyService->getRequiresDependencies($dataObject),
+                SystemField::PATH_LEVELS->value => $pathLevels,
+                SystemField::PATH_LEVEL->value => count($pathLevels),
+                SystemField::TAGS->value => $this->extractTagIds($dataObject),
+                SystemField::PARENT_TAGS->value => $this->extractParentTagIds($dataObject),
             ]);
         }
 

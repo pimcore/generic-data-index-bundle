@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\AssetLazyLoadingHandlerInterface;
 
 class AssetSearchResultItem implements ElementSearchResultItemInterface
 {
@@ -60,6 +61,8 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
     private array $searchIndexData;
 
     private AssetPermissions $permissions;
+
+    private AssetLazyLoadingHandlerInterface $lazyLoadingHandler;
 
     public function getElementType(): ElementType
     {
@@ -152,6 +155,10 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
 
     public function getFileSize(): ?int
     {
+        if (!isset($this->fileSize)) {
+            $this->lazyLoad();
+        }
+
         return $this->fileSize;
     }
 
@@ -252,6 +259,10 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
 
     public function isHasWorkflowWithPermissions(): bool
     {
+        if (!isset($this->workflowWithPermissions)) {
+            $this->lazyLoad();
+        }
+
         return $this->workflowWithPermissions;
     }
 
@@ -264,6 +275,10 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
 
     public function isHasChildren(): bool
     {
+        if (!isset($this->hasChildren)) {
+            $this->lazyLoad();
+        }
+
         return $this->hasChildren;
     }
 
@@ -276,6 +291,10 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
 
     public function getSearchIndexData(): array
     {
+        if (!isset($this->searchIndexData)) {
+            $this->lazyLoad();
+        }
+
         return $this->searchIndexData;
     }
 
@@ -296,5 +315,20 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
         $this->permissions = $permissions;
 
         return $this;
+    }
+
+    public function withLazyLoadingHandler(?AssetLazyLoadingHandlerInterface $lazyLoadingHandler): AssetSearchResultItem
+    {
+        $clone = clone $this;
+        $clone->lazyLoadingHandler = $lazyLoadingHandler;
+
+        return $clone;
+    }
+
+    private function lazyLoad(): void
+    {
+        if (isset($this->lazyLoadingHandler)) {
+            $this->lazyLoadingHandler->lazyLoad($this);
+        }
     }
 }

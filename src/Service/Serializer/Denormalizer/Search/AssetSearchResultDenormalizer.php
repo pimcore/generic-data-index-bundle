@@ -18,6 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetMetaData;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
@@ -51,7 +52,7 @@ readonly class AssetSearchResultDenormalizer implements DenormalizerInterface
             $searchResultItem = new AssetSearchResultItem();
         }
 
-        return $searchResultItem
+        $searchResultItem
             ->setId(SystemField::ID->getData($data))
             ->setParentId(SystemField::PARENT_ID->getData($data))
             ->setType(SystemField::TYPE->getData($data))
@@ -59,17 +60,24 @@ readonly class AssetSearchResultDenormalizer implements DenormalizerInterface
             ->setPath(SystemField::PATH->getData($data))
             ->setFullPath(SystemField::FULL_PATH->getData($data))
             ->setMimeType(SystemField::MIME_TYPE->getData($data))
-            ->setFileSize(SystemField::FILE_SIZE->getData($data))
             ->setUserOwner(SystemField::USER_OWNER->getData($data) ?? 0)
             ->setUserModification(SystemField::USER_MODIFICATION->getData($data))
             ->setLocked(SystemField::LOCKED->getData($data))
             ->setIsLocked(SystemField::IS_LOCKED->getData($data))
             ->setMetaData($this->hydrateMetadata($data[FieldCategory::STANDARD_FIELDS->value]))
             ->setCreationDate(strtotime(SystemField::CREATION_DATE->getData($data)))
-            ->setModificationDate(strtotime(SystemField::MODIFICATION_DATE->getData($data)))
+            ->setModificationDate(strtotime(SystemField::MODIFICATION_DATE->getData($data)));
+
+        if (SerializerContext::SKIP_LAZY_LOADED_FIELDS->containedInContext($context)) {
+            return $searchResultItem;
+        }
+
+        return $searchResultItem
+            ->setFileSize(SystemField::FILE_SIZE->getData($data))
             ->setHasWorkflowWithPermissions(SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data))
             ->setHasChildren(SystemField::HAS_CHILDREN->getData($data))
             ->setSearchIndexData($data);
+
     }
 
     public function supportsDenormalization(mixed $data, string $type, string $format = null): bool
