@@ -16,10 +16,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\AssetSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DocumentSearchException;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\AssetToSearchResultItemTransformerInterface;

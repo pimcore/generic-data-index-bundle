@@ -19,7 +19,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchRe
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DataObjectLazyLoadingHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DataObjectLazyLoadingHandlerInterface;
 
 class DataObjectSearchResultItem implements ElementSearchResultItemInterface
@@ -297,10 +296,10 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 
     public function withLazyLoadingHandler(
         ?DataObjectLazyLoadingHandlerInterface $lazyLoadingHandler
-    ): DataObjectSearchResultItem
-    {
+    ): DataObjectSearchResultItem {
         $clone = clone $this;
         $clone->lazyLoadingHandler = $lazyLoadingHandler;
+
         return $clone;
     }
 

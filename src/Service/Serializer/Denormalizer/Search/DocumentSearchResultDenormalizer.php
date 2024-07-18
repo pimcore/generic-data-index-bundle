@@ -67,6 +67,7 @@ readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
         if (SerializerContext::SKIP_LAZY_LOADED_FIELDS->containedInContext($context)) {
             return $searchResultItem;
         }
+
         return $searchResultItem
             ->setHasChildren(SystemField::HAS_CHILDREN->getData($data))
             ->setSearchIndexData($data)

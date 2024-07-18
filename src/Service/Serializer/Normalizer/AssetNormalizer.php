@@ -35,7 +35,6 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
  */
 final class AssetNormalizer implements NormalizerInterface
 {
-
     use ElementNormalizerTrait;
 
     public function __construct(

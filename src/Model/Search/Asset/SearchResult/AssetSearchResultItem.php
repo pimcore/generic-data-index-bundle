@@ -321,6 +321,7 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
     {
         $clone = clone $this;
         $clone->lazyLoadingHandler = $lazyLoadingHandler;
+
         return $clone;
     }
 
