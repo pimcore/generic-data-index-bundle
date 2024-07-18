@@ -46,7 +46,7 @@ final readonly class DocumentToSearchResultItemTransformer implements DocumentTo
             $context = SerializerContext::SKIP_LAZY_LOADED_FIELDS->createContext();
 
             $searchResultItem = $this->denormalizer->denormalize(
-                $this->normalizer->normalize($document,null, $context),
+                $this->normalizer->normalize($document, null, $context),
                 DataObjectSearchResultItem::class,
                 null,
                 $context
