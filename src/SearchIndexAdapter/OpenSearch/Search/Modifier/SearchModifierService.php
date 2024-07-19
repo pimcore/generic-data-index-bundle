@@ -23,6 +23,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchI
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 
 /**
@@ -31,6 +32,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 final class SearchModifierService implements SearchModifierServiceInterface
 {
     use LoggerAwareTrait;
+
+    public function __construct(
+        private readonly CachedSearchIndexMappingServiceInterface $cachedSearchIndexMappingService
+    ) {
+    }
 
     /**
      * @var callable[][]
@@ -77,8 +83,22 @@ final class SearchModifierService implements SearchModifierServiceInterface
         SearchInterface $search,
         AdapterSearchInterface $adapterSearch
     ): void {
-        $context = new SearchModifierContext($adapterSearch, $search);
 
+        $cachingWasAlreadyStarted = $this->cachedSearchIndexMappingService->isCachingStarted();
+        $this->cachedSearchIndexMappingService->startCaching();
+
+        $this->doApplyModifiersFromSearch($search, $adapterSearch);
+
+        if (!$cachingWasAlreadyStarted) {
+            $this->cachedSearchIndexMappingService->stopCaching();
+        }
+    }
+
+    private function doApplyModifiersFromSearch(
+        SearchInterface $search,
+        Search $adapterSearch
+    ): void {
+        $context = new SearchModifierContext($adapterSearch, $search);
         foreach ($search->getModifiers() as $modifier) {
             $this->applyModifier($modifier, $context);
         }

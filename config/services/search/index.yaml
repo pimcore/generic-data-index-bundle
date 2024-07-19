@@ -73,3 +73,6 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasService
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingService

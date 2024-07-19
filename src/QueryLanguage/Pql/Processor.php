@@ -22,7 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\LexerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ParserInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingServiceInterface;
 
 /**
  * @internal
@@ -33,7 +33,7 @@ final readonly class Processor implements ProcessorInterface
         private LexerInterface $lexer,
         private ParserInterface $parser,
         private PqlAdapterInterface $pqlAdapter,
-        private SearchIndexServiceInterface $searchIndexService,
+        private CachedSearchIndexMappingServiceInterface $cachedSearchIndexMappingService,
     ) {
     }
 
@@ -44,7 +44,7 @@ final readonly class Processor implements ProcessorInterface
         $tokens = $this->lexer->getTokens();
 
         $parseResult = $this->parser
-            ->apply($query, $tokens, $this->searchIndexService->getMapping($indexEntity->getIndexName()))
+            ->apply($query, $tokens, $this->cachedSearchIndexMappingService->getMapping($indexEntity->getIndexName()))
             ->parse();
 
         $resultQuery = $parseResult->getQuery();
