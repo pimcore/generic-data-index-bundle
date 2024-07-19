@@ -1,6 +1,19 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under two different licenses:
+ * - GNU General Public License version 3 (GPLv3)
+ * - Pimcore Commercial License (PCL)
+ * Full copyright and license information is available in
+ * LICENSE.md which is distributed with this source code.
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -16,8 +29,7 @@ final readonly class CachedSearchIndexMappingService implements CachedSearchInde
     public function __construct(
         private RuntimeCacheResolverInterface $runtimeCache,
         private SearchIndexServiceInterface $searchIndexService,
-    )
-    {
+    ) {
     }
 
     public function startCaching(): void
@@ -33,13 +45,13 @@ final readonly class CachedSearchIndexMappingService implements CachedSearchInde
         $this->runtimeCache->save(null, self::CACHE_KEY);
     }
 
-
     public function getMapping(string $indexName): array
     {
         if ($this->isCachingStarted()) {
             $cachedMappings = $this->getCachedMappings();
             $cachedMappings[$indexName] ??= $this->searchIndexService->getMapping($indexName);
             $this->writeCachedMappings($cachedMappings);
+
             return $cachedMappings[$indexName];
         }
 

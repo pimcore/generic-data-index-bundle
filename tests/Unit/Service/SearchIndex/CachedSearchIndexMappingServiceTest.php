@@ -17,19 +17,9 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex;
 
 use Codeception\Test\Unit;
-use Doctrine\DBAL\Connection;
-use Doctrine\ORM\EntityManagerInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessageService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
-use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolver;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
-use Pimcore\Cache\RuntimeCache;
-use Pimcore\Model\DataObject\Fieldcollection;
-use Symfony\Component\Messenger\MessageBusInterface;
-use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
 /**
  * @internal
@@ -42,6 +32,7 @@ final class CachedSearchIndexMappingServiceTest extends Unit
     {
         $runtimeCacheResolver = new class implements RuntimeCacheResolverInterface {
             private ?array $cacheEntry = null;
+
             public function load(string $id): mixed
             {
                 return $this->cacheEntry;
@@ -63,7 +54,6 @@ final class CachedSearchIndexMappingServiceTest extends Unit
             }
         };
 
-
         $searchIndexServiceMock = $this->createMock(SearchIndexServiceInterface::class);
         $searchIndexServiceMock->method('getMapping')->willReturnCallback(function (string $indexName) {
             return [$indexName . 'df' . uniqid('', true)];
@@ -74,6 +64,7 @@ final class CachedSearchIndexMappingServiceTest extends Unit
             $searchIndexServiceMock
         );
     }
+
     public function testStartStopCaching(): void
     {
         $this->assertFalse($this->cachedSearchIndexMappingService->isCachingStarted());

@@ -35,8 +35,7 @@ final class SearchModifierService implements SearchModifierServiceInterface
 
     public function __construct(
         private readonly CachedSearchIndexMappingServiceInterface $cachedSearchIndexMappingService
-    )
-    {
+    ) {
     }
 
     /**
@@ -98,8 +97,7 @@ final class SearchModifierService implements SearchModifierServiceInterface
     private function doApplyModifiersFromSearch(
         SearchInterface $search,
         Search $adapterSearch
-    ): void
-    {
+    ): void {
         $context = new SearchModifierContext($adapterSearch, $search);
         foreach ($search->getModifiers() as $modifier) {
             $this->applyModifier($modifier, $context);
