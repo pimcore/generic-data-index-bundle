@@ -1,6 +1,19 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under two different licenses:
+ * - GNU General Public License version 3 (GPLv3)
+ * - Pimcore Commercial License (PCL)
+ * Full copyright and license information is available in
+ * LICENSE.md which is distributed with this source code.
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType;
 
 use Carbon\Carbon;
@@ -9,7 +22,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierIn
 final readonly class DateFilter implements SearchModifierInterface
 {
     private Carbon|null $startDate;
+
     private Carbon|null $endDate;
+
     private Carbon|null $onDate;
 
     public function __construct(
@@ -19,8 +34,7 @@ final readonly class DateFilter implements SearchModifierInterface
         int|Carbon|null $onDate = null,
         private bool $roundToDay = true,
         private bool $enablePqlFieldNameResolution = true,
-    )
-    {
+    ) {
         $this->startDate = is_int($startDate) ? Carbon::createFromTimestamp($startDate) : $startDate;
         $this->endDate = is_int($endDate) ? Carbon::createFromTimestamp($endDate) : $endDate;
         $this->onDate = is_int($onDate) ? Carbon::createFromTimestamp($onDate) : $onDate;
@@ -55,5 +69,4 @@ final readonly class DateFilter implements SearchModifierInterface
     {
         return $this->enablePqlFieldNameResolution;
     }
-
 }

@@ -30,7 +30,9 @@ final readonly class DateFilter implements QueryInterface
     public const PARAM_ON = 'on';
 
     private Carbon|null $startDate;
+
     private Carbon|null $endDate;
+
     private Carbon|null $onDate;
 
     public function __construct(
