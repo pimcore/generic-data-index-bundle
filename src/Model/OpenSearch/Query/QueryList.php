@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\ConditionType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\QueryType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Traits\SimplifySingleTypesTrait;
 
@@ -58,6 +59,8 @@ final class QueryList
     {
         $result =  [];
 
+        $this->combineToBoolQuery();
+
         foreach ($this->queries as $query) {
             $queryType = $query->getType() instanceof QueryType ? $query->getType()->value : $query->getType();
             $result[$queryType] = $result[$queryType] ?? [];
@@ -65,5 +68,21 @@ final class QueryList
         }
 
         return $this->simplifySingleTypes($result);
+    }
+
+    private function combineToBoolQuery(): void
+    {
+        if (count($this->queries) < 2) {
+            return;
+        }
+
+        $this->boolQuery ??= new BoolQuery();
+
+        foreach ($this->queries as $query) {
+            if (!$query instanceof BoolQuery && !$query->isEmpty()) {
+                $this->boolQuery->addCondition(ConditionType::FILTER->value, $query->toArray(true));
+            }
+        }
+        $this->queries = [$this->boolQuery];
     }
 }
