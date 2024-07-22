@@ -146,7 +146,7 @@ final class DateFilterTest extends Unit
         self::assertSame($dateFilter->getField(), 'datefield');
         self::assertSame($dateFilter->getEndTimestamp(), strtotime('2000-01-01'));
         self::assertSame($dateFilter->getStartTimestamp(), strtotime('2099-12-31'));
-        self::assertSame($dateFilter->getOnTimestamp(), strtotime('2010-06-06'));
+        self::assertSame($dateFilter->getOnDate(), strtotime('2010-06-06'));
         self::assertFalse($dateFilter->isRoundToDay());
     }
 
