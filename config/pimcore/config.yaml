@@ -1,20 +1,6 @@
 imports:
   - { resource: messenger.yaml }
 
-parameters:
-  generic_data_index_sort_preparation_script: |
-    {
-      "source": "String kw = ctx._source.kw;
-        kw = kw.toLowerCase();
-        if (kw != null) {
-          if (kw.length() > 3) {
-            emit(kw.substring(0,3))
-          } else {
-            emit(kw)
-          }
-        }",
-    }
-
 pimcore_generic_data_index:
   index_service:
     search_settings:
@@ -58,6 +44,10 @@ pimcore_generic_data_index:
         normalizer:
           generic_data_index_sort_normalizer:
             type: custom
+            filter:
+              - lowercase
+          generic_data_index_sort_truncate_normalizer:
+            type: custom
             char_filter:
               - generic_data_index_sort_truncate
             filter:
@@ -75,7 +65,7 @@ pimcore_generic_data_index:
         char_filter:
           generic_data_index_sort_truncate:
             type: pattern_replace
-            pattern: ^(.{5})(.*)$
+            pattern: ^(.{256})(.*)$
             replacement: $1
     system_fields_settings:
       general:
@@ -111,12 +101,18 @@ pimcore_generic_data_index:
           fields:
             keyword:
               type: keyword
+            sort:
+              type: keyword
+              normalizer: generic_data_index_sort_normalizer
         fullPath:
           type: text
           analyzer: generic_data_index_path_analyzer
           fields:
             keyword:
               type: keyword
+            sort:
+              type: keyword
+              normalizer: generic_data_index_sort_normalizer
         pathLevels:
           type: nested
           properties:
@@ -207,6 +203,10 @@ pimcore_generic_data_index:
           type: boolean
         classname:
           type: keyword
+          fields:
+            sort:
+              type: keyword
+              normalizer: generic_data_index_sort_normalizer
       asset:
         mimetype:
           type: keyword
@@ -234,6 +234,3 @@ pimcore_generic_data_index:
               type: text
               analyzer: standard
               search_analyzer: generic_data_index_whitespace_analyzer
-            sort:
-              type: keyword
-              normalizer: generic_data_index_sort_normalizer

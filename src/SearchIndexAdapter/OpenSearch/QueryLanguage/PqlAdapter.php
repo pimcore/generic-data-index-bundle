@@ -35,6 +35,8 @@ final readonly class PqlAdapter implements PqlAdapterInterface
         private SubQueriesProcessorInterface $subQueriesProcessor,
         #[TaggedIterator(ServiceTag::PQL_FIELD_NAME_TRANSFORMER->value)]
         private iterable $fieldNameTransformers,
+        #[TaggedIterator(ServiceTag::PQL_FIELD_NAME_TRANSFORMER_SORT->value)]
+        private iterable $fieldNameTransformersSort,
         #[TaggedIterator(ServiceTag::PQL_FIELD_NAME_VALIDATOR->value)]
         private iterable $fieldNameValidators,
     ) {
@@ -82,10 +84,16 @@ final readonly class PqlAdapter implements PqlAdapterInterface
         ];
     }
 
-    public function transformFieldName(string $fieldName, array $indexMapping, ?IndexEntity $targetEntity): string
+    public function transformFieldName(
+        string $fieldName,
+        array $indexMapping,
+        ?IndexEntity $targetEntity,
+        bool $sort = false
+    ): string
     {
+        $transformers = $sort ? $this->fieldNameTransformersSort : $this->fieldNameTransformers;
         /** @var FieldNameTransformerInterface $transformer */
-        foreach ($this->fieldNameTransformers as $transformer) {
+        foreach ($transformers as $transformer) {
             if ($transformedFieldName = $transformer->transformFieldName($fieldName, $indexMapping, $targetEntity)) {
                 $fieldName = $transformedFieldName;
                 if ($transformer->stopPropagation()) {

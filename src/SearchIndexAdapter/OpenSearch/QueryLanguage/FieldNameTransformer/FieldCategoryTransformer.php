@@ -20,15 +20,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\MappingAnalyzerServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformerInterface;
-use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
-
 /**
  * Prepends the field category (system_fields, standard_fields, custom_fields)
  * to the field name if it is not already present.
  *
  * @internal
  */
-#[AsTaggedItem(priority: 10)]
 final readonly class FieldCategoryTransformer implements FieldNameTransformerInterface
 {
     public function __construct(

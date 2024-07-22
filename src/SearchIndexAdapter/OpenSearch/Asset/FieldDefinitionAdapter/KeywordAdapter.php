@@ -29,7 +29,14 @@ final class KeywordAdapter extends AbstractAdapter
     {
         return [
             'type' => AttributeType::KEYWORD->value,
-            'ignore_above' => 10000,
+            'ignore_above' => 8191,
+            'fields' => [
+                'sort' => [
+                    'type' => AttributeType::KEYWORD->value,
+                    'ignore_above' => 8191,
+                    'normalizer' => 'generic_data_index_sort_truncate_normalizer',
+                ],
+            ],
         ];
     }
 

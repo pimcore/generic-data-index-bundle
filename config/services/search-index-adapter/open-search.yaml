@@ -1,5 +1,6 @@
 imports:
     - { resource: 'services/search-index-adapter/open-search/modifiers/*' }
+    - { resource: 'services/search-index-adapter/open-search/pql-field-name-transformers.yaml' }
 
 services:
     _defaults:
@@ -67,9 +68,6 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\SubQueriesProcessorInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\SubQueriesProcessor
 
-    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer\:
-        resource: '../../../src/SearchIndexAdapter/OpenSearch/QueryLanguage/FieldNameTransformer'
-        tags: ['pimcore.generic_data_index.pql_field_name_transformer']
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameValidator\:
         resource: '../../../src/SearchIndexAdapter/OpenSearch/QueryLanguage/FieldNameValidator'

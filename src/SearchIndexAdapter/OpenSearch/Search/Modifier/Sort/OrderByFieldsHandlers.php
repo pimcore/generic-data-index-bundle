@@ -45,11 +45,20 @@ final class OrderByFieldsHandlers
         OrderByField $orderByField,
         SearchModifierContextInterface $context
     ): void {
-        $indexEntity =  $this->indexEntityService->getByIndexName(
-            $this->indexNameResolver->resolveIndexName($context->getOriginalSearch())
-        );
-        $indexMapping = $this->searchIndexMappingService->getMapping($indexEntity->getIndexName());
-        $fieldName = $this->pqlAdapter->transformFieldName($orderByField->getFieldName(), $indexMapping, $indexEntity);
+        $fieldName = $orderByField->getFieldName();
+
+        if ($orderByField->isPqlFieldNameResolutionEnabled()) {
+            $indexEntity =  $this->indexEntityService->getByIndexName(
+                $this->indexNameResolver->resolveIndexName($context->getOriginalSearch())
+            );
+            $indexMapping = $this->searchIndexMappingService->getMapping($indexEntity->getIndexName());
+            $fieldName = $this->pqlAdapter->transformFieldName(
+                $fieldName,
+                $indexMapping,
+                $indexEntity,
+                true
+            );
+        }
 
         $context->getSearch()
             ->addSort(
