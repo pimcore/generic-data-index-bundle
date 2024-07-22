@@ -89,8 +89,7 @@ final readonly class PqlAdapter implements PqlAdapterInterface
         array $indexMapping,
         ?IndexEntity $targetEntity,
         bool $sort = false
-    ): string
-    {
+    ): string {
         $transformers = $sort ? $this->fieldNameTransformersSort : $this->fieldNameTransformers;
         /** @var FieldNameTransformerInterface $transformer */
         foreach ($transformers as $transformer) {

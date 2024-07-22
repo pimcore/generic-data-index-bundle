@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\MappingAnalyzerServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformerInterface;
+
 /**
  * Prepends the field category (system_fields, standard_fields, custom_fields)
  * to the field name if it is not already present.

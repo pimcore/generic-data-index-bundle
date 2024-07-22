@@ -22,7 +22,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSort;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\OrderByField;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\IndexNameResolverInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityServiceInterface;
 
@@ -36,8 +35,7 @@ final class OrderByFieldsHandlers
         private IndexEntityServiceInterface $indexEntityService,
         private CachedSearchIndexMappingServiceInterface $searchIndexMappingService,
         private PqlAdapterInterface $pqlAdapter,
-    )
-    {
+    ) {
     }
 
     #[AsSearchModifierHandler]
