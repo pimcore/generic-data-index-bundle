@@ -38,6 +38,7 @@ final class KeywordAdapterTest extends Unit
         $mapping = $adapter->getIndexMapping();
         $this->assertSame([
             'type' => 'keyword',
+            'ignore_above' => 10000,
         ], $mapping);
     }
 

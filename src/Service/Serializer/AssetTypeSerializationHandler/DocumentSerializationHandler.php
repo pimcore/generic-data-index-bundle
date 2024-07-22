@@ -24,6 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Asset\Document;
 use Pimcore\Model\Asset\Image;
+use Throwable;
 
 class DocumentSerializationHandler extends AbstractHandler
 {
@@ -56,7 +57,7 @@ class DocumentSerializationHandler extends AbstractHandler
     {
         try {
             return $document->getImageThumbnail(Image\Thumbnail\Config::getPreviewConfig())->getPath();
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $this->logger->error('Thumbnail generation failed for document asset: ' .
                 $document->getId() .
                 ' error ' .
