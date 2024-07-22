@@ -17,7 +17,6 @@ services:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "countrymultiselect" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "language" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "languagemultiselect" }
-            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "table" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "password" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "time" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "user" }
@@ -162,6 +161,11 @@ services:
         shared: false
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "imageGallery" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\TableAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "table" }
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\StructuredTableAdapter:
         shared: false

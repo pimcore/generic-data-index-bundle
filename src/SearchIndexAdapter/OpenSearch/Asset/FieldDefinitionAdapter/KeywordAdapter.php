@@ -29,6 +29,7 @@ final class KeywordAdapter extends AbstractAdapter
     {
         return [
             'type' => AttributeType::KEYWORD->value,
+            'ignore_above' => 10000,
         ];
     }
 
