@@ -17,6 +17,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Search\SortDirection;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\ResultWindowTooLargeException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\OrderByField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\Modifier\Sort\TreeSortHandlers;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
@@ -154,6 +155,66 @@ final class SortModifierTest extends \Codeception\Test\Unit
         }, $searchResult->getItems());
 
         $this->assertEquals($fullPaths, $resultFullPaths);
+
+    }
+
+    // tests
+    public function testOrderByField()
+    {
+        $asset = TestHelper::createImageAsset();
+        $asset2 = TestHelper::createImageAsset();
+        $asset3 = TestHelper::createImageAsset();
+
+        $keys = [
+            $asset->getKey(),
+            $asset2->getKey(),
+            $asset3->getKey(),
+        ];
+        sort($keys);
+
+        /** @var AssetSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new OrderByField('key'))
+        ;
+        $searchResult = $searchService->search($assetSearch);
+        $resultKeys = array_map(function ($asset) {
+            return $asset->getKey();
+        }, $searchResult->getItems());
+        $this->assertEquals($keys, $resultKeys);
+
+        rsort($keys);
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new OrderByField('key', SortDirection::DESC))
+        ;
+        $searchResult = $searchService->search($assetSearch);
+        $resultKeys = array_map(function ($asset) {
+            return $asset->getKey();
+        }, $searchResult->getItems());
+        $this->assertEquals($keys, $resultKeys);
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new OrderByField('system_fields.key.sort', SortDirection::DESC, false))
+        ;
+
+        $searchResult = $searchService->search($assetSearch);
+        $resultKeys = array_map(function ($asset) {
+            return $asset->getKey();
+        }, $searchResult->getItems());
+        $this->assertEquals($keys, $resultKeys);
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new OrderByField('key', SortDirection::ASC, false))
+        ;
+        $this->expectException('No mapping found');
+        $searchService->search($assetSearch);
 
     }
 
