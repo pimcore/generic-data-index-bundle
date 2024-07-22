@@ -17,6 +17,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Search\SortDirection;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\ResultWindowTooLargeException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\OrderByField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\Modifier\Sort\TreeSortHandlers;
@@ -213,7 +214,7 @@ final class SortModifierTest extends \Codeception\Test\Unit
             ->createAssetSearch()
             ->addModifier(new OrderByField('key', SortDirection::ASC, false))
         ;
-        $this->expectException('No mapping found');
+        $this->expectException(SearchFailedException::class);
         $searchService->search($assetSearch);
 
     }
