@@ -1,6 +1,20 @@
 imports:
   - { resource: messenger.yaml }
 
+parameters:
+  generic_data_index_sort_preparation_script: |
+    {
+      "source": "String kw = ctx._source.kw;
+        kw = kw.toLowerCase();
+        if (kw != null) {
+          if (kw.length() > 3) {
+            emit(kw.substring(0,3))
+          } else {
+            emit(kw)
+          }
+        }",
+    }
+
 pimcore_generic_data_index:
   index_service:
     search_settings:
@@ -41,7 +55,13 @@ pimcore_generic_data_index:
               - lowercase
           generic_data_index_path_analyzer:
             tokenizer: generic_data_index_path_tokenizer
-
+        normalizer:
+          generic_data_index_sort_normalizer:
+            type: custom
+            char_filter:
+              - generic_data_index_sort_truncate
+            filter:
+              - lowercase
         tokenizer:
           generic_data_index_ngram_tokenzier:
             type: ngram
@@ -52,7 +72,11 @@ pimcore_generic_data_index:
             type: whitespace
           generic_data_index_path_tokenizer:
             type: "path_hierarchy"
-
+        char_filter:
+          generic_data_index_sort_truncate:
+            type: pattern_replace
+            pattern: ^(.{5})(.*)$
+            replacement: $1
     system_fields_settings:
       general:
         id:
@@ -78,6 +102,9 @@ pimcore_generic_data_index:
               type: text
               analyzer: standard
               search_analyzer: generic_data_index_whitespace_analyzer
+            sort:
+              type: keyword
+              normalizer: generic_data_index_sort_normalizer
         path:
           type: text
           analyzer: generic_data_index_path_analyzer
@@ -206,3 +233,6 @@ pimcore_generic_data_index:
               type: text
               analyzer: standard
               search_analyzer: generic_data_index_whitespace_analyzer
+            sort:
+              type: keyword
+              normalizer: generic_data_index_sort_normalizer
