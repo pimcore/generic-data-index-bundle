@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch\AsSearchModifierH
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\DateFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\MultiSelectFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationServiceInterface;
 
 /**
@@ -52,6 +53,27 @@ final readonly class FieldTypeFilters
                 $dateFilter->getEndDate(),
                 $dateFilter->getOnDate(),
                 $dateFilter->isRoundToDay()
+            )
+        );
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleMultiSelectFilter(
+        MultiSelectFilter $multiSelectFilter,
+        SearchModifierContextInterface $context
+    ): void {
+        $fieldName = $multiSelectFilter->getField();
+        if ($multiSelectFilter->isPqlFieldNameResolutionEnabled()) {
+            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch(
+                $context->getOriginalSearch(),
+                $fieldName
+            );
+        }
+
+        $context->getSearch()->addQuery(
+            new Query\TermsFilter(
+                $fieldName,
+                $multiSelectFilter->getValues()
             )
         );
     }
