@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifi
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\DateFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\MultiSelectFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\NumberRangeFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationServiceInterface;
 
 /**
@@ -76,5 +77,29 @@ final readonly class FieldTypeFilters
                 $multiSelectFilter->getValues()
             )
         );
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleNumberRangeFilter(
+        NumberRangeFilter $numberRangeFilter,
+        SearchModifierContextInterface $context
+    ): void {
+        $fieldName = $numberRangeFilter->getField();
+        if ($numberRangeFilter->isPqlFieldNameResolutionEnabled()) {
+            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch(
+                $context->getOriginalSearch(),
+                $fieldName
+            );
+        }
+
+        $context->getSearch()->addQuery(
+            new Query\Query('range', [
+                $fieldName => [
+                    'gte' => $numberRangeFilter->getMin(),
+                    'lte' => $numberRangeFilter->getMax(),
+                ],
+            ])
+        );
+
     }
 }
