@@ -175,6 +175,11 @@ final class IndexMappingServiceTest extends Unit
                         'type' => 'keyword',
                         'ignore_above' => 1024,
                     ],
+                    'sort' => [
+                        'type' => 'keyword',
+                        'ignore_above' => 8191,
+                        'normalizer' => 'generic_data_index_sort_truncate_normalizer',
+                    ],
                 ],
             ],
             $keyWordMapping
