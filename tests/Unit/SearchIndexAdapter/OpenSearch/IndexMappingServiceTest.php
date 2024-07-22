@@ -161,7 +161,7 @@ final class IndexMappingServiceTest extends Unit
         ];
         $keyWordMapping = $indexMappingService->getMappingForTextKeyword($attributes);
 
-        $this->assertCount(2, $keyWordMapping['fields']);
+        $this->assertCount(3, $keyWordMapping['fields']);
         $this->assertSame(
             [
                 'type' => 'text',
