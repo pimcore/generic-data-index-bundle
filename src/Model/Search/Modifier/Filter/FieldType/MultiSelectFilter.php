@@ -16,7 +16,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType;
 
-use Carbon\Carbon;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 use Pimcore\ValueObject\Collection\ArrayOfStrings;
 
@@ -41,7 +40,6 @@ final readonly class MultiSelectFilter implements SearchModifierInterface
     {
         return $this->values->getValue();
     }
-
 
     public function isPqlFieldNameResolutionEnabled(): bool
     {
