@@ -50,8 +50,10 @@ final readonly class DataObjectToSearchResultItemTransformer implements DataObje
                 $context
             );
 
-            return $this->lazyLoadingHandler
-                ->apply($searchResultItem, $user)
+            $searchResultItem = $this->lazyLoadingHandler
+                ->apply($searchResultItem, $user);
+
+            return $searchResultItem
                 ->setPermissions($this->permissionService->getDataObjectPermissions($searchResultItem, $user));
 
         } catch (Exception $e) {

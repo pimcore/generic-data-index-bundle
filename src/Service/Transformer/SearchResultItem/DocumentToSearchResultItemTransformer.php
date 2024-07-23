@@ -52,8 +52,10 @@ final readonly class DocumentToSearchResultItemTransformer implements DocumentTo
                 $context
             );
 
-            return $this->lazyLoadingHandler
-                ->apply($searchResultItem, $user)
+            $searchResultItem = $this->lazyLoadingHandler
+                ->apply($searchResultItem, $user);
+
+            return $searchResultItem
                 ->setPermissions($this->permissionService->getDocumentPermissions($searchResultItem, $user));
 
         } catch (Exception|ExceptionInterface $e) {
