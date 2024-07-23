@@ -56,5 +56,6 @@ final class FileSizeAggregationServiceTest extends \Codeception\Test\Unit
             ->setPageSize(3);
 
         $this->assertEquals($fileSizeSum, $fileSizeAggregationService->getFileSizeSum($assetSearch));
+        $this->assertNotSame(0, $fileSizeSum);
     }
 }
