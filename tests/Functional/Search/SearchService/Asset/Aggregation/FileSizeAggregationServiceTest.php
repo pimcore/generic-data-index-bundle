@@ -45,7 +45,7 @@ final class FileSizeAggregationServiceTest extends \Codeception\Test\Unit
         $this->tester->flushIndex();
     }
 
-    public function testSearchAssetIdList(): void
+    public function testGetFileSizeSum(): void
     {
         $asset = TestHelper::createImageAsset()->setKey('asset1')->save();
         $asset2 = TestHelper::createImageAsset()->setKey('asset2')->save();
