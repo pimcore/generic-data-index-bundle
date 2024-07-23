@@ -70,10 +70,9 @@ final readonly class AssetAggregations
 
     #[AsSearchModifierHandler]
     public function handleFileSizeAggregation(
-        FileSizeSumAggregation         $aggregation,
+        FileSizeSumAggregation $aggregation,
         SearchModifierContextInterface $context
-    ): void
-    {
+    ): void {
         if (!$context->getOriginalSearch() instanceof AssetSearch) {
             throw new InvalidModifierException('FileSizeAggregation can only be used with AssetSearch');
         }
