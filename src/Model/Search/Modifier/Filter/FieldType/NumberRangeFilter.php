@@ -17,7 +17,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
-use Pimcore\ValueObject\Collection\ArrayOfStrings;
 
 final readonly class NumberRangeFilter implements SearchModifierInterface
 {
@@ -43,8 +42,6 @@ final readonly class NumberRangeFilter implements SearchModifierInterface
     {
         return $this->max;
     }
-
-
 
     public function isPqlFieldNameResolutionEnabled(): bool
     {
