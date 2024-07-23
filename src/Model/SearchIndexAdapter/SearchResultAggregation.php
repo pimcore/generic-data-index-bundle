@@ -24,6 +24,7 @@ readonly class SearchResultAggregation
         private array $buckets,
         private int $otherDocCount,
         private int $docCountErrorUpperBound,
+        private array $aggregationResult = [],
     ) {
     }
 
@@ -46,4 +47,10 @@ readonly class SearchResultAggregation
     {
         return $this->docCountErrorUpperBound;
     }
+
+    public function getAggregationResult(): array
+    {
+        return $this->aggregationResult;
+    }
+
 }
