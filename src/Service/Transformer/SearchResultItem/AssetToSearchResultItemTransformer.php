@@ -51,8 +51,10 @@ final readonly class AssetToSearchResultItemTransformer implements AssetToSearch
                 $context
             );
 
-            return $this->lazyLoadingHandler
-                ->apply($searchResultItem, $user)
+            $searchResultItem = $this->lazyLoadingHandler
+                ->apply($searchResultItem, $user);
+
+            return $searchResultItem
                 ->setPermissions($this->permissionService->getAssetPermissions($searchResultItem, $user));
 
         } catch (Exception|ExceptionInterface $e) {
