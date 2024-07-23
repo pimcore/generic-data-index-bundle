@@ -18,6 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Model\OpenSearch\Quer
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\Query;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\QueryList;
 
 /**
@@ -83,6 +84,51 @@ final class QueryListTest extends Unit
                     ['term' => ['field2' => 'value2']],
                 ],
                 'should' => ['term' => ['field3' => 'value3']],
+            ],
+        ], $queryList->toArray());
+    }
+
+    public function testCombineToBoolQuery(): void
+    {
+        $queryList = new QueryList();
+        $queryList->addQuery(new Query('term', [
+            'field1' => 'value1'
+        ]));
+        $queryList->addQuery(new Query('term', [
+            'field2' => 'value2'
+        ]));
+
+        self::assertSame([
+            'bool' => [
+                'filter' => [
+                    ['term' => ['field1' => 'value1']],
+                    ['term' => ['field2' => 'value2']],
+                ],
+            ],
+        ], $queryList->toArray());
+
+        $queryList = new QueryList();
+        $queryList->addQuery(new Query('term', [
+            'field1' => 'value1'
+        ]));
+
+        $queryList->addQuery(new BoolQuery([
+            'should' => [
+                ['term' => ['field3' => 'value3']],
+            ],
+        ]));
+
+        $queryList->addQuery(new Query('term', [
+            'field2' => 'value2'
+        ]));
+
+        self::assertSame([
+            'bool' => [
+                'should' => ['term' => ['field3' => 'value3']],
+                'filter' => [
+                    ['term' => ['field1' => 'value1']],
+                    ['term' => ['field2' => 'value2']],
+                ],
             ],
         ], $queryList->toArray());
     }
