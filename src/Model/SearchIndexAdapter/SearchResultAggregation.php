@@ -52,5 +52,4 @@ readonly class SearchResultAggregation
     {
         return $this->aggregationResult;
     }
-
 }
