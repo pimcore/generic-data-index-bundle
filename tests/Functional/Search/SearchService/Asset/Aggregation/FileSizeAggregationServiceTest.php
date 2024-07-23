@@ -42,9 +42,9 @@ final class FileSizeAggregationServiceTest extends \Codeception\Test\Unit
 
     public function testGetFileSizeSum(): void
     {
-        $asset = TestHelper::createImageAsset()->setKey('asset1')->save();
-        $asset2 = TestHelper::createImageAsset()->setKey('asset2')->save();
-        $asset3 = TestHelper::createImageAsset()->setKey('asset3')->save();
+        $asset = TestHelper::createImageAsset();
+        $asset2 = TestHelper::createImageAsset();
+        $asset3 = TestHelper::createImageAsset();
 
         /** @var FileSizeAggregationServiceInterface $fileSizeAggregationService */
         $fileSizeAggregationService = $this->tester->grabService(FileSizeAggregationServiceInterface::class);
