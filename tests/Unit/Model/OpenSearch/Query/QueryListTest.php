@@ -92,10 +92,10 @@ final class QueryListTest extends Unit
     {
         $queryList = new QueryList();
         $queryList->addQuery(new Query('term', [
-            'field1' => 'value1'
+            'field1' => 'value1',
         ]));
         $queryList->addQuery(new Query('term', [
-            'field2' => 'value2'
+            'field2' => 'value2',
         ]));
 
         self::assertSame([
@@ -109,7 +109,7 @@ final class QueryListTest extends Unit
 
         $queryList = new QueryList();
         $queryList->addQuery(new Query('term', [
-            'field1' => 'value1'
+            'field1' => 'value1',
         ]));
 
         $queryList->addQuery(new BoolQuery([
@@ -119,7 +119,7 @@ final class QueryListTest extends Unit
         ]));
 
         $queryList->addQuery(new Query('term', [
-            'field2' => 'value2'
+            'field2' => 'value2',
         ]));
 
         self::assertSame([
