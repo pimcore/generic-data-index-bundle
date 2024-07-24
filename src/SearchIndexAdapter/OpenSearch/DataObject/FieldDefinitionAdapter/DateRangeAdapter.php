@@ -16,12 +16,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
-use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use DateTimeInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
-use Pimcore\Model\DataObject\ClassDefinition\Data\Date;
-use Pimcore\Model\DataObject\ClassDefinition\Data\Datetime;
 
 /**
  * @internal
@@ -35,13 +32,13 @@ final class DateRangeAdapter extends AbstractAdapter
             'properties' => [
                 'start' => [
                     'type' => AttributeType::DATE->value,
-                    'format' => 'strict_date_time_no_millis'
+                    'format' => 'strict_date_time_no_millis',
                 ],
                 'end' => [
                     'type' => AttributeType::DATE->value,
-                    'format' => 'strict_date_time_no_millis'
-                ]
-            ]
+                    'format' => 'strict_date_time_no_millis',
+                ],
+            ],
         ];
     }
 
@@ -54,10 +51,12 @@ final class DateRangeAdapter extends AbstractAdapter
                     'end' => $value->getEndDate()?->format(DateTimeInterface::ATOM),
                 ];
             }
+
             return [
                 'start' => $value->getStartDate()?->format(DateTimeInterface::ATOM),
             ];
         }
+
         return null;
     }
 }
