@@ -18,8 +18,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Se
 
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch\AsSearchModifierHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidModifierException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation\Aggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Asset\AssetMetaDataAggregation;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Asset\FileSizeSumAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefinitionServiceInterface;
 use Pimcore\Twig\Extension\Templating\Placeholder\Exception;
 
@@ -63,5 +66,26 @@ final readonly class AssetAggregations
         } catch (Exception $e) {
             throw new InvalidModifierException($e->getMessage(), 0, $e);
         }
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleFileSizeAggregation(
+        FileSizeSumAggregation $aggregation,
+        SearchModifierContextInterface $context
+    ): void {
+        if (!$context->getOriginalSearch() instanceof AssetSearch) {
+            throw new InvalidModifierException('FileSizeAggregation can only be used with AssetSearch');
+        }
+
+        $context->getSearch()->addAggregation(
+            new Aggregation(
+                name: $aggregation->getAggregationName(),
+                params: [
+                    'sum' => [
+                        'field' => 'system_fields.fileSize',
+                    ],
+                ]
+            )
+        );
     }
 }

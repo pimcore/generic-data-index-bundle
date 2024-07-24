@@ -22,6 +22,9 @@ services:
   Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchHelperInterface:
       class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\SearchHelper
 
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\Aggregation\FileSizeAggregationServiceInterface:
+      class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\Aggregation\FileSizeAggregationService
+
   Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface:
       class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProvider
 

@@ -78,6 +78,7 @@ class SearchResultDenormalizer implements DenormalizerInterface
                 buckets: $this->hydrateAggregationBuckets($aggregation['buckets'] ?? []),
                 otherDocCount: $aggregation['sum_other_doc_count'] ?? 0,
                 docCountErrorUpperBound: $aggregation['doc_count_error_upper_bound'] ?? 0,
+                aggregationResult: $aggregation,
             );
         }
 
