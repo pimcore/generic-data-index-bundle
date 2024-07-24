@@ -47,6 +47,8 @@ final class DateAdapterTest extends Unit
         ], $mapping);
 
         $fieldDefinition->setColumnType('bigint(20)');
+        $mapping = $adapter->getIndexMapping();
+
         $this->assertSame([
             'type' => 'date',
             'format' => 'strict_date_time_no_millis',
