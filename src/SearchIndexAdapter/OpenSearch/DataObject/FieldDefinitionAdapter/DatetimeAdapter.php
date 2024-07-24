@@ -19,25 +19,25 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Da
 use Carbon\Carbon;
 use DateTimeInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
-use Pimcore\Model\DataObject\ClassDefinition\Data\Date;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Datetime;
 
 /**
  * @internal
  */
-final class DateAdapter extends AbstractAdapter
+final class DatetimeAdapter extends AbstractAdapter
 {
     public function getIndexMapping(): array
     {
         return [
             'type' => AttributeType::DATE->value,
-            'format' => $this->respectTimezone() ? 'strict_date_time_no_millis' : 'strict_date'
+            'format' => $this->respectTimezone() ? 'strict_date_time_no_millis' : 'strict_date_hour_minute_second'
         ];
     }
 
     public function normalize(mixed $value): ?string
     {
         if ($value instanceof Carbon) {
-            return $value->format($this->respectTimezone() ? DateTimeInterface::ATOM : 'Y-m-d');
+            return $value->format($this->respectTimezone() ? DateTimeInterface::ATOM : 'Y-m-d\TH:i:s');
         }
         return null;
     }
@@ -45,10 +45,10 @@ final class DateAdapter extends AbstractAdapter
     private function respectTimezone(): bool
     {
         $fieldDefinition = $this->getFieldDefinition();
-        if (!$fieldDefinition instanceof Date) {
+        if (!$fieldDefinition instanceof Datetime) {
             return false;
         }
 
-        return $fieldDefinition->getColumnType() === 'bigint(20)';
+        return $fieldDefinition->isRespectTimezone();
     }
 }
