@@ -18,7 +18,6 @@ services:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "language" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "languagemultiselect" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "password" }
-            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "time" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "user" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "firstname" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "lastname" }
@@ -35,8 +34,21 @@ services:
         shared: false
         tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "date" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\DatetimeAdapter:
+        shared: false
+        tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "datetime" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\DateRangeAdapter:
+        shared: false
+        tags:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "dateRange" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\TimeAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "time" }
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\LocalizedFieldsAdapter:
         shared: false

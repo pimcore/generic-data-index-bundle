@@ -24,31 +24,13 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\Date;
 /**
  * @internal
  */
-final class DateAdapter extends AbstractAdapter
+final class TimeAdapter extends AbstractAdapter
 {
     public function getIndexMapping(): array
     {
         return [
             'type' => AttributeType::DATE->value,
-            'format' => $this->respectTimezone() ? 'strict_date_time_no_millis' : 'strict_date'
+            'format' => 'strict_hour_minute'
         ];
-    }
-
-    public function normalize(mixed $value): ?string
-    {
-        if ($value instanceof Carbon) {
-            return $value->format($this->respectTimezone() ? DateTimeInterface::ATOM : 'Y-m-d');
-        }
-        return null;
-    }
-
-    private function respectTimezone(): bool
-    {
-        $fieldDefinition = $this->getFieldDefinition();
-        if (!$fieldDefinition instanceof Date) {
-            return false;
-        }
-
-        return $fieldDefinition->getColumnType() === 'bigint(20)';
     }
 }
