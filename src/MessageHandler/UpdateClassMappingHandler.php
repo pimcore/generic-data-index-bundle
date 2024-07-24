@@ -39,41 +39,39 @@ final class UpdateClassMappingHandler
     ) {
     }
 
+    /**
+     * @throws Exception
+     */
     public function __invoke(UpdateClassMappingMessage $message): void
     {
         $classDefinition = $message->getClassDefinition();
         $dispatch = $message->isDispatchQueueMessages();
 
-        try {
-            $mappingProperties = $this->dataObjectMappingHandler->getMappingProperties($classDefinition);
-            $currentCheckSum = $this->dataObjectMappingHandler->getClassMappingCheckSum($mappingProperties);
-            $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
+        $mappingProperties = $this->dataObjectMappingHandler->getMappingProperties($classDefinition);
+        $currentCheckSum = $this->dataObjectMappingHandler->getClassMappingCheckSum($mappingProperties);
+        $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
 
-            if ($storedCheckSum === $currentCheckSum) {
-                return;
-            }
+        if ($storedCheckSum === $currentCheckSum) {
+            return;
+        }
 
-            $this->dataObjectMappingHandler
-                ->reindexMapping(
-                    context: $classDefinition,
-                    mappingProperties: $mappingProperties
-                );
-
-            $this->settingsStoreService->storeClassMapping(
-                classDefinitionId: $classDefinition->getId(),
-                data: $this->dataObjectMappingHandler->getClassMappingCheckSum(
-                    $mappingProperties
-                )
+        $this->dataObjectMappingHandler
+            ->updateMapping(
+                context: $classDefinition,
+                mappingProperties: $mappingProperties
             );
 
-            if ($dispatch) {
-                $this->enqueueService
-                    ->enqueueByClassDefinition($classDefinition)
-                    ->dispatchQueueMessages();
-            }
+        $this->settingsStoreService->storeClassMapping(
+            classDefinitionId: $classDefinition->getId(),
+            data: $this->dataObjectMappingHandler->getClassMappingCheckSum(
+                $mappingProperties
+            )
+        );
 
-        } catch (Exception $exception) {
-            $this->logger->error('Updating class definition mapping failed: ' . $exception);
+        if ($dispatch) {
+            $this->enqueueService
+                ->enqueueByClassDefinition($classDefinition)
+                ->dispatchQueueMessages();
         }
     }
 }
