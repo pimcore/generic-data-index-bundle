@@ -16,9 +16,6 @@
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\Filter;
 
 use Carbon\Carbon;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiredByFilter;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiresFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\DateFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\MultiSelectFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
@@ -61,7 +58,6 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
         $object3 = TestHelper::createEmptyObject()->setKey('object3')->save();
         $object4 = TestHelper::createEmptyObject()->setKey('object4')->save();
 
-
         /** @var DataObjectSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
         /** @var SearchProviderInterface $searchProvider */
@@ -74,14 +70,12 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
         $searchResult = $searchService->search($elementSearch);
         $this->assertIdArrayEquals([$object1->getId(), $object2->getId()], $searchResult->getIds());
 
-
         $elementSearch = $searchProvider
             ->createDataObjectSearch()
             ->addModifier(new MultiSelectFilter('system_fields.key', ['object3', 'object4'], false))
         ;
         $searchResult = $searchService->search($elementSearch);
         $this->assertIdArrayEquals([$object3->getId(), $object4->getId()], $searchResult->getIds());
-
 
         $elementSearch = $searchProvider
             ->createDataObjectSearch()
@@ -90,6 +84,7 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
         $searchResult = $searchService->search($elementSearch);
         $this->assertIdArrayEquals([], $searchResult->getIds());
     }
+
     public function testDateFilter()
     {
         $asset1 = TestHelper::createImageAsset()
@@ -103,7 +98,6 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
         $asset3 = TestHelper::createImageAsset()
             ->addMetadata('testDate', 'date', strtotime('2020-03-03'))
             ->save();
-
 
         /** @var AssetSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
