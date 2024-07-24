@@ -15,11 +15,14 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\Filter;
 
+use Carbon\Carbon;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiredByFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiresFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\DateFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\MultiSelectFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Model\DataObject\Unittest;
 use Pimcore\Tests\Support\Util\TestHelper;
@@ -59,13 +62,13 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
         $object4 = TestHelper::createEmptyObject()->setKey('object4')->save();
 
 
-        /** @var AssetSearchServiceInterface $searchService */
-        $searchService = $this->tester->grabService('generic-data-index.test.service.element-search-service');
+        /** @var DataObjectSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
         /** @var SearchProviderInterface $searchProvider */
         $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
 
         $elementSearch = $searchProvider
-            ->createElementSearch()
+            ->createDataObjectSearch()
             ->addModifier(new MultiSelectFilter('key', ['object1', 'object2']))
         ;
         $searchResult = $searchService->search($elementSearch);
@@ -73,7 +76,7 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
 
 
         $elementSearch = $searchProvider
-            ->createElementSearch()
+            ->createDataObjectSearch()
             ->addModifier(new MultiSelectFilter('system_fields.key', ['object3', 'object4'], false))
         ;
         $searchResult = $searchService->search($elementSearch);
@@ -81,11 +84,74 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
 
 
         $elementSearch = $searchProvider
-            ->createElementSearch()
+            ->createDataObjectSearch()
             ->addModifier(new MultiSelectFilter('key', ['object3', 'object4'], false))
         ;
         $searchResult = $searchService->search($elementSearch);
         $this->assertIdArrayEquals([], $searchResult->getIds());
+    }
+    public function testDateFilter()
+    {
+        $asset1 = TestHelper::createImageAsset()
+            ->addMetadata('testDate', 'date', strtotime('2020-01-01'))
+            ->save();
+
+        $asset2 = TestHelper::createImageAsset()
+            ->addMetadata('testDate', 'date', strtotime('2020-02-02 12:00:00'))
+            ->save();
+
+        $asset3 = TestHelper::createImageAsset()
+            ->addMetadata('testDate', 'date', strtotime('2020-03-03'))
+            ->save();
+
+
+        /** @var AssetSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $elementSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new DateFilter('testDate', Carbon::create('2019', 12, 31)))
+        ;
+        $searchResult = $searchService->search($elementSearch);
+        $this->assertIdArrayEquals([$asset1->getId(), $asset2->getId(), $asset3->getId()], $searchResult->getIds());
+
+        $elementSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new DateFilter('testDate', Carbon::create('2019', 12, 31), Carbon::create('2020', 1, 15)))
+        ;
+        $searchResult = $searchService->search($elementSearch);
+        $this->assertIdArrayEquals([$asset1->getId()], $searchResult->getIds());
+
+        $elementSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new DateFilter('testDate', null, null, Carbon::create('2020', 2, 2)))
+        ;
+        $searchResult = $searchService->search($elementSearch);
+        $this->assertIdArrayEquals([$asset2->getId()], $searchResult->getIds());
+
+        $elementSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new DateFilter('testDate', null, null, Carbon::create('2020', 2, 2), false))
+        ;
+        $searchResult = $searchService->search($elementSearch);
+        $this->assertIdArrayEquals([], $searchResult->getIds());
+
+        $elementSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new DateFilter('standard_fields.testDate.default', null, null, Carbon::create('2020', 2, 2), true, false))
+        ;
+        $searchResult = $searchService->search($elementSearch);
+        $this->assertIdArrayEquals([$asset2->getId()], $searchResult->getIds());
+
+        $elementSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new DateFilter('testDate', null, null, Carbon::create('2020', 2, 2), true, false))
+        ;
+        $searchResult = $searchService->search($elementSearch);
+        $this->assertIdArrayEquals([], $searchResult->getIds());
+
     }
 
     private function assertIdArrayEquals(array $ids1, array $ids2)
