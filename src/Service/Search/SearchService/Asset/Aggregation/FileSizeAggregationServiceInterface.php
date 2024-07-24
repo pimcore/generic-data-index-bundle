@@ -14,23 +14,14 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\Aggregation;
 
-readonly class SearchResultAggregationBucket
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
+
+interface FileSizeAggregationServiceInterface
 {
-    public function __construct(
-        private string|int|float $key,
-        private int $docCount,
-    ) {
-    }
-
-    public function getKey(): string|int
-    {
-        return $this->key;
-    }
-
-    public function getDocCount(): int
-    {
-        return $this->docCount;
-    }
+    /**
+     * Returns the sum of the file sizes of all assets that match the given search criteria in bytes.
+     */
+    public function getFileSizeSum(AssetSearch $assetSearch): int;
 }
