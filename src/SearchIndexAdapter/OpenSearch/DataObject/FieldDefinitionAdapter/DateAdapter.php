@@ -30,7 +30,7 @@ final class DateAdapter extends AbstractAdapter
     {
         return [
             'type' => AttributeType::DATE->value,
-            'format' => $this->respectTimezone() ? 'strict_date_time_no_millis' : 'strict_date'
+            'format' => $this->respectTimezone() ? 'strict_date_time_no_millis' : 'strict_date',
         ];
     }
 
@@ -39,6 +39,7 @@ final class DateAdapter extends AbstractAdapter
         if ($value instanceof Carbon) {
             return $value->format($this->respectTimezone() ? DateTimeInterface::ATOM : 'Y-m-d');
         }
+
         return null;
     }
 

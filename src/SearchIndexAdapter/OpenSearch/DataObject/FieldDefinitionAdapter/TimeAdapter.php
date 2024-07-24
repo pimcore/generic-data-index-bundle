@@ -27,7 +27,7 @@ final class TimeAdapter extends AbstractAdapter
     {
         return [
             'type' => AttributeType::DATE->value,
-            'format' => 'strict_hour_minute'
+            'format' => 'strict_hour_minute',
         ];
     }
 }
