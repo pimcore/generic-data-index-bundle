@@ -16,10 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
-use Carbon\Carbon;
-use DateTimeInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
-use Pimcore\Model\DataObject\ClassDefinition\Data\Date;
 
 /**
  * @internal
@@ -30,25 +27,6 @@ final class DateAdapter extends AbstractAdapter
     {
         return [
             'type' => AttributeType::DATE->value,
-            'format' => $this->respectTimezone() ? 'strict_date_time_no_millis' : 'strict_date'
         ];
-    }
-
-    public function normalize(mixed $value): ?string
-    {
-        if ($value instanceof Carbon) {
-            return $value->format($this->respectTimezone() ? DateTimeInterface::ATOM : 'Y-m-d');
-        }
-        return null;
-    }
-
-    private function respectTimezone(): bool
-    {
-        $fieldDefinition = $this->getFieldDefinition();
-        if (!$fieldDefinition instanceof Date) {
-            return false;
-        }
-
-        return $fieldDefinition->getColumnType() === 'bigint(20)';
     }
 }
