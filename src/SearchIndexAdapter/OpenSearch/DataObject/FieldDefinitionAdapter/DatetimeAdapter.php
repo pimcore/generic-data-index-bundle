@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Da
 use Carbon\Carbon;
 use DateTimeInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Date;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Datetime;
 
 /**
@@ -30,7 +31,7 @@ final class DatetimeAdapter extends AbstractAdapter
     {
         return [
             'type' => AttributeType::DATE->value,
-            'format' => $this->respectTimezone() ? 'strict_date_time_no_millis' : 'strict_date_hour_minute_second',
+            'format' => $this->respectTimezone() ? 'strict_date_time_no_millis' : 'strict_date_hour_minute_second'
         ];
     }
 
@@ -39,7 +40,6 @@ final class DatetimeAdapter extends AbstractAdapter
         if ($value instanceof Carbon) {
             return $value->format($this->respectTimezone() ? DateTimeInterface::ATOM : 'Y-m-d\TH:i:s');
         }
-
         return null;
     }
 

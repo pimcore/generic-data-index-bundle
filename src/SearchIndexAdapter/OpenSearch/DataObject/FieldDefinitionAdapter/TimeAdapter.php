@@ -16,7 +16,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
+use Carbon\Carbon;
+use DateTimeInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Date;
 
 /**
  * @internal
@@ -27,7 +30,7 @@ final class TimeAdapter extends AbstractAdapter
     {
         return [
             'type' => AttributeType::DATE->value,
-            'format' => 'strict_hour_minute',
+            'format' => 'strict_hour_minute'
         ];
     }
 }
