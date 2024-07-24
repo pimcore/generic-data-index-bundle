@@ -32,14 +32,9 @@ $search->addModifier(new ParentIdFilter(1))
 
 | Modifier                                                                                                                                        | Modifier Category | Description                                                                                                                                                                                                                                                                                                                                                                                                              |
 |-------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [ElementKeySearch](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/FullTextSearch/ElementKeySearch.php) | Full text search  | Search by element key like in the studio UI with wildcard support.                                                                                                                                                                                                                                              |
-| [WildcardSearch](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/FullTextSearch/WildcardSearch.php)       | Full text search        | Filter text fields based on search terms with wildcard support.<br/>If `$enablePqlFieldNameResolution` is set to true (default) [Pimcore Query Language](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Sort/OrderByField.php) field name resolution logic is enabled. Therefore it's possible to use short field names then instead of specifying the full path in OpenSearch. |
+| [ElementKeySearch](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/FullTextSearch/ElementKeySearch.php) | Full text search  | Search by element key like in the studio UI with [wildcard support](#wild-card-support).                                                                                                                                                                                                                                                                                                                                 |
+| [WildcardSearch](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/FullTextSearch/WildcardSearch.php)       | Full text search        | Filter text fields based on search terms with [wildcard support](#wild-card-support).<br/>If `$enablePqlFieldNameResolution` is set to true (default) [Pimcore Query Language](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Sort/OrderByField.php) field name resolution logic is enabled. Therefore it's possible to use short field names then instead of specifying the full path in OpenSearch. |
 
-
-#### Wildcard support
-For some search modifiers, wildcard support is available. Wildcards support the following characters:
-- * can be used to match any sequence of characters, regardless of length - for example "Car*" to find all items starting with "Car".
-- ? can be used to match exactly one character - for example "Car?" to find all items starting with "Car" and having one more character.
 
 ### Dependencies
 
@@ -69,6 +64,14 @@ For some search modifiers, wildcard support is available. Wildcards support the 
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|-------------------------------------------------------------------------------------------------------|
 | [ChildrenCountAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Aggregation/Tree/ChildrenCountAggregation.php)  | Tree related aggregation | Get children counts for given element IDs.                                                            |
 | [AssetMetaDataAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Aggregation/Asset/AssetMetaDataAggregation.php) | Assets                   | Used for the filters in the asset grid to aggregate the filter options for supported meta data types. |
+
+## Search Modifier Implementation Details
+
+### Wildcard support
+
+For some search modifiers, wildcard support is available. Wildcards support the following characters:
+- `*` can be used to match any sequence of characters, regardless of length - for example "Car*" to find all items starting with "Car".
+- `?` can be used to match exactly one character - for example "Car?" to find all items starting with "Car" and having one more character.
 
 ## Add your own search modifier
 
