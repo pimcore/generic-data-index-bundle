@@ -34,3 +34,8 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer\SortTransformer:
       tags:
         - {name: pimcore.generic_data_index.pql_field_name_transformer_sort, priority: 1}
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer\SynonymTransformer:
+      tags:
+        - {name: pimcore.generic_data_index.pql_field_name_transformer, priority: 11}
+        - {name: pimcore.generic_data_index.pql_field_name_transformer_sort, priority: 11}
