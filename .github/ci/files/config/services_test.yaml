@@ -31,3 +31,7 @@ services:
   Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\DataObjectToSearchResultItemTransformerInterface:
     class: Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\DataObjectToSearchResultItemTransformer
     public: true
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\Aggregation\FileSizeAggregationServiceInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\Aggregation\FileSizeAggregationService
+    public: true

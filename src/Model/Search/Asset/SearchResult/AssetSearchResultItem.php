@@ -279,7 +279,7 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
             $this->lazyLoad();
         }
 
-        return $this->hasChildren;
+        return $this->hasChildren ?? false;
     }
 
     public function setHasChildren(bool $hasChildren): AssetSearchResultItem

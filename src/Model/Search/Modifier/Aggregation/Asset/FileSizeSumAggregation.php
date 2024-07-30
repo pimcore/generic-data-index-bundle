@@ -14,23 +14,19 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Asset;
 
-readonly class SearchResultAggregationBucket
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
+
+final readonly class FileSizeSumAggregation implements SearchModifierInterface
 {
     public function __construct(
-        private string|int|float $key,
-        private int $docCount,
+        private string $aggregationName,
     ) {
     }
 
-    public function getKey(): string|int
+    public function getAggregationName(): string
     {
-        return $this->key;
-    }
-
-    public function getDocCount(): int
-    {
-        return $this->docCount;
+        return $this->aggregationName;
     }
 }

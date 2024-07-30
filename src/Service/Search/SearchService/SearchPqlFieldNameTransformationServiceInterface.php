@@ -14,23 +14,14 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
-readonly class SearchResultAggregationBucket
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
+
+/**
+ * @internal
+ */
+interface SearchPqlFieldNameTransformationServiceInterface
 {
-    public function __construct(
-        private string|int|float $key,
-        private int $docCount,
-    ) {
-    }
-
-    public function getKey(): string|int
-    {
-        return $this->key;
-    }
-
-    public function getDocCount(): int
-    {
-        return $this->docCount;
-    }
+    public function transformFieldnameForSearch(SearchInterface $search, string $fieldName): string;
 }
