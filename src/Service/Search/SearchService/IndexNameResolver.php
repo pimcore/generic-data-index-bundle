@@ -46,7 +46,9 @@ final readonly class IndexNameResolver implements IndexNameResolverInterface
         }
 
         if ($search instanceof DataObjectSearch) {
-            return $this->dataObjectTypeAdapter->getAliasIndexName($search->getClassDefinition());
+            return $this->dataObjectTypeAdapter->getAliasIndexName(
+                $search->getClassDefinition() ?? IndexName::DATA_OBJECT->value
+            );
         }
 
         if ($search instanceof DocumentSearch) {
