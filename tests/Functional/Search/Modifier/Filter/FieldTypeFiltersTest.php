@@ -140,6 +140,7 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
         $searchResult = $searchService->search($assetSearch);
         $this->assertIdArrayEquals([], $searchResult->getIds());
     }
+
     public function testDateFilterDataObject()
     {
         $dataObject1 = TestHelper::createEmptyObject()
