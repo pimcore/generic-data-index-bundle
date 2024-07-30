@@ -186,6 +186,7 @@ final class DateFilterTest extends Unit
 
         self::assertSame([
             'datefield' => [
+                'format' => "yyyy-MM-dd'T'HH:mm:ssz",
                 'gte' => '2000-01-01T12:00:00+00:00',
                 'lte' => '2000-01-01T12:00:00+00:00',
             ],
