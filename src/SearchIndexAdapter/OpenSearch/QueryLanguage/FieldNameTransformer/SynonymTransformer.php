@@ -30,6 +30,7 @@ final readonly class SynonymTransformer implements FieldNameTransformerInterface
     private const SYNONYM_FIELDS = [
         'fullPath' => 'fullpath',
     ];
+
     private const SYNONYM_FIELDS_ASSET = [
         'filename' => 'key',
     ];
