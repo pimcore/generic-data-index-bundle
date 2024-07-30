@@ -1,0 +1,36 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer\AssetMetadataDefaultLanguageTransformer:
+      tags:
+        - {name: pimcore.generic_data_index.pql_field_name_transformer, priority: 9}
+        - {name: pimcore.generic_data_index.pql_field_name_transformer_sort, priority: 9}
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer\FieldCategoryTransformer:
+      tags:
+        - {name: pimcore.generic_data_index.pql_field_name_transformer, priority: 10}
+        - {name: pimcore.generic_data_index.pql_field_name_transformer_sort, priority: 10}
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer\IdTransformer:
+      tags:
+        - {name: pimcore.generic_data_index.pql_field_name_transformer, priority: 5}
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer\ImageGalleryTransformer:
+      tags:
+        - {name: pimcore.generic_data_index.pql_field_name_transformer, priority: 6}
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer\KeywordTransformer:
+      tags:
+        - {name: pimcore.generic_data_index.pql_field_name_transformer, priority: 0}
+        - {name: pimcore.generic_data_index.pql_field_name_transformer_sort, priority: 0}
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer\RelationsTransformer:
+      tags:
+        - {name: pimcore.generic_data_index.pql_field_name_transformer, priority: 0}
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformer\SortTransformer:
+      tags:
+        - {name: pimcore.generic_data_index.pql_field_name_transformer_sort, priority: 1}

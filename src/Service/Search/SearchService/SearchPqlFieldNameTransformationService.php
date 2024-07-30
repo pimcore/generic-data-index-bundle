@@ -34,7 +34,7 @@ final readonly class SearchPqlFieldNameTransformationService implements SearchPq
     ) {
     }
 
-    public function transformFieldnameForSearch(SearchInterface $search, string $fieldName): string
+    public function transformFieldnameForSearch(SearchInterface $search, string $fieldName, bool $sort = false): string
     {
         $indexEntity =  $this->indexEntityService->getByIndexName(
             $this->indexNameResolver->resolveIndexName($search)
@@ -44,7 +44,8 @@ final readonly class SearchPqlFieldNameTransformationService implements SearchPq
         return $this->pqlAdapter->transformFieldName(
             $fieldName,
             $indexMapping,
-            $indexEntity
+            $indexEntity,
+            $sort
         );
     }
 }

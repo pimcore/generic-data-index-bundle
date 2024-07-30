@@ -66,7 +66,8 @@ final class PqlAdapterTest extends Unit
         return new PqlAdapter(
             $this->makeEmpty(SubQueriesProcessorInterface::class),
             $fieldNameTransformers,
-            []
+            [],
+            [],
         );
     }
 }

@@ -21,11 +21,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\MappingA
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformerInterface;
 
 /**
- * Used for image and video data types to transform the field name to the id field.
+ * Used to filter based on a sort subfield if available.
  *
  * @internal
  */
-final readonly class IdTransformer implements FieldNameTransformerInterface
+final readonly class SortTransformer implements FieldNameTransformerInterface
 {
     public function __construct(
         private MappingAnalyzerServiceInterface $mappingAnalyzerService
@@ -38,7 +38,7 @@ final readonly class IdTransformer implements FieldNameTransformerInterface
             return null;
         }
 
-        $fullFieldName = $fieldName . '.id';
+        $fullFieldName = $fieldName . '.sort';
         if ($this->mappingAnalyzerService->fieldPathExists($fullFieldName, $indexMapping)) {
             return $fullFieldName;
         }
