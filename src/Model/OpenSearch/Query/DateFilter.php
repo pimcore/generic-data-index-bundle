@@ -21,7 +21,7 @@ use DateTimeInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\QueryType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 
-final class DateFilter implements QueryInterface
+final readonly class DateFilter implements QueryInterface
 {
     public const PARAM_START = 'start';
 
@@ -29,13 +29,22 @@ final class DateFilter implements QueryInterface
 
     public const PARAM_ON = 'on';
 
+    private Carbon|null $startDate;
+
+    private Carbon|null $endDate;
+
+    private Carbon|null $onDate;
+
     public function __construct(
-        private readonly string $field,
-        private readonly ?int $startTimestamp = null,
-        private readonly ?int $endTimestamp = null,
-        private readonly ?int $onTimestamp = null,
-        private readonly bool $roundToDay = true,
+        private string $field,
+        int|Carbon|null $startTimestamp = null,
+        int|Carbon|null $endTimestamp = null,
+        int|Carbon|null $onTimestamp = null,
+        private bool $roundToDay = true,
     ) {
+        $this->startDate = is_int($startTimestamp) ? Carbon::createFromTimestamp($startTimestamp) : $startTimestamp;
+        $this->endDate = is_int($endTimestamp) ? Carbon::createFromTimestamp($endTimestamp) : $endTimestamp;
+        $this->onDate = is_int($onTimestamp) ? Carbon::createFromTimestamp($onTimestamp) : $onTimestamp;
     }
 
     public static function createFromArray(string $field, array $params, bool $roundToDay = true): DateFilter
@@ -90,15 +99,15 @@ final class DateFilter implements QueryInterface
     public function getParams(): array
     {
         $params = [];
-        if ($this->onTimestamp) {
-            $params['gte'] = date(DateTimeInterface::ATOM, $this->getStartOfDay($this->onTimestamp));
-            $params['lte'] = date(DateTimeInterface::ATOM, $this->getEndOfDay($this->onTimestamp));
+        if ($this->onDate) {
+            $params['gte'] = $this->getStartOfDay($this->onDate)->format(DateTimeInterface::ATOM);
+            $params['lte'] =  $this->getEndOfDay($this->onDate)->format(DateTimeInterface::ATOM);
         } else {
-            if ($this->startTimestamp) {
-                $params['gte'] = date(DateTimeInterface::ATOM, $this->getStartOfDay($this->startTimestamp));
+            if ($this->startDate) {
+                $params['gte'] = $this->getStartOfDay($this->startDate)->format(DateTimeInterface::ATOM);
             }
-            if ($this->endTimestamp) {
-                $params['lte'] = date(DateTimeInterface::ATOM, $this->getEndOfDay($this->endTimestamp));
+            if ($this->endDate) {
+                $params['lte'] = $this->getEndOfDay($this->endDate)->format(DateTimeInterface::ATOM);
             }
         }
 
@@ -123,35 +132,50 @@ final class DateFilter implements QueryInterface
 
     public function getEndTimestamp(): ?int
     {
-        return $this->endTimestamp;
+        return $this->endDate->getTimestamp();
     }
 
     public function getStartTimestamp(): ?int
     {
-        return $this->startTimestamp;
+        return $this->startDate->getTimestamp();
     }
 
     public function getOnTimestamp(): ?int
     {
-        return $this->onTimestamp;
+        return $this->onDate->getTimestamp();
     }
 
-    private function getStartOfDay(int $timestamp): int
+    public function getEndDate(): Carbon
     {
-        if (!$this->roundToDay) {
-            return $timestamp;
-        }
-
-        return Carbon::createFromTimestamp($timestamp)->startOfDay()->timestamp;
+        return $this->endDate;
     }
 
-    private function getEndOfDay(int $timestamp): int
+    public function getStartDate(): Carbon
+    {
+        return $this->startDate;
+    }
+
+    public function getOnDate(): Carbon
+    {
+        return $this->onDate;
+    }
+
+    private function getStartOfDay(Carbon $date): Carbon
     {
         if (!$this->roundToDay) {
-            return $timestamp;
+            return $date;
         }
 
-        return Carbon::createFromTimestamp($timestamp)->endOfDay()->timestamp;
+        return $date->startOfDay();
+    }
+
+    private function getEndOfDay(Carbon $date): Carbon
+    {
+        if (!$this->roundToDay) {
+            return $date;
+        }
+
+        return $date->endOfDay();
     }
 
     public function isRoundToDay(): bool

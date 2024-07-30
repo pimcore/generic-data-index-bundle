@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\FullTextSearch;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\ElementKeySearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\WildcardSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Tests\Support\Util\TestHelper;
@@ -102,5 +103,65 @@ final class FullTextSearchTest extends \Codeception\Test\Unit
         $searchResult = $searchService->search($assetSearch);
         $this->assertEquals([], $searchResult->getIds());
 
+    }
+
+    public function testWildcardSearch(): void
+    {
+        $asset = TestHelper::createImageAsset();
+        $asset->setFilename('Test image 123.jpg')->save();
+
+        /** @var AssetSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new WildcardSearch('fullPath', '*/Test*'))
+        ;
+        $searchResult = $searchService->search($assetSearch);
+        $this->assertEquals([$asset->getId()], $searchResult->getIds());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new WildcardSearch('fullPath', '/Test'))
+        ;
+        $searchResult = $searchService->search($assetSearch);
+        $this->assertEquals([$asset->getId()], $searchResult->getIds());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new WildcardSearch('fullPath', '*123.jpg'))
+        ;
+        $searchResult = $searchService->search($assetSearch);
+        $this->assertEquals([$asset->getId()], $searchResult->getIds());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new WildcardSearch('fullPath', '*123.jp'))
+        ;
+        $searchResult = $searchService->search($assetSearch);
+        $this->assertEquals([], $searchResult->getIds());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new WildcardSearch('fullPath', '*123.jp?'))
+        ;
+        $searchResult = $searchService->search($assetSearch);
+        $this->assertEquals([$asset->getId()], $searchResult->getIds());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new WildcardSearch('system_fields.fullPath', '123', false))
+        ;
+        $searchResult = $searchService->search($assetSearch);
+        $this->assertEquals([$asset->getId()], $searchResult->getIds());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new WildcardSearch('fullPath', '123', false))
+        ;
+        $searchResult = $searchService->search($assetSearch);
+        $this->assertEquals([], $searchResult->getIds());
     }
 }
