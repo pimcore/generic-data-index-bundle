@@ -23,5 +23,5 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterfac
  */
 interface SearchPqlFieldNameTransformationServiceInterface
 {
-    public function transformFieldnameForSearch(SearchInterface $search, string $fieldName): string;
+    public function transformFieldnameForSearch(SearchInterface $search, string $fieldName, bool $sort = false): string;
 }

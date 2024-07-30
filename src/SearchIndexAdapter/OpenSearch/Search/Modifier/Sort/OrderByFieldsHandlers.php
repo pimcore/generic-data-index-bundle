@@ -20,10 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch\AsSearchModifierH
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSort;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\OrderByField;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\IndexNameResolverInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationServiceInterface;
 
 /**
  * @internal
@@ -31,10 +28,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityService
 final class OrderByFieldsHandlers
 {
     public function __construct(
-        private IndexNameResolverInterface $indexNameResolver,
-        private IndexEntityServiceInterface $indexEntityService,
-        private CachedSearchIndexMappingServiceInterface $searchIndexMappingService,
-        private PqlAdapterInterface $pqlAdapter,
+        private SearchPqlFieldNameTransformationServiceInterface $fieldNameTransformationService,
     ) {
     }
 
@@ -46,14 +40,9 @@ final class OrderByFieldsHandlers
         $fieldName = $orderByField->getFieldName();
 
         if ($orderByField->isPqlFieldNameResolutionEnabled()) {
-            $indexEntity =  $this->indexEntityService->getByIndexName(
-                $this->indexNameResolver->resolveIndexName($context->getOriginalSearch())
-            );
-            $indexMapping = $this->searchIndexMappingService->getMapping($indexEntity->getIndexName());
-            $fieldName = $this->pqlAdapter->transformFieldName(
+            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch(
+                $context->getOriginalSearch(),
                 $fieldName,
-                $indexMapping,
-                $indexEntity,
                 true
             );
         }
