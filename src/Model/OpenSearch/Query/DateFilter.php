@@ -99,7 +99,7 @@ final readonly class DateFilter implements QueryInterface
     public function getParams(): array
     {
         $params = [
-            'format' => "yyyy-MM-dd'T'HH:mm:ss",
+            'format' => "yyyy-MM-dd'T'HH:mm:ssz",
         ];
         if ($this->onDate) {
             $params['gte'] = $this->getStartOfDay($this->onDate)->format(DateTimeInterface::ATOM);
