@@ -18,40 +18,36 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\Da
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\DateAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\DateRangeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
-use Pimcore\Model\DataObject\ClassDefinition\Data\Date;
 
 /**
  * @internal
  */
-final class DateAdapterTest extends Unit
+final class DateRangeAdapterTest extends Unit
 {
     public function testGetOpenSearchMapping(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
-        $adapter = new DateAdapter(
+        $adapter = new DateRangeAdapter(
             $searchIndexConfigServiceInterfaceMock,
             $fieldDefinitionServiceInterfaceMock
         );
 
-        $fieldDefinition = new Date();
-        $fieldDefinition->setColumnType('datetime');
-        $adapter->setFieldDefinition($fieldDefinition);
-
         $mapping = $adapter->getIndexMapping();
         $this->assertSame([
-            'type' => 'date',
-            'format' => 'strict_date',
-        ], $mapping);
-
-        $fieldDefinition->setColumnType('bigint(20)');
-        $mapping = $adapter->getIndexMapping();
-
-        $this->assertSame([
-            'type' => 'date',
-            'format' => 'strict_date_time_no_millis',
+            'type' => 'object',
+            'properties' => [
+                'start' => [
+                    'type' => 'date',
+                    'format' => 'strict_date_time_no_millis',
+                ],
+                'end' => [
+                    'type' => 'date',
+                    'format' => 'strict_date_time_no_millis',
+                ],
+            ],
         ], $mapping);
     }
 }

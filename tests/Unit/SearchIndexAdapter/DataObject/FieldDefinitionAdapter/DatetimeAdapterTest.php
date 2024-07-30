@@ -18,40 +18,40 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\Da
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\DateAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\DatetimeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
-use Pimcore\Model\DataObject\ClassDefinition\Data\Date;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Datetime;
 
 /**
  * @internal
  */
-final class DateAdapterTest extends Unit
+final class DatetimeAdapterTest extends Unit
 {
     public function testGetOpenSearchMapping(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
-        $adapter = new DateAdapter(
+        $adapter = new DatetimeAdapter(
             $searchIndexConfigServiceInterfaceMock,
             $fieldDefinitionServiceInterfaceMock
         );
 
-        $fieldDefinition = new Date();
-        $fieldDefinition->setColumnType('datetime');
+        $fieldDefinition = new Datetime();
+        $fieldDefinition->setRespectTimezone(true);
         $adapter->setFieldDefinition($fieldDefinition);
 
         $mapping = $adapter->getIndexMapping();
         $this->assertSame([
             'type' => 'date',
-            'format' => 'strict_date',
+            'format' => 'strict_date_time_no_millis',
         ], $mapping);
 
-        $fieldDefinition->setColumnType('bigint(20)');
+        $fieldDefinition->setRespectTimezone(false);
         $mapping = $adapter->getIndexMapping();
 
         $this->assertSame([
             'type' => 'date',
-            'format' => 'strict_date_time_no_millis',
+            'format' => 'strict_date_hour_minute_second',
         ], $mapping);
     }
 }
