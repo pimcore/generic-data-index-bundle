@@ -124,6 +124,20 @@ final class FullTextSearchTest extends \Codeception\Test\Unit
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
+            ->addModifier(new WildcardSearch('fullpath', '*/Test*'))
+        ;
+        $searchResult = $searchService->search($assetSearch);
+        $this->assertEquals([$asset->getId()], $searchResult->getIds());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new WildcardSearch('filename', 'Test*'))
+        ;
+        $searchResult = $searchService->search($assetSearch);
+        $this->assertEquals([$asset->getId()], $searchResult->getIds());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
             ->addModifier(new WildcardSearch('fullPath', '/Test'))
         ;
         $searchResult = $searchService->search($assetSearch);
