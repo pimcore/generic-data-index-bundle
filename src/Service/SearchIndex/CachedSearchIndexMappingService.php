@@ -24,7 +24,7 @@ use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
  */
 final readonly class CachedSearchIndexMappingService implements CachedSearchIndexMappingServiceInterface
 {
-    private const CACHE_KEY = 'gdi_cached_search_index_mappingi';
+    private const CACHE_KEY = 'gdi_cached_search_index_mapping';
 
     public function __construct(
         private RuntimeCacheResolverInterface $runtimeCache,
