@@ -38,7 +38,14 @@ final class KeywordAdapterTest extends Unit
         $mapping = $adapter->getIndexMapping();
         $this->assertSame([
             'type' => 'keyword',
-            'ignore_above' => 10000,
+            'ignore_above' => 8191,
+            'fields' => [
+                'sort' => [
+                    'type' => 'keyword',
+                    'ignore_above' => 8191,
+                    'normalizer' => 'generic_data_index_sort_truncate_normalizer',
+                ],
+            ],
         ], $mapping);
     }
 

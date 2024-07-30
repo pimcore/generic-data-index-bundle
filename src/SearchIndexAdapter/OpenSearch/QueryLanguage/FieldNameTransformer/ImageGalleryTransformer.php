@@ -20,14 +20,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\MappingAnalyzerServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformerInterface;
-use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /**
  * Used for the image gallery data type.
  *
  * @internal
  */
-#[AsTaggedItem(priority: 6)]
 final readonly class ImageGalleryTransformer implements FieldNameTransformerInterface
 {
     public function __construct(

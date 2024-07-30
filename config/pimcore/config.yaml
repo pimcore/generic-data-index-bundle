@@ -41,7 +41,17 @@ pimcore_generic_data_index:
               - lowercase
           generic_data_index_path_analyzer:
             tokenizer: generic_data_index_path_tokenizer
-
+        normalizer:
+          generic_data_index_sort_normalizer:
+            type: custom
+            filter:
+              - lowercase
+          generic_data_index_sort_truncate_normalizer:
+            type: custom
+            char_filter:
+              - generic_data_index_sort_truncate
+            filter:
+              - lowercase
         tokenizer:
           generic_data_index_ngram_tokenzier:
             type: ngram
@@ -52,7 +62,11 @@ pimcore_generic_data_index:
             type: whitespace
           generic_data_index_path_tokenizer:
             type: "path_hierarchy"
-
+        char_filter:
+          generic_data_index_sort_truncate:
+            type: pattern_replace
+            pattern: ^(.{256})(.*)$
+            replacement: $1
     system_fields_settings:
       general:
         id:
@@ -78,18 +92,27 @@ pimcore_generic_data_index:
               type: text
               analyzer: standard
               search_analyzer: generic_data_index_whitespace_analyzer
+            sort:
+              type: keyword
+              normalizer: generic_data_index_sort_normalizer
         path:
           type: text
           analyzer: generic_data_index_path_analyzer
           fields:
             keyword:
               type: keyword
+            sort:
+              type: keyword
+              normalizer: generic_data_index_sort_normalizer
         fullPath:
           type: text
           analyzer: generic_data_index_path_analyzer
           fields:
             keyword:
               type: keyword
+            sort:
+              type: keyword
+              normalizer: generic_data_index_sort_normalizer
         pathLevels:
           type: nested
           properties:
@@ -180,6 +203,10 @@ pimcore_generic_data_index:
           type: boolean
         classname:
           type: keyword
+          fields:
+            sort:
+              type: keyword
+              normalizer: generic_data_index_sort_normalizer
       asset:
         mimetype:
           type: keyword

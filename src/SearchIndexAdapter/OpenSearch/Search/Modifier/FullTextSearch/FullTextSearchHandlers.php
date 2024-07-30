@@ -22,12 +22,19 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\WildcardFi
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\WildcardFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\ElementKeySearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\WildcardSearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationServiceInterface;
 
 /**
  * @internal
  */
-final class FullTextSearchHandlers
+final readonly class FullTextSearchHandlers
 {
+    public function __construct(
+        private SearchPqlFieldNameTransformationServiceInterface $fieldNameTransformationService,
+    ) {
+    }
+
     #[AsSearchModifierHandler]
     public function handleElementKeySearch(
         ElementKeySearch $elementKeySearch,
@@ -43,6 +50,33 @@ final class FullTextSearchHandlers
                     SystemField::KEY->getPath(),
                     $elementKeySearch->getSearchTerm(),
                     WildcardFilterMode::SUFFIX
+                )
+            );
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleWildcardSearch(
+        WildcardSearch $wildcardSearch,
+        SearchModifierContextInterface $context
+    ): void {
+        if (empty($wildcardSearch->getSearchTerm())) {
+            return;
+        }
+
+        $fieldName = $wildcardSearch->getFieldName();
+        if ($wildcardSearch->isPqlFieldNameResolutionEnabled()) {
+            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch(
+                $context->getOriginalSearch(),
+                $fieldName
+            );
+        }
+
+        $context->getSearch()
+            ->addQuery(
+                new WildcardFilter(
+                    $fieldName,
+                    $wildcardSearch->getSearchTerm(),
+                    WildcardFilterMode::BOTH
                 )
             );
     }

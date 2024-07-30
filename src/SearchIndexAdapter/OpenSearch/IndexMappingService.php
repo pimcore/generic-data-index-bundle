@@ -65,6 +65,11 @@ readonly class IndexMappingService implements IndexMappingServiceInterface
                         'type' => AttributeType::KEYWORD->value,
                         'ignore_above' => 1024,
                     ],
+                    'sort' => [
+                        'type' => AttributeType::KEYWORD->value,
+                        'ignore_above' => 8191,
+                        'normalizer' => 'generic_data_index_sort_truncate_normalizer',
+                    ],
                 ]
             ),
         ];

@@ -508,6 +508,7 @@ final class ParserTest extends Unit
         $pqlAdapter = new PqlAdapter(
             $this->makeEmpty(SubQueriesProcessorInterface::class),
             [],
+            [],
             []
         );
 

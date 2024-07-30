@@ -21,14 +21,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\MappingAnalyzerServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameTransformerInterface;
-use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
 /**
  * Used by asset metadata fields to add the default language to the field name.
  *
  * @internal
  */
-#[AsTaggedItem(priority: 9)]
 final readonly class AssetMetadataDefaultLanguageTransformer implements FieldNameTransformerInterface
 {
     public function __construct(

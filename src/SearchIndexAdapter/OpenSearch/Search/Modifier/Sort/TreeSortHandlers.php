@@ -50,7 +50,7 @@ final class TreeSortHandlers
         $context->getSearch()
             ->addSort(
                 new FieldSort(
-                    SystemField::FULL_PATH->getPath('keyword'),
+                    SystemField::FULL_PATH->getPath('sort'),
                     $fullPathSort->getDirection()->value
                 )
             );
