@@ -170,7 +170,6 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
 
         $dataObjectSearch = $searchProvider
             ->createDataObjectSearch()
-            ->setClassDefinition($dataObject1->getClass())
             ->addModifier(new DateFilter('date', Carbon::create('2019', 12, 31), Carbon::create('2020', 1, 15)))
         ;
         $searchResult = $searchService->search($dataObjectSearch);
@@ -178,7 +177,6 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
 
         $dataObjectSearch = $searchProvider
             ->createDataObjectSearch()
-            ->setClassDefinition($dataObject1->getClass())
             ->addModifier(new DateFilter('date', null, null, Carbon::create('2020', 2, 2)))
         ;
         $searchResult = $searchService->search($dataObjectSearch);
@@ -194,7 +192,6 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
 
         $dataObjectSearch = $searchProvider
             ->createDataObjectSearch()
-            ->setClassDefinition($dataObject1->getClass())
             ->addModifier(new DateFilter('standard_fields.date', null, null, Carbon::create('2020', 2, 2), true, false))
         ;
         $searchResult = $searchService->search($dataObjectSearch);
@@ -202,7 +199,6 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
 
         $dataObjectSearch = $searchProvider
             ->createDataObjectSearch()
-            ->setClassDefinition($dataObject1->getClass())
             ->addModifier(new DateFilter('date', null, null, Carbon::create('2020', 2, 2), true, false))
         ;
         $searchResult = $searchService->search($dataObjectSearch);
