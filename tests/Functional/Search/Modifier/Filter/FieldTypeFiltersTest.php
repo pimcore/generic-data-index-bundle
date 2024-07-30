@@ -85,7 +85,7 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
         $this->assertIdArrayEquals([], $searchResult->getIds());
     }
 
-    public function testDateFilter()
+    public function testDateFilterAsset()
     {
         $asset1 = TestHelper::createImageAsset()
             ->addMetadata('testDate', 'date', strtotime('2020-01-01'))
@@ -104,46 +104,101 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
         /** @var SearchProviderInterface $searchProvider */
         $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
 
-        $elementSearch = $searchProvider
+        $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new DateFilter('testDate', Carbon::create('2019', 12, 31)))
-        ;
-        $searchResult = $searchService->search($elementSearch);
+            ->addModifier(new DateFilter('testDate', Carbon::create('2019', 12, 31)));
+        $searchResult = $searchService->search($assetSearch);
         $this->assertIdArrayEquals([$asset1->getId(), $asset2->getId(), $asset3->getId()], $searchResult->getIds());
 
-        $elementSearch = $searchProvider
+        $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new DateFilter('testDate', Carbon::create('2019', 12, 31), Carbon::create('2020', 1, 15)))
-        ;
-        $searchResult = $searchService->search($elementSearch);
+            ->addModifier(new DateFilter('testDate', Carbon::create('2019', 12, 31), Carbon::create('2020', 1, 15)));
+        $searchResult = $searchService->search($assetSearch);
         $this->assertIdArrayEquals([$asset1->getId()], $searchResult->getIds());
 
-        $elementSearch = $searchProvider
+        $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new DateFilter('testDate', null, null, Carbon::create('2020', 2, 2)))
-        ;
-        $searchResult = $searchService->search($elementSearch);
+            ->addModifier(new DateFilter('testDate', null, null, Carbon::create('2020', 2, 2)));
+        $searchResult = $searchService->search($assetSearch);
         $this->assertIdArrayEquals([$asset2->getId()], $searchResult->getIds());
 
-        $elementSearch = $searchProvider
+        $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new DateFilter('testDate', null, null, Carbon::create('2020', 2, 2), false))
-        ;
-        $searchResult = $searchService->search($elementSearch);
+            ->addModifier(new DateFilter('testDate', null, null, Carbon::create('2020', 2, 2), false));
+        $searchResult = $searchService->search($assetSearch);
         $this->assertIdArrayEquals([], $searchResult->getIds());
 
-        $elementSearch = $searchProvider
+        $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new DateFilter('standard_fields.testDate.default', null, null, Carbon::create('2020', 2, 2), true, false))
-        ;
-        $searchResult = $searchService->search($elementSearch);
+            ->addModifier(new DateFilter('standard_fields.testDate.default', null, null, Carbon::create('2020', 2, 2), true, false));
+        $searchResult = $searchService->search($assetSearch);
         $this->assertIdArrayEquals([$asset2->getId()], $searchResult->getIds());
 
-        $elementSearch = $searchProvider
+        $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new DateFilter('testDate', null, null, Carbon::create('2020', 2, 2), true, false))
+            ->addModifier(new DateFilter('testDate', null, null, Carbon::create('2020', 2, 2), true, false));
+        $searchResult = $searchService->search($assetSearch);
+        $this->assertIdArrayEquals([], $searchResult->getIds());
+    }
+    public function testDateFilterDataObject()
+    {
+        $dataObject1 = TestHelper::createEmptyObject()
+            ->setDate(Carbon::create('2020', 1, 1))
+            ->save();
+
+        $dataObject2 = TestHelper::createEmptyObject()
+            ->setDate(Carbon::create('2020', 2, 2, 12))
+            ->save();
+
+        $dataObject3 = TestHelper::createEmptyObject()
+            ->setDate(Carbon::create('2020', 3, 3))
+            ->save();
+
+        /** @var DataObjectSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $dataObjectSearch = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new DateFilter('date', Carbon::create('2019', 12, 31)))
         ;
-        $searchResult = $searchService->search($elementSearch);
+        $searchResult = $searchService->search($dataObjectSearch);
+        $this->assertIdArrayEquals([$dataObject1->getId(), $dataObject2->getId(), $dataObject3->getId()], $searchResult->getIds());
+
+        $dataObjectSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new DateFilter('date', Carbon::create('2019', 12, 31), Carbon::create('2020', 1, 15)))
+        ;
+        $searchResult = $searchService->search($dataObjectSearch);
+        $this->assertIdArrayEquals([$dataObject1->getId()], $searchResult->getIds());
+
+        $dataObjectSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new DateFilter('date', null, null, Carbon::create('2020', 2, 2)))
+        ;
+        $searchResult = $searchService->search($dataObjectSearch);
+        $this->assertIdArrayEquals([$dataObject2->getId()], $searchResult->getIds());
+
+        $dataObjectSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new DateFilter('date', null, null, Carbon::create('2020', 2, 2), false))
+        ;
+        $searchResult = $searchService->search($dataObjectSearch);
+        $this->assertIdArrayEquals([], $searchResult->getIds());
+
+        $dataObjectSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new DateFilter('standard_fields.date', null, null, Carbon::create('2020', 2, 2), true, false))
+        ;
+        $searchResult = $searchService->search($dataObjectSearch);
+        $this->assertIdArrayEquals([$dataObject2->getId()], $searchResult->getIds());
+
+        $dataObjectSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new DateFilter('date', null, null, Carbon::create('2020', 2, 2), true, false))
+        ;
+        $searchResult = $searchService->search($dataObjectSearch);
         $this->assertIdArrayEquals([], $searchResult->getIds());
 
     }
