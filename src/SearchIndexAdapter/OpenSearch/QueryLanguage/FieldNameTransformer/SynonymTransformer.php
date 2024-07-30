@@ -28,7 +28,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLan
 final readonly class SynonymTransformer implements FieldNameTransformerInterface
 {
     private const SYNONYM_FIELDS = [
-        'fullPath' => 'fullpath',
+        'fullpath' => 'fullPath',
     ];
 
     private const SYNONYM_FIELDS_ASSET = [

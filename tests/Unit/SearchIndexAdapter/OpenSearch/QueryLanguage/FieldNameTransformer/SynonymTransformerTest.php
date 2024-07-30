@@ -42,8 +42,8 @@ final class SynonymTransformerTest extends Unit
         );
 
         $this->assertEquals(
-            'fullpath',
-            $transformer->transformFieldName('fullPath', [], null)
+            'fullPath',
+            $transformer->transformFieldName('fullpath', [], null)
         );
 
     }
