@@ -208,8 +208,8 @@ final class Parser implements ParserInterface
             $this->throwParsingException(
                 'a valid value',
                 '`null`',
-                'Operator `' . $operatorToken->value . '` does not support null values')
-            ;
+                'Operator `' . $operatorToken->value . '` does not support null values'
+            );
         }
 
         $this->advance(); // Prepare for next
