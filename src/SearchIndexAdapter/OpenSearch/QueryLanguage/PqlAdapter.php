@@ -45,19 +45,12 @@ final readonly class PqlAdapter implements PqlAdapterInterface
 
     public function translateOperatorToSearchQuery(QueryTokenType $operator, string $field, mixed $value): array
     {
-        if ($operator === QueryTokenType::T_EQ && $value === QueryTokenType::T_NULL) {
-            return $this->createMustNot(['exists' => ['field' => $field]]);
-        }
-        if ($operator === QueryTokenType::T_NEQ && $value === QueryTokenType::T_NULL) {
-            return ['exists' => ['field' => $field]];
+        if ($this->isNullValue($value)) {
+            return $this->handleNullValue($operator, $field);
         }
 
-        // term query works for keyword fields only
-        if ($operator === QueryTokenType::T_EQ && !str_ends_with($field, '.keyword')) {
-            return ['match' => [$field => $value]];
-        }
-        if ($operator === QueryTokenType::T_NEQ && !str_ends_with($field, '.keyword')) {
-            return $this->createMustNot(['match' => [$field => $value]]);
+        if ($this->isMatchComparison($operator, $field)) {
+            return $this->handleMatchComparison($operator, $field, $value);
         }
 
         return match($operator) {
@@ -73,6 +66,47 @@ final readonly class PqlAdapter implements PqlAdapterInterface
             ),
             default => throw new InvalidArgumentException('Unknown operator: ' . $operator->value)
         };
+    }
+
+    private function isNullValue(mixed $value): bool
+    {
+        return $value === QueryTokenType::T_NULL;
+    }
+
+    private function isMatchComparison(QueryTokenType $operator, string $field): bool
+    {
+        return ($operator === QueryTokenType::T_EQ || $operator === QueryTokenType::T_NEQ)
+            && !str_ends_with($field, '.keyword');
+    }
+
+    private function handleMatchComparison(QueryTokenType $operator, string $field, mixed $value): array
+    {
+        if ($operator === QueryTokenType::T_EQ) {
+            return ['match' => [$field => $value]];
+        }
+
+        if ($operator === QueryTokenType::T_NEQ) {
+            return $this->createMustNot(['match' => [$field => $value]]);
+        }
+
+        throw new InvalidArgumentException(
+            'Invalid match comparison operator ' . $operator->value . ' for field ' . $field
+        );
+    }
+
+    private function handleNullValue(QueryTokenType $operator, string $field): array
+    {
+        if ($operator === QueryTokenType::T_EQ) {
+            return $this->createMustNot(['exists' => ['field' => $field]]);
+        }
+
+        if ($operator === QueryTokenType::T_NEQ) {
+            return ['exists' => ['field' => $field]];
+        }
+
+        throw new InvalidArgumentException(
+            'Operator ' . $operator->value . ' does not support for null values'
+        );
     }
 
     private function createMustNot(array $query): array
