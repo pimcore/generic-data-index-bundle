@@ -127,7 +127,7 @@ class PqlFilterTest extends \Codeception\Test\Unit
             'input = empty' => [$object3->getId(), $object4->getId()],
             'input != empty' => [$object1->getId(), $object2->getId()],
             'input = empty and input != ""' => [$object3->getId()],
-            'input is empty or ((number = 10 and input = "test1") or number = 20)' => [$object1->getId(), $object2->getId(), $object3->getId(), $object4->getId()],
+            'input = empty or ((number = 10 and input = "test1") or number = 20)' => [$object1->getId(), $object2->getId(), $object3->getId(), $object4->getId()],
         ];
 
         foreach ($testCases as $query => $expectedIds) {
