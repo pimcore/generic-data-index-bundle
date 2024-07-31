@@ -453,6 +453,19 @@ final class ParserTest extends Unit
         $this->parseQuery('manufacturer:Manufactorer.name = "Jaguar');
     }
 
+    public function testParseError8(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('does not support null values');
+        $this->parseQuery('color > null');
+    }
+    public function testParseError9(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('does not support null values');
+        $this->parseQuery('color like null');
+    }
+
     private function parseQuery(string $query): void
     {
         $parser = $this->createParser();
