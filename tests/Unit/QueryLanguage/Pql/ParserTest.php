@@ -459,6 +459,7 @@ final class ParserTest extends Unit
         $this->expectExceptionMessage('does not support null values');
         $this->parseQuery('color > null');
     }
+
     public function testParseError9(): void
     {
         $this->expectException(ParsingException::class);
