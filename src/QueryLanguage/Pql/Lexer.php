@@ -108,6 +108,7 @@ class Lexer extends AbstractLexer implements LexerInterface
                 break;
             case strtolower($value) === 'null':
                 $typeToken = QueryTokenType::T_NULL;
+
                 break;
             case str_starts_with(strtolower($value), 'query("'):
                 $value = substr($value, 7, -2);
