@@ -41,6 +41,12 @@ final class ParserTest extends Unit
                 'match' => ['color' => 'red'],
             ]
         );
+        $this->assertQueryResult(
+            'color != "red"',
+            [
+                'bool' => ['must_not' => ['match' => ['color' => 'red']]],
+            ]
+        );
 
         $this->assertQueryResult(
             'price > 27',
@@ -94,6 +100,27 @@ final class ParserTest extends Unit
             'name like "Jaguar"',
             [
                 'wildcard' => ['name' => ['value' => 'Jaguar', 'case_insensitive' => true]],
+            ]
+        );
+
+        $this->assertQueryResult(
+            'name not like "*Jaguar*"',
+            [
+                'bool' => ['must_not' => ['wildcard' => ['name' => ['value' => '*Jaguar*', 'case_insensitive' => true]]]],
+            ]
+        );
+
+        $this->assertQueryResult(
+            'color = null',
+            [
+                'bool' => ['must_not' => ['exists' => ['field' => 'color']]],
+            ]
+        );
+
+        $this->assertQueryResult(
+            'color != null',
+            [
+                'exists' => ['field' => 'color'],
             ]
         );
     }
