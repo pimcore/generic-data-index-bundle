@@ -22,25 +22,16 @@ use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\LexerInterface;
 
 /**
  * CONDITION = EXPRESSION | EXPRESSION ("AND" | "OR") EXPRESSION
- *
  * EXPRESSION = "(" CONDITION ")" | COMPARISON | QUERY_STRING_QUERY
- *
  * COMPARISON = FIELDNAME OPERATOR VALUE | RELATION_COMPARISON
- *
  * RELATION_COMPARISON = RELATION_FIELD_NAME OPERATOR VALUE
- *
  * FIELDNAME = IDENTIFIER{.IDENTIFIER}
- *
  * RELATION_FIELD_NAME = FIELDNAME:IDENTIFIER{.FIELDNAME}
- *
  * IDENTIFIER = [a-zA-Z_]\w*
- *
  * OPERATOR = "="|"!="|"<"|">"|">="|"<="|"LIKE"|"NOT LIKE"
- *
  * NULL = "NULL"
- *
- * VALUE = INTEGER | FLOAT | "'" STRING "'" | '"' STRING '"' | NULL
- *
+ * EMPTY = "EMPTY"
+ * VALUE = INTEGER | FLOAT | "'" STRING "'" | '"' STRING '"' | NULL | EMPTY
  * QUERY_STRING_QUERY = 'QUERY("' STRING '")'
  */
 class Lexer extends AbstractLexer implements LexerInterface
@@ -57,7 +48,7 @@ class Lexer extends AbstractLexer implements LexerInterface
 
     private const REGEX_STRING_DOUBLE_QUOTE = '"(?:[^"]|"")*"';
 
-    private const REGEX_NULL = 'null';
+    private const REGEX_EMPTY = 'null|empty';
 
     private const REGEX_OPERATOR = '>=|<=|!=|=|>|<|not like|like';
 
@@ -77,6 +68,7 @@ class Lexer extends AbstractLexer implements LexerInterface
         '(' => QueryTokenType::T_LPAREN,
         ')' => QueryTokenType::T_RPAREN,
         'null' => QueryTokenType::T_NULL,
+        'empty' => QueryTokenType::T_EMPTY,
     ];
 
     /**
@@ -89,7 +81,7 @@ class Lexer extends AbstractLexer implements LexerInterface
             self::REGEX_STRING_SINGLE_QUOTE,
             self::REGEX_STRING_DOUBLE_QUOTE,
             self::REGEX_OPERATOR,
-            self::REGEX_NULL,
+            self::REGEX_EMPTY,
             self::REGEX_RELATION_FIELD,
             self::REGEX_FIELD_NAME,
             self::REGEX_NUMBERS,
@@ -154,7 +146,6 @@ class Lexer extends AbstractLexer implements LexerInterface
             $tokens[] = $this->lookahead;
             $this->moveNext();
         }
-
         return $tokens;
     }
 

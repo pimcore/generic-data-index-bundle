@@ -48,6 +48,10 @@ final readonly class PqlAdapter implements PqlAdapterInterface
             return $this->handleNullValue($operator, $field);
         }
 
+        if ($this->isEmptyValue($value)) {
+            return $this->handleEmptyValue($operator, $field);
+        }
+
         if ($this->isMatchComparison($operator, $field)) {
             return $this->handleMatchComparison($operator, $field, $value);
         }
@@ -70,6 +74,11 @@ final readonly class PqlAdapter implements PqlAdapterInterface
     private function isNullValue(mixed $value): bool
     {
         return $value === QueryTokenType::T_NULL;
+    }
+
+    private function isEmptyValue(mixed $value): bool
+    {
+        return $value === QueryTokenType::T_EMPTY;
     }
 
     private function isMatchComparison(QueryTokenType $operator, string $field): bool
@@ -106,6 +115,18 @@ final readonly class PqlAdapter implements PqlAdapterInterface
         throw new InvalidArgumentException(
             'Operator ' . $operator->value . ' does not support for null values'
         );
+    }
+    private function handleEmptyValue(QueryTokenType $operator, string $field): array
+    {
+
+        return [
+            'bool' => [
+                'should' => [
+                    $this->handleNullValue($operator, $field),
+                    $this->translateOperatorToSearchQuery($operator, $field, '')
+                ],
+            ],
+        ];
     }
 
     private function createMustNot(array $query): array

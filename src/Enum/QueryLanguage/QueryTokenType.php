@@ -23,6 +23,7 @@ enum QueryTokenType: string
     case T_FLOAT = 'T_FLOAT';
     case T_STRING = 'T_STRING';
     case T_NULL = 'T_NULL';
+    case T_EMPTY = 'T_EMPTY';
     case T_FIELDNAME = 'T_FIELDNAME';
     case T_RELATION_FIELD = 'T_RELATION_FIELD';
     case T_AND = 'T_AND';

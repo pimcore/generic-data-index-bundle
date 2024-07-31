@@ -55,6 +55,7 @@ final class Parser implements ParserInterface
     private const VALUE_TOKENS = [
         QueryTokenType::T_STRING,
         QueryTokenType::T_NULL,
+        QueryTokenType::T_EMPTY,
         ...self::NUMERIC_TOKENS,
     ];
 
@@ -197,18 +198,18 @@ final class Parser implements ParserInterface
         $valueToken = $this->currentToken();
         if (!$valueToken || !$valueToken->isA(...self::VALUE_TOKENS)) {
             $this->throwParsingException(
-                'a string, numeric value or null',
+                'a string, numeric value or a empty/null keyword',
                 '`' . ($valueToken['value'] ?? 'null') . '`'
             );
         }
 
         if (!$operatorToken->isA(QueryTokenType::T_EQ, QueryTokenType::T_NEQ)
-            && $valueToken->isA(QueryTokenType::T_NULL)
+            && $valueToken->isA(QueryTokenType::T_NULL, QueryTokenType::T_EMPTY)
         ) {
             $this->throwParsingException(
                 'a valid value',
-                '`null`',
-                'Operator `' . $operatorToken->value . '` does not support null values'
+                '`' . ($valueToken['value'] ?? 'null') . '`',
+                'Operator `' . $operatorToken->value . '` does not support null/empty values'
             );
         }
 
@@ -232,6 +233,9 @@ final class Parser implements ParserInterface
 
         $value = $valueToken->isA(QueryTokenType::T_NULL) ?
             QueryTokenType::T_NULL : $value;
+
+        $value = $valueToken->isA(QueryTokenType::T_EMPTY) ?
+            QueryTokenType::T_EMPTY : $value;
 
         return $this->pqlAdapter->translateOperatorToSearchQuery($operatorTokenType, $field, $value);
     }
