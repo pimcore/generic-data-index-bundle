@@ -15,21 +15,36 @@ FIELDNAME = IDENTIFIER{.IDENTIFIER}
 RELATION_FIELD_NAME = FIELDNAME:ENTITYNAME.FIELDNAME      
 IDENTIFIER = [a-zA-Z_]\w*
 ENTITYNAME = [a-zA-Z_]\w*
-OPERATOR = "="|"<"|">"|">="|"<="|"LIKE"
-VALUE = INTEGER | FLOAT | "'" STRING "'" | '"' STRING '"'
+OPERATOR = "="|"!="|"<"|">"|">="|"<="|"LIKE"|"NOT LIKE"
+NULL = "NULL"
+VALUE = INTEGER | FLOAT | "'" STRING "'" | '"' STRING '"' | NULL
 QUERY_STRING_QUERY = "QUERY('" STRING "')"
 ```
 
 ### Operators
 
-| Operator | Description                                                                                                            | Examples                                     |
-|----------|------------------------------------------------------------------------------------------------------------------------|----------------------------------------------|
-| `=`        | equal                                                                                                                  | `field = "value"`                            |
-| `<`        | smaller than                                                                                                           | `field < 100`                                |
-| `<=`       | smaller or equal than                                                                                                  | `field <= 100`                               |
-| `=>`       | bigger or equal than                                                                                                   | `field >= 100`                               |
-| `>`        | bigger than                                                                                                            | `field > 100`                                |
-| `LIKE`     | equal with wildcard support<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em> | `field like "val*"`<br/>`field like "val?e"` |
+| Operator   | Description                                                                                                                | Examples                                             |
+|------------|----------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
+| `=`        | equal                                                                                                                      | `field = "value"`                                    |
+| `!=`       | not equal                                                                                                                  | `field != "value"`                                   |
+| `<`        | smaller than                                                                                                               | `field < 100`                                        |
+| `<=`       | smaller or equal than                                                                                                      | `field <= 100`                                       |
+| `=>`       | bigger or equal than                                                                                                       | `field >= 100`                                       |
+| `>`        | bigger than                                                                                                                | `field > 100`                                        |
+| `LIKE`     | equal with wildcard support<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em>     | `field like "val*"`<br/>`field like "val?e"`         |
+| `NOT LIKE` | not equal with wildcard support<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em> | `field not like "val*"`<br/>`field not like "val?e"` |
+
+### Searching for NULL values
+
+To search for NULL values use the `NULL` keyword. This can be used with the `=` and `!=` operators to search for fields without value. Keep in mind that there could be a difference between `NULL` and an empty string.
+
+**Examples:**
+
+```
+field = NULL
+field != NULL
+field = NULL OR field = '' # search for NULL or empty string
+```
 
 ### AND / OR / Brackets
 
@@ -98,14 +113,14 @@ The PQL allows passing OpenSearch [query string queries](https://opensearch.org/
 
 All examples are based on the `Car` data object class of the [Pimcore Demo](https://pimcore.com/en/try).
 
-| Query                                                               | Description                                                                                                               | 
-|---------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
-| `series = "E-Type" AND (color = "green" OR productionYear < 1965)`  | All E-Type models which are green or produced before 1965.                                                                |
-| `manufacturer:Manufacturer.name = "Alfa" and productionYear > 1965` | All Alfa cars produced after 1965.                                                                                        |
+| Query                                                               | Description                                                                                                                | 
+|---------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `series = "E-Type" AND (color = "green" OR productionYear < 1965)`  | All E-Type models which are green or produced before 1965.                                                                 |
+| `manufacturer:Manufacturer.name = "Alfa" and productionYear > 1965` | All Alfa cars produced after 1965.                                                                                         |
 | `genericImages:Asset.fullPath like "/Car Images/vw/*"`              | All cars with a image linked in the `genericImages` image gallery which is contained in the asset folder `/Car Images/vw`. |
-| `color = "red" or color = "blue"`                                   | All red or blue cars using standard PQL syntax.                                                                           |
-| `Query("standard_fields.color:(red or blue)")`                      | All red or blue cars using simple query string syntax.                                                                    |
-
+| `color = "red" or color = "blue"`                                   | All red or blue cars using standard PQL syntax.                                                                            |
+| `series = null or series = ''`                                      | All models where the series is empty.                                                                                      |
+| `Query("standard_fields.color:(red or blue)")`                      | All red or blue cars using simple query string syntax.                                                                     |
 
 ## Limitations
 
