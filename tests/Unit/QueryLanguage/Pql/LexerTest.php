@@ -36,9 +36,19 @@ final class LexerTest extends Unit
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
             ],
+            'my_field != "foo"' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
+                ['type' => QueryTokenType::T_NEQ, 'value' => '!='],
+                ['type' => QueryTokenType::T_STRING, 'value' => 'foo'],
+            ],
             'my_field LIKE "foo*"' => [
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_LIKE, 'value' => 'LIKE'],
+                ['type' => QueryTokenType::T_STRING, 'value' => 'foo*'],
+            ],
+            'my_field NOT LIKE "foo*"' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
+                ['type' => QueryTokenType::T_NOT_LIKE, 'value' => 'NOT LIKE'],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'foo*'],
             ],
             'my_field >= 42' => [
@@ -89,6 +99,11 @@ final class LexerTest extends Unit
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_FLOAT, 'value' => '42.42'],
+            ],
+            'my_field = null' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
+                ['type' => QueryTokenType::T_EQ, 'value' => '='],
+                ['type' => QueryTokenType::T_NULL, 'value' => 'null'],
             ],
         ];
 
@@ -297,6 +312,16 @@ final class LexerTest extends Unit
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'age'],
                 ['type' => QueryTokenType::T_GTE, 'value' => '>='],
                 ['type' => QueryTokenType::T_INTEGER, 'value' => '42'],
+            ],
+            'my_field LIKE "LIKE" AND my_field != "!=")' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
+                ['type' => QueryTokenType::T_LIKE, 'value' => 'LIKE'],
+                ['type' => QueryTokenType::T_STRING, 'value' => 'LIKE'],
+                ['type' => QueryTokenType::T_AND, 'value' => 'AND'],
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
+                ['type' => QueryTokenType::T_NEQ, 'value' => '!='],
+                ['type' => QueryTokenType::T_STRING, 'value' => '!='],
+                ['type' => QueryTokenType::T_RPAREN, 'value' => ')'],
             ],
         ];
 
