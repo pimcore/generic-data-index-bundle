@@ -105,6 +105,11 @@ final class LexerTest extends Unit
                 ['type' => QueryTokenType::T_EQ, 'value' => '='],
                 ['type' => QueryTokenType::T_NULL, 'value' => 'null'],
             ],
+            'my_field = empty' => [
+                ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
+                ['type' => QueryTokenType::T_EQ, 'value' => '='],
+                ['type' => QueryTokenType::T_EMPTY, 'value' => 'empty'],
+            ],
         ];
 
         foreach ($testCases as $testCase => $expected) {

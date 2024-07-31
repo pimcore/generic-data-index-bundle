@@ -123,6 +123,30 @@ final class ParserTest extends Unit
                 'exists' => ['field' => 'color'],
             ]
         );
+
+        $this->assertQueryResult(
+            'color = empty',
+            [
+                'bool' => [
+                    'should' => [
+                        ['bool' => ['must_not' => ['exists' => ['field' => 'color']]]],
+                        ['match' => ['color' => '']],
+                    ]
+                ]
+            ]
+        );
+
+        $this->assertQueryResult(
+            'color != empty',
+            [
+                'bool' => [
+                    'should' => [
+                        ['exists' => ['field' => 'color']],
+                        ['bool' => ['must_not' => ['match' => ['color' => '']]]],
+                    ]
+                ]
+            ]
+        );
     }
 
     public function testParseCondition(): void
