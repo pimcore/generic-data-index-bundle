@@ -17,7 +17,8 @@ IDENTIFIER = [a-zA-Z_]\w*
 ENTITYNAME = [a-zA-Z_]\w*
 OPERATOR = "="|"!="|"<"|">"|">="|"<="|"LIKE"|"NOT LIKE"
 NULL = "NULL"
-VALUE = INTEGER | FLOAT | "'" STRING "'" | '"' STRING '"' | NULL
+EMPTY = "EMPTY"
+VALUE = INTEGER | FLOAT | "'" STRING "'" | '"' STRING '"' | NULL | EMPTY
 QUERY_STRING_QUERY = "QUERY('" STRING "')"
 ```
 
