@@ -34,16 +34,17 @@ QUERY_STRING_QUERY = "QUERY('" STRING "')"
 | `LIKE`     | equal with wildcard support<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em>     | `field like "val*"`<br/>`field like "val?e"`         |
 | `NOT LIKE` | not equal with wildcard support<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em> | `field not like "val*"`<br/>`field not like "val?e"` |
 
-### Searching for NULL values
+### Searching for null and empty values
 
-To search for NULL values use the `NULL` keyword. This can be used with the `=` and `!=` operators to search for fields without value. Keep in mind that there could be a difference between `NULL` and an empty string.
+To search for `null` and empty values use the `NULL`/`EMPTY` keywords. Those can be used with the `=` and `!=` operators to search for fields without value. Keep in mind that there can be a difference between `NULL` and an empty string. The `EMPTY` keyword is a shortcut for `NULL` or an empty string.
 
 **Examples:**
 
 ```
 field = NULL
 field != NULL
-field = NULL OR field = '' # search for NULL or empty string
+field = EMPTY # same as: field = NULL OR field = ''
+field != EMPTY # same as: field != NULL AND field != ''
 ```
 
 ### AND / OR / Brackets

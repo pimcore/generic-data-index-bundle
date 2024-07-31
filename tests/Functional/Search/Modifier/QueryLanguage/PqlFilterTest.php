@@ -123,6 +123,7 @@ class PqlFilterTest extends \Codeception\Test\Unit
             'input != null' => [$object1->getId(), $object2->getId(), $object4->getId()],
             'input != ""' => [$object1->getId(), $object2->getId(), $object3->getId()],
             'input = "" or input = null' => [$object3->getId(), $object4->getId()],
+            'input != "" and input != null' => [$object1->getId(), $object2->getId()],
 
             'input = empty' => [$object3->getId(), $object4->getId()],
             'input != empty' => [$object1->getId(), $object2->getId()],
