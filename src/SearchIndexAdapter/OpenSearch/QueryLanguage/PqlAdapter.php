@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Qu
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\ServiceTag;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\QueryLanguage\QueryTokenType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\Query;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\ParseResultSubQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\SubQueryResultList;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
@@ -44,20 +45,39 @@ final readonly class PqlAdapter implements PqlAdapterInterface
 
     public function translateOperatorToSearchQuery(QueryTokenType $operator, string $field, mixed $value): array
     {
+        if ($operator === QueryTokenType::T_EQ && $value === QueryTokenType::T_NULL) {
+            return $this->createMustNot(['exists' => ['field' => $field]]);
+        }
+        if ($operator === QueryTokenType::T_NEQ && $value === QueryTokenType::T_NULL) {
+            return ['exists' => ['field' => $field]];
+        }
+
         // term query works for keyword fields only
         if ($operator === QueryTokenType::T_EQ && !str_ends_with($field, '.keyword')) {
             return ['match' => [$field => $value]];
         }
+        if ($operator === QueryTokenType::T_NEQ && !str_ends_with($field, '.keyword')) {
+            return $this->createMustNot(['match' => [$field => $value]]);
+        }
 
         return match($operator) {
             QueryTokenType::T_EQ  => ['term' => [$field => $value]],
+            QueryTokenType::T_NEQ  => ['bool' => ['must_not' => ['term' => [$field => $value]]]],
             QueryTokenType::T_GT => ['range' => [$field => ['gt' => $value]]],
             QueryTokenType::T_LT => ['range' => [$field => ['lt' => $value]]],
             QueryTokenType::T_GTE => ['range' => [$field => ['gte' => $value]]],
             QueryTokenType::T_LTE => ['range' => [$field => ['lte' => $value]]],
             QueryTokenType::T_LIKE => ['wildcard' => [$field => ['value' => $value, 'case_insensitive' => true]]],
+            QueryTokenType::T_NOT_LIKE => $this->createMustNot(
+                ['wildcard' => [$field => ['value' => $value, 'case_insensitive' => true]]]
+            ),
             default => throw new InvalidArgumentException('Unknown operator: ' . $operator->value)
         };
+    }
+
+    private function createMustNot(array $query): array
+    {
+        return ['bool' => ['must_not' => $query]];
     }
 
     public function translateToQueryStringQuery(string $query): array

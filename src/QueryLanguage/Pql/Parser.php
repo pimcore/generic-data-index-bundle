@@ -38,16 +38,24 @@ final class Parser implements ParserInterface
 
     private const OPERATOR_TOKENS = [
         QueryTokenType::T_EQ,
+        QueryTokenType::T_NEQ,
         QueryTokenType::T_GT,
         QueryTokenType::T_LT,
         QueryTokenType::T_GTE,
         QueryTokenType::T_LTE,
         QueryTokenType::T_LIKE,
+        QueryTokenType::T_NOT_LIKE,
     ];
 
     private const NUMERIC_TOKENS = [
         QueryTokenType::T_INTEGER,
         QueryTokenType::T_FLOAT,
+    ];
+
+    private const VALUE_TOKENS = [
+        QueryTokenType::T_STRING,
+        QueryTokenType::T_NULL,
+        ...self::NUMERIC_TOKENS,
     ];
 
     private int $index = 0;
@@ -187,8 +195,21 @@ final class Parser implements ParserInterface
 
         // Adjusting expectation for the value type to include both strings and numerics
         $valueToken = $this->currentToken();
-        if (!$valueToken || !$valueToken->isA(QueryTokenType::T_STRING, ...self::NUMERIC_TOKENS)) {
-            $this->throwParsingException('a string or numeric value', '`' . ($valueToken['value'] ?? 'null') . '`');
+        if (!$valueToken || !$valueToken->isA(...self::VALUE_TOKENS)) {
+            $this->throwParsingException(
+                'a string, numeric value or null',
+                '`' . ($valueToken['value'] ?? 'null') . '`'
+            );
+        }
+
+        if (!$operatorToken->isA(QueryTokenType::T_EQ, QueryTokenType::T_NEQ)
+            && $valueToken->isA(QueryTokenType::T_NULL)
+        ) {
+            $this->throwParsingException(
+                'a valid value',
+                '`null`',
+                'Operator `' . $operatorToken->value . '` does not support null values')
+            ;
         }
 
         $this->advance(); // Prepare for next
@@ -208,6 +229,9 @@ final class Parser implements ParserInterface
         $value = $valueToken->isA(...self::NUMERIC_TOKENS)
             ? $this->stringToNumber($valueToken->value)
             : $valueToken->value;
+
+        $value = $valueToken->isA(QueryTokenType::T_NULL) ?
+            QueryTokenType::T_NULL : $value;
 
         return $this->pqlAdapter->translateOperatorToSearchQuery($operatorTokenType, $field, $value);
     }
