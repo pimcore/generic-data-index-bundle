@@ -37,7 +37,7 @@ QUERY_STRING_QUERY = "QUERY('" STRING "')"
 
 ### Null/Empty Values
 
-To search for null and empty values use the `NULL`/`EMPTY` keywords. Those can be used with the `=` and `!=` operators to search for fields without value. Keep in mind that there can be a difference between `NULL` and an empty string. The `EMPTY` keyword is a shortcut for `NULL` or an empty string.
+To search for null and empty values use the `NULL`/`EMPTY` keywords. Those can be used together with the `=` and `!=` operators to search for fields without value. Keep in mind that there can be a difference between `NULL` and an empty string. The `EMPTY` keyword is a shortcut for `NULL` or an empty string.
 
 **Examples:**
 
