@@ -313,7 +313,8 @@ final class LexerTest extends Unit
                 ['type' => QueryTokenType::T_GTE, 'value' => '>='],
                 ['type' => QueryTokenType::T_INTEGER, 'value' => '42'],
             ],
-            'my_field LIKE "LIKE" AND my_field != "!=")' => [
+            '(my_field LIKE "LIKE" AND my_field != "!=")' => [
+                ['type' => QueryTokenType::T_LPAREN, 'value' => '('],
                 ['type' => QueryTokenType::T_FIELDNAME, 'value' => 'my_field'],
                 ['type' => QueryTokenType::T_LIKE, 'value' => 'LIKE'],
                 ['type' => QueryTokenType::T_STRING, 'value' => 'LIKE'],
