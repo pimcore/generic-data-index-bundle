@@ -94,18 +94,20 @@ final class DeploymentReindexCommand extends AbstractCommand
                         '<info>Updated following ClassDefinitions: [%s]</info>',
                         implode(', ', $updatedIds)
                     ),
-                    OutputInterface::VERBOSITY_VERBOSE
+                    OutputInterface::VERBOSITY_NORMAL
                 );
 
                 $output->writeln(
                     '<info>Dispatch queue messages</info>',
-                    OutputInterface::VERBOSITY_VERBOSE
+                    OutputInterface::VERBOSITY_NORMAL
                 );
 
                 $this->enqueueService->dispatchQueueMessages(true);
+            } else {
+                $output->writeln('<info>No updates needed - everything is up to date</info>', OutputInterface::VERBOSITY_NORMAL);
             }
 
-            $output->writeln('<info>Finished</info>', OutputInterface::VERBOSITY_VERBOSE);
+            $output->writeln('<info>Finished</info>', OutputInterface::VERBOSITY_NORMAL);
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
         } finally {
