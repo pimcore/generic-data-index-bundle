@@ -146,6 +146,7 @@ class Lexer extends AbstractLexer implements LexerInterface
             $tokens[] = $this->lookahead;
             $this->moveNext();
         }
+
         return $tokens;
     }
 

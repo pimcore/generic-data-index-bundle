@@ -116,6 +116,7 @@ final readonly class PqlAdapter implements PqlAdapterInterface
             'Operator ' . $operator->value . ' does not support for null values'
         );
     }
+
     private function handleEmptyValue(QueryTokenType $operator, string $field): array
     {
 
@@ -123,7 +124,7 @@ final readonly class PqlAdapter implements PqlAdapterInterface
             'bool' => [
                 'should' => [
                     $this->handleNullValue($operator, $field),
-                    $this->translateOperatorToSearchQuery($operator, $field, '')
+                    $this->translateOperatorToSearchQuery($operator, $field, ''),
                 ],
             ],
         ];
