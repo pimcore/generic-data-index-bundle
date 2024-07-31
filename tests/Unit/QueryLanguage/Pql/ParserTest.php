@@ -131,8 +131,8 @@ final class ParserTest extends Unit
                     'should' => [
                         ['bool' => ['must_not' => ['exists' => ['field' => 'color']]]],
                         ['match' => ['color' => '']],
-                    ]
-                ]
+                    ],
+                ],
             ]
         );
 
@@ -143,8 +143,8 @@ final class ParserTest extends Unit
                     'should' => [
                         ['exists' => ['field' => 'color']],
                         ['bool' => ['must_not' => ['match' => ['color' => '']]]],
-                    ]
-                ]
+                    ],
+                ],
             ]
         );
     }
