@@ -63,6 +63,22 @@ class Lexer extends AbstractLexer implements LexerInterface
 
     private const REGEX_PARANTHESES = '\(|\)';
 
+    private const TOKEN_MAP = [
+        '=' => QueryTokenType::T_EQ,
+        '!=' => QueryTokenType::T_NEQ,
+        '>' => QueryTokenType::T_GT,
+        '<' => QueryTokenType::T_LT,
+        '>=' => QueryTokenType::T_GTE,
+        '<=' => QueryTokenType::T_LTE,
+        'like' => QueryTokenType::T_LIKE,
+        'not like' => QueryTokenType::T_NOT_LIKE,
+        'and' => QueryTokenType::T_AND,
+        'or' => QueryTokenType::T_OR,
+        '(' => QueryTokenType::T_LPAREN,
+        ')' => QueryTokenType::T_RPAREN,
+        'null' => QueryTokenType::T_NULL,
+    ];
+
     /**
      * Lexical catchable patterns.
      */
@@ -106,61 +122,13 @@ class Lexer extends AbstractLexer implements LexerInterface
                 $typeToken = QueryTokenType::T_STRING;
 
                 break;
-            case strtolower($value) === 'null':
-                $typeToken = QueryTokenType::T_NULL;
-
-                break;
             case str_starts_with(strtolower($value), 'query("'):
                 $value = substr($value, 7, -2);
                 $typeToken = QueryTokenType::T_QUERY_STRING;
 
                 break;
-            case $value === '(':
-                $typeToken = QueryTokenType::T_LPAREN;
-
-                break;
-            case $value === ')':
-                $typeToken = QueryTokenType::T_RPAREN;
-
-                break;
-            case strtolower($value) === 'and':
-                $typeToken = QueryTokenType::T_AND;
-
-                break;
-            case strtolower($value) === 'or':
-                $typeToken = QueryTokenType::T_OR;
-
-                break;
-            case $value === '=':
-                $typeToken = QueryTokenType::T_EQ;
-
-                break;
-            case $value === '!=':
-                $typeToken = QueryTokenType::T_NEQ;
-
-                break;
-            case $value === '>':
-                $typeToken = QueryTokenType::T_GT;
-
-                break;
-            case $value === '<':
-                $typeToken = QueryTokenType::T_LT;
-
-                break;
-            case $value === '>=':
-                $typeToken = QueryTokenType::T_GTE;
-
-                break;
-            case $value === '<=':
-                $typeToken = QueryTokenType::T_LTE;
-
-                break;
-            case strtolower($value) === 'like':
-                $typeToken = QueryTokenType::T_LIKE;
-
-                break;
-            case strtolower($value) === 'not like':
-                $typeToken = QueryTokenType::T_NOT_LIKE;
+            case isset(self::TOKEN_MAP[strtolower($value)]):
+                $typeToken = self::TOKEN_MAP[strtolower($value)];
 
                 break;
             case preg_match('#' . self::REGEX_RELATION_FIELD . '#', $value):
