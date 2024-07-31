@@ -122,7 +122,7 @@ final readonly class PqlAdapter implements PqlAdapterInterface
 
         return [
             'bool' => [
-                'should' => [
+                'filter' => [
                     $this->handleNullValue($operator, $field),
                     $this->translateOperatorToSearchQuery($operator, $field, ''),
                 ],

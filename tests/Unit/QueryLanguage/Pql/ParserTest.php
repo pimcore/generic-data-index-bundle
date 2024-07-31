@@ -140,7 +140,7 @@ final class ParserTest extends Unit
             'color != empty',
             [
                 'bool' => [
-                    'should' => [
+                    'filter' => [
                         ['exists' => ['field' => 'color']],
                         ['bool' => ['must_not' => ['match' => ['color' => '']]]],
                     ],
