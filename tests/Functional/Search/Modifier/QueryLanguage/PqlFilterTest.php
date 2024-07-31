@@ -120,7 +120,7 @@ class PqlFilterTest extends \Codeception\Test\Unit
 
             'input = null' => [$object3->getId()],
             'input = ""' => [$object4->getId()],
-            'input != null' => [$object1->getId(), $object2->getId()],
+            'input != null' => [$object1->getId(), $object2->getId(), $object4->getId()],
             'input != ""' => [$object1->getId(), $object2->getId(), $object3->getId()],
         ];
 
