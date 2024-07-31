@@ -60,12 +60,22 @@ final class ReindexItemsCommand extends AbstractCommand
         }
 
         try {
+            $output->writeln(
+                '<info>Reindex all indices</info>',
+                OutputInterface::VERBOSITY_NORMAL
+            );
+
             $this->reindexService->reindexAllIndices();
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
         } finally {
             $this->release();
         }
+
+        $output->writeln(
+            '<info>Finished</info>',
+            OutputInterface::VERBOSITY_NORMAL
+        );
 
         return self::SUCCESS;
     }

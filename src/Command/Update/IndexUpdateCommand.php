@@ -148,7 +148,7 @@ final class IndexUpdateCommand extends AbstractCommand
                         '<info>Update index and indices for ClassDefinition with id %s</info>',
                         $classDefinitionId
                     ),
-                    OutputInterface::VERBOSITY_VERBOSE
+                    OutputInterface::VERBOSITY_NORMAL
                 );
 
                 $this
@@ -165,7 +165,7 @@ final class IndexUpdateCommand extends AbstractCommand
             try {
                 $output->writeln(
                     '<info>Update asset index</info>',
-                    OutputInterface::VERBOSITY_VERBOSE
+                    OutputInterface::VERBOSITY_NORMAL
                 );
 
                 $this
@@ -180,7 +180,7 @@ final class IndexUpdateCommand extends AbstractCommand
             try {
                 $this->output->writeln(
                     '<info>Update all mappings and indices for objects/assets</info>',
-                    OutputInterface::VERBOSITY_VERBOSE
+                    OutputInterface::VERBOSITY_NORMAL
                 );
 
                 $this
@@ -193,7 +193,7 @@ final class IndexUpdateCommand extends AbstractCommand
 
         $this->output->writeln(
             '<info>Dispatch queue messages</info>',
-            OutputInterface::VERBOSITY_VERBOSE
+            OutputInterface::VERBOSITY_NORMAL
         );
 
         $this->enqueueService->dispatchQueueMessages(true);
@@ -201,7 +201,7 @@ final class IndexUpdateCommand extends AbstractCommand
 
         $this->release();
 
-        $this->output->writeln('<info>Finished</info>', OutputInterface::VERBOSITY_VERBOSE);
+        $this->output->writeln('<info>Finished</info>', OutputInterface::VERBOSITY_NORMAL);
 
         return self::SUCCESS;
     }
