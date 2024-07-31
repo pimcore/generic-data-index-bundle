@@ -401,14 +401,14 @@ final class ParserTest extends Unit
     public function testParseError4(): void
     {
         $this->expectException(ParsingException::class);
-        $this->expectExceptionMessage('Expected a string or numeric value, found `red`');
+        $this->expectExceptionMessage('Expected a string, numeric value or null, found `red`');
         $this->parseQuery('color = red');
     }
 
     public function testParseError5(): void
     {
         $this->expectException(ParsingException::class);
-        $this->expectExceptionMessage('Expected a string or numeric value, found `(`');
+        $this->expectExceptionMessage('Expected a string, numeric value or null, found `(`');
         $this->parseQuery('color = (Color.name = red)');
     }
 
@@ -422,7 +422,7 @@ final class ParserTest extends Unit
     public function testParseError7(): void
     {
         $this->expectException(ParsingException::class);
-        $this->expectExceptionMessage('Expected a string or numeric value, found `"`');
+        $this->expectExceptionMessage('Expected a string, numeric value or null, found `"`');
         $this->parseQuery('manufacturer:Manufactorer.name = "Jaguar');
     }
 
