@@ -120,9 +120,17 @@ final readonly class PqlAdapter implements PqlAdapterInterface
     private function handleEmptyValue(QueryTokenType $operator, string $field): array
     {
 
+        $boolCondition = match ($operator) {
+            QueryTokenType::T_EQ => 'should',
+            QueryTokenType::T_NEQ => 'filter',
+            default => throw new InvalidArgumentException(
+                'Operator ' . $operator->value . ' does not support for empty values'
+            )
+        };
+
         return [
             'bool' => [
-                'filter' => [
+                $boolCondition => [
                     $this->handleNullValue($operator, $field),
                     $this->translateOperatorToSearchQuery($operator, $field, ''),
                 ],
