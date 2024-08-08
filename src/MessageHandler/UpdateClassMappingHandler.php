@@ -18,9 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\MessageHandler;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateClassMappingMessage;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -36,9 +34,7 @@ final class UpdateClassMappingHandler
 
     public function __construct(
         private readonly DataObjectIndexHandler $dataObjectMappingHandler,
-        private readonly DataObjectTypeAdapter $dataObjectTypeAdapter,
         private readonly EnqueueServiceInterface $enqueueService,
-        private readonly SearchIndexServiceInterface $searchIndexService,
         private readonly SettingsStoreServiceInterface $settingsStoreService,
     ) {
     }
@@ -59,20 +55,11 @@ final class UpdateClassMappingHandler
             return;
         }
 
-        $alias = $this->dataObjectTypeAdapter->getAliasIndexName($classDefinition);
-        if (!$this->searchIndexService->existsAlias($alias)) {
-            $this->dataObjectMappingHandler
-                ->updateMapping(
-                    context: $classDefinition,
-                    mappingProperties: $mappingProperties
-                );
-        } else {
-            $this->dataObjectMappingHandler
-                ->reindexMapping(
-                    context: $classDefinition,
-                    mappingProperties: $mappingProperties
-                );
-        }
+        $this->dataObjectMappingHandler
+            ->reindexMapping(
+                context: $classDefinition,
+                mappingProperties: $mappingProperties
+            );
 
         $this->settingsStoreService->storeClassMapping(
             classDefinitionId: $classDefinition->getId(),
