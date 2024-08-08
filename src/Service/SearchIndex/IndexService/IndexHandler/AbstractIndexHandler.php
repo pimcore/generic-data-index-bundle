@@ -66,6 +66,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?array $mappingProperties = null
     ): void {
         $alias = $this->getAliasIndexName($context);
+        $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
+
         if (!$this->searchIndexService->existsAlias($alias)) {
             $this->updateMapping(
                 context: $context,
@@ -74,7 +76,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         } else {
             $this->searchIndexService->reindex(
                 $alias,
-                $mappingProperties ?: $this->extractMappingProperties($context)
+                $mappingProperties
             );
         }
 
