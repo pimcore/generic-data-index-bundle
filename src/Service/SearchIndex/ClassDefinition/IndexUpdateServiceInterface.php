@@ -22,7 +22,7 @@ use Pimcore\Model\DataObject\ClassDefinition;
 /**
  * @internal
  */
-interface ClassDefinitionIndexUpdateServiceInterface
+interface IndexUpdateServiceInterface
 {
     /**
      * @throws ClassDefinitionIndexUpdateFailedException

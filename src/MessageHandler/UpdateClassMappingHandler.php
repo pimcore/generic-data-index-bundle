@@ -18,7 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\MessageHandler;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateClassMappingMessage;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionIndexUpdateServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\IndexUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -33,7 +33,7 @@ final class UpdateClassMappingHandler
 
     public function __construct(
         private readonly EnqueueServiceInterface $enqueueService,
-        private readonly ClassDefinitionIndexUpdateServiceInterface $classDefinitionIndexUpdateService,
+        private readonly IndexUpdateServiceInterface $classDefinitionIndexUpdateService,
     ) {
     }
 

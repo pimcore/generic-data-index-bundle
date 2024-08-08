@@ -17,7 +17,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Exception;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionIndexUpdateServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\IndexUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DocumentIndexHandler;
@@ -33,7 +33,7 @@ final readonly class ReindexService implements ReindexServiceInterface
         private AssetIndexHandler $assetIndexHandler,
         private DocumentIndexHandler $documentIndexHandler,
         private EnqueueServiceInterface $enqueueService,
-        private ClassDefinitionIndexUpdateServiceInterface $classDefinitionIndexUpdateService,
+        private IndexUpdateServiceInterface $classDefinitionIndexUpdateService,
     ) {
 
     }

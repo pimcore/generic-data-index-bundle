@@ -21,6 +21,7 @@ use Pimcore\Extension\Bundle\Exception\RuntimeException;
 /**
  * @internal
  */
-final class ClassDefinitionIndexUpdateFailedException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
+final class ClassDefinitionIndexUpdateFailedException
+    extends RuntimeException implements GenericDataIndexBundleExceptionInterface
 {
 }
