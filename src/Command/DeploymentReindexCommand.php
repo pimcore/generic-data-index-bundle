@@ -21,7 +21,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningExcepti
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionIndexUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -39,7 +38,6 @@ final class DeploymentReindexCommand extends AbstractCommand
     public function __construct(
         private readonly DataObjectIndexHandler $indexHandler,
         private readonly EnqueueServiceInterface $enqueueService,
-        private readonly ReindexServiceInterface $reindexService,
         private readonly SettingsStoreServiceInterface $settingsStoreService,
         private readonly ClassDefinitionIndexUpdateServiceInterface $classDefinitionIndexUpdateService,
         string $name = null
