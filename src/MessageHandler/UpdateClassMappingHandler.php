@@ -18,9 +18,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\MessageHandler;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateClassMappingMessage;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionIndexUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -33,9 +32,8 @@ final class UpdateClassMappingHandler
     use LoggerAwareTrait;
 
     public function __construct(
-        private readonly DataObjectIndexHandler $dataObjectMappingHandler,
         private readonly EnqueueServiceInterface $enqueueService,
-        private readonly SettingsStoreServiceInterface $settingsStoreService,
+        private readonly ClassDefinitionIndexUpdateServiceInterface $classDefinitionIndexUpdateService,
     ) {
     }
 
@@ -47,30 +45,18 @@ final class UpdateClassMappingHandler
         $classDefinition = $message->getClassDefinition();
         $dispatch = $message->isDispatchQueueMessages();
 
-        $mappingProperties = $this->dataObjectMappingHandler->getMappingProperties($classDefinition);
-        $currentCheckSum = $this->dataObjectMappingHandler->getClassMappingCheckSum($mappingProperties);
-        $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
-
-        if ($storedCheckSum === $currentCheckSum) {
-            return;
-        }
-
-        $this->dataObjectMappingHandler
-            ->reindexMapping(
-                context: $classDefinition,
-                mappingProperties: $mappingProperties
-            );
-
-        $this->settingsStoreService->storeClassMapping(
-            classDefinitionId: $classDefinition->getId(),
-            data: $this->dataObjectMappingHandler->getClassMappingCheckSum(
-                $mappingProperties
-            )
+        $changed = $this->classDefinitionIndexUpdateService->reindexClassDefinition(
+            $classDefinition,
+            true,
+            $dispatch
         );
+
+        if (!$changed) {
+           return;
+        }
 
         if ($dispatch) {
             $this->enqueueService
-                ->enqueueByClassDefinition($classDefinition)
                 ->dispatchQueueMessages();
         }
     }

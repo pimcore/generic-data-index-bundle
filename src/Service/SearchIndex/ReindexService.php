@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionIndexUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
@@ -36,6 +37,7 @@ final readonly class ReindexService implements ReindexServiceInterface
         private DataObjectIndexHandler $dataObjectIndexHandler,
         private EnqueueServiceInterface $enqueueService,
         private SettingsStoreServiceInterface $settingsStoreService,
+        private ClassDefinitionIndexUpdateServiceInterface $classDefinitionIndexUpdateService,
     ) {
 
     }
@@ -85,25 +87,11 @@ final readonly class ReindexService implements ReindexServiceInterface
         ClassDefinition $classDefinition,
         bool $enqueueElements = true
     ): ReindexService {
-        $mappingProperties = $this->dataObjectIndexHandler->getMappingProperties($classDefinition);
-
-        $this
-            ->dataObjectIndexHandler
-            ->reindexMapping(
-                context: $classDefinition,
-                mappingProperties: $mappingProperties
-            );
-
-        $this->settingsStoreService->storeClassMapping(
-            classDefinitionId: $classDefinition->getId(),
-            data: $this->dataObjectIndexHandler->getClassMappingCheckSum($mappingProperties)
+        $this->classDefinitionIndexUpdateService->reindexClassDefinition(
+            $classDefinition,
+            false,
+            $enqueueElements
         );
-
-        if ($enqueueElements) {
-            $this
-                ->enqueueService
-                ->enqueueByClassDefinition($classDefinition);
-        }
 
         return $this;
     }
