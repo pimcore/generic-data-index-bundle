@@ -18,7 +18,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\MessageHandler;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateClassMappingMessage;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -34,46 +36,55 @@ final class UpdateClassMappingHandler
 
     public function __construct(
         private readonly DataObjectIndexHandler $dataObjectMappingHandler,
+        private readonly DataObjectTypeAdapter $dataObjectTypeAdapter,
         private readonly EnqueueServiceInterface $enqueueService,
+        private readonly SearchIndexServiceInterface $searchIndexService,
         private readonly SettingsStoreServiceInterface $settingsStoreService,
     ) {
     }
 
+    /**
+     * @throws Exception
+     */
     public function __invoke(UpdateClassMappingMessage $message): void
     {
         $classDefinition = $message->getClassDefinition();
         $dispatch = $message->isDispatchQueueMessages();
 
-        try {
-            $mappingProperties = $this->dataObjectMappingHandler->getMappingProperties($classDefinition);
-            $currentCheckSum = $this->dataObjectMappingHandler->getClassMappingCheckSum($mappingProperties);
-            $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
+        $mappingProperties = $this->dataObjectMappingHandler->getMappingProperties($classDefinition);
+        $currentCheckSum = $this->dataObjectMappingHandler->getClassMappingCheckSum($mappingProperties);
+        $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
 
-            if ($storedCheckSum === $currentCheckSum) {
-                return;
-            }
+        if ($storedCheckSum === $currentCheckSum) {
+            return;
+        }
 
+        $alias = $this->dataObjectTypeAdapter->getAliasIndexName($classDefinition);
+        if (!$this->searchIndexService->existsAlias($alias)) {
+            $this->dataObjectMappingHandler
+                ->updateMapping(
+                    context: $classDefinition,
+                    mappingProperties: $mappingProperties
+                );
+        } else {
             $this->dataObjectMappingHandler
                 ->reindexMapping(
                     context: $classDefinition,
                     mappingProperties: $mappingProperties
                 );
+        }
 
-            $this->settingsStoreService->storeClassMapping(
-                classDefinitionId: $classDefinition->getId(),
-                data: $this->dataObjectMappingHandler->getClassMappingCheckSum(
-                    $mappingProperties
-                )
-            );
+        $this->settingsStoreService->storeClassMapping(
+            classDefinitionId: $classDefinition->getId(),
+            data: $this->dataObjectMappingHandler->getClassMappingCheckSum(
+                $mappingProperties
+            )
+        );
 
-            if ($dispatch) {
-                $this->enqueueService
-                    ->enqueueByClassDefinition($classDefinition)
-                    ->dispatchQueueMessages();
-            }
-
-        } catch (Exception $exception) {
-            $this->logger->error('Updating class definition mapping failed: ' . $exception);
+        if ($dispatch) {
+            $this->enqueueService
+                ->enqueueByClassDefinition($classDefinition)
+                ->dispatchQueueMessages();
         }
     }
 }
