@@ -50,6 +50,7 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
     private ?int $modificationDate;
 
     private string $className;
+
     private ?string $icon;
 
     private bool $workflowWithPermissions;
@@ -246,7 +247,6 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 
         return $this;
     }
-
 
     public function isHasWorkflowWithPermissions(): bool
     {
