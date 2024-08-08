@@ -77,5 +77,5 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingService
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\IndexUpdateServiceInterface:
-        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\IndexUpdateService
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService

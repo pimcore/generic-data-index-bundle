@@ -26,7 +26,7 @@ use Pimcore\Model\DataObject\ClassDefinition;
 /**
  * @internal
  */
-final readonly class IndexUpdateService implements IndexUpdateServiceInterface
+final readonly class ClassDefinitionReindexService implements ClassDefinitionReindexServiceInterface
 {
     public function __construct(
         private DataObjectIndexHandler $dataObjectIndexHandler,

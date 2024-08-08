@@ -18,7 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Command;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\IndexUpdateServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -35,7 +35,7 @@ final class DeploymentReindexCommand extends AbstractCommand
 
     public function __construct(
         private readonly EnqueueServiceInterface $enqueueService,
-        private readonly IndexUpdateServiceInterface $classDefinitionIndexUpdateService,
+        private readonly ClassDefinitionReindexServiceInterface $classDefinitionReindexService,
         string $name = null
     ) {
         parent::__construct($name);
@@ -69,7 +69,7 @@ final class DeploymentReindexCommand extends AbstractCommand
             $classes = $classesList->load();
 
             foreach ($classes as $classDefinition) {
-                $updated = $this->classDefinitionIndexUpdateService
+                $updated = $this->classDefinitionReindexService
                     ->reindexClassDefinition($classDefinition, true, true)
                 ;
 
