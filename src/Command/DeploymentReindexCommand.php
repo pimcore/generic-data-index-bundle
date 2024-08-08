@@ -20,7 +20,6 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionIndexUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -36,7 +35,6 @@ final class DeploymentReindexCommand extends AbstractCommand
     use LockableTrait;
 
     public function __construct(
-        private readonly DataObjectIndexHandler $indexHandler,
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly SettingsStoreServiceInterface $settingsStoreService,
         private readonly ClassDefinitionIndexUpdateServiceInterface $classDefinitionIndexUpdateService,
