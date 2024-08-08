@@ -41,6 +41,7 @@ enum SystemField: string
     case PARENT_TAGS = 'parentTags';
     case MIME_TYPE = 'mimetype';
     case CLASS_NAME = 'className';
+    case ICON = 'icon';
     case CHECKSUM = 'checksum';
     case USER_OWNER = 'userOwner';
     case USER_MODIFICATION = 'userModification';

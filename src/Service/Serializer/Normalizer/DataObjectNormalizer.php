@@ -92,6 +92,9 @@ final class DataObjectNormalizer implements NormalizerInterface
         ];
     }
 
+    /**
+     * @throws Exception
+     */
     private function normalizeSystemFields(AbstractObject $dataObject, bool $skipLazyLoadedFields): array
     {
         $pathLevels = $this->extractPathLevels($dataObject);
@@ -115,6 +118,7 @@ final class DataObjectNormalizer implements NormalizerInterface
         if ($dataObject instanceof Concrete) {
             $result = array_merge($result, [
                 SystemField::CLASS_NAME->value => $dataObject->getClassName(),
+                SystemField::ICON->value => $dataObject->getClass()->getIcon() ?: null,
                 SystemField::PUBLISHED->value => $dataObject->getPublished(),
             ]);
         }
