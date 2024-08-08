@@ -68,9 +68,9 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         $alias = $this->getAliasIndexName($context);
         if (!$this->searchIndexService->existsAlias($alias)) {
             $this->updateMapping(
-                    context: $context,
-                    mappingProperties: $mappingProperties
-                );
+                context: $context,
+                mappingProperties: $mappingProperties
+            );
         } else {
             $this->searchIndexService->reindex(
                 $alias,
