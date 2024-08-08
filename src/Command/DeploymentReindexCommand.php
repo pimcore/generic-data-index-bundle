@@ -18,10 +18,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Command;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Component\Console\Command\LockableTrait;
@@ -36,10 +34,8 @@ final class DeploymentReindexCommand extends AbstractCommand
     use LockableTrait;
 
     public function __construct(
-        private readonly DataObjectIndexHandler $indexHandler,
         private readonly EnqueueServiceInterface $enqueueService,
-        private readonly ReindexServiceInterface $reindexService,
-        private readonly SettingsStoreServiceInterface $settingsStoreService,
+        private readonly ClassDefinitionReindexServiceInterface $classDefinitionReindexService,
         string $name = null
     ) {
         parent::__construct($name);
@@ -73,18 +69,12 @@ final class DeploymentReindexCommand extends AbstractCommand
             $classes = $classesList->load();
 
             foreach ($classes as $classDefinition) {
-                $classDefinitionId = $classDefinition->getId();
-                $currentCheckSum = $this->indexHandler->getClassMappingCheckSum(
-                    $this->indexHandler->getMappingProperties($classDefinition)
-                );
-                $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinitionId);
+                $updated = $this->classDefinitionReindexService
+                    ->reindexClassDefinition($classDefinition, true, true)
+                ;
 
-                if ($storedCheckSum !== $currentCheckSum) {
-                    $updatedIds[] = $classDefinitionId;
-
-                    $this
-                        ->reindexService
-                        ->reindexClassDefinition($classDefinition);
+                if ($updated) {
+                    $updatedIds[] = $classDefinition->getId();
                 }
             }
 
