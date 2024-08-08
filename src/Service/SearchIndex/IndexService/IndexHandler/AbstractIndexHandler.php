@@ -73,7 +73,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                 );
         } else {
             $this->searchIndexService->reindex(
-                $this->getAliasIndexName($context),
+                $alias,
                 $mappingProperties ?: $this->extractMappingProperties($context)
             );
         }
