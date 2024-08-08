@@ -65,10 +65,21 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): void {
-        $this->searchIndexService->reindex(
-            $this->getAliasIndexName($context),
-            $mappingProperties ?: $this->extractMappingProperties($context)
-        );
+        $alias = $this->getAliasIndexName($context);
+        $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
+
+        if (!$this->searchIndexService->existsAlias($alias)) {
+            $this->updateMapping(
+                context: $context,
+                mappingProperties: $mappingProperties
+            );
+        } else {
+            $this->searchIndexService->reindex(
+                $alias,
+                $mappingProperties
+            );
+        }
+
         $this->createGlobalIndexAliases($context);
     }
 
