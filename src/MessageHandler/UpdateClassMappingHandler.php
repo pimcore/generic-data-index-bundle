@@ -52,7 +52,7 @@ final class UpdateClassMappingHandler
         );
 
         if (!$changed) {
-           return;
+            return;
         }
 
         if ($dispatch) {
