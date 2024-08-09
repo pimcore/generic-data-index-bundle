@@ -51,7 +51,7 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 
     private string $className;
 
-    private ?string $icon;
+    private ?string $classDefinitionIcon;
 
     private bool $workflowWithPermissions;
 
@@ -236,14 +236,14 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
         return $this;
     }
 
-    public function getIcon(): ?string
+    public function getClassDefinitionIcon(): ?string
     {
-        return $this->icon;
+        return $this->classDefinitionIcon;
     }
 
-    public function setIcon(?string $icon): DataObjectSearchResultItem
+    public function setClassDefinitionIcon(?string $classDefinitionIcon): DataObjectSearchResultItem
     {
-        $this->icon = $icon;
+        $this->classDefinitionIcon = $classDefinitionIcon;
 
         return $this;
     }

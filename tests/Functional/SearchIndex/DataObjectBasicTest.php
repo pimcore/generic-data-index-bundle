@@ -268,7 +268,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
 
         $indexName = $this->tester->getIndexName($object->getClassName());
         $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
-        $updatedIcon = $response['_source']['system_fields']['icon'];
+        $updatedIcon = $response['_source']['system_fields']['classDefinitionIcon'];
 
         $this->assertEquals($newIcon, $updatedIcon);
     }

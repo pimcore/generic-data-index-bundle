@@ -118,7 +118,7 @@ final class DataObjectNormalizer implements NormalizerInterface
         if ($dataObject instanceof Concrete) {
             $result = array_merge($result, [
                 SystemField::CLASS_NAME->value => $dataObject->getClassName(),
-                SystemField::ICON->value => $dataObject->getClass()->getIcon() ?: null,
+                SystemField::CLASS_DEFINITION_ICON->value => $dataObject->getClass()->getIcon() ?: null,
                 SystemField::PUBLISHED->value => $dataObject->getPublished(),
             ]);
         }

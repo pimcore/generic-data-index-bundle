@@ -39,7 +39,7 @@ final readonly class IndexIconUpdateService implements IndexIconUpdateServiceInt
             'refresh' => true,
             'body' => [
                 'script' => [
-                    'source' => 'ctx._source.system_fields.icon = params.icon',
+                    'source' => 'ctx._source.system_fields.classDefinitionIcon = params.icon',
                     'lang' => 'painless',
                     'params' => [
                         'icon' => $icon,
@@ -56,7 +56,7 @@ final readonly class IndexIconUpdateService implements IndexIconUpdateServiceInt
         return [
             'bool' => [
                 'filter' => [
-                    'exists' => ['field' => SystemField::ICON->getPath()],
+                    'exists' => ['field' => SystemField::CLASS_DEFINITION_ICON->getPath()],
                 ],
             ],
         ];
@@ -70,14 +70,14 @@ final readonly class IndexIconUpdateService implements IndexIconUpdateServiceInt
                     [
                         'bool' => [
                             'must_not' => [
-                                'exists' => ['field' => SystemField::ICON->getPath()],
+                                'exists' => ['field' => SystemField::CLASS_DEFINITION_ICON->getPath()],
                             ],
                         ],
                     ],
                     [
                         'bool' => [
                             'must_not' => [
-                                'term' => [SystemField::ICON->getPath() => $icon],
+                                'term' => [SystemField::CLASS_DEFINITION_ICON->getPath() => $icon],
                             ],
                         ],
                     ],
