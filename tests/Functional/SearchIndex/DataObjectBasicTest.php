@@ -256,7 +256,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $class->setIcon($newIcon);
         $class->save();
 
-        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+        $this->tester->runCommand('messenger:consume', ['--limit'=>1], ['pimcore_generic_data_index_queue']);
 
         $indexName = $this->tester->getIndexName($object->getClassName());
         $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
