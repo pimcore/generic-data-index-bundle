@@ -22,6 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPro
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Db;
+use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\MappingTest;
@@ -250,9 +251,16 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
     public function testClassDefinitionIconChange(): void
     {
         $object = TestHelper::createEmptyObject();
-        $class = $object->getClass();
 
-        $newIcon = '/new-icon.svg';
+        $this->classDefinitionIconChangeTest($object, '/my-icon.svg');
+        $this->classDefinitionIconChangeTest($object, '/my-new-icon.svg');
+        $this->classDefinitionIconChangeTest($object, null);
+        $this->classDefinitionIconChangeTest($object, '/my-final-icon.svg');
+    }
+
+    private function classDefinitionIconChangeTest(Concrete $object, ?string $newIcon): void
+    {
+        $class = $object->getClass();
         $class->setIcon($newIcon);
         $class->save();
 
