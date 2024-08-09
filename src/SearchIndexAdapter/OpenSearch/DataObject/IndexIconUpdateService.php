@@ -1,6 +1,19 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Pimcore
+ *
+ * This source file is available under two different licenses:
+ * - GNU General Public License version 3 (GPLv3)
+ * - Pimcore Commercial License (PCL)
+ * Full copyright and license information is available in
+ * LICENSE.md which is distributed with this source code.
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
+ *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ */
+
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject;
 
 use OpenSearch\Client;
@@ -29,11 +42,11 @@ final readonly class IndexIconUpdateService implements IndexIconUpdateServiceInt
                     'source' => 'ctx._source.system_fields.icon = params.icon',
                     'lang' => 'painless',
                     'params' => [
-                        'icon' => $icon
-                    ]
+                        'icon' => $icon,
+                    ],
                 ],
-                'query' => $query
-            ]
+                'query' => $query,
+            ],
         ];
         $this->openSearchClient->updateByQuery($params);
     }
@@ -43,9 +56,9 @@ final readonly class IndexIconUpdateService implements IndexIconUpdateServiceInt
         return [
             'bool' => [
                 'filter' => [
-                    'exists' => ['field' => SystemField::ICON->getPath()]
-                ]
-            ]
+                    'exists' => ['field' => SystemField::ICON->getPath()],
+                ],
+            ],
         ];
     }
 
@@ -57,20 +70,20 @@ final readonly class IndexIconUpdateService implements IndexIconUpdateServiceInt
                     [
                         'bool' => [
                             'must_not' => [
-                                'exists' => ['field' => SystemField::ICON->getPath()]
-                            ]
-                        ]
+                                'exists' => ['field' => SystemField::ICON->getPath()],
+                            ],
+                        ],
                     ],
                     [
                         'bool' => [
                             'must_not' => [
-                                'term' => [SystemField::ICON->getPath() => $icon]
-                            ]
-                        ]
-                    ]
+                                'term' => [SystemField::ICON->getPath() => $icon],
+                            ],
+                        ],
+                    ],
                 ],
-                'minimum_should_match' => 1
-            ]
+                'minimum_should_match' => 1,
+            ],
         ];
     }
 }
