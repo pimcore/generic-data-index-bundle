@@ -247,6 +247,24 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->assertArrayNotHasKey('mappingTest', $standardFields);
     }
 
+    public function testClassDefinitionIconChange(): void
+    {
+        $object = TestHelper::createEmptyObject();
+        $class = $object->getClass();
+
+        $newIcon = '/new-icon.svg';
+        $class->setIcon($newIcon);
+        $class->save();
+
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+
+        $indexName = $this->tester->getIndexName($object->getClassName());
+        $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
+        $updatedIcon = $response['_source']['system_fields']['icon'];
+
+        $this->assertEquals($newIcon, $updatedIcon);
+    }
+
     private function assertIdArrayEquals(array $ids1, array $ids2)
     {
         sort($ids1);
