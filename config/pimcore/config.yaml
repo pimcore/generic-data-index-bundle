@@ -207,6 +207,8 @@ pimcore_generic_data_index:
             sort:
               type: keyword
               normalizer: generic_data_index_sort_normalizer
+        classDefinitionIcon:
+          type: keyword
       asset:
         mimetype:
           type: keyword

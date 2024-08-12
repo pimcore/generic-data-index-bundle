@@ -18,6 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinit
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
@@ -32,6 +33,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         private DataObjectIndexHandler $dataObjectIndexHandler,
         private EnqueueServiceInterface $enqueueService,
         private SettingsStoreServiceInterface $settingsStoreService,
+        private IndexIconUpdateServiceInterface $indexIconUpdateService,
     ) {
     }
 
@@ -41,19 +43,28 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         bool $enqueueItems = false,
     ): bool {
         try {
-            $changed = $this->reindexMapping($classDefinition, $skipIfClassNotChanged);
+            $mappingChanged = $this->reindexMapping($classDefinition, $skipIfClassNotChanged);
+            $this->changeIcon($classDefinition);
 
-            if ($changed && $enqueueItems) {
+            if ($mappingChanged && $enqueueItems) {
                 $this->enqueueService->enqueueByClassDefinition($classDefinition);
             }
 
-            return $changed;
+            return $mappingChanged;
         } catch (Exception $exception) {
             throw new ClassDefinitionIndexUpdateFailedException(
                 message: $exception->getMessage(),
                 previous: $exception
             );
         }
+    }
+
+    private function changeIcon(ClassDefinition $classDefinition): void
+    {
+        $this->indexIconUpdateService->updateIcon(
+            $this->dataObjectIndexHandler->getCurrentFullIndexName($classDefinition),
+            $classDefinition->getIcon() ?: null
+        );
     }
 
     /**

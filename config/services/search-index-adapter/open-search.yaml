@@ -72,3 +72,8 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameValidator\:
         resource: '../../../src/SearchIndexAdapter/OpenSearch/QueryLanguage/FieldNameValidator'
         tags: ['pimcore.generic_data_index.pql_field_name_validator']
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\IndexIconUpdateService
+        arguments:
+            $openSearchClient: '@generic-data-index.opensearch-client'
