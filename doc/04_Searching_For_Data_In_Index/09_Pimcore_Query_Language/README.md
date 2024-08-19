@@ -24,16 +24,16 @@ QUERY_STRING_QUERY = "QUERY('" STRING "')"
 
 ### Operators
 
-| Operator   | Description                                                                                                                | Examples                                             |
-|------------|----------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
-| `=`        | equal                                                                                                                      | `field = "value"`                                    |
-| `!=`       | not equal                                                                                                                  | `field != "value"`                                   |
-| `<`        | smaller than                                                                                                               | `field < 100`                                        |
-| `<=`       | smaller or equal than                                                                                                      | `field <= 100`                                       |
-| `=>`       | bigger or equal than                                                                                                       | `field >= 100`                                       |
-| `>`        | bigger than                                                                                                                | `field > 100`                                        |
-| `LIKE`     | equal with wildcard support<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em>     | `field like "val*"`<br/>`field like "val?e"`         |
-| `NOT LIKE` | not equal with wildcard support<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em> | `field not like "val*"`<br/>`field not like "val?e"` |
+| Operator   | Description                                                                                                                               | Examples                                             |
+|------------|-------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
+| `=`        | equal (case-sensitive)                                                                                                                    | `field = "value"`                                    |
+| `!=`       | not equal (case-sensitive)                                                                                                                | `field != "value"`                                   |
+| `<`        | smaller than                                                                                                                              | `field < 100`                                        |
+| `<=`       | smaller or equal than                                                                                                                     | `field <= 100`                                       |
+| `=>`       | bigger or equal than                                                                                                                      | `field >= 100`                                       |
+| `>`        | bigger than                                                                                                                               | `field > 100`                                        |
+| `LIKE`     | equal with wildcard support (case-insensitive)<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em> | `field like "val*"`<br/>`field like "val?e"`         |
+| `NOT LIKE` | not equal with wildcard support (case-insensitive)<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em>                | `field not like "val*"`<br/>`field not like "val?e"` |
 
 ### Null/Empty Values
 
