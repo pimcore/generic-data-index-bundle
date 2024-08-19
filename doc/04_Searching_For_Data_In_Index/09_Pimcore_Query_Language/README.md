@@ -15,21 +15,38 @@ FIELDNAME = IDENTIFIER{.IDENTIFIER}
 RELATION_FIELD_NAME = FIELDNAME:ENTITYNAME.FIELDNAME      
 IDENTIFIER = [a-zA-Z_]\w*
 ENTITYNAME = [a-zA-Z_]\w*
-OPERATOR = "="|"<"|">"|">="|"<="|"LIKE"
-VALUE = INTEGER | FLOAT | "'" STRING "'" | '"' STRING '"'
+OPERATOR = "="|"!="|"<"|">"|">="|"<="|"LIKE"|"NOT LIKE"
+NULL = "NULL"
+EMPTY = "EMPTY"
+VALUE = INTEGER | FLOAT | "'" STRING "'" | '"' STRING '"' | NULL | EMPTY
 QUERY_STRING_QUERY = "QUERY('" STRING "')"
 ```
 
 ### Operators
 
-| Operator | Description                                                                                                            | Examples                                     |
-|----------|------------------------------------------------------------------------------------------------------------------------|----------------------------------------------|
-| `=`        | equal                                                                                                                  | `field = "value"`                            |
-| `<`        | smaller than                                                                                                           | `field < 100`                                |
-| `<=`       | smaller or equal than                                                                                                  | `field <= 100`                               |
-| `=>`       | bigger or equal than                                                                                                   | `field >= 100`                               |
-| `>`        | bigger than                                                                                                            | `field > 100`                                |
-| `LIKE`     | equal with wildcard support<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em> | `field like "val*"`<br/>`field like "val?e"` |
+| Operator   | Description                                                                                                                               | Examples                                             |
+|------------|-------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
+| `=`        | equal (case-sensitive)                                                                                                                    | `field = "value"`                                    |
+| `!=`       | not equal (case-sensitive)                                                                                                                | `field != "value"`                                   |
+| `<`        | smaller than                                                                                                                              | `field < 100`                                        |
+| `<=`       | smaller or equal than                                                                                                                     | `field <= 100`                                       |
+| `=>`       | bigger or equal than                                                                                                                      | `field >= 100`                                       |
+| `>`        | bigger than                                                                                                                               | `field > 100`                                        |
+| `LIKE`     | equal with wildcard support (case-insensitive)<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em> | `field like "val*"`<br/>`field like "val?e"`         |
+| `NOT LIKE` | not equal with wildcard support (case-insensitive)<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em>                | `field not like "val*"`<br/>`field not like "val?e"` |
+
+### Null/Empty Values
+
+To search for null and empty values use the `NULL`/`EMPTY` keywords. Those can be used together with the `=` and `!=` operators to search for fields without value. Keep in mind that there can be a difference between `NULL` and an empty string. The `EMPTY` keyword is a shortcut for `NULL` or an empty string.
+
+**Examples:**
+
+```
+field = NULL
+field != NULL
+field = EMPTY # same as: field = NULL OR field = ''
+field != EMPTY # same as: field != NULL AND field != ''
+```
 
 ### AND / OR / Brackets
 
@@ -40,7 +57,7 @@ You can combine multiple conditions using the `AND` and `OR` operators. You can 
 ```
 field1 = "value1" AND field2 = "value2"
 field1 = "value1" AND (field2 = "value2" OR field3 = "value3")
-(field1 = "value1" AND (field2 = "value2" OR field3 = "value3")) or field4 = "value4"
+(field1 = "value1" AND (field2 = "value2" OR field3 = "value3")) OR field4 = "value4"
 ```
 
 
@@ -98,19 +115,20 @@ The PQL allows passing OpenSearch [query string queries](https://opensearch.org/
 
 All examples are based on the `Car` data object class of the [Pimcore Demo](https://pimcore.com/en/try).
 
-| Query                                                               | Description                                                                                                               | 
-|---------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
-| `series = "E-Type" AND (color = "green" OR productionYear < 1965)`  | All E-Type models which are green or produced before 1965.                                                                |
-| `manufacturer:Manufacturer.name = "Alfa" and productionYear > 1965` | All Alfa cars produced after 1965.                                                                                        |
-| `genericImages:Asset.fullPath like "/Car Images/vw/*"`              | All cars with a image linked in the `genericImages` image gallery which is contained in the asset folder `/Car Images/vw`. |
-| `color = "red" or color = "blue"`                                   | All red or blue cars using standard PQL syntax.                                                                           |
-| `Query("standard_fields.color:(red or blue)")`                      | All red or blue cars using simple query string syntax.                                                                    |
-
+| Query                                                               | Description                                                                                                                | 
+|---------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `series = "E-Type" AND (color = "green" OR productionYear < 1965)`  | All E-Type models which are green or produced before 1965.                                                                 |
+| `manufacturer:Manufacturer.name = "Alfa" AND productionYear > 1965` | All Alfa cars produced after 1965.                                                                                         |
+| `genericImages:Asset.fullPath LIKE "/Car Images/vw/*"`              | All cars with a image linked in the `genericImages` image gallery which is contained in the asset folder `/Car Images/vw`. |
+| `color = "red" OR color = "blue"`                                   | All red or blue cars using standard PQL syntax.                                                                            |
+| `series = empty AND color="red"`                                    | All models where the series is empty and the color is red.                                                                 |
+| `Query("standard_fields.color:(red OR blue)")`                      | All red or blue cars using simple query string syntax.                                                                     |
 
 ## Limitations
 
 * When searching for related elements the maximum possible results amount of sub queries is 65.000, see also [terms query documentation](https://opensearch.org/docs/latest/query-dsl/term/terms/).
 * Filtering for asset metadata fields is only possible if they are defined as predefined asset metadata or via the asset metadata class definitions bundle. Custom asset metadata fields directly defined on single assets are not supported.
+* Reserved keywords (`AND`, `OR`, `LIKE`, `NOT LIKE`, `NULL`, `EMPTY`) cannot be used as field names.
 
 ## Further Reading
 

@@ -22,23 +22,16 @@ use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\LexerInterface;
 
 /**
  * CONDITION = EXPRESSION | EXPRESSION ("AND" | "OR") EXPRESSION
- *
  * EXPRESSION = "(" CONDITION ")" | COMPARISON | QUERY_STRING_QUERY
- *
  * COMPARISON = FIELDNAME OPERATOR VALUE | RELATION_COMPARISON
- *
  * RELATION_COMPARISON = RELATION_FIELD_NAME OPERATOR VALUE
- *
  * FIELDNAME = IDENTIFIER{.IDENTIFIER}
- *
  * RELATION_FIELD_NAME = FIELDNAME:IDENTIFIER{.FIELDNAME}
- *
  * IDENTIFIER = [a-zA-Z_]\w*
- *
- * OPERATOR = "="|"<"|">"|">="|"<="|"LIKE"
- *
- * VALUE = INTEGER | FLOAT | "'" STRING "'" | '"' STRING '"'
- *
+ * OPERATOR = "="|"!="|"<"|">"|">="|"<="|"LIKE"|"NOT LIKE"
+ * NULL = "NULL"
+ * EMPTY = "EMPTY"
+ * VALUE = INTEGER | FLOAT | "'" STRING "'" | '"' STRING '"' | NULL | EMPTY
  * QUERY_STRING_QUERY = 'QUERY("' STRING '")'
  */
 class Lexer extends AbstractLexer implements LexerInterface
@@ -55,9 +48,28 @@ class Lexer extends AbstractLexer implements LexerInterface
 
     private const REGEX_STRING_DOUBLE_QUOTE = '"(?:[^"]|"")*"';
 
-    private const REGEX_OPERATOR = '>=|<=|=|>|<|like';
+    private const REGEX_EMPTY = 'null|empty';
+
+    private const REGEX_OPERATOR = '>=|<=|!=|=|>|<|not like|like';
 
     private const REGEX_PARANTHESES = '\(|\)';
+
+    private const TOKEN_MAP = [
+        '=' => QueryTokenType::T_EQ,
+        '!=' => QueryTokenType::T_NEQ,
+        '>' => QueryTokenType::T_GT,
+        '<' => QueryTokenType::T_LT,
+        '>=' => QueryTokenType::T_GTE,
+        '<=' => QueryTokenType::T_LTE,
+        'like' => QueryTokenType::T_LIKE,
+        'not like' => QueryTokenType::T_NOT_LIKE,
+        'and' => QueryTokenType::T_AND,
+        'or' => QueryTokenType::T_OR,
+        '(' => QueryTokenType::T_LPAREN,
+        ')' => QueryTokenType::T_RPAREN,
+        'null' => QueryTokenType::T_NULL,
+        'empty' => QueryTokenType::T_EMPTY,
+    ];
 
     /**
      * Lexical catchable patterns.
@@ -66,12 +78,13 @@ class Lexer extends AbstractLexer implements LexerInterface
     {
         return [
             self::REGEX_QUERY_STRING,
-            self::REGEX_RELATION_FIELD,
-            self::REGEX_FIELD_NAME,
-            self::REGEX_NUMBERS,
             self::REGEX_STRING_SINGLE_QUOTE,
             self::REGEX_STRING_DOUBLE_QUOTE,
             self::REGEX_OPERATOR,
+            self::REGEX_EMPTY,
+            self::REGEX_RELATION_FIELD,
+            self::REGEX_FIELD_NAME,
+            self::REGEX_NUMBERS,
             self::REGEX_PARANTHESES,
         ];
     }
@@ -106,44 +119,8 @@ class Lexer extends AbstractLexer implements LexerInterface
                 $typeToken = QueryTokenType::T_QUERY_STRING;
 
                 break;
-            case $value === '(':
-                $typeToken = QueryTokenType::T_LPAREN;
-
-                break;
-            case $value === ')':
-                $typeToken = QueryTokenType::T_RPAREN;
-
-                break;
-            case strtolower($value) === 'and':
-                $typeToken = QueryTokenType::T_AND;
-
-                break;
-            case strtolower($value) === 'or':
-                $typeToken = QueryTokenType::T_OR;
-
-                break;
-            case $value === '=':
-                $typeToken = QueryTokenType::T_EQ;
-
-                break;
-            case $value === '>':
-                $typeToken = QueryTokenType::T_GT;
-
-                break;
-            case $value === '<':
-                $typeToken = QueryTokenType::T_LT;
-
-                break;
-            case $value === '>=':
-                $typeToken = QueryTokenType::T_GTE;
-
-                break;
-            case $value === '<=':
-                $typeToken = QueryTokenType::T_LTE;
-
-                break;
-            case strtolower($value) === 'like':
-                $typeToken = QueryTokenType::T_LIKE;
+            case isset(self::TOKEN_MAP[strtolower($value)]):
+                $typeToken = self::TOKEN_MAP[strtolower($value)];
 
                 break;
             case preg_match('#' . self::REGEX_RELATION_FIELD . '#', $value):

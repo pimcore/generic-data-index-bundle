@@ -48,6 +48,10 @@ class PqlFilterTest extends \Codeception\Test\Unit
         $object1 = TestHelper::createEmptyObject();
         /** @var Unittest $object2 */
         $object2 = TestHelper::createEmptyObject();
+        /** @var Unittest $object3 */
+        $object3= TestHelper::createEmptyObject();
+        /** @var Unittest $object4 */
+        $object4= TestHelper::createEmptyObject();
 
         $object1
             ->setInput('test1')
@@ -59,6 +63,16 @@ class PqlFilterTest extends \Codeception\Test\Unit
             ->setInput('test2')
             ->setNumber(20)
             ->setMultihref([$object1])
+            ->save()
+        ;
+
+        $object3
+            ->setInput(null)
+            ->save()
+        ;
+
+        $object4
+            ->setInput('')
             ->save()
         ;
 
@@ -75,6 +89,8 @@ class PqlFilterTest extends \Codeception\Test\Unit
             'input like "Tes?1"' => [$object1->getId()],
             'input like "test?1"' => [],
             'input like "notfound*"' => [],
+
+            'input not like "test*"' => [$object3->getId(), $object4->getId()],
 
             'number > 15' => [$object2->getId()],
             'number >= 10' => [$object1->getId(), $object2->getId()],
@@ -101,6 +117,18 @@ class PqlFilterTest extends \Codeception\Test\Unit
             'multihref:Unittest.input = "test1"' => [$object2->getId()],
             'multihref:Unittest.input = "test2"' => [],
             '(multihref:Unittest.input = "test2" or input ="test1")' => [$object1->getId()],
+
+            'input = null' => [$object3->getId()],
+            'input = ""' => [$object4->getId()],
+            'input != null' => [$object1->getId(), $object2->getId(), $object4->getId()],
+            'input != ""' => [$object1->getId(), $object2->getId(), $object3->getId()],
+            'input = "" or input = null' => [$object3->getId(), $object4->getId()],
+            'input != "" and input != null' => [$object1->getId(), $object2->getId()],
+
+            'input = empty' => [$object3->getId(), $object4->getId()],
+            'input != empty' => [$object1->getId(), $object2->getId()],
+            'input = empty and input != ""' => [$object3->getId()],
+            'input = empty or ((number = 10 and input = "test1") or number = 20)' => [$object1->getId(), $object2->getId(), $object3->getId(), $object4->getId()],
         ];
 
         foreach ($testCases as $query => $expectedIds) {

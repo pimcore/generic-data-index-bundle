@@ -41,6 +41,12 @@ final class ParserTest extends Unit
                 'match' => ['color' => 'red'],
             ]
         );
+        $this->assertQueryResult(
+            'color != "red"',
+            [
+                'bool' => ['must_not' => ['match' => ['color' => 'red']]],
+            ]
+        );
 
         $this->assertQueryResult(
             'price > 27',
@@ -94,6 +100,51 @@ final class ParserTest extends Unit
             'name like "Jaguar"',
             [
                 'wildcard' => ['name' => ['value' => 'Jaguar', 'case_insensitive' => true]],
+            ]
+        );
+
+        $this->assertQueryResult(
+            'name not like "*Jaguar*"',
+            [
+                'bool' => ['must_not' => ['wildcard' => ['name' => ['value' => '*Jaguar*', 'case_insensitive' => true]]]],
+            ]
+        );
+
+        $this->assertQueryResult(
+            'color = null',
+            [
+                'bool' => ['must_not' => ['exists' => ['field' => 'color']]],
+            ]
+        );
+
+        $this->assertQueryResult(
+            'color != null',
+            [
+                'exists' => ['field' => 'color'],
+            ]
+        );
+
+        $this->assertQueryResult(
+            'color = empty',
+            [
+                'bool' => [
+                    'should' => [
+                        ['bool' => ['must_not' => ['exists' => ['field' => 'color']]]],
+                        ['match' => ['color' => '']],
+                    ],
+                ],
+            ]
+        );
+
+        $this->assertQueryResult(
+            'color != empty',
+            [
+                'bool' => [
+                    'filter' => [
+                        ['exists' => ['field' => 'color']],
+                        ['bool' => ['must_not' => ['match' => ['color' => '']]]],
+                    ],
+                ],
             ]
         );
     }
@@ -387,7 +438,7 @@ final class ParserTest extends Unit
     public function testParseError2(): void
     {
         $this->expectException(ParsingException::class);
-        $this->expectExceptionMessage('Expected a field name, found `or`');
+        $this->expectExceptionMessage('Expected a field name, found `or`. Reserved keywords cannot be used as field name.');
         $this->parseQuery('color = "red" and or');
     }
 
@@ -401,14 +452,14 @@ final class ParserTest extends Unit
     public function testParseError4(): void
     {
         $this->expectException(ParsingException::class);
-        $this->expectExceptionMessage('Expected a string or numeric value, found `red`');
+        $this->expectExceptionMessage('Expected a string, numeric value or a empty/null keyword, found `red`');
         $this->parseQuery('color = red');
     }
 
     public function testParseError5(): void
     {
         $this->expectException(ParsingException::class);
-        $this->expectExceptionMessage('Expected a string or numeric value, found `(`');
+        $this->expectExceptionMessage('Expected a string, numeric value or a empty/null keyword, found `(`');
         $this->parseQuery('color = (Color.name = red)');
     }
 
@@ -422,8 +473,36 @@ final class ParserTest extends Unit
     public function testParseError7(): void
     {
         $this->expectException(ParsingException::class);
-        $this->expectExceptionMessage('Expected a string or numeric value, found `"`');
+        $this->expectExceptionMessage('Expected a string, numeric value or a empty/null keyword, found `"`');
         $this->parseQuery('manufacturer:Manufactorer.name = "Jaguar');
+    }
+
+    public function testParseError8(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('does not support null/empty values');
+        $this->parseQuery('color > null');
+    }
+
+    public function testParseError9(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('does not support null/empty values');
+        $this->parseQuery('color like empty');
+    }
+
+    public function testParseError10(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('Expected a field name, found `null`. Reserved keywords cannot be used as field name.');
+        $this->parseQuery('color="red" or null = "foo"');
+    }
+
+    public function testParseError11(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('Expected a field name, found `like`. Reserved keywords cannot be used as field name.');
+        $this->parseQuery('color="red" or like = "foo"');
     }
 
     private function parseQuery(string $query): void

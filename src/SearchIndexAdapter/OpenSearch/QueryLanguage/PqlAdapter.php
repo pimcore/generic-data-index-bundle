@@ -44,20 +44,103 @@ final readonly class PqlAdapter implements PqlAdapterInterface
 
     public function translateOperatorToSearchQuery(QueryTokenType $operator, string $field, mixed $value): array
     {
-        // term query works for keyword fields only
-        if ($operator === QueryTokenType::T_EQ && !str_ends_with($field, '.keyword')) {
-            return ['match' => [$field => $value]];
+        if ($this->isNullValue($value)) {
+            return $this->handleNullValue($operator, $field);
+        }
+
+        if ($this->isEmptyValue($value)) {
+            return $this->handleEmptyValue($operator, $field);
+        }
+
+        if ($this->isMatchComparison($operator, $field)) {
+            return $this->handleMatchComparison($operator, $field, $value);
         }
 
         return match($operator) {
             QueryTokenType::T_EQ  => ['term' => [$field => $value]],
+            QueryTokenType::T_NEQ  => ['bool' => ['must_not' => ['term' => [$field => $value]]]],
             QueryTokenType::T_GT => ['range' => [$field => ['gt' => $value]]],
             QueryTokenType::T_LT => ['range' => [$field => ['lt' => $value]]],
             QueryTokenType::T_GTE => ['range' => [$field => ['gte' => $value]]],
             QueryTokenType::T_LTE => ['range' => [$field => ['lte' => $value]]],
             QueryTokenType::T_LIKE => ['wildcard' => [$field => ['value' => $value, 'case_insensitive' => true]]],
+            QueryTokenType::T_NOT_LIKE => $this->createMustNot(
+                ['wildcard' => [$field => ['value' => $value, 'case_insensitive' => true]]]
+            ),
             default => throw new InvalidArgumentException('Unknown operator: ' . $operator->value)
         };
+    }
+
+    private function isNullValue(mixed $value): bool
+    {
+        return $value === QueryTokenType::T_NULL;
+    }
+
+    private function isEmptyValue(mixed $value): bool
+    {
+        return $value === QueryTokenType::T_EMPTY;
+    }
+
+    private function isMatchComparison(QueryTokenType $operator, string $field): bool
+    {
+        return ($operator === QueryTokenType::T_EQ || $operator === QueryTokenType::T_NEQ)
+            && !str_ends_with($field, '.keyword');
+    }
+
+    private function handleMatchComparison(QueryTokenType $operator, string $field, mixed $value): array
+    {
+        if ($operator === QueryTokenType::T_EQ) {
+            return ['match' => [$field => $value]];
+        }
+
+        if ($operator === QueryTokenType::T_NEQ) {
+            return $this->createMustNot(['match' => [$field => $value]]);
+        }
+
+        throw new InvalidArgumentException(
+            'Invalid match comparison operator ' . $operator->value . ' for field ' . $field
+        );
+    }
+
+    private function handleNullValue(QueryTokenType $operator, string $field): array
+    {
+        if ($operator === QueryTokenType::T_EQ) {
+            return $this->createMustNot(['exists' => ['field' => $field]]);
+        }
+
+        if ($operator === QueryTokenType::T_NEQ) {
+            return ['exists' => ['field' => $field]];
+        }
+
+        throw new InvalidArgumentException(
+            'Operator ' . $operator->value . ' does not support for null values'
+        );
+    }
+
+    private function handleEmptyValue(QueryTokenType $operator, string $field): array
+    {
+
+        $boolCondition = match ($operator) {
+            QueryTokenType::T_EQ => 'should',
+            QueryTokenType::T_NEQ => 'filter',
+            default => throw new InvalidArgumentException(
+                'Operator ' . $operator->value . ' does not support for empty values'
+            )
+        };
+
+        return [
+            'bool' => [
+                $boolCondition => [
+                    $this->handleNullValue($operator, $field),
+                    $this->translateOperatorToSearchQuery($operator, $field, ''),
+                ],
+            ],
+        ];
+    }
+
+    private function createMustNot(array $query): array
+    {
+        return ['bool' => ['must_not' => $query]];
     }
 
     public function translateToQueryStringQuery(string $query): array
