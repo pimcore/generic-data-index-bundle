@@ -128,6 +128,7 @@ All examples are based on the `Car` data object class of the [Pimcore Demo](http
 
 * When searching for related elements the maximum possible results amount of sub queries is 65.000, see also [terms query documentation](https://opensearch.org/docs/latest/query-dsl/term/terms/).
 * Filtering for asset metadata fields is only possible if they are defined as predefined asset metadata or via the asset metadata class definitions bundle. Custom asset metadata fields directly defined on single assets are not supported.
+* Reserved keywords (`AND`, `OR`, `LIKE`, `NOT LIKE`, `NULL`, `EMPTY`) cannot be used as field names.
 
 ## Further Reading
 

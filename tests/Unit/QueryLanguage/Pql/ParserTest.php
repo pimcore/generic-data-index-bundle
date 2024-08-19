@@ -438,7 +438,7 @@ final class ParserTest extends Unit
     public function testParseError2(): void
     {
         $this->expectException(ParsingException::class);
-        $this->expectExceptionMessage('Expected a field name, found `or`');
+        $this->expectExceptionMessage('Expected a field name, found `or`. Reserved keywords cannot be used as field name.');
         $this->parseQuery('color = "red" and or');
     }
 
