@@ -175,7 +175,13 @@ final class Parser implements ParserInterface
         $this->validateCurrentTokenNotEmpty();
 
         if (!$this->currentToken() || !$this->currentToken()->isA(...self::FIELD_NAME_TOKENS)) {
-            $this->throwParsingException('a field name', '`' . ($this->currentToken()['value'] ?? 'null') . '`');
+            $tokenValue = $this->currentToken()['value'] ?? 'null';
+            $message = null;
+            if (in_arrayi($tokenValue, ['like', 'not like', 'null', 'empty'])) {
+                $message = sprintf('Expected %s, found %s.', 'a field name', '`' . $tokenValue . '`')
+                    . ' Reserved keywords cannot be used as field name.';
+            }
+            $this->throwParsingException('a field name', '`' . $tokenValue . '`', $message);
         }
 
         /** @var Token $fieldToken */

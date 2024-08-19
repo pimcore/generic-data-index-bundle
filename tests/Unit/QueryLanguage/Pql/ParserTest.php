@@ -494,14 +494,14 @@ final class ParserTest extends Unit
     public function testParseError10(): void
     {
         $this->expectException(ParsingException::class);
-        $this->expectExceptionMessage('Expected a field name, found `null`');
+        $this->expectExceptionMessage('Expected a field name, found `null`. Reserved keywords cannot be used as field name.');
         $this->parseQuery('color="red" or null = "foo"');
     }
 
     public function testParseError11(): void
     {
         $this->expectException(ParsingException::class);
-        $this->expectExceptionMessage('Expected a field name, found `like`');
+        $this->expectExceptionMessage('Expected a field name, found `like`. Reserved keywords cannot be used as field name.');
         $this->parseQuery('color="red" or like = "foo"');
     }
 
