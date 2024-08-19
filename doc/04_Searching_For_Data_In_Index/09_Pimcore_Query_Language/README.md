@@ -57,7 +57,7 @@ You can combine multiple conditions using the `AND` and `OR` operators. You can 
 ```
 field1 = "value1" AND field2 = "value2"
 field1 = "value1" AND (field2 = "value2" OR field3 = "value3")
-(field1 = "value1" AND (field2 = "value2" OR field3 = "value3")) or field4 = "value4"
+(field1 = "value1" AND (field2 = "value2" OR field3 = "value3")) OR field4 = "value4"
 ```
 
 
@@ -118,11 +118,11 @@ All examples are based on the `Car` data object class of the [Pimcore Demo](http
 | Query                                                               | Description                                                                                                                | 
 |---------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
 | `series = "E-Type" AND (color = "green" OR productionYear < 1965)`  | All E-Type models which are green or produced before 1965.                                                                 |
-| `manufacturer:Manufacturer.name = "Alfa" and productionYear > 1965` | All Alfa cars produced after 1965.                                                                                         |
-| `genericImages:Asset.fullPath like "/Car Images/vw/*"`              | All cars with a image linked in the `genericImages` image gallery which is contained in the asset folder `/Car Images/vw`. |
-| `color = "red" or color = "blue"`                                   | All red or blue cars using standard PQL syntax.                                                                            |
-| `series = empty and color="red"`                                    | All models where the series is empty and the color is red.                                                                 |
-| `Query("standard_fields.color:(red or blue)")`                      | All red or blue cars using simple query string syntax.                                                                     |
+| `manufacturer:Manufacturer.name = "Alfa" AND productionYear > 1965` | All Alfa cars produced after 1965.                                                                                         |
+| `genericImages:Asset.fullPath LIKE "/Car Images/vw/*"`              | All cars with a image linked in the `genericImages` image gallery which is contained in the asset folder `/Car Images/vw`. |
+| `color = "red" OR color = "blue"`                                   | All red or blue cars using standard PQL syntax.                                                                            |
+| `series = empty AND color="red"`                                    | All models where the series is empty and the color is red.                                                                 |
+| `Query("standard_fields.color:(red OR blue)")`                      | All red or blue cars using simple query string syntax.                                                                     |
 
 ## Limitations
 
