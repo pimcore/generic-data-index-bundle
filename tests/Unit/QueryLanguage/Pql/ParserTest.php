@@ -491,6 +491,20 @@ final class ParserTest extends Unit
         $this->parseQuery('color like empty');
     }
 
+    public function testParseError10(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('Expected a field name, found `null`');
+        $this->parseQuery('color="red" or null = "foo"');
+    }
+
+    public function testParseError11(): void
+    {
+        $this->expectException(ParsingException::class);
+        $this->expectExceptionMessage('Expected a field name, found `like`');
+        $this->parseQuery('color="red" or like = "foo"');
+    }
+
     private function parseQuery(string $query): void
     {
         $parser = $this->createParser();
