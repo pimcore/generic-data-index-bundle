@@ -46,6 +46,7 @@ final class IndexQueueService implements IndexQueueServiceInterface
         private readonly IndexQueueRepository $indexQueueRepository,
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly ElementServiceInterface $elementService,
+        private readonly SearchIndexConfigServiceInterface $searchIndexConfigService
     ) {
     }
 
@@ -63,7 +64,8 @@ final class IndexQueueService implements IndexQueueServiceInterface
 
             $this->enqueueService->enqueueRelatedItemsOnUpdate(
                 element: $element,
-                includeElement: !$processSynchronously
+                includeElement: !$processSynchronously,
+                operation: $operation
             );
 
             if ($element instanceof Asset) {
@@ -101,10 +103,7 @@ final class IndexQueueService implements IndexQueueServiceInterface
                         $entry->getElementId(),
                         $entry->getElementType()
                     ));
-                $element = $this->elementService->getElementByType($entry->getElementId(), $entry->getElementType());
-                if ($element) {
-                    $this->doHandleIndexData($element, $entry->getOperation());
-                }
+                $this->handleEntryByOperation($entry->getOperation(), $entry);
             }
 
             $this->bulkOperationService->commit();
@@ -138,6 +137,23 @@ final class IndexQueueService implements IndexQueueServiceInterface
                 break;
             default:
                 throw new InvalidArgumentException(sprintf('Operation %s not valid', $operation));
+        }
+    }
+
+    private function handleEntryByOperation(string $operation, IndexQueue $entry): void
+    {
+        if ($operation === IndexQueueOperation::DELETE->value) {
+            $this->indexService->deleteFromSpecificIndex(
+                $this->searchIndexConfigService->getIndexName($entry->getElementIndexName()),
+                $entry->getElementId()
+            );
+
+            return;
+        }
+
+        $element = $this->elementService->getElementByType($entry->getElementId(), $entry->getElementType());
+        if ($element) {
+            $this->doHandleIndexData($element, $entry->getOperation());
         }
     }
 
