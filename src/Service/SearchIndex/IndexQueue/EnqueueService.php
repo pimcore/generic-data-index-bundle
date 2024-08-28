@@ -193,13 +193,14 @@ final readonly class EnqueueService implements EnqueueServiceInterface
      */
     public function enqueueRelatedItemsOnUpdate(
         ElementInterface $element,
-        bool $includeElement
+        bool $includeElement,
+        string $operation
     ): void {
         $subQuery = $this->typeAdapterService
             ->getTypeAdapter($element)
             ->getRelatedItemsOnUpdateQuery(
                 element: $element,
-                operation: IndexQueueOperation::UPDATE->value,
+                operation: $operation,
                 operationTime: $this->timeService->getCurrentMillisecondTimestamp(),
                 includeElement: $includeElement,
             );

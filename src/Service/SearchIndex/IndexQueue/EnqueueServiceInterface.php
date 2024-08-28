@@ -57,7 +57,8 @@ interface EnqueueServiceInterface
      */
     public function enqueueRelatedItemsOnUpdate(
         ElementInterface $element,
-        bool $includeElement
+        bool $includeElement,
+        string $operation
     ): void;
 
     public function dispatchQueueMessages(bool $synchronously = false): void;

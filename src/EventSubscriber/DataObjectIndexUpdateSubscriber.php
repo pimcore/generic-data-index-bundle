@@ -47,7 +47,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         return [
             DataObjectEvents::POST_UPDATE => 'updateDataObject',
             DataObjectEvents::POST_ADD => 'updateDataObject',
-            DataObjectEvents::PRE_DELETE => 'deleteDataObject',
+            DataObjectEvents::POST_DELETE => 'deleteDataObject',
         ];
     }
 

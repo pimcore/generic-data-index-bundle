@@ -105,6 +105,11 @@ final class IndexService implements IndexServiceInterface
 
         $elementId = $element->getId();
 
+        return $this->deleteFromSpecificIndex($indexName, $elementId);
+    }
+
+    public function deleteFromSpecificIndex(string $indexName, int $elementId): IndexService
+    {
         $this->bulkOperationService->addDeletion(
             $indexName,
             $elementId
