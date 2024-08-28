@@ -77,6 +77,6 @@ final readonly class AssetIndexUpdateSubscriber implements EventSubscriberInterf
                 processSynchronously: $this->synchronousProcessing->isEnabled()
             )
             ->commit();
-
+        $this->queueMessagesDispatcher->dispatchQueueMessages();
     }
 }

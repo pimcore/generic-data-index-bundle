@@ -32,5 +32,7 @@ interface IndexServiceInterface
 
     public function deleteFromIndex(ElementInterface $element): IndexService;
 
+    public function deleteFromSpecificIndex(string $indexName, int $elementId): IndexService;
+
     public function updateAssetDependencies(Asset $asset): array;
 }
