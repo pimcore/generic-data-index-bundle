@@ -59,6 +59,7 @@ readonly class DataObjectSearchResultDenormalizer implements DenormalizerInterfa
             ->setType(SystemField::TYPE->getData($data))
             ->setPublished($published)
             ->setKey(SystemField::KEY->getData($data))
+            ->setIndex(SystemField::INDEX->getData($data))
             ->setPath(SystemField::PATH->getData($data))
             ->setFullPath(SystemField::FULL_PATH->getData($data))
             ->setUserOwner(SystemField::USER_OWNER->getData($data) ?? 0)

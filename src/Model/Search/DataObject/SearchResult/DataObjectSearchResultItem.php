@@ -31,6 +31,8 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 
     private string $key;
 
+    private int $index;
+
     private bool $published;
 
     private string $path;
@@ -112,6 +114,18 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
     public function setKey(string $key): DataObjectSearchResultItem
     {
         $this->key = $key;
+
+        return $this;
+    }
+
+    public function getIndex(): int
+    {
+        return $this->index;
+    }
+
+    public function setIndex(int $index): DataObjectSearchResultItem
+    {
+        $this->index = $index;
 
         return $this;
     }

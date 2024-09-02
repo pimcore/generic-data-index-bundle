@@ -33,6 +33,7 @@ enum SystemField: string
     case PUBLISHED = 'published';
     case TYPE = 'type';
     case KEY = 'key';
+    case INDEX = 'index';
     case PATH = 'path';
     case FULL_PATH = 'fullPath';
     case PATH_LEVELS = 'pathLevels';

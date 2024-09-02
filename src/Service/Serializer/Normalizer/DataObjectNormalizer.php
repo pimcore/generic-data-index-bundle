@@ -107,6 +107,7 @@ final class DataObjectNormalizer implements NormalizerInterface
             SystemField::MODIFICATION_DATE->value => $this->formatTimestamp($dataObject->getModificationDate()),
             SystemField::TYPE->value => $dataObject->getType(),
             SystemField::KEY->value => $dataObject->getKey(),
+            SystemField::INDEX->value => $dataObject->getIndex(),
             SystemField::PATH->value => $dataObject->getPath(),
             SystemField::FULL_PATH->value => $dataObject->getRealFullPath(),
             SystemField::USER_OWNER->value => $dataObject->getUserOwner(),
