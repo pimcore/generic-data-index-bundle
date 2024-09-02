@@ -26,7 +26,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIco
  */
 final readonly class IndexIconUpdateService implements IndexIconUpdateServiceInterface
 {
-    public function __construct(private  Client $openSearchClient)
+    public function __construct(private Client $openSearchClient)
     {
     }
 

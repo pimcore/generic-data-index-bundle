@@ -22,8 +22,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemF
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSort;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSortList;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\OrderByPageNumber;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByIndexField;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 
 /**
@@ -91,6 +93,24 @@ final class TreeSortHandlers
                 ->setSize($currentPage === $lastPage ? $totalItems - ($pageSize * ($lastPage - 1)) : $pageSize)
                 ->setSortList(new FieldSortList($invertedSortList));
         }
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleIndexSort(
+        OrderByIndexField $indexSort,
+        SearchModifierContextInterface $context
+    ): void {
+        if (!$context->getOriginalSearch() instanceof DataObjectSearch) {
+            return;
+        }
+
+        $context->getSearch()
+            ->addSort(
+                new FieldSort(
+                    SystemField::INDEX->getPath(),
+                    $indexSort->getDirection()->value
+                )
+            );
     }
 
     private function getInvertedSortList(array $sortListItems): array
