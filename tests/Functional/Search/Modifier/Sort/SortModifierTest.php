@@ -33,11 +33,11 @@ use Pimcore\Tests\Support\Util\TestHelper;
 final class SortModifierTest extends Unit
 {
     protected IndexTester $tester;
-    
+
     private AssetSearchServiceInterface $assetSearchService;
-    
+
     private DataObjectSearchServiceInterface $dataObjectSearchService;
-    
+
     private SearchProviderInterface $searchProvider;
 
     private bool $indexSettingsChanged = false;
