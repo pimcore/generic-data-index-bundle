@@ -19,7 +19,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Da
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
-use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\Concrete;
 use Psr\Container\ContainerExceptionInterface;
@@ -72,8 +71,7 @@ final readonly class FieldDefinitionService implements FieldDefinitionServiceInt
         Concrete $dataObject,
         string $key,
         mixed $value,
-    ): array
-    {
+    ): array {
         if ($fieldDefinition === null) {
             return [];
         }

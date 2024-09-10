@@ -99,8 +99,7 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         string $key,
         ?string $language = null,
         callable $callback = null
-    ): array
-    {
+    ): array {
         $indexData = $this->getIndexData($value);
         if (empty($indexData)) {
             return [];
@@ -135,8 +134,7 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         Localizedfield $value,
         string $key,
         string $type
-    ): array
-    {
+    ): array {
         $indexData = $this->getIndexData($value);
         if (empty($indexData)) {
             return [];
@@ -156,7 +154,7 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
                     $indexDataLanguage,
                     $attribute,
                     ['containerType' => 'objectbrick', 'containerKey' => $type],
-                    static fn(
+                    static fn (
                         Concrete $parent, string $key, ?string $language
                     ) => $parent->get($key)->$brickGetter()?->$fieldGetter($language),
                 );
@@ -197,8 +195,7 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         string $attribute,
         array $context = [],
         ?callable $callback = null
-    ): array
-    {
+    ): array {
         $adapter = $this->fieldDefinitionService->getFieldDefinitionAdapter(
             $value->getFieldDefinition($attribute, $context),
         );

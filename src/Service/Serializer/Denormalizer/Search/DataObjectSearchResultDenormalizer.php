@@ -94,18 +94,18 @@ readonly class DataObjectSearchResultDenormalizer implements DenormalizerInterfa
     {
         return is_array($data) && is_subclass_of($type, DataObjectSearchResultItem::class);
     }
-    
+
     private function hydrateInheritedData(array $inheritedData): array
     {
         $result = [];
-        
+
         foreach ($inheritedData as $key => $inheritedEntry) {
             $result[] = new InheritedData(
                 $key,
                 $inheritedEntry['originId']
             );
         }
-        
+
         return $result;
     }
 }

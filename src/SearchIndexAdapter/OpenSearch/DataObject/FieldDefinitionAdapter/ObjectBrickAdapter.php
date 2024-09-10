@@ -52,8 +52,7 @@ final class ObjectBrickAdapter extends AbstractAdapter
         string $key,
         ?string $language = null,
         callable $callback = null
-    ): array
-    {
+    ): array {
         if (!$value instanceof Objectbrick) {
             return [];
         }
@@ -86,7 +85,7 @@ final class ObjectBrickAdapter extends AbstractAdapter
                         $brick->$fieldGetter(),
                         $key,
                         null,
-                        static fn(
+                        static fn (
                             Concrete $parent, string $key, ?string $language
                         ) => $parent->get($key)->$brickGetter()?->$fieldGetter($language)
                     );

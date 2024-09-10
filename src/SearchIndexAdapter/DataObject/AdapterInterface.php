@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject;
 use Exception;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\Concrete;
+
 /**
  * @internal
  */
