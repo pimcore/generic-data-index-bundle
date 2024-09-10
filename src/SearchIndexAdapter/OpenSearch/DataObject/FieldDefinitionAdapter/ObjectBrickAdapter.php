@@ -16,10 +16,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
+use Exception;
 use InvalidArgumentException;
+use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Objectbricks;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Objectbrick;
+use Pimcore\Model\DataObject\Objectbrick\Data\AbstractData;
 
 /**
  * @internal
@@ -52,7 +55,8 @@ final class ObjectBrickAdapter extends AbstractAdapter
         string $key,
         ?string $language = null,
         callable $callback = null
-    ): array {
+    ): array
+    {
         if (!$value instanceof Objectbrick) {
             return [];
         }
@@ -66,30 +70,14 @@ final class ObjectBrickAdapter extends AbstractAdapter
 
             $fieldDefinitions = Objectbrick\Definition::getByKey($type)?->getFieldDefinitions();
             foreach ($fieldDefinitions as $fieldDefinition) {
-                $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($fieldDefinition);
-                if (!$adapter) {
-                    continue;
-                }
-                $fieldGetter = 'get' . ucfirst($fieldDefinition->getName());
-                if ($adapter instanceof LocalizedFieldsAdapter) {
-                    $data = $adapter->getInheritedDataForBrick(
-                        $dataObject,
-                        $brick->$fieldGetter(),
-                        $key,
-                        $type
-                    );
-                } else {
-                    $data = $adapter->getInheritedData(
-                        $dataObject,
-                        $dataObject->getId(),
-                        $brick->$fieldGetter(),
-                        $key,
-                        null,
-                        static fn (
-                            Concrete $parent, string $key, ?string $language
-                        ) => $parent->get($key)->$brickGetter()?->$fieldGetter($language)
-                    );
-                }
+                $data = $this->getInheritedDataForFieldDefinition(
+                    $dataObject,
+                    $fieldDefinition,
+                    $brick,
+                    $brickGetter,
+                    $key,
+                    $type
+                );
 
                 foreach ($data as $itemKey => $item) {
                     $path = $key . '.' . $type . '.' . ($itemKey !== $key ? $itemKey : $fieldDefinition->getName());
@@ -99,6 +87,44 @@ final class ObjectBrickAdapter extends AbstractAdapter
         }
 
         return $result;
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function getInheritedDataForFieldDefinition(
+        Concrete $dataObject,
+        Data $fieldDefinition,
+        AbstractData $brick,
+        string $brickGetter,
+        string $key,
+        string $type
+    ): array {
+        $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($fieldDefinition);
+        if (!$adapter) {
+            return [];
+        }
+
+        $fieldGetter = 'get' . ucfirst($fieldDefinition->getName());
+        if ($adapter instanceof LocalizedFieldsAdapter) {
+             return $adapter->getInheritedDataForBrick(
+                $dataObject,
+                $brick->$fieldGetter(),
+                $key,
+                $type
+            );
+        }
+
+        return $adapter->getInheritedData(
+            $dataObject,
+            $dataObject->getId(),
+            $brick->$fieldGetter(),
+            $key,
+            null,
+            static fn(
+                Concrete $parent, string $key, ?string $language
+            ) => $parent->get($key)->$brickGetter()?->$fieldGetter($language)
+        );
     }
 
     private function getMappingForObjectBrick(string $objectBrickType): array
