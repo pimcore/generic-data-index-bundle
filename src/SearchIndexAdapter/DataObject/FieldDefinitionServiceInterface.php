@@ -16,7 +16,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject;
 
+use Exception;
 use Pimcore\Model\DataObject\ClassDefinition;
+use Pimcore\Model\DataObject\ClassDefinition\Data;
+use Pimcore\Model\DataObject\Concrete;
 
 /**
  * @internal
@@ -26,4 +29,14 @@ interface FieldDefinitionServiceInterface
     public function getFieldDefinitionAdapter(ClassDefinition\Data $fieldDefinition): ?AdapterInterface;
 
     public function normalizeValue(?ClassDefinition\Data $fieldDefinition, mixed $value): mixed;
+
+    /**
+     * @throws Exception
+     */
+    public function getInheritedFieldData(
+        ?Data $fieldDefinition,
+        Concrete $dataObject,
+        string $key,
+        mixed $value
+    ): array;
 }

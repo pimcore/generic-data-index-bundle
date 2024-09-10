@@ -14,15 +14,16 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField\SystemFieldTrait;
 
 /**
  * @internal
  */
-enum FieldCategory: string
+enum StandardField: string
 {
-    case SYSTEM_FIELDS = 'system_fields';
-    case STANDARD_FIELDS = 'standard_fields';
-    case CUSTOM_FIELDS = 'custom_fields';
-    case INHERITED_FIELDS = 'inherited_fields';
+    use SystemFieldTrait;
+
+    case LOCALIZED_FIELDS = 'localizedfields';
 }

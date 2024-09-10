@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\SearchResultItem\InheritedData;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DataObjectLazyLoadingHandlerInterface;
@@ -62,6 +63,8 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
     private array $searchIndexData;
 
     private DataObjectPermissions $permissions;
+
+    private array $inheritedFields = [];
 
     private DataObjectLazyLoadingHandlerInterface $lazyLoadingHandler;
 
@@ -318,6 +321,24 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
     public function setPermissions(DataObjectPermissions $permissions): DataObjectSearchResultItem
     {
         $this->permissions = $permissions;
+
+        return $this;
+    }
+
+    /**
+     * @return InheritedData[]
+     */
+    public function getInheritedFields(): array
+    {
+        return $this->inheritedFields;
+    }
+
+    /**
+     * @param InheritedData[] $inheritedFields
+     */
+    public function setInheritedFields(array $inheritedFields): DataObjectSearchResultItem
+    {
+        $this->inheritedFields = $inheritedFields;
 
         return $this;
     }
