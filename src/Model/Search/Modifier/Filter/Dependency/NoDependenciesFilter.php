@@ -21,7 +21,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierIn
 
 final readonly class NoDependenciesFilter implements SearchModifierInterface
 {
-
     public function __construct(private ?ElementType $elementType = null)
     {
     }

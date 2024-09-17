@@ -110,8 +110,7 @@ final readonly class DependencyFilters
     public function handleFilterWithoutDependencies(
         NoDependenciesFilter $noDependenciesFilter,
         SearchModifierContextInterface $context
-    ): void
-    {
+    ): void {
         $boolQuery = new BoolQuery();
         $boolQuery->addCondition(
             ConditionType::MUST_NOT->value,
