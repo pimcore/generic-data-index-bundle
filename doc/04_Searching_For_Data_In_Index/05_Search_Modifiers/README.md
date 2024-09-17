@@ -38,10 +38,11 @@ $search->addModifier(new ParentIdFilter(1))
 
 ### Dependencies
 
-| Modifier                                                                                                                                       | Modifier Category | Description                                               |
-|------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|-----------------------------------------------------------|
-| [RequiresFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Dependency/RequiresFilter.php) | Dependencies      | Get all elements which the given element requires.        |
-| [RequiredByFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Dependency/RequiredByFilter.php)    | Dependencies      | Get all elements which are required by the given element. |
+| Modifier                                                                                                                                                   | Modifier Category | Description                                             |
+|------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|---------------------------------------------------------|
+| [RequiresFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Dependency/RequiresFilter.php)             | Dependencies      | Get all elements which the given element requires.      |
+| [RequiredByFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Dependency/RequiredByFilter.php)         | Dependencies      | Get all elements which are required by the given element. |
+| [NoDependenciesFilter](https://github.com/pimcore/generic-data-index-bundle/blob/1.x/src/Model/Search/Modifier/Filter/Dependency/NoDependenciesFilter.php) | Dependencies      | Get all elements which have no dependencies.      |
 
 
 ### Query Language
