@@ -56,14 +56,12 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $this->languageService = $languageService;
     }
 
+    /**
+     * @throws InvalidArgumentException
+     */
     public function getIndexMapping(): array
     {
-        $classificationStore = $this->getFieldDefinition();
-        if (!$classificationStore instanceof Classificationstore) {
-            throw new InvalidArgumentException(
-                'Field definition must be an instance of ' . Classificationstore::class
-            );
-        }
+        $classificationStore = $this->getClassificationStoreDefinition();
         $mapping = [];
 
         $groups = $this->getClassificationStoreGroups($classificationStore->getStoreId());
@@ -78,6 +76,9 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         ];
     }
 
+    /**
+     * @throws Exception
+     */
     public function getInheritedData(
         Concrete $dataObject,
         int $objectId,
@@ -85,24 +86,15 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         string $key,
         ?string $language = null,
         callable $callback = null
-    ): array {
-        $classificationStore = $this->getFieldDefinition();
-
-        if (!$classificationStore instanceof Classificationstore) {
-            throw new InvalidArgumentException(
-                'Field definition must be an instance of ' . Classificationstore::class
-            );
-        }
-        $languages = [self::DEFAULT_LANGUAGE];
-        if ($classificationStore->isLocalized()) {
-            $languages = array_merge($languages, $this->languageService->getValidLanguages());
-        }
-
+    ): array
+    {
+        $classificationStore = $this->getClassificationStoreDefinition();
+        $languages = $this->getValidLanguages($classificationStore);
         $result = [];
         foreach ($this->getMappingForInheritance($dataObject, $classificationStore) as $groupId => $group) {
             foreach ($group['keys'] as $keyId => $groupKey) {
                 foreach ($languages as $lang) {
-                    $data = $this->getKeyValueFromElement(
+                    $originId = $this->getKeyValueFromElement(
                         $groupKey['definition'],
                         $dataObject,
                         $key,
@@ -111,18 +103,33 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                         $lang
                     );
 
-                    if ($data !== null && $data !== $objectId) {
+                    if ($originId !== null && $originId !== $objectId) {
                         $path = $key . '.' . $group['name'] . '.' . $groupKey['name'];
                         if ($lang !== self::DEFAULT_LANGUAGE) {
                             $path .= '.' . $lang;
                         }
-                        $result[$path] = ['originId' => $data];
+                        $result[$path] = ['originId' => $originId];
                     }
                 }
             }
         }
 
         return $result;
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    private function getClassificationStoreDefinition(): Classificationstore
+    {
+        $classificationStore = $this->getFieldDefinition();
+        if (!$classificationStore instanceof Classificationstore) {
+            throw new InvalidArgumentException(
+                'Field definition must be an instance of ' . Classificationstore::class
+            );
+        }
+
+        return $classificationStore;
     }
 
     /**
@@ -135,7 +142,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         int $groupId,
         int $groupKeyId,
         string $language
-    ): ?int {
+    ): ?int
+    {
         $data = $dataObject->get($storeKey)->getLocalizedKeyValue($groupId, $groupKeyId, $language, true, true);
 
         if (!$definition->isEmpty($data)) {
@@ -150,10 +158,33 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         return $this->getKeyValueFromElement($definition, $parent, $storeKey, $groupId, $groupKeyId, $language);
     }
 
+    private function getValidLanguages(Classificationstore $classificationStore): array
+    {
+        $languages = [self::DEFAULT_LANGUAGE];
+        if ($classificationStore->isLocalized()) {
+            $languages = array_merge($languages, $this->languageService->getValidLanguages());
+        }
+
+        return $languages;
+    }
+
+    private function getElementActiveGroups(Concrete $dataObject, Classificationstore $classificationStore): array
+    {
+        $activeGroups = [];
+        foreach ($classificationStore->recursiveGetActiveGroupsIds($dataObject) as $groupId => $active) {
+            if ($active) {
+                $activeGroups[] = $groupId;
+            }
+        }
+
+        return $activeGroups;
+    }
+
     private function getMappingForInheritance(
         Concrete $dataObject,
         Classificationstore $classificationStore
-    ): array {
+    ): array
+    {
         $mapping = [];
         $groups = $this->getClassificationStoreGroups($classificationStore->getStoreId());
         $activeGroups = $this->getElementActiveGroups($dataObject, $classificationStore);
@@ -168,7 +199,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             }
 
             $mapping[$group->getId()] = [
-                'name' => $group->getName(),
+                'name' => $group->getName()
             ];
             $keys = $this->getClassificationStoreKeysFromGroup($group);
             foreach ($keys as $groupKey) {
@@ -178,24 +209,12 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 }
                 $mapping[$groupKey->getGroupId()]['keys'][$groupKey->getKeyId()] = [
                     'name' => $groupKey->getName(),
-                    'definition' => $definition,
+                    'definition' => $definition
                 ];
             }
         }
 
         return $mapping;
-    }
-
-    private function getElementActiveGroups(Concrete $dataObject, Classificationstore $classificationStore): array
-    {
-        $activeGroups = [];
-        foreach ($classificationStore->recursiveGetActiveGroupsIds($dataObject) as $groupId => $active) {
-            if ($active) {
-                $activeGroups[] = $groupId;
-            }
-        }
-
-        return $activeGroups;
     }
 
     /**
