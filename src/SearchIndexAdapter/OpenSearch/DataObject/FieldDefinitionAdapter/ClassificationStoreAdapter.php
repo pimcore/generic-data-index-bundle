@@ -103,11 +103,9 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                     );
 
                     if ($originId !== null && $originId !== $objectId) {
-                        $path = $key . '.' . $group['name'] . '.' . $groupKey['name'];
-                        if ($lang !== self::DEFAULT_LANGUAGE) {
-                            $path .= '.' . $lang;
-                        }
-                        $result[$path] = ['originId' => $originId];
+                        $result[$this->getInheritancePath($key, $group['name'], $groupKey['name'], $lang)] = [
+                            'originId' => $originId
+                        ];
                     }
                 }
             }
@@ -176,6 +174,16 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         }
 
         return $activeGroups;
+    }
+
+    private function getInheritancePath(string $key, string $groupName, string $groupKeyName, string $lang): string
+    {
+        $path = $key . '.' . $groupName . '.' . $groupKeyName;
+        if ($lang !== self::DEFAULT_LANGUAGE) {
+            $path .= '.' . $lang;
+        }
+
+        return $path;
     }
 
     private function getMappingForInheritance(
