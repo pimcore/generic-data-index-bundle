@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Da
 use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
@@ -27,6 +28,7 @@ use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig\Listing as GroupListing;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation\Listing as KeyGroupRelationListing;
+use Pimcore\Model\DataObject\Concrete;
 use Symfony\Contracts\Service\Attribute\Required;
 
 /**
@@ -38,10 +40,20 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
     private ServiceResolverInterface $classificationService;
 
+    private LanguageServiceInterface $languageService;
+
+    private const DEFAULT_LANGUAGE = 'default';
+
     #[Required]
     public function setClassificationService(ServiceResolverInterface $serviceResolver): void
     {
         $this->classificationService = $serviceResolver;
+    }
+
+    #[Required]
+    public function setLanguageService(LanguageServiceInterface $languageService): void
+    {
+        $this->languageService = $languageService;
     }
 
     public function getIndexMapping(): array
@@ -66,6 +78,129 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         ];
     }
 
+    public function getInheritedData(
+        Concrete $dataObject,
+        int $objectId,
+        mixed $value,
+        string $key,
+        ?string $language = null,
+        callable $callback = null
+    ): array
+    {
+        $classificationStore = $this->getFieldDefinition();
+
+        if (!$classificationStore instanceof Classificationstore) {
+            throw new InvalidArgumentException(
+                'Field definition must be an instance of ' . Classificationstore::class
+            );
+        }
+        $languages = [self::DEFAULT_LANGUAGE];
+        if ($classificationStore->isLocalized()) {
+            $languages = array_merge($languages, $this->languageService->getValidLanguages());
+        }
+
+        $result = [];
+        foreach ($this->getMappingForInheritance($dataObject, $classificationStore) as $groupId => $group) {
+            foreach ($group['keys'] as $keyId => $groupKey) {
+                foreach ($languages as $lang) {
+                    $data = $this->getKeyValueFromElement(
+                        $groupKey['definition'],
+                        $dataObject,
+                        $key,
+                        $groupId,
+                        $keyId,
+                        $lang
+                    );
+
+                    if ($data !== null && $data !== $objectId) {
+                        $path = $key . '.' . $group['name'] . '.' . $groupKey['name'];
+                        if ($lang !== self::DEFAULT_LANGUAGE) {
+                            $path .= '.' . $lang;
+                        }
+                        $result[$path] = ['originId' => $data];
+                    }
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function getKeyValueFromElement(
+        Data $definition,
+        Concrete $dataObject,
+        string $storeKey,
+        int $groupId,
+        int $groupKeyId,
+        string $language
+    ): ?int
+    {
+        $data = $dataObject->get($storeKey)->getLocalizedKeyValue($groupId, $groupKeyId, $language, true, true);
+
+        if (!$definition->isEmpty($data)) {
+            return $dataObject->getId();
+        }
+
+        $parent = $dataObject->getNextParentForInheritance();
+        if ($parent === null) {
+            return $dataObject->getId();
+        }
+
+        return $this->getKeyValueFromElement($definition, $parent, $storeKey, $groupId, $groupKeyId, $language);
+    }
+
+    private function getMappingForInheritance(
+        Concrete $dataObject,
+        Classificationstore $classificationStore
+    ): array
+    {
+        $mapping = [];
+        $groups = $this->getClassificationStoreGroups($classificationStore->getStoreId());
+        $activeGroups = $this->getElementActiveGroups($dataObject, $classificationStore);
+
+        if (empty($activeGroups)) {
+            return $mapping;
+        }
+
+        foreach ($groups as $group) {
+            if (!in_array($group->getId(), $activeGroups, true)) {
+                continue;
+            }
+
+            $mapping[$group->getId()] = [
+                'name' => $group->getName()
+            ];
+            $keys = $this->getClassificationStoreKeysFromGroup($group);
+            foreach ($keys as $groupKey) {
+                $definition = $this->getFieldDefinitionForKey($groupKey);
+                if ($definition === null) {
+                    continue;
+                }
+                $mapping[$groupKey->getGroupId()]['keys'][$groupKey->getKeyId()] = [
+                    'name' => $groupKey->getName(),
+                    'definition' => $definition
+                ];
+            }
+        }
+
+        return $mapping;
+    }
+
+    private function getElementActiveGroups(Concrete $dataObject, Classificationstore $classificationStore): array
+    {
+        $activeGroups = [];
+        foreach ($classificationStore->recursiveGetActiveGroupsIds($dataObject) as $groupId => $active) {
+            if ($active) {
+                $activeGroups[] = $groupId;
+            }
+        }
+
+        return $activeGroups;
+    }
+
     /**
      * @param KeyGroupRelation[] $groupConfigs
      */
@@ -73,26 +208,38 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     {
         $groupMapping = [];
         foreach ($groupConfigs as $key) {
-            try {
-                $definition = $this->classificationService->getFieldDefinitionFromKeyConfig($key);
-            } catch (Exception) {
-                $this->logger->warning(
-                    'Could not get field definition for type ' . $key->getType() . ' in group ' . $key->getGroupId()
-                );
-
+            $definition = $this->getFieldDefinitionForKey($key);
+            if ($definition === null) {
                 continue;
             }
 
-            if ($definition instanceof Data) {
-                $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($definition);
+            $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($definition);
 
-                if ($adapter) {
-                    $groupMapping['default']['properties'][$key->getName()] = $adapter->getIndexMapping();
-                }
+            if ($adapter) {
+                $groupMapping['default']['properties'][$key->getName()] = $adapter->getIndexMapping();
             }
         }
 
         return $groupMapping;
+    }
+
+    private function getFieldDefinitionForKey(KeyGroupRelation $key): ?Data
+    {
+        try {
+            $definition = $this->classificationService->getFieldDefinitionFromKeyConfig($key);
+        } catch (Exception) {
+            $this->logger->warning(
+                'Could not get field definition for type ' . $key->getType() . ' in group ' . $key->getGroupId()
+            );
+
+            return null;
+        }
+
+        if ($definition instanceof Data) {
+            return $definition;
+        }
+
+        return null;
     }
 
     /**
