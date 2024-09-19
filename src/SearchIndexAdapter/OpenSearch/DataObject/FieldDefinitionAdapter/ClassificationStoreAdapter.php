@@ -86,8 +86,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         string $key,
         ?string $language = null,
         callable $callback = null
-    ): array
-    {
+    ): array {
         $classificationStore = $this->getClassificationStoreDefinition();
         $languages = $this->getValidLanguages($classificationStore);
         $result = [];
@@ -142,8 +141,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         int $groupId,
         int $groupKeyId,
         string $language
-    ): ?int
-    {
+    ): ?int {
         $data = $dataObject->get($storeKey)->getLocalizedKeyValue($groupId, $groupKeyId, $language, true, true);
 
         if (!$definition->isEmpty($data)) {
@@ -183,8 +181,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     private function getMappingForInheritance(
         Concrete $dataObject,
         Classificationstore $classificationStore
-    ): array
-    {
+    ): array {
         $mapping = [];
         $groups = $this->getClassificationStoreGroups($classificationStore->getStoreId());
         $activeGroups = $this->getElementActiveGroups($dataObject, $classificationStore);
@@ -199,7 +196,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             }
 
             $mapping[$group->getId()] = [
-                'name' => $group->getName()
+                'name' => $group->getName(),
             ];
             $keys = $this->getClassificationStoreKeysFromGroup($group);
             foreach ($keys as $groupKey) {
@@ -209,7 +206,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 }
                 $mapping[$groupKey->getGroupId()]['keys'][$groupKey->getKeyId()] = [
                     'name' => $groupKey->getName(),
-                    'definition' => $definition
+                    'definition' => $definition,
                 ];
             }
         }
