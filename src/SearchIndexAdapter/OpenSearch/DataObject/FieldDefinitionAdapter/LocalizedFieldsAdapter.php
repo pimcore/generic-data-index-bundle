@@ -17,7 +17,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
 use Exception;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\StandardField;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\Concrete;
@@ -118,7 +117,7 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
                 );
 
                 foreach ($data as $itemKey => $item) {
-                    $result[StandardField::LOCALIZED_FIELDS->value . '.' . $itemKey] = $item;
+                    $result[$itemKey] = $item;
                 }
             }
         }
@@ -160,7 +159,7 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
                 );
 
                 foreach ($data as $item) {
-                    $result[StandardField::LOCALIZED_FIELDS->value . '.' . $attribute . '.' . $indexDataLanguage] =
+                    $result[$attribute . '.' . $indexDataLanguage] =
                         $item;
                 }
             }

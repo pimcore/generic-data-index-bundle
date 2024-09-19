@@ -24,5 +24,5 @@ enum FieldCategory: string
     case SYSTEM_FIELDS = 'system_fields';
     case STANDARD_FIELDS = 'standard_fields';
     case CUSTOM_FIELDS = 'custom_fields';
-    case INHERITED_FIELDS = 'inherited_fields';
+    case INHERITED_FIELDS = '_inherited_fields';
 }
