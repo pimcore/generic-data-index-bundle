@@ -37,6 +37,13 @@ pimcore_open_search_client:
             hosts: ['%env(PIMCORE_OPEN_SEARCH_HOST)%']
 
 pimcore:
+    applicationlog:
+        mail_notification:
+            send_log_summary: false
+            filter_priority: 0
+            mail_receiver: ''
+        archive_treshold: '30'
+        archive_alternative_database: ''
     assets:
         metadata:
             predefined:
