@@ -104,7 +104,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
                     if ($originId !== null && $originId !== $objectId) {
                         $result[$this->getInheritancePath($key, $group['name'], $groupKey['name'], $lang)] = [
-                            'originId' => $originId
+                            'originId' => $originId,
                         ];
                     }
                 }
