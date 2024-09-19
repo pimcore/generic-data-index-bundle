@@ -117,6 +117,23 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
             $object->getId(),
             $this->getInheritedFieldsResponse($response)['input']['originId']
         );
+    }
+
+    public function testIndexingWithInheritanceAsynchronousNoInheritance()
+    {
+        $this->tester->disableSynchronousProcessing();
+        // create object
+        $object = $this->createObjectWithInheritance();
+        $child = $this->createChildObject($object);
+        $indexName = $this->searchIndexConfigService->getIndexName($object->getClassName());
+
+        // check indexed
+        $this->assertNotEmpty(
+            Db::get()->fetchOne(
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="dataObject"',
+                [$object->getId()]
+            )
+        );
 
         $child->setInput('Updated input');
         $child->save();
