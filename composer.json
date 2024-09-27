@@ -26,7 +26,6 @@
     "symfony/messenger": "^6.4"
   },
   "require-dev": {
-    "roave/security-advisories": "dev-latest",
     "codeception/codeception": "^5.0.10",
     "codeception/phpunit-wrapper": "^9",
     "codeception/module-asserts": "^2",
