@@ -84,9 +84,8 @@ readonly class AssetSearchResultDenormalizer implements DenormalizerInterface
     {
         $result = [];
 
-        foreach ($standardFields as $fieldName => $language) {
-            foreach ($language as $languageKey => $fieldData) {
-
+        foreach ($standardFields as $fieldName => $data) {
+            foreach ($data as $languageKey => $fieldData) {
                 $result[] = new AssetMetaData(
                     name: $fieldName,
                     language: $languageKey !== MappingProperty::NOT_LOCALIZED_KEY ? $languageKey : null,
