@@ -46,7 +46,8 @@ abstract class AbstractSearchHelper implements SearchHelperInterface
     public function addSearchRestrictions(
         SearchInterface $search,
         string $userPermission,
-        string $workspaceType
+        string $workspaceType,
+        PermissionTypes $permissionType = PermissionTypes::LIST
     ): SearchInterface {
         $user = $search->getUser();
         if (!$user) {
@@ -58,7 +59,7 @@ abstract class AbstractSearchHelper implements SearchHelperInterface
             $search->addModifier(new WorkspaceQuery(
                 $workspaceType,
                 $user,
-                PermissionTypes::LIST->value
+                $permissionType->value
             ));
         }
 

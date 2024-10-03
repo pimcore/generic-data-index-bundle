@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ElementSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\SearchResult\ElementSearchResult;
@@ -28,7 +29,10 @@ interface ElementSearchServiceInterface
     /**
      * @throws ElementSearchException
      */
-    public function search(SearchInterface $elementSearch): ElementSearchResult;
+    public function search(
+        SearchInterface $elementSearch,
+        PermissionTypes $permissionType = PermissionTypes::LIST
+    ): ElementSearchResult;
 
     /**
      * @throws ElementSearchException
