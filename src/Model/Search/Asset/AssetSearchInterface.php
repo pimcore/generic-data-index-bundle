@@ -18,5 +18,4 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces;
 
 interface AssetSearchInterface extends SearchInterface
 {
-
 }
