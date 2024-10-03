@@ -17,7 +17,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\BaseSearch;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchInterface;
 
 final class ElementSearch extends BaseSearch implements ElementSearchInterface
 {

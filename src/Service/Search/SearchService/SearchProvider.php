@@ -21,9 +21,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchInterfac
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\ElementSearch;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\DocumentSearchInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\ElementSearchInterface;
 
 /**
  * @internal

@@ -18,8 +18,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\DocumentSearchInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\ElementSearchInterface;
 
 interface SearchProviderInterface
 {

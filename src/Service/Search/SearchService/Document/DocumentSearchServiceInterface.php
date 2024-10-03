@@ -17,9 +17,9 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DocumentSearchException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\DocumentSearchInterface;
 use Pimcore\Model\User;
 
 interface DocumentSearchServiceInterface

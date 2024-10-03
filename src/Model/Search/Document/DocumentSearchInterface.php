@@ -14,7 +14,9 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document;
+
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 
 interface DocumentSearchInterface extends SearchInterface
 {
