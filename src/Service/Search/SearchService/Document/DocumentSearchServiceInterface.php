@@ -19,7 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Doc
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DocumentSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\DocumentSearchInterface;
 use Pimcore\Model\User;
 
 interface DocumentSearchServiceInterface
@@ -27,7 +27,7 @@ interface DocumentSearchServiceInterface
     /**
      * @throws DocumentSearchException
      */
-    public function search(SearchInterface $documentSearch): DocumentSearchResult;
+    public function search(DocumentSearchInterface $documentSearch): DocumentSearchResult;
 
     /**
      * @throws DocumentSearchException

@@ -21,6 +21,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSear
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\ElementSearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AssetSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\DocumentSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 
 /**
@@ -28,7 +31,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterfac
  */
 final class SearchProvider implements SearchProviderInterface
 {
-    public function createAssetSearch(): SearchInterface
+    public function createAssetSearch(): AssetSearchInterface
     {
         return new AssetSearch();
     }
@@ -38,12 +41,12 @@ final class SearchProvider implements SearchProviderInterface
         return new DataObjectSearch();
     }
 
-    public function createDocumentSearch(): SearchInterface
+    public function createDocumentSearch(): DocumentSearchInterface
     {
         return new DocumentSearch();
     }
 
-    public function createElementSearch(): SearchInterface
+    public function createElementSearch(): ElementSearchInterface
     {
         return new ElementSearch();
     }

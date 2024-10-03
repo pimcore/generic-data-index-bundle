@@ -14,11 +14,9 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\BaseSearch;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchInterface;
-
-final class ElementSearch extends BaseSearch implements ElementSearchInterface
+interface AssetSearchInterface extends SearchInterface
 {
+
 }

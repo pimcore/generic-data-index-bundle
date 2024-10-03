@@ -17,7 +17,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\BaseSearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AssetSearchInterface;
 
-final class AssetSearch extends BaseSearch
+final class AssetSearch extends BaseSearch implements AssetSearchInterface
 {
 }
