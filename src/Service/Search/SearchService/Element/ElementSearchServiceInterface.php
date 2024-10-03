@@ -18,8 +18,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Ele
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ElementSearchException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\ElementSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\SearchResult\ElementSearchResult;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Model\User;
 
