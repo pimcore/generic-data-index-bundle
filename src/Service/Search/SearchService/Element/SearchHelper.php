@@ -45,8 +45,10 @@ final readonly class SearchHelper implements ElementSearchHelperInterface
     ) {
     }
 
-    public function addSearchRestrictions(SearchInterface $search): SearchInterface
-    {
+    public function addSearchRestrictions(
+        SearchInterface $search,
+        PermissionTypes $permissionType = PermissionTypes::LIST
+    ): SearchInterface {
         $user = $search->getUser();
         if (!$user) {
             return $search;
@@ -55,7 +57,7 @@ final readonly class SearchHelper implements ElementSearchHelperInterface
         if (!$user->isAdmin()) {
             $search->addModifier(new ElementWorkspacesQuery(
                 $user,
-                PermissionTypes::LIST->value
+                $permissionType->value
             ));
         }
 

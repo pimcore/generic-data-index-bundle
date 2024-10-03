@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
@@ -30,7 +31,8 @@ interface SearchHelperInterface
     public function addSearchRestrictions(
         SearchInterface $search,
         string $userPermission,
-        string $workspaceType
+        string $workspaceType,
+        PermissionTypes $permissionType
     ): SearchInterface;
 
     public function performSearch(SearchInterface $search, string $indexName): SearchResult;
