@@ -48,8 +48,7 @@ final readonly class ElementSearchService implements ElementSearchServiceInterfa
     public function search(
         SearchInterface $elementSearch,
         PermissionTypes $permissionType = PermissionTypes::LIST
-    ): ElementSearchResult
-    {
+    ): ElementSearchResult {
         $elementSearch = $this->searchHelper->addSearchRestrictions($elementSearch, $permissionType);
 
         $searchResult = $this->searchHelper->performSearch(

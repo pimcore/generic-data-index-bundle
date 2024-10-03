@@ -52,8 +52,7 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
     public function search(
         DataObjectSearchInterface $dataObjectSearch,
         PermissionTypes $permissionType = PermissionTypes::LIST
-    ): DataObjectSearchResult
-    {
+    ): DataObjectSearchResult {
         $indexContext = $dataObjectSearch->getClassDefinition() ?: IndexName::DATA_OBJECT->value;
 
         $search = $this->searchHelper->addSearchRestrictions(

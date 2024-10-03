@@ -51,8 +51,7 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
     public function search(
         SearchInterface $assetSearch,
         PermissionTypes $permissionType = PermissionTypes::LIST
-    ): AssetSearchResult
-    {
+    ): AssetSearchResult {
         $assetSearch = $this->searchHelper->addSearchRestrictions(
             search: $assetSearch,
             userPermission: UserPermissionTypes::ASSETS->value,

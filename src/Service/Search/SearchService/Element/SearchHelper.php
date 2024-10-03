@@ -48,8 +48,7 @@ final readonly class SearchHelper implements ElementSearchHelperInterface
     public function addSearchRestrictions(
         SearchInterface $search,
         PermissionTypes $permissionType = PermissionTypes::LIST
-    ): SearchInterface
-    {
+    ): SearchInterface {
         $user = $search->getUser();
         if (!$user) {
             return $search;

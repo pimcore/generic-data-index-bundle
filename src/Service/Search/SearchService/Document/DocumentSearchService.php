@@ -51,8 +51,7 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
     public function search(
         SearchInterface $documentSearch,
         PermissionTypes $permissionType = PermissionTypes::LIST
-    ): DocumentSearchResult
-    {
+    ): DocumentSearchResult {
         $documentSearch = $this->searchHelper->addSearchRestrictions(
             search: $documentSearch,
             userPermission: UserPermissionTypes::DOCUMENTS->value,
