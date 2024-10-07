@@ -16,16 +16,18 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\ElementSearchInterface;
 
 interface SearchProviderInterface
 {
-    public function createAssetSearch(): SearchInterface;
+    public function createAssetSearch(): AssetSearchInterface;
 
     public function createDataObjectSearch(): DataObjectSearchInterface;
 
-    public function createDocumentSearch(): SearchInterface;
+    public function createDocumentSearch(): DocumentSearchInterface;
 
-    public function createElementSearch(): SearchInterface;
+    public function createElementSearch(): ElementSearchInterface;
 }
