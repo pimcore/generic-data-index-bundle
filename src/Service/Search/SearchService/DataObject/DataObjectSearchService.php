@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\UserPermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectSearchException;
@@ -48,14 +49,17 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
     /**
      * @throws DataObjectSearchException
      */
-    public function search(DataObjectSearchInterface $dataObjectSearch): DataObjectSearchResult
-    {
+    public function search(
+        DataObjectSearchInterface $dataObjectSearch,
+        PermissionTypes $permissionType = PermissionTypes::LIST
+    ): DataObjectSearchResult {
         $indexContext = $dataObjectSearch->getClassDefinition() ?: IndexName::DATA_OBJECT->value;
 
         $search = $this->searchHelper->addSearchRestrictions(
             search: $dataObjectSearch,
             userPermission: UserPermissionTypes::OBJECTS->value,
-            workspaceType: DataObjectWorkspace::WORKSPACE_TYPE
+            workspaceType: DataObjectWorkspace::WORKSPACE_TYPE,
+            permissionType: $permissionType
         );
 
         $searchResult = $this->searchHelper->performSearch(
@@ -127,6 +131,6 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
             $dataObjectSearch->setUser($user);
         }
 
-        return $this->search($dataObjectSearch)->getItems()[0] ?? null;
+        return $this->search($dataObjectSearch, PermissionTypes::VIEW)->getItems()[0] ?? null;
     }
 }

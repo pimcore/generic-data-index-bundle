@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResult;
@@ -27,7 +28,10 @@ interface DataObjectSearchServiceInterface
     /**
      * @throws DataObjectSearchException
      */
-    public function search(DataObjectSearchInterface $dataObjectSearch): DataObjectSearchResult;
+    public function search(
+        DataObjectSearchInterface $dataObjectSearch,
+        PermissionTypes $permissionType = PermissionTypes::LIST
+    ): DataObjectSearchResult;
 
     /**
      * @throws DataObjectSearchException

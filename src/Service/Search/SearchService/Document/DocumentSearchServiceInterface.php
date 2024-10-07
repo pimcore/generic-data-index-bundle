@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DocumentSearchException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResult;
@@ -27,7 +28,10 @@ interface DocumentSearchServiceInterface
     /**
      * @throws DocumentSearchException
      */
-    public function search(DocumentSearchInterface $documentSearch): DocumentSearchResult;
+    public function search(
+        DocumentSearchInterface $documentSearch,
+        PermissionTypes $permissionType = PermissionTypes::LIST
+    ): DocumentSearchResult;
 
     /**
      * @throws DocumentSearchException
