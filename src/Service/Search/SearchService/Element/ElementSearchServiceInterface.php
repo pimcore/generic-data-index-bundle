@@ -18,9 +18,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Ele
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ElementSearchException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\ElementSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\SearchResult\ElementSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Model\User;
 
 interface ElementSearchServiceInterface
@@ -28,7 +28,7 @@ interface ElementSearchServiceInterface
     /**
      * @throws ElementSearchException
      */
-    public function search(ElementSearchInterface $elementSearch): ElementSearchResult;
+    public function search(SearchInterface $elementSearch): ElementSearchResult;
 
     /**
      * @throws ElementSearchException

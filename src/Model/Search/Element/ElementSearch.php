@@ -18,6 +18,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\BaseSearch;
 
-final class ElementSearch extends BaseSearch implements ElementSearchInterface
+final class ElementSearch extends BaseSearch
 {
 }
