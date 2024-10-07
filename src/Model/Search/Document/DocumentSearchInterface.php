@@ -16,8 +16,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\BaseSearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 
-final class DocumentSearch extends BaseSearch implements DocumentSearchInterface
+interface DocumentSearchInterface extends SearchInterface
 {
 }

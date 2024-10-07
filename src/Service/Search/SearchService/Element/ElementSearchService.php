@@ -20,9 +20,9 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ElementSearchException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\ElementSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\SearchResult\ElementSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
@@ -46,7 +46,7 @@ final readonly class ElementSearchService implements ElementSearchServiceInterfa
     }
 
     public function search(
-        SearchInterface $elementSearch,
+        ElementSearchInterface $elementSearch,
         PermissionTypes $permissionType = PermissionTypes::LIST
     ): ElementSearchResult {
         $elementSearch = $this->searchHelper->addSearchRestrictions($elementSearch, $permissionType);

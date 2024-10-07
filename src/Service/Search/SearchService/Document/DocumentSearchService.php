@@ -20,9 +20,9 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\UserPermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DocumentSearchException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
@@ -49,7 +49,7 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
      * @throws DocumentSearchException
      */
     public function search(
-        SearchInterface $documentSearch,
+        DocumentSearchInterface $documentSearch,
         PermissionTypes $permissionType = PermissionTypes::LIST
     ): DocumentSearchResult {
         $documentSearch = $this->searchHelper->addSearchRestrictions(
