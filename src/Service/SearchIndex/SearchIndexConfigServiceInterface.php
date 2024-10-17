@@ -24,7 +24,7 @@ interface SearchIndexConfigServiceInterface
     /**
      * returns index name for given class name
      */
-    public function getIndexName(string $name): string;
+    public function getIndexName(string $name, bool $isClass = false): string;
 
     public function prefixIndexName(string $indexName): string;
 

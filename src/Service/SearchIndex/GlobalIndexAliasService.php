@@ -140,7 +140,7 @@ final readonly class GlobalIndexAliasService implements GlobalIndexAliasServiceI
         $classes = $this->connection->fetchFirstColumn('select name from classes');
 
         return array_map(function (string $class) {
-            return $this->searchIndexConfigService->getIndexName($class);
+            return $this->searchIndexConfigService->getIndexName($class, true);
         }, $classes);
     }
 
