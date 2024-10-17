@@ -34,10 +34,17 @@ final readonly class IndexEntityService implements IndexEntityServiceInterface
 
     public function getByEntityName(string $entityName): IndexEntity
     {
+        $isClass = false;
+        $indexType = $this->getIndexType($entityName);
+
+        if ($indexType === IndexType::DATA_OBJECT) {
+            $isClass = $this->elementService->classDefinitionExists($entityName);
+        }
+
         return new IndexEntity(
             $entityName,
-            $this->searchIndexConfigService->getIndexName($entityName),
-            $this->getIndexType($entityName)
+            $this->searchIndexConfigService->getIndexName($entityName, $isClass),
+            $indexType
         );
     }
 

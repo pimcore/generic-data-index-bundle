@@ -33,6 +33,8 @@ final class SearchIndexConfigService implements SearchIndexConfigServiceInterfac
 
     public const SYSTEM_FIELD_DATA_OBJECT = 'data_object';
 
+    public const CLASS_INDEX_PREFIX = 'data-object_';
+
     public function __construct(
         private readonly string $indexPrefix,
         private readonly array $indexSettings,
@@ -44,8 +46,12 @@ final class SearchIndexConfigService implements SearchIndexConfigServiceInterfac
     /**
      * returns index name for given class name
      */
-    public function getIndexName(string $name): string
+    public function getIndexName(string $name, bool $isClass = false): string
     {
+        if ($isClass) {
+            return $this->getIndexPrefix() . self::CLASS_INDEX_PREFIX . strtolower($name);
+        }
+
         return $this->getIndexPrefix() . strtolower($name);
     }
 
