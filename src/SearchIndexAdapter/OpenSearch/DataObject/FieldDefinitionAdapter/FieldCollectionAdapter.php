@@ -21,6 +21,7 @@ use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\FieldCollection\DefinitionResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Fieldcollections;
+use Pimcore\Model\DataObject\Fieldcollection;
 use Symfony\Contracts\Service\Attribute\Required;
 
 /**
@@ -66,6 +67,38 @@ final class FieldCollectionAdapter extends AbstractAdapter
                 'type' => AttributeType::NESTED,
                 'properties' => $mapping,
             ];
+    }
+
+    public function normalize(mixed $value): ?array
+    {
+        if (!$value instanceof Fieldcollection) {
+            return null;
+        }
+
+        $resultItems = [];
+        $items = $value->getItems();
+
+        foreach ($items as $item) {
+            $type = $item->getType();
+            $fieldCollectionDefinition = $this->fieldCollectionDefinition->getByKey($item->getType());
+            if (!$fieldCollectionDefinition) {
+                continue;
+            }
+            $resultItem = ['type' => $type];
+
+            foreach ($fieldCollectionDefinition->getFieldDefinitions() as $fieldDefinition) {
+                $getter = 'get' . ucfirst($fieldDefinition->getName());
+                $value = $item->$getter();
+                $resultItem[$fieldDefinition->getName()] = $this->fieldDefinitionService->normalizeValue(
+                    $fieldDefinition,
+                    $value
+                );
+            }
+
+            $resultItems[] = $resultItem;
+        }
+
+        return $resultItems;
     }
 
     #[Required]
