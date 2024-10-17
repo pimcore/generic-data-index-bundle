@@ -38,6 +38,8 @@ use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
  */
 final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
 {
+    private const CLASS_INDEX_PREFIX = 'data-object_';
+
     public function __construct(
         private readonly DataObjectNormalizer $normalizer,
         private readonly Connection $dbConnection,
@@ -65,7 +67,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
     public function getIndexNameShort(mixed $context): string
     {
         return match (true) {
-            $context instanceof ClassDefinition => $context->getName(),
+            $context instanceof ClassDefinition => self::CLASS_INDEX_PREFIX . $context->getName(),
             $context === IndexName::DATA_OBJECT->value => $context,
             default => IndexName::DATA_OBJECT_FOLDER->value,
         };
@@ -73,7 +75,9 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
 
     public function getIndexNameByClassDefinition(ClassDefinition $classDefinition): string
     {
-        return $this->searchIndexConfigService->getIndexName($classDefinition->getName());
+        return $this->searchIndexConfigService->getIndexName(
+            self::CLASS_INDEX_PREFIX . $classDefinition->getName()
+        );
     }
 
     public function getElementType(): string
