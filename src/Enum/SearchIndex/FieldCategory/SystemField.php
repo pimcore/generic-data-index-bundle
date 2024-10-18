@@ -16,14 +16,14 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField\SystemFieldTrait;
 
 /**
  * @internal
  */
 enum SystemField: string
 {
-    use FieldCategory\SystemField\SystemFieldTrait;
+    use SystemFieldTrait;
 
     case ID = 'id';
     case ELEMENT_TYPE = 'elementType';

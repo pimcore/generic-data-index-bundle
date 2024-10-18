@@ -16,9 +16,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\SearchResultItem\InheritedData;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DataObjectTypeSerializationHandlerService;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
@@ -73,6 +75,14 @@ readonly class DataObjectSearchResultDenormalizer implements DenormalizerInterfa
             return $searchResultItem;
         }
 
+        if (isset($data[FieldCategory::STANDARD_FIELDS->value][FieldCategory::INHERITED_FIELDS->value])) {
+            $searchResultItem->setInheritedFields(
+                $this->hydrateInheritedData(
+                    $data[FieldCategory::STANDARD_FIELDS->value][FieldCategory::INHERITED_FIELDS->value]
+                )
+            );
+        }
+
         return $searchResultItem
             ->setHasWorkflowWithPermissions(SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data))
             ->setHasChildren(SystemField::HAS_CHILDREN->getData($data))
@@ -83,5 +93,19 @@ readonly class DataObjectSearchResultDenormalizer implements DenormalizerInterfa
     public function supportsDenormalization(mixed $data, string $type, string $format = null): bool
     {
         return is_array($data) && is_subclass_of($type, DataObjectSearchResultItem::class);
+    }
+
+    private function hydrateInheritedData(array $inheritedData): array
+    {
+        $result = [];
+
+        foreach ($inheritedData as $key => $inheritedEntry) {
+            $result[] = new InheritedData(
+                $key,
+                $inheritedEntry['originId']
+            );
+        }
+
+        return $result;
     }
 }

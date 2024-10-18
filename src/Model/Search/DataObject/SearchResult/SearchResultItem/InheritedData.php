@@ -14,15 +14,24 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\SearchResultItem;
 
-/**
- * @internal
- */
-enum FieldCategory: string
+final readonly class InheritedData
 {
-    case SYSTEM_FIELDS = 'system_fields';
-    case STANDARD_FIELDS = 'standard_fields';
-    case CUSTOM_FIELDS = 'custom_fields';
-    case INHERITED_FIELDS = '_inherited_fields';
+    public function __construct(
+        private string $key,
+        private int $originId
+    ) {
+
+    }
+
+    public function getKey(): string
+    {
+        return $this->key;
+    }
+
+    public function getOriginId(): int
+    {
+        return $this->originId;
+    }
 }

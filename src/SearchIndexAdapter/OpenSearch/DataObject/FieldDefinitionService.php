@@ -16,9 +16,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject;
 
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
-use Pimcore\Model\DataObject\ClassDefinition;
+use Pimcore\Model\DataObject\ClassDefinition\Data;
+use Pimcore\Model\DataObject\Concrete;
 use Psr\Container\ContainerExceptionInterface;
 use Symfony\Component\DependencyInjection\ServiceLocator;
 
@@ -32,7 +34,7 @@ final readonly class FieldDefinitionService implements FieldDefinitionServiceInt
     ) {
     }
 
-    public function getFieldDefinitionAdapter(ClassDefinition\Data $fieldDefinition): ?AdapterInterface
+    public function getFieldDefinitionAdapter(Data $fieldDefinition): ?AdapterInterface
     {
         $adapter = null;
 
@@ -48,7 +50,7 @@ final readonly class FieldDefinitionService implements FieldDefinitionServiceInt
         return $adapter;
     }
 
-    public function normalizeValue(?ClassDefinition\Data $fieldDefinition, mixed $value): mixed
+    public function normalizeValue(?Data $fieldDefinition, mixed $value): mixed
     {
         if ($fieldDefinition === null) {
             return $value;
@@ -59,5 +61,26 @@ final readonly class FieldDefinitionService implements FieldDefinitionServiceInt
         }
 
         return null;
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function getInheritedFieldData(
+        ?Data $fieldDefinition,
+        Concrete $dataObject,
+        string $key,
+        mixed $value,
+    ): array {
+        if ($fieldDefinition === null) {
+            return [];
+        }
+
+        $adapter = $this->getFieldDefinitionAdapter($fieldDefinition);
+        if ($adapter === null) {
+            return [];
+        }
+
+        return $adapter->getInheritedData($dataObject, $dataObject->getId(), $value, $key);
     }
 }

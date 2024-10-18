@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\StandardField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectNormalizerException;
@@ -145,33 +146,62 @@ final class DataObjectNormalizer implements NormalizerInterface
     private function normalizeStandardFields(Concrete $dataObject): array
     {
         try {
+            $class = $dataObject->getClass();
+            $fieldDefinitions = $class->getFieldDefinitions();
+            $result[FieldCategory::INHERITED_FIELDS->value] = [];
             $inheritedValuesBackup = AbstractObject::doGetInheritedValues();
             $fallbackLanguagesBackup = Localizedfield::doGetFallbackValues();
-            AbstractObject::setGetInheritedValues(true);
             Localizedfield::setGetFallbackValues(true);
+            if ($class->getAllowInherit()) {
+                AbstractObject::setGetInheritedValues(false);
+                $result = $this->getInheritedFields($fieldDefinitions, $dataObject, $result);
+                AbstractObject::setGetInheritedValues(true);
+            }
 
-            $result = [];
-
-            foreach ($dataObject->getClass()->getFieldDefinitions() as $key => $fieldDefinition) {
-
-                $value = $dataObject->get($key);
-
-                $value = $this->fieldDefinitionService->normalizeValue($fieldDefinition, $value);
-
-                $result[$key] = $value;
+            foreach ($fieldDefinitions as $key => $fieldDefinition) {
+                $normalizedValue = $this->fieldDefinitionService->normalizeValue(
+                    $fieldDefinition,
+                    $dataObject->get($key)
+                );
+                $result[$key] = $normalizedValue;
             }
 
             AbstractObject::setGetInheritedValues($inheritedValuesBackup);
             Localizedfield::setGetFallbackValues($fallbackLanguagesBackup);
 
-            if (isset($result['localizedfields'])) {
-                $result = array_merge($result['localizedfields'], $result);
-                unset($result['localizedfields']);
+            if (isset($result[StandardField::LOCALIZED_FIELDS->value])) {
+                $result = array_merge($result[StandardField::LOCALIZED_FIELDS->value], $result);
+                unset($result[StandardField::LOCALIZED_FIELDS->value]);
             }
 
             return $result;
         } catch (Exception $e) {
             throw new DataObjectNormalizerException($e->getMessage());
         }
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function getInheritedFields(array $fields, Concrete $dataObject, array $result): array
+    {
+        foreach ($fields as $key => $fieldDefinition) {
+            if (!$fieldDefinition->supportsInheritance()) {
+                continue;
+            }
+
+            $inheritedData = $this->fieldDefinitionService->getInheritedFieldData(
+                $fieldDefinition,
+                $dataObject,
+                $key,
+                $dataObject->get($key)
+            );
+
+            foreach ($inheritedData as $itemKey => $item) {
+                $result[FieldCategory::INHERITED_FIELDS->value][$itemKey] = $item;
+            }
+        }
+
+        return $result;
     }
 }

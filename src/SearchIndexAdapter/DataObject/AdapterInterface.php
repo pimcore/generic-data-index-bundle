@@ -16,7 +16,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject;
 
+use Exception;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
+use Pimcore\Model\DataObject\Concrete;
 
 /**
  * @internal
@@ -35,4 +37,16 @@ interface AdapterInterface
      * Used to normalize the data for the search index
      */
     public function normalize(mixed $value): mixed;
+
+    /**
+     * @throws Exception
+     */
+    public function getInheritedData(
+        Concrete $dataObject,
+        int $objectId,
+        mixed $value,
+        string $key,
+        ?string $language = null,
+        callable $callback = null
+    ): array;
 }
