@@ -25,6 +25,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateFolderIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\DataObjectNormalizer;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -65,7 +66,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
     public function getIndexNameShort(mixed $context): string
     {
         return match (true) {
-            $context instanceof ClassDefinition => $context->getName(),
+            $context instanceof ClassDefinition => SearchIndexConfigService::CLASS_INDEX_PREFIX . $context->getName(),
             $context === IndexName::DATA_OBJECT->value => $context,
             default => IndexName::DATA_OBJECT_FOLDER->value,
         };
@@ -73,7 +74,9 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
 
     public function getIndexNameByClassDefinition(ClassDefinition $classDefinition): string
     {
-        return $this->searchIndexConfigService->getIndexName($classDefinition->getName());
+        return $this->searchIndexConfigService->getIndexName(
+            SearchIndexConfigService::CLASS_INDEX_PREFIX . $classDefinition->getName()
+        );
     }
 
     public function getElementType(): string

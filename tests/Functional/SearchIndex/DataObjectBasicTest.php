@@ -15,12 +15,11 @@
 
 namespace Functional\SearchIndex;
 
+use Exception;
 use OpenSearch\Common\Exceptions\Missing404Exception;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Db;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
@@ -35,13 +34,11 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
      */
     protected $tester;
 
-    private SearchIndexConfigServiceInterface $searchIndexConfigService;
+    private DataObjectTypeAdapter $dataObjectTypeAdapter;
 
     protected function _before()
     {
-        $this->searchIndexConfigService = $this->tester->grabService(
-            SearchIndexConfigServiceInterface::class
-        );
+        $this->dataObjectTypeAdapter = $this->tester->grabService(DataObjectTypeAdapter::class);
         $this->tester->enableSynchronousProcessing();
         $this->tester->clearQueue();
     }
@@ -56,19 +53,18 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
     }
 
     // tests
+
+    /**
+     * @throws Exception
+     */
     public function testIndexingWithInheritanceSynchronous()
     {
         $object = $this->createObjectWithInheritance();
-        $child = $this->createChildObject($object);
-        $indexName = $this->searchIndexConfigService->getIndexName($object->getClassName());
+        $indexName = $this->dataObjectTypeAdapter->getAliasIndexName($object->getClass());
 
         // check indexed
-        $response = $this->tester->checkIndexEntry($child->getId(), $indexName);
-        $this->assertEquals($child->getId(), $response['_source']['system_fields']['id']);
-        $this->assertEquals(
-            $object->getId(),
-            $this->getInheritedFieldsResponse($response)['input']['originId']
-        );
+        $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
+        $this->assertEquals($object->getId(), $response['_source']['system_fields']['id']);
 
         $object->setKey('my-test-object');
         $object->save();
@@ -76,23 +72,10 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
         $this->assertEquals('my-test-object', $response['_source']['system_fields']['key']);
 
-        $child->setInput('Updated input');
-        $child->save();
-
-        $response = $this->tester->checkIndexEntry($child->getId(), $indexName);
-        $this->assertEquals(
-            'Updated input', $response['_source'][FieldCategory::STANDARD_FIELDS->value]['input']
-        );
-        $this->assertArrayNotHasKey(
-            'input',
-            $this->getInheritedFieldsResponse($response)
-        );
-
-        //Should also delete child element
         $object->delete();
 
         $this->expectException(Missing404Exception::class);
-        $this->tester->checkIndexEntry($child->getId(), $indexName);
+        $this->tester->checkIndexEntry($object->getId(), $indexName);
     }
 
     public function testIndexingWithInheritanceAsynchronous()
@@ -100,65 +83,32 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->tester->disableSynchronousProcessing();
         // create object
         $object = $this->createObjectWithInheritance();
-        $child = $this->createChildObject($object);
-        $indexName = $this->searchIndexConfigService->getIndexName($object->getClassName());
+        $indexName = $this->dataObjectTypeAdapter->getAliasIndexName($object->getClass());
 
         // check indexed
+        $this->expectException(Missing404Exception::class);
+        $this->tester->checkIndexEntry($object->getId(), $indexName);
+
         $this->assertNotEmpty(
             Db::get()->fetchOne(
-                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="dataObject"',
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="object"',
                 [$object->getId()]
             )
         );
         $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
-        $response = $this->tester->checkIndexEntry($child->getId(), $indexName);
-        $this->assertEquals($child->getKey(), $response['_source']['system_fields']['key']);
-        $this->assertEquals(
-            $object->getId(),
-            $this->getInheritedFieldsResponse($response)['input']['originId']
-        );
-    }
-
-    public function testIndexingWithInheritanceAsynchronousNoInheritance()
-    {
-        $this->tester->disableSynchronousProcessing();
-        // create object
-        $object = $this->createObjectWithInheritance();
-        $child = $this->createChildObject($object);
-        $indexName = $this->searchIndexConfigService->getIndexName($object->getClassName());
-
-        // check indexed
-        $this->assertNotEmpty(
-            Db::get()->fetchOne(
-                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="dataObject"',
-                [$object->getId()]
-            )
-        );
-
-        $child->setInput('Updated input');
-        $child->save();
-        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
-
-        $response = $this->tester->checkIndexEntry($child->getId(), $indexName);
-        $this->assertEquals(
-            'Updated input', $response['_source'][FieldCategory::STANDARD_FIELDS->value]['input']
-        );
-        $this->assertArrayNotHasKey(
-            'input',
-            $this->getInheritedFieldsResponse($response)
-        );
+        $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
+        $this->assertEquals($object->getKey(), $response['_source']['system_fields']['key']);
     }
 
     public function testIndexingWithoutInheritanceSynchronous()
     {
         $object = TestHelper::createEmptyObject();
         $this->assertFalse($object->getClass()->getAllowInherit());
-        $indexName = $this->searchIndexConfigService->getIndexName($object->getClassName());
+        $indexName = $this->dataObjectTypeAdapter->getAliasIndexName($object->getClass());
 
         // check indexed
         $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
         $this->assertEquals($object->getId(), $response['_source']['system_fields']['id']);
-        $this->assertEmpty($this->getInheritedFieldsResponse($response));
 
         $object->setKey('my-test-object');
         $object->save();
@@ -178,12 +128,15 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         // create object
         $object = TestHelper::createEmptyObject();
         $this->assertFalse($object->getClass()->getAllowInherit());
-        $indexName = $this->searchIndexConfigService->getIndexName($object->getClassName());
+        $indexName = $this->dataObjectTypeAdapter->getAliasIndexName($object->getClass());
 
         // check indexed
+        $this->expectException(Missing404Exception::class);
+        $this->tester->checkIndexEntry($object->getId(), $indexName);
+
         $this->assertNotEmpty(
             Db::get()->fetchOne(
-                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="dataObject"',
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="object"',
                 [$object->getId()]
             )
         );
@@ -195,7 +148,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
     public function testFolderIndexing()
     {
         $object = TestHelper::createObjectFolder();
-        $indexName = $this->searchIndexConfigService->getIndexName(IndexName::DATA_OBJECT_FOLDER->value);
+        $indexName = $this->dataObjectTypeAdapter->getAliasIndexName();
 
         // check indexed
         $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
@@ -204,7 +157,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $object->setKey('my-test-folder');
         $object->save();
 
-        $indexName = $this->searchIndexConfigService->getIndexName(IndexName::DATA_OBJECT_FOLDER->value);
+        $indexName = $this->dataObjectTypeAdapter->getAliasIndexName();
         $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
         $this->assertEquals('my-test-folder', $response['_source']['system_fields']['key']);
 
@@ -271,8 +224,8 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
     public function testClassDefinitionMapping(): void
     {
         $object = TestHelper::createEmptyObject('', true, true, MappingTest::class);
-        $index = $this->searchIndexConfigService->getIndexName($object->getClassName());
         $class = $object->getClass();
+        $index = $this->dataObjectTypeAdapter->getAliasIndexName($class);
         $originalFields = $class->getFieldDefinitions();
 
         $input = new Input();
@@ -281,8 +234,9 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $class->save();
         $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
 
-        $indexName = $this->tester->getIndexName($object->getClassName());
+        $indexName = $this->tester->getIndexName($class->getName(), true);
         $mapping = $this->tester->getIndexMapping($index);
+
         $standardFields = $mapping[$indexName]['mappings']['properties']['standard_fields']['properties'];
         $this->assertArrayHasKey('mappingTest', $standardFields);
 
@@ -290,7 +244,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $class->save();
         $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
 
-        $indexName = $this->tester->getIndexName($object->getClassName());
+        $indexName = $this->tester->getIndexName($class->getName(), true);
         $mapping = $this->tester->getIndexMapping($index);
         $standardFields = $mapping[$indexName]['mappings']['properties']['standard_fields']['properties'];
         $this->assertArrayNotHasKey('mappingTest', $standardFields);
@@ -314,7 +268,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
 
         $this->tester->runCommand('messenger:consume', ['--limit'=>1], ['pimcore_generic_data_index_queue']);
 
-        $indexName = $this->tester->getIndexName($object->getClassName());
+        $indexName = $this->dataObjectTypeAdapter->getAliasIndexName($class);
         $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
         $updatedIcon = $response['_source']['system_fields']['classDefinitionIcon'];
 
@@ -340,7 +294,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $class->save();
         $object->save();
 
-        $this->assertTrue($object->getClass()->getAllowInherit());
+        $this->assertTrue($class->getAllowInherit());
 
         return $object;
     }
@@ -355,19 +309,5 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
 
         $class->setAllowInherit(false);
         $class->save();
-    }
-
-    private function createChildObject(Concrete $parent): Concrete
-    {
-        $child = $this->createObjectWithInheritance();
-        $child->setParentId($parent->getId());
-        $child->save();
-
-        return $child;
-    }
-
-    private function getInheritedFieldsResponse(array $data): array
-    {
-        return $data['_source'][FieldCategory::STANDARD_FIELDS->value][FieldCategory::INHERITED_FIELDS->value];
     }
 }

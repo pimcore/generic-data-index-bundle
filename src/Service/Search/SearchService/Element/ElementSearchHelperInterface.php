@@ -15,6 +15,7 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
@@ -25,7 +26,10 @@ use Pimcore\Model\User;
  */
 interface ElementSearchHelperInterface
 {
-    public function addSearchRestrictions(SearchInterface $search): SearchInterface;
+    public function addSearchRestrictions(
+        SearchInterface $search,
+        PermissionTypes $permissionType = PermissionTypes::LIST
+    ): SearchInterface;
 
     public function performSearch(SearchInterface $search, string $indexName): SearchResult;
 

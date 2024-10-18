@@ -17,11 +17,12 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\UserPermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DocumentSearchException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
@@ -47,12 +48,15 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
     /**
      * @throws DocumentSearchException
      */
-    public function search(SearchInterface $documentSearch): DocumentSearchResult
-    {
+    public function search(
+        DocumentSearchInterface $documentSearch,
+        PermissionTypes $permissionType = PermissionTypes::LIST
+    ): DocumentSearchResult {
         $documentSearch = $this->searchHelper->addSearchRestrictions(
             search: $documentSearch,
             userPermission: UserPermissionTypes::DOCUMENTS->value,
-            workspaceType: DocumentWorkspace::WORKSPACE_TYPE
+            workspaceType: DocumentWorkspace::WORKSPACE_TYPE,
+            permissionType: $permissionType
         );
 
         $searchResult = $this->searchHelper->performSearch(
@@ -124,6 +128,6 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
             $documentSearch->setUser($user);
         }
 
-        return $this->search($documentSearch)->getItems()[0] ?? null;
+        return $this->search($documentSearch, PermissionTypes::VIEW)->getItems()[0] ?? null;
     }
 }

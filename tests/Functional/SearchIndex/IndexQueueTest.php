@@ -152,7 +152,7 @@ class IndexQueueTest extends Unit
         $object = TestHelper::createEmptyObject('', false);
         $this->checkAndDeleteElement(
             $object,
-            $this->searchIndexConfigService->getIndexName($object->getClassName())
+            $this->searchIndexConfigService->getIndexName($object->getClassName(), true)
         );
     }
 

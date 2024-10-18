@@ -17,11 +17,12 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\UserPermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\AssetSearchException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
@@ -47,12 +48,15 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
     /**
      * @throws AssetSearchException
      */
-    public function search(SearchInterface $assetSearch): AssetSearchResult
-    {
+    public function search(
+        AssetSearchInterface $assetSearch,
+        PermissionTypes $permissionType = PermissionTypes::LIST
+    ): AssetSearchResult {
         $assetSearch = $this->searchHelper->addSearchRestrictions(
             search: $assetSearch,
             userPermission: UserPermissionTypes::ASSETS->value,
-            workspaceType: AssetWorkspace::WORKSPACE_TYPE
+            workspaceType: AssetWorkspace::WORKSPACE_TYPE,
+            permissionType: $permissionType
         );
 
         $searchResult = $this->searchHelper->performSearch(
@@ -124,6 +128,6 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
             $assetSearch->setUser($user);
         }
 
-        return $this->search($assetSearch)->getItems()[0] ?? null;
+        return $this->search($assetSearch, PermissionTypes::VIEW)->getItems()[0] ?? null;
     }
 }

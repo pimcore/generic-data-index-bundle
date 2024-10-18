@@ -209,10 +209,10 @@ class GenericDataIndex extends \Codeception\Module
         );
     }
 
-    public function getIndexName(string $name): string
+    public function getIndexName(string $name, bool $isClass = false): string
     {
         $searchIndexConfigService = $this->grabService(SearchIndexConfigServiceInterface::class);
-        $indexName = $searchIndexConfigService->getIndexName($name);
+        $indexName = $searchIndexConfigService->getIndexName($name, $isClass);
         $client = $this->getIndexSearchClient();
         $alias = $client->indices()->getAlias([
             'name' => $indexName,
