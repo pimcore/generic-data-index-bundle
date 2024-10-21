@@ -16,9 +16,11 @@
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\Filter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\NoDependenciesFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiredByFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiresFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Model\DataObject\Unittest;
 use Pimcore\Tests\Support\Util\TestHelper;
@@ -81,6 +83,48 @@ class DependencyFiltersTest extends \Codeception\Test\Unit
             ->addModifier(new RequiresFilter($object1->getId(), ElementType::DATA_OBJECT));
         $searchResult = $searchService->search($elementSearch);
         $this->assertIdArrayEquals([$object2->getId(), $object3->getId()], $searchResult->getIds());
+    }
+
+    // tests
+    public function testNoDependencyFilter()
+    {
+        /**
+         * @var Unittest $object1
+         * @var Unittest $object2
+         * @var Unittest $object3
+         * @var Unittest $object4
+         */
+        $object1 = TestHelper::createEmptyObject();
+        $object2 = TestHelper::createEmptyObject();
+        $object3 = TestHelper::createEmptyObject();
+        $object4 = TestHelper::createEmptyObject();
+
+        $image1 = TestHelper::createImageAsset();
+
+        $object1
+            ->setObjects([$object2, $object3])
+            ->setImage($image1)
+            ->save()
+        ;
+
+        $object4->setObjects([$object1])->save();
+
+        /** @var DataObjectSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $elementSearch = $searchProvider->createDataObjectSearch()->addModifier(new NoDependenciesFilter());
+        $searchResult = $searchService->search($elementSearch);
+        // Object 2 and 3 have no dependencies
+        $this->assertIdArrayEquals([$object2->getId(), $object3->getId()], $searchResult->getIds());
+
+        $elementSearch = $searchProvider->createDataObjectSearch()->addModifier(
+            new NoDependenciesFilter(ElementType::ASSET)
+        );
+        $searchResult = $searchService->search($elementSearch);
+        // Only Object 1 has no asset dependencies
+        $this->assertIdArrayEquals([$object2->getId(), $object3->getId(), $object4->getId()], $searchResult->getIds());
     }
 
     private function assertIdArrayEquals(array $ids1, array $ids2)

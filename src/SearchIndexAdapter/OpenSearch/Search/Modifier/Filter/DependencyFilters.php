@@ -24,6 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifi
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\BoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermsFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\NoDependenciesFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiredByFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiresFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface;
@@ -103,5 +104,24 @@ final readonly class DependencyFilters
                 ConditionType::FILTER->value => $boolQuery->toArray(true),
             ])
         );
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleFilterWithoutDependencies(
+        NoDependenciesFilter $noDependenciesFilter,
+        SearchModifierContextInterface $context
+    ): void {
+        $boolQuery = new BoolQuery();
+        $boolQuery->addCondition(
+            ConditionType::MUST_NOT->value,
+            [
+                ConditionType::EXISTS->value => [
+                    'field' => SystemField::DEPENDENCIES->getPath(
+                        $noDependenciesFilter->getElementType()?->getShortValue()
+                    ),
+                ],
+            ]
+        )->toArray(true);
+        $context->getSearch()->addQuery($boolQuery);
     }
 }
