@@ -74,13 +74,23 @@ class DependencyFiltersTest extends \Codeception\Test\Unit
             ->addModifier(new RequiredByFilter($object1->getId(), ElementType::DATA_OBJECT))
         ;
         $searchResult = $searchService->search($elementSearch);
-        $this->assertIdArrayEquals([$object4->getId()], $searchResult->getIds());
+
+        $this->assertIdArrayEquals(
+            [['id' => $object4->getId(), 'elementType' => ElementType::DATA_OBJECT->value]],
+            $searchResult->getIds()
+        );
 
         $elementSearch = $searchProvider
             ->createElementSearch()
             ->addModifier(new RequiresFilter($object1->getId(), ElementType::DATA_OBJECT));
         $searchResult = $searchService->search($elementSearch);
-        $this->assertIdArrayEquals([$object2->getId(), $object3->getId()], $searchResult->getIds());
+        $this->assertIdArrayEquals(
+            [
+                ['id' => $object2->getId(), 'elementType' => ElementType::DATA_OBJECT->value],
+                ['id' => $object3->getId(), 'elementType' => ElementType::DATA_OBJECT->value],
+            ],
+            $searchResult->getIds()
+        );
     }
 
     private function assertIdArrayEquals(array $ids1, array $ids2)
