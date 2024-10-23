@@ -27,7 +27,6 @@ use Symfony\Contracts\Service\Attribute\Required;
  */
 final class ObjectBrickAdapter extends AbstractAdapter
 {
-
     private DefinitionResolverInterface $objectBrickDefinition;
 
     public function normalize(mixed $value): ?array
