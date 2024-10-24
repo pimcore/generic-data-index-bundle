@@ -17,14 +17,56 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
 use InvalidArgumentException;
+use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\Objectbrick\DefinitionResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Objectbricks;
 use Pimcore\Model\DataObject\Objectbrick;
+use Symfony\Contracts\Service\Attribute\Required;
 
 /**
  * @internal
  */
 final class ObjectBrickAdapter extends AbstractAdapter
 {
+    private DefinitionResolverInterface $objectBrickDefinition;
+
+    public function normalize(mixed $value): ?array
+    {
+        if (!$value instanceof Objectbrick) {
+            return null;
+        }
+
+        $resultItems = [];
+        $items = $value->getItems();
+
+        foreach ($items as $item) {
+            $type = $item->getType();
+            $fieldCollectionDefinition = $this->objectBrickDefinition->getByKey($item->getType());
+            if (!$fieldCollectionDefinition) {
+                continue;
+            }
+            $resultItem = ['type' => $type];
+
+            foreach ($fieldCollectionDefinition->getFieldDefinitions() as $fieldDefinition) {
+                $getter = 'get' . ucfirst($fieldDefinition->getName());
+                $value = $item->$getter();
+                $resultItem[$fieldDefinition->getName()] = $this->fieldDefinitionService->normalizeValue(
+                    $fieldDefinition,
+                    $value
+                );
+            }
+
+            $resultItems[] = $resultItem;
+        }
+
+        return $resultItems;
+    }
+
+    #[Required]
+    public function setObjectBrickDefinition(DefinitionResolverInterface $definitionResolver): void
+    {
+        $this->objectBrickDefinition = $definitionResolver;
+    }
+
     public function getIndexMapping(): array
     {
         $objectBricks = $this->getFieldDefinition();
