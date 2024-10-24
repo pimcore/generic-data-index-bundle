@@ -77,6 +77,6 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
                 processSynchronously: $this->synchronousProcessing->isEnabled()
             )
             ->commit();
-
+        $this->queueMessagesDispatcher->dispatchQueueMessages();
     }
 }

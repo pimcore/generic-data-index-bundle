@@ -86,6 +86,16 @@ final class DocumentTypeAdapter extends AbstractElementTypeAdapter
         int $operationTime,
         bool $includeElement = false
     ): ?QueryBuilder {
-        return $this->dbConnection->createQueryBuilder();
+        return $this->dbConnection->createQueryBuilder()
+            ->select([
+                $element->getId(),
+                "'" . ElementType::DOCUMENT->value . "'",
+                "'" . IndexName::DOCUMENT->value . "'",
+                "'$operation'",
+                "'$operationTime'",
+                '0',
+            ])
+            ->from('DUAL') // just a dummy query to fit into the query builder interface
+            ->setMaxResults(1);
     }
 }
