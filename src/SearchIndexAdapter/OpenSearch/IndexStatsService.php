@@ -20,11 +20,11 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Stats\IndexStats;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Stats\IndexStatsIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
-use Pimcore\SearchClient\SearchClientInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Pimcore\SearchClient\SearchClientInterface;
 
 final class IndexStatsService implements IndexStatsServiceInterface
 {

@@ -112,6 +112,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
     {
         $clientType = $indexSettings['client_params']['client_type'];
         $clientName = $indexSettings['client_params']['client_name'];
+
         return match ($clientType) {
             ClientType::OPEN_SEARCH->value => 'pimcore.openSearch.custom_client.' . $clientName,
             ClientType::ELASTIC_SEARCH->value => 'pimcore.elasticsearch.custom_client.' . $clientName,

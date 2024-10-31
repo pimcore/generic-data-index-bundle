@@ -21,9 +21,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\RefreshIndexMode;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\BulkOperationException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexModeException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
-use Pimcore\SearchClient\SearchClientInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Pimcore\SearchClient\SearchClientInterface;
 use RuntimeException;
 
 /**

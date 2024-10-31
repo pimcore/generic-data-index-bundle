@@ -16,9 +16,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 
-use Pimcore\SearchClient\SearchClientInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\SearchClient\SearchClientInterface;
 
 /**
  * @internal

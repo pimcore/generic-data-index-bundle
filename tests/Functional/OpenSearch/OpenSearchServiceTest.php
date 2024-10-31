@@ -57,7 +57,7 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
     {
         /** @var SearchIndexServiceInterface $searchIndexService */
         $searchIndexService = $this->tester->grabService(SearchIndexServiceInterface::class);
-        /** @var SearchClientInterface $searchClient */  
+        /** @var SearchClientInterface $searchClient */
         $searchClient = $this->tester->grabService('generic-data-index.search-client');
 
         $searchIndexService->createIndex('testindex');
@@ -92,7 +92,7 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
         $searchIndexService->addAlias('test_index', 'test_index-odd');
         $searchIndexService->reindex('test_index', ['test'=> ['type'=>'keyword']]);
 
-        /** @var SearchClientInterface $searchClient */  
+        /** @var SearchClientInterface $searchClient */
         $searchClient = $this->tester->grabService('generic-data-index.search-client');
         $mapping = $searchClient->getIndexMapping(['index' => 'test_index']);
         $this->assertEquals('keyword', $mapping['test_index-even']['mappings']['properties']['test']['type']);
@@ -104,7 +104,7 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
     {
         /** @var SearchIndexServiceInterface $searchIndexService */
         $searchIndexService = $this->tester->grabService(SearchIndexServiceInterface::class);
-        /** @var SearchClientInterface $searchClient */  
+        /** @var SearchClientInterface $searchClient */
         $searchClient = $this->tester->grabService('generic-data-index.search-client');
 
         $searchIndexService->createIndex('test_index', ['test'=> ['type'=>'object']]);
@@ -118,7 +118,7 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
 
         /** @var SearchIndexServiceInterface $searchIndexService */
         $searchIndexService = $this->tester->grabService(SearchIndexServiceInterface::class);
-        /** @var SearchClientInterface $searchClient */  
+        /** @var SearchClientInterface $searchClient */
         $searchClient = $this->tester->grabService('generic-data-index.search-client');
 
         $searchIndexService->createIndex('test_index');
@@ -176,13 +176,14 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
     {
         /** @var SearchIndexServiceInterface $searchIndexService */
         $searchIndexService = $this->tester->grabService(SearchIndexServiceInterface::class);
-        /** @var SearchClientInterface $searchClient */  
+        /** @var SearchClientInterface $searchClient */
         $searchClient = $this->tester->grabService('generic-data-index.search-client');
 
         $searchIndexService->createIndex('test_index');
         $searchClient->create(['index' => 'test_index', 'refresh' => true, 'id'=>1, 'body' => ['test' => 'test']]);
         $document = $searchIndexService->getDocument('test_index', 1);
         $this->assertEquals('test', $document['_source']['test']);
+
         try {
             $searchIndexService->getDocument('test_index', 2, true);
         } catch (ClientException $e) {
@@ -197,7 +198,7 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
     {
         /** @var SearchIndexServiceInterface $searchIndexService */
         $searchIndexService = $this->tester->grabService(SearchIndexServiceInterface::class);
-        /** @var SearchClientInterface $searchClient */  
+        /** @var SearchClientInterface $searchClient */
         $searchClient = $this->tester->grabService('generic-data-index.search-client');
 
         $searchIndexService->createIndex('test_index');
@@ -215,7 +216,7 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
     {
         /** @var SearchIndexServiceInterface $searchIndexService */
         $searchIndexService = $this->tester->grabService(SearchIndexServiceInterface::class);
-        /** @var SearchClientInterface $searchClient */  
+        /** @var SearchClientInterface $searchClient */
         $searchClient = $this->tester->grabService('generic-data-index.search-client');
 
         $searchIndexService->createIndex('test_index');
@@ -234,7 +235,7 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
     {
         /** @var SearchIndexServiceInterface $searchIndexService */
         $searchIndexService = $this->tester->grabService(SearchIndexServiceInterface::class);
-        /** @var SearchClientInterface $searchClient */  
+        /** @var SearchClientInterface $searchClient */
         $searchClient = $this->tester->grabService('generic-data-index.search-client');
 
         $searchIndexService->createIndex('test_index');

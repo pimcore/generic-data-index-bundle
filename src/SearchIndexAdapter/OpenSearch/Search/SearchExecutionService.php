@@ -23,8 +23,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\SearchFailedExcep
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug\SearchInformation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
-use Pimcore\SearchClient\SearchClientInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer;
+use Pimcore\SearchClient\SearchClientInterface;
 use Symfony\Component\Stopwatch\Stopwatch;
 
 /**

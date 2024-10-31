@@ -19,12 +19,12 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
-use Pimcore\SearchClient\SearchClientInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Element\ElementInterface;
+use Pimcore\SearchClient\SearchClientInterface;
 
 /**
  * @internal

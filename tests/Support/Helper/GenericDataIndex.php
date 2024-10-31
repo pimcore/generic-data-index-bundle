@@ -134,7 +134,7 @@ class GenericDataIndex extends \Codeception\Module
 
     public function checkIndexEntry(string $id, string $index): array
     {
-        /** @var SearchClientInterface $client */      
+        /** @var SearchClientInterface $client */
         $client = $this->getIndexSearchClient();
         $response = $client->get([
             'id' => $id,
@@ -148,7 +148,7 @@ class GenericDataIndex extends \Codeception\Module
 
     public function flushIndex()
     {
-        /** @var SearchClientInterface $client */  
+        /** @var SearchClientInterface $client */
         $client = $this->getIndexSearchClient();
         $client->refreshIndex();
         $client->flushIndex();
@@ -156,7 +156,7 @@ class GenericDataIndex extends \Codeception\Module
 
     public function cleanupIndex()
     {
-        /** @var SearchClientInterface $client */  
+        /** @var SearchClientInterface $client */
         $client = $this->getIndexSearchClient();
         $client->deleteByQuery([
             'index' => '*',
@@ -172,7 +172,7 @@ class GenericDataIndex extends \Codeception\Module
         string $indexName,
         int $windowSize = 10000): void
     {
-        /** @var SearchClientInterface $client */      
+        /** @var SearchClientInterface $client */
         $client = $this->getIndexSearchClient();
 
         $client->putIndexSettings([
@@ -214,7 +214,7 @@ class GenericDataIndex extends \Codeception\Module
     {
         $searchIndexConfigService = $this->grabService(SearchIndexConfigServiceInterface::class);
         $indexName = $searchIndexConfigService->getIndexName($name);
-        /** @var SearchClientInterface $client */      
+        /** @var SearchClientInterface $client */
         $client = $this->getIndexSearchClient();
         $alias = $client->getIndexAlias([
             'name' => $indexName,
@@ -225,7 +225,7 @@ class GenericDataIndex extends \Codeception\Module
 
     public function getIndexMapping(string $indexName): array
     {
-        /** @var SearchClientInterface $client */      
+        /** @var SearchClientInterface $client */
         $client = $this->getIndexSearchClient();
 
         return $client->getIndexMapping(['index' => $indexName]);
