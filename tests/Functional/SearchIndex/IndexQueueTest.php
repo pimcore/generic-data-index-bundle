@@ -17,7 +17,6 @@ namespace Functional\SearchIndex;
 
 use Codeception\Test\Unit;
 use Exception;
-use OpenSearch\Common\Exceptions\Missing404Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
@@ -26,6 +25,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
 use Pimcore\Db;
 use Pimcore\Model\Element\ElementInterface;
+use Pimcore\SearchClient\Exception\ClientException;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 class IndexQueueTest extends Unit
@@ -108,7 +108,7 @@ class IndexQueueTest extends Unit
 
         $asset = TestHelper::createImageAsset();
 
-        $this->expectException(Missing404Exception::class);
+        $this->expectException(ClientException::class);
         $this->tester->checkIndexEntry($asset->getId(), $indexName);
     }
 
@@ -163,7 +163,7 @@ class IndexQueueTest extends Unit
 
         $element->delete();
         $this->consume();
-        $this->expectException(Missing404Exception::class);
+        $this->expectException(ClientException::class);
         $this->tester->checkIndexEntry($element->getId(), $indexName);
     }
 

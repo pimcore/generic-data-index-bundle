@@ -16,9 +16,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject;
 
-use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
+use Pimcore\SearchClient\SearchClientInterface;
 
 /**
  * @internal
@@ -26,7 +26,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIco
  */
 final readonly class IndexIconUpdateService implements IndexIconUpdateServiceInterface
 {
-    public function __construct(private Client $openSearchClient)
+    public function __construct(private SearchClientInterface $client)
     {
     }
 
@@ -48,7 +48,7 @@ final readonly class IndexIconUpdateService implements IndexIconUpdateServiceInt
                 'query' => $query,
             ],
         ];
-        $this->openSearchClient->updateByQuery($params);
+        $this->client->updateByQuery($params);
     }
 
     private function getQueryForNullIcon(): array

@@ -17,10 +17,10 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 
 use Exception;
-use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Stats\IndexStats;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Stats\IndexStatsIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
+use Pimcore\SearchClient\SearchClientInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -31,10 +31,10 @@ final class IndexStatsService implements IndexStatsServiceInterface
     use LoggerAwareTrait;
 
     public function __construct(
+        private readonly SearchClientInterface $client,
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly IndexQueueRepository $indexQueueRepository,
-        private readonly SearchIndexServiceInterface $openSearchService,
-        private readonly Client $openSearchClient,
+        private readonly SearchIndexServiceInterface $openSearchService
     ) {
     }
 
@@ -45,7 +45,7 @@ final class IndexStatsService implements IndexStatsServiceInterface
             $this->searchIndexConfigService->getIndexPrefix() . '*'
         );
 
-        $aggregationResult = $this->openSearchClient->search([
+        $aggregationResult = $this->client->search([
             'index' => $this->searchIndexConfigService->getIndexPrefix() . '*',
             'body' => [
                 'size' => 0,

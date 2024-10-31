@@ -16,13 +16,14 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search;
 
+use Elastic\Elasticsearch\Exception\ClientResponseException;
 use Exception;
-use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\ResultWindowTooLargeException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug\SearchInformation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
+use Pimcore\SearchClient\SearchClientInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer;
 use Symfony\Component\Stopwatch\Stopwatch;
 
@@ -38,7 +39,7 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
 
     public function __construct(
         private readonly SearchResultDenormalizer $searchResultDenormalizer,
-        private readonly Client $openSearchClient,
+        private readonly SearchClientInterface $client,
     ) {
     }
 
@@ -52,7 +53,7 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
             $stopWatch->start('search');
 
             $openSearchResult = $this
-                ->openSearchClient
+                ->client
                 ->search([
                     'index' => $indexName,
                     'body' => $search->toArray(),
@@ -116,8 +117,11 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
     private function isWindowTooLarge(Exception $e): bool
     {
         try {
-            $reason = json_decode($e->getMessage(), false, 512, JSON_THROW_ON_ERROR)
-                ->error->caused_by->reason;
+            $reason = $e->getMessage();
+            if (!$e instanceof ClientResponseException) {
+                $reason = json_decode($e->getMessage(), false, 512, JSON_THROW_ON_ERROR)
+                    ->error->caused_by->reason;
+            }
 
             if (str_contains($reason, 'window is too large')) {
                 return true;

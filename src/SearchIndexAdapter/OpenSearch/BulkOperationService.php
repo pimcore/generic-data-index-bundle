@@ -17,11 +17,11 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 
 use Exception;
-use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\RefreshIndexMode;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\BulkOperationException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexModeException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
+use Pimcore\SearchClient\SearchClientInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use RuntimeException;
@@ -36,7 +36,7 @@ final class BulkOperationService implements BulkOperationServiceInterface
     private array $bulkOperationData = [];
 
     public function __construct(
-        private readonly Client $openSearchClient,
+        private readonly SearchClientInterface $client,
         private readonly SynchronousProcessingServiceInterface $synchronousProcessing
     ) {
     }
@@ -85,7 +85,7 @@ final class BulkOperationService implements BulkOperationServiceInterface
         try {
             $this->logger->info('Commit bulk to index.');
 
-            $response = $this->openSearchClient->bulk(
+            $response = $this->client->bulk(
                 $this->prepareBulkParams($refreshIndex)
             );
 

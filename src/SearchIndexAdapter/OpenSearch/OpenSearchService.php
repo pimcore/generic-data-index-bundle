@@ -18,7 +18,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 
 use Exception;
 use JsonException;
-use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug\SearchInformation;
@@ -30,6 +29,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\S
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Pimcore\SearchClient\SearchClientInterface;
 use Psr\Log\LogLevel;
 
 /**
@@ -45,9 +45,9 @@ final class OpenSearchService implements SearchIndexServiceInterface
 
     public function __construct(
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
-        private readonly Client $openSearchClient,
         private readonly SearchExecutionServiceInterface $searchExecutionService,
         private readonly IndexAliasServiceInterface $indexAliasService,
+        private readonly SearchClientInterface $client
     ) {
     }
 
@@ -55,9 +55,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
     {
         $this->logger->info("Refreshing index $indexName");
 
-        return $this->openSearchClient
-            ->indices()
-            ->refresh(['index' => $indexName]);
+        return $this->client->refreshIndex(['index' => $indexName]);
     }
 
     public function deleteIndex($indexName, bool $silent = false): void
@@ -68,7 +66,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
 
         try {
             $this->logger->log($silent ? LogLevel::DEBUG : LogLevel::INFO, "Deleting index $indexName");
-            $response = $this->openSearchClient->indices()->delete(['index' => $indexName]);
+            $response = $this->client->deleteIndex(['index' => $indexName]);
             $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
         } catch (JsonException $e) {
             $this->logger->debug('Error while parsing json response: ' . $indexName . ' ' . $e);
@@ -81,10 +79,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
             return '';
         }
 
-        $result = $this->openSearchClient->indices()->getAlias([
-            'name' => $indexName,
-        ]);
-
+        $result = $this->client->getIndexAlias(['name' => $indexName]);
         if (empty($result)) {
             return '';
         }
@@ -121,9 +116,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
         ];
 
         try {
-            $this->openSearchClient->reindex([
-                'body' => $body,
-            ]);
+            $this->client->reIndex(['body' => $body]);
         } catch (Exception $e) {
             $this->logger->error('Reindexing failed due to following error: ' . $e);
         }
@@ -147,7 +140,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
                 $body['mappings']['properties'] = $mappings;
             }
 
-            $response = $this->openSearchClient->indices()->create(
+            $response = $this->client->createIndex(
                 [
                     'index' => $indexName,
                     'body' => $body,
@@ -174,7 +167,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
 
     public function existsIndex(string $indexName): bool
     {
-        return $this->openSearchClient->indices()->exists([
+        return $this->client->existsIndex([
             'index' => $indexName,
             'client' => [
                 'ignore' => [404],
@@ -200,22 +193,22 @@ final class OpenSearchService implements SearchIndexServiceInterface
             ];
         }
 
-        return $this->openSearchClient->get($params);
+        return $this->client->get($params);
     }
 
     public function putMapping(array $params): array
     {
-        return $this->openSearchClient->indices()->putMapping($params);
+        return $this->client->putIndexMapping($params);
     }
 
     public function getMapping(string $indexName): array
     {
-        return $this->openSearchClient->indices()->getMapping(['index' => $indexName]);
+        return $this->client->getIndexMapping(['index' => $indexName]);
     }
 
     public function countByAttributeValue(string $indexName, string $attribute, string $value): int
     {
-        $countResult = $this->openSearchClient->search([
+        $countResult = $this->client->search([
             'index' => $indexName,
             'track_total_hits' => true,
             'rest_total_hits_as_int' => true,
@@ -268,9 +261,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
 
     public function getStats(string $indexName): array
     {
-        return $this->openSearchClient
-            ->indices()
-            ->stats(['index' => $indexName]);
+        return $this->client->getIndexStats(['index' => $indexName]);
     }
 
     public function getCount(AdapterSearchInterface $search, string $indexName): int
@@ -286,7 +277,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
             'aggs',
         ]));
 
-        $result = $this->openSearchClient->count([
+        $result = $this->client->count([
             'index' => $indexName,
             'body' => $body,
         ]);
@@ -315,7 +306,8 @@ final class OpenSearchService implements SearchIndexServiceInterface
                 ],
             ],
         ];
-        $result = $this->openSearchClient->indices()->updateAliases($params);
+
+        $result = $this->client->updateIndexAliases($params);
         if (!$result['acknowledged']) {
             throw new SwitchIndexAliasException('Switching Alias failed for ' . $newIndexName);
         }

@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle;
 
+use Pimcore\Bundle\ElasticsearchClientBundle\PimcoreElasticsearchClientBundle;
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch\AsSearchModifierHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\SearchModifierHandlerPass;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\ServiceLocatorPass;
@@ -61,6 +62,7 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements
 
     public static function registerDependentBundles(BundleCollection $collection): void
     {
+        $collection->addBundle(new PimcoreElasticsearchClientBundle());
         $collection->addBundle(new PimcoreOpenSearchClientBundle());
         $collection->addBundle(new PimcoreStaticResolverBundle());
     }

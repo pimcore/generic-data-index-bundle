@@ -19,7 +19,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper;
 // all public methods declared in helper class will be available in $I
 
 use Codeception\Lib\ModuleContainer;
-use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer as GenericDataIndexInstaller;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\Modifier\Sort\TreeSortHandlers;
@@ -29,6 +28,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Console\Application;
 use Pimcore\Db;
+use Pimcore\SearchClient\SearchClientInterface;
 use Pimcore\Tests\Support\Helper\Pimcore;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -129,13 +129,12 @@ class GenericDataIndex extends \Codeception\Module
 
     public function getIndexSearchClient(): mixed
     {
-        return $this->grabService('generic-data-index.opensearch-client');
+        return $this->grabService('generic-data-index.search-client');
     }
 
     public function checkIndexEntry(string $id, string $index): array
     {
-
-        /** @var Client $client */
+        /** @var SearchClientInterface $client */      
         $client = $this->getIndexSearchClient();
         $response = $client->get([
             'id' => $id,
@@ -149,13 +148,15 @@ class GenericDataIndex extends \Codeception\Module
 
     public function flushIndex()
     {
+        /** @var SearchClientInterface $client */  
         $client = $this->getIndexSearchClient();
-        $client->indices()->refresh();
-        $client->indices()->flush();
+        $client->refreshIndex();
+        $client->flushIndex();
     }
 
     public function cleanupIndex()
     {
+        /** @var SearchClientInterface $client */  
         $client = $this->getIndexSearchClient();
         $client->deleteByQuery([
             'index' => '*',
@@ -171,10 +172,10 @@ class GenericDataIndex extends \Codeception\Module
         string $indexName,
         int $windowSize = 10000): void
     {
-        /** @var Client $client */
+        /** @var SearchClientInterface $client */      
         $client = $this->getIndexSearchClient();
 
-        $client->indices()->putSettings([
+        $client->putIndexSettings([
             'index' => $indexName,
             'body' => [
                 'max_result_window' => $windowSize,
@@ -213,8 +214,9 @@ class GenericDataIndex extends \Codeception\Module
     {
         $searchIndexConfigService = $this->grabService(SearchIndexConfigServiceInterface::class);
         $indexName = $searchIndexConfigService->getIndexName($name);
+        /** @var SearchClientInterface $client */      
         $client = $this->getIndexSearchClient();
-        $alias = $client->indices()->getAlias([
+        $alias = $client->getIndexAlias([
             'name' => $indexName,
         ]);
 
@@ -223,8 +225,9 @@ class GenericDataIndex extends \Codeception\Module
 
     public function getIndexMapping(string $indexName): array
     {
+        /** @var SearchClientInterface $client */      
         $client = $this->getIndexSearchClient();
 
-        return $client->indices()->getMapping(['index' => $indexName]);
+        return $client->getIndexMapping(['index' => $indexName]);
     }
 }

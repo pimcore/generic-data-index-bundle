@@ -131,7 +131,7 @@ readonly class IndexMappingService implements IndexMappingServiceInterface
             'properties' => [
                 'name' => $this->getMappingForTextKeyword($attributes),
                 'data' => [
-                    'type' => AttributeType::FLAT_OBJECT->value,
+                    'type' => AttributeType::FLATTENED->value,
                 ],
                 'top' => [
                     'type' => AttributeType::FLOAT->value,

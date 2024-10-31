@@ -18,7 +18,6 @@ namespace Functional\SearchIndex;
 
 use Codeception\Test\Unit;
 use Exception;
-use OpenSearch\Common\Exceptions\Missing404Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\SearchResultItem\Email;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\SearchResultItem\Folder;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\SearchResultItem\HardLink;
@@ -29,6 +28,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
+use Pimcore\SearchClient\Exception\ClientException;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 /**
@@ -73,7 +73,7 @@ final class DocumentBasicTest extends Unit
 
         $document->delete();
 
-        $this->expectException(Missing404Exception::class);
+        $this->expectException(ClientException::class);
         $this->tester->checkIndexEntry($documentId, $indexName);
     }
 

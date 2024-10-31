@@ -17,9 +17,9 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 
 use Exception;
-use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\SearchClient\SearchClientInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -34,7 +34,7 @@ final class PathService implements PathServiceInterface
     use LoggerAwareTrait;
 
     public function __construct(
-        private readonly Client $openSearchClient,
+        private readonly SearchClientInterface $client,
         private readonly AdapterServiceInterface $typeAdapterService,
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
     ) {
@@ -92,7 +92,7 @@ final class PathService implements PathServiceInterface
             ->getTypeAdapter($element)
             ->getAliasIndexNameByElement($element);
 
-        $result = $this->openSearchClient->search(
+        $result = $this->client->search(
             [
                 'index' => $indexName,
                 'body' => [
@@ -141,7 +141,7 @@ final class PathService implements PathServiceInterface
             ],
         ];
 
-        $this->openSearchClient->updateByQuery($query);
+        $this->client->updateByQuery($query);
     }
 
     private function getScriptSource(): string
@@ -171,7 +171,7 @@ final class PathService implements PathServiceInterface
 
     private function countDocumentsByPath(string $indexName, string $path): int
     {
-        $countResult = $this->openSearchClient->search([
+        $countResult = $this->client->search([
             'index' => $indexName,
             'track_total_hits' => true,
             'rest_total_hits_as_int' => true,

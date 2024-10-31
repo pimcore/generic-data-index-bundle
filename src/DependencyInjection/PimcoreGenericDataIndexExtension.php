@@ -18,6 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection;
 
 use Exception;
 use InvalidArgumentException;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ClientType;
 use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\DispatchQueueMessagesHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Symfony\Component\Config\FileLocator;
@@ -90,11 +91,33 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $definition->setArgument('$systemFieldsSettings', $indexSettings['system_fields_settings']);
 
         $openSearchClientId = 'pimcore.open_search_client.' . $indexSettings['client_params']['client_name'];
+        /**
+         * @deprecated Alias will be removed in version 2.0. Please use "generic-data-index.search-client" instead
+         */
         $container->setAlias('generic-data-index.opensearch-client', $openSearchClientId);
+
+        $clientId = $this->getDefaultSearchClientId($indexSettings);
+        $container->setAlias('generic-data-index.search-client', $clientId);
 
         $container->setParameter('generic-data-index.index-prefix', $indexSettings['client_params']['index_prefix']);
 
         $definition = $container->getDefinition(DispatchQueueMessagesHandler::class);
         $definition->setArgument('$queueSettings', $indexSettings['queue_settings']);
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    private function getDefaultSearchClientId(array $indexSettings): string
+    {
+        $clientType = $indexSettings['client_params']['client_type'];
+        $clientName = $indexSettings['client_params']['client_name'];
+        return match ($clientType) {
+            ClientType::OPEN_SEARCH->value => 'pimcore.openSearch.custom_client.' . $clientName,
+            ClientType::ELASTIC_SEARCH->value => 'pimcore.elasticsearch.custom_client.' . $clientName,
+            default => throw new InvalidArgumentException(
+                sprintf('Invalid client type: %s', $indexSettings['client_params']['client_type'])
+            )
+        };
     }
 }

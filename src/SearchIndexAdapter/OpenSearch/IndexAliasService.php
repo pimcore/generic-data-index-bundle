@@ -16,7 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 
-use OpenSearch\Client;
+use Pimcore\SearchClient\SearchClientInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
@@ -26,7 +26,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 final class IndexAliasService implements IndexAliasServiceInterface
 {
     public function __construct(
-        private readonly Client $openSearchClient,
+        private readonly SearchClientInterface $client,
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
     ) {
     }
@@ -44,12 +44,12 @@ final class IndexAliasService implements IndexAliasServiceInterface
             ],
         ];
 
-        return $this->openSearchClient->indices()->updateAliases($params);
+        return $this->client->updateIndexAliases($params);
     }
 
     public function existsAlias(string $aliasName, string $indexName = null): bool
     {
-        return $this->openSearchClient->indices()->existsAlias([
+        return $this->client->existsIndexAlias([
             'name' => $aliasName,
             'index' => $indexName,
             'client' => [
@@ -60,14 +60,15 @@ final class IndexAliasService implements IndexAliasServiceInterface
 
     public function getAllAliases(): array
     {
-        return $this->openSearchClient->cat()->aliases([
+        return $this->client->getAllIndexAliases([
             'name' => $this->searchIndexConfigService->getIndexPrefix() . '*',
+            'format' => 'json',
         ]);
     }
 
     public function deleteAlias(string $indexName, string $aliasName): array
     {
-        return $this->openSearchClient->indices()->deleteAlias([
+        return $this->client->deleteIndexAlias([
             'name' => $aliasName,
             'index' => $indexName,
         ]);
@@ -98,7 +99,7 @@ final class IndexAliasService implements IndexAliasServiceInterface
         }
 
         if (!empty($actions)) {
-            return $this->openSearchClient->indices()->updateAliases([
+            return $this->client->updateIndexAliases([
                 'body' => [
                     'actions' => $actions,
                 ],

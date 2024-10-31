@@ -15,7 +15,6 @@
 
 namespace Functional\SearchIndex;
 
-use OpenSearch\Common\Exceptions\Missing404Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
@@ -25,6 +24,7 @@ use Pimcore\Db;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\MappingTest;
+use Pimcore\SearchClient\Exception\ClientException;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 class DataObjectBasicTest extends \Codeception\Test\Unit
@@ -72,7 +72,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
 
         $object->delete();
 
-        $this->expectException(Missing404Exception::class);
+        $this->expectException(ClientException::class);
         $this->tester->checkIndexEntry($object->getId(), $indexName);
     }
 
@@ -84,7 +84,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $indexName = $this->searchIndexConfigService->getIndexName($object->getClassName());
 
         // check indexed
-        $this->expectException(Missing404Exception::class);
+        $this->expectException(ClientException::class);
         $this->tester->checkIndexEntry($object->getId(), $indexName);
 
         $this->assertNotEmpty(
@@ -116,7 +116,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
 
         $object->delete();
 
-        $this->expectException(Missing404Exception::class);
+        $this->expectException(ClientException::class);
         $this->tester->checkIndexEntry($object->getId(), $indexName);
     }
 
@@ -129,7 +129,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $indexName = $this->searchIndexConfigService->getIndexName($object->getClassName());
 
         // check indexed
-        $this->expectException(Missing404Exception::class);
+        $this->expectException(ClientException::class);
         $this->tester->checkIndexEntry($object->getId(), $indexName);
 
         $this->assertNotEmpty(
@@ -161,7 +161,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
 
         $object->delete();
 
-        $this->expectException(Missing404Exception::class);
+        $this->expectException(ClientException::class);
         $this->tester->checkIndexEntry($object->getId(), $indexName);
     }
 

@@ -7,31 +7,31 @@ services:
         autowire: true
         autoconfigure: true
         public: false
-        
+
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\OpenSearchService
         arguments:
-            $openSearchClient: '@generic-data-index.opensearch-client'
+            $client: '@generic-data-index.search-client'
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\IndexAliasService
         arguments:
-            $openSearchClient: '@generic-data-index.opensearch-client'
+            $client: '@generic-data-index.search-client'
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\SearchExecutionServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\SearchExecutionService
         arguments:
-            $openSearchClient: '@generic-data-index.opensearch-client'
+            $client: '@generic-data-index.search-client'
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\BulkOperationService
         arguments:
-            $openSearchClient: '@generic-data-index.opensearch-client'
+            $client: '@generic-data-index.search-client'
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\PathService
         arguments:
-            $openSearchClient: '@generic-data-index.opensearch-client'
+            $client: '@generic-data-index.search-client'
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\Pagination\PaginationInfoService
@@ -51,7 +51,7 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\IndexStatsService
         arguments:
-            $openSearchClient: '@generic-data-index.opensearch-client'
+            $client: '@generic-data-index.search-client'
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\IndexMappingService
@@ -76,4 +76,4 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\IndexIconUpdateService
         arguments:
-            $openSearchClient: '@generic-data-index.opensearch-client'
+            $client: '@generic-data-index.search-client'

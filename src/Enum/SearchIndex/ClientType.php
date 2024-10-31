@@ -14,22 +14,13 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex;
 
 /**
  * @internal
  */
-enum AttributeType: string
+enum ClientType: string
 {
-    case TEXT = 'text';
-    case KEYWORD = 'keyword';
-    case DATE = 'date';
-    case FLOAT = 'float';
-    case INTEGER = 'integer';
-    case LONG = 'long';
-    case NESTED = 'nested';
-    case OBJECT = 'object';
-    case BOOLEAN = 'boolean';
-    case FLAT_OBJECT = 'flat_object';
-    case FLATTENED = 'flattened';
+    case OPEN_SEARCH = 'openSearch';
+    case ELASTIC_SEARCH = 'elasticsearch';
 }
