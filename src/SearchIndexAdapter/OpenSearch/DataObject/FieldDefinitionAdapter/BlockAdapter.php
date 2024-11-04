@@ -18,6 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Da
 
 use InvalidArgumentException;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Block;
+use Pimcore\Model\DataObject\Data\BlockElement;
 
 /**
  * @internal
@@ -44,5 +45,35 @@ final class BlockAdapter extends AbstractAdapter
             'type' => 'nested',
             'properties' => $properties,
         ];
+    }
+
+    public function normalize(mixed $value): ?array
+    {
+        if (!is_array($value)) {
+            return null;
+        }
+
+        $resultItems = [];
+        $fieldDefinition = $this->getFieldDefinition();
+        if (!$fieldDefinition instanceof Block) {
+            throw new InvalidArgumentException('FieldDefinition must be an instance of ' . Block::class);
+        }
+        $fieldDefinitions = $fieldDefinition->getFieldDefinitions();
+        foreach ($value as $block) {
+            $resultItem = [];
+
+            /** @var BlockElement $fieldValue */
+            foreach ($block as $key => $fieldValue) {
+                $blockDefinition = $fieldDefinitions[$key];
+                $resultItems[$key] = $this->fieldDefinitionService->normalizeValue(
+                    $blockDefinition,
+                    $fieldValue->getData()
+                );
+            }
+
+            $resultItems[] = $resultItem;
+        }
+
+        return $resultItems;
     }
 }
