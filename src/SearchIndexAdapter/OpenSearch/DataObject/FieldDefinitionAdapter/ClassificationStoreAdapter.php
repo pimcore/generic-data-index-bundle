@@ -179,8 +179,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 $key->getKeyId(),
                 $language,
                 true,
-                true)
-            ;
+                true
+            );
         } catch (Exception $exception) {
             $this->logger->warning(sprintf(
                 'Could not get localized value for key %s in group %s: %s',
