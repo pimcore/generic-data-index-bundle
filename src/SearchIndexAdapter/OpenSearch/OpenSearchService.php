@@ -18,7 +18,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 
 use Exception;
 use JsonException;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug\SearchInformation;
@@ -30,7 +29,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\S
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
-use Pimcore\Bundle\OpenSearchClientBundle\SearchClient\OpenSearchClientInterface;
 use Pimcore\SearchClient\SearchClientInterface;
 use Psr\Log\LogLevel;
 
@@ -285,13 +283,6 @@ final class OpenSearchService implements SearchIndexServiceInterface
         ]);
 
         return $result['count'];
-    }
-
-    public function getFlatAttributeType(): AttributeType
-    {
-        return $this->client instanceof OpenSearchClientInterface ?
-            AttributeType::FLAT_OBJECT :
-            AttributeType::FLATTENED;
     }
 
     /**

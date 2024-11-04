@@ -16,19 +16,20 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ClientType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidMappingException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Mapping;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 
 readonly class IndexMappingService implements IndexMappingServiceInterface
 {
     public function __construct(
         private FieldDefinitionServiceInterface $fieldDefinitionService,
-        private SearchIndexServiceInterface $searchIndexService
+        private SearchIndexConfigServiceInterface $searchIndexConfigService
     ) {
     }
 
@@ -133,7 +134,7 @@ readonly class IndexMappingService implements IndexMappingServiceInterface
             'properties' => [
                 'name' => $this->getMappingForTextKeyword($attributes),
                 'data' => [
-                    'type' => $this->searchIndexService->getFlatAttributeType()->value,
+                    'type' => $this->getFlatAttributeType()->value,
                 ],
                 'top' => [
                     'type' => AttributeType::FLOAT->value,
@@ -180,5 +181,12 @@ readonly class IndexMappingService implements IndexMappingServiceInterface
         }
 
         return $data;
+    }
+
+    private function getFlatAttributeType(): AttributeType
+    {
+        return $this->searchIndexConfigService->getClientType() === ClientType::OPEN_SEARCH->value ?
+            AttributeType::FLAT_OBJECT :
+            AttributeType::FLATTENED;
     }
 }

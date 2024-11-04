@@ -64,6 +64,4 @@ interface SearchIndexServiceInterface
     public function getStats(string $indexName): array;
 
     public function getCount(AdapterSearchInterface $search, string $indexName): int;
-
-    public function getFlatAttributeType(): AttributeType;
 }
