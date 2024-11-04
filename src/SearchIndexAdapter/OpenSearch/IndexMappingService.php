@@ -21,12 +21,14 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidMappingException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Mapping;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 
 readonly class IndexMappingService implements IndexMappingServiceInterface
 {
     public function __construct(
         private FieldDefinitionServiceInterface $fieldDefinitionService,
+        private SearchIndexServiceInterface $searchIndexService
     ) {
     }
 
@@ -131,7 +133,7 @@ readonly class IndexMappingService implements IndexMappingServiceInterface
             'properties' => [
                 'name' => $this->getMappingForTextKeyword($attributes),
                 'data' => [
-                    'type' => AttributeType::FLATTENED->value,
+                    'type' => $this->searchIndexService->getFlatAttributeType()->value,
                 ],
                 'top' => [
                     'type' => AttributeType::FLOAT->value,
