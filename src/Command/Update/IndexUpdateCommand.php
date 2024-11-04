@@ -75,7 +75,7 @@ final class IndexUpdateCommand extends AbstractCommand
             ->setName('generic-data-index:update:index')
             ->addOption(
                 self::OPTION_CLASS_DEFINITION_ID,
-                'cid',
+                'c',
                 InputOption::VALUE_OPTIONAL,
                 'Update mapping and data for specific data object classDefinition',
                 null
