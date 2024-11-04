@@ -29,7 +29,7 @@ use Symfony\Contracts\Service\Attribute\Required;
 final class ObjectBrickAdapter extends AbstractAdapter
 {
     private DefinitionResolverInterface $objectBrickDefinition;
-    
+
     public function getIndexMapping(): array
     {
         $objectBricks = $this->getFieldDefinition();

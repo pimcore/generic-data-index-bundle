@@ -59,21 +59,20 @@ final class BlockAdapter extends AbstractAdapter
             throw new InvalidArgumentException('FieldDefinition must be an instance of ' . Block::class);
         }
         $fieldDefinitions = $fieldDefinition->getFieldDefinitions();
-            foreach ($value as $block) {
-                $resultItem = [];
+        foreach ($value as $block) {
+            $resultItem = [];
 
-                /** @var BlockElement $fieldValue */
-                foreach ($block as $key => $fieldValue) {
-                    $blockDefinition = $fieldDefinitions[$key];
-                    $resultItems[$key] = $this->fieldDefinitionService->normalizeValue(
-                        $blockDefinition,
-                        $fieldValue->getData()
-                    );
-                }
-
-                $resultItems[] = $resultItem;
+            /** @var BlockElement $fieldValue */
+            foreach ($block as $key => $fieldValue) {
+                $blockDefinition = $fieldDefinitions[$key];
+                $resultItems[$key] = $this->fieldDefinitionService->normalizeValue(
+                    $blockDefinition,
+                    $fieldValue->getData()
+                );
             }
 
+            $resultItems[] = $resultItem;
+        }
 
         return $resultItems;
     }

@@ -41,6 +41,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     use LoggerAwareTrait;
 
     private ServiceResolverInterface $classificationService;
+
     private LanguageServiceInterface $languageService;
 
     #[Required]
@@ -187,6 +188,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 $groupId,
                 $exception->getMessage()
             ));
+
             return null;
         }
 
@@ -199,7 +201,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
         return $this->fieldDefinitionService->normalizeValue($fieldDefinition, $value);
     }
-    
+
     private function getValidLanguages(): array
     {
         return array_merge([MappingProperty::NOT_LOCALIZED_KEY], $this->languageService->getValidLanguages());
