@@ -17,14 +17,19 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter;
 
 use InvalidArgumentException;
+use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\Objectbrick\DefinitionResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Objectbricks;
 use Pimcore\Model\DataObject\Objectbrick;
+use Pimcore\Model\DataObject\Objectbrick\Data\AbstractData;
+use Symfony\Contracts\Service\Attribute\Required;
 
 /**
  * @internal
  */
 final class ObjectBrickAdapter extends AbstractAdapter
 {
+    private DefinitionResolverInterface $objectBrickDefinition;
+
     public function getIndexMapping(): array
     {
         $objectBricks = $this->getFieldDefinition();
@@ -44,9 +49,43 @@ final class ObjectBrickAdapter extends AbstractAdapter
         ];
     }
 
+    public function normalize(mixed $value): ?array
+    {
+        if (!$value instanceof Objectbrick) {
+            return null;
+        }
+
+        $resultItems = [];
+        $items = $value->getObjectVars();
+        foreach ($items as $item) {
+            if (!$item instanceof AbstractData) {
+                continue;
+            }
+
+            $type = $item->getType();
+            $resultItems[$type] = [];
+            $definition = $this->objectBrickDefinition->getByKey($type);
+            if ($definition === null) {
+                continue;
+            }
+
+            $resultItems[$type] = [];
+            foreach ($definition->getFieldDefinitions() as $fieldDefinition) {
+                $getter = 'get' . ucfirst($fieldDefinition->getName());
+                $value = $item->$getter();
+                $resultItems[$fieldDefinition->getName()] = $this->fieldDefinitionService->normalizeValue(
+                    $fieldDefinition,
+                    $value
+                );
+            }
+        }
+
+        return $resultItems;
+    }
+
     private function getMappingForObjectBrick(string $objectBrickType): array
     {
-        $fieldDefinitions = Objectbrick\Definition::getByKey($objectBrickType)?->getFieldDefinitions();
+        $fieldDefinitions = $this->objectBrickDefinition->getByKey($objectBrickType)?->getFieldDefinitions();
         $mapping = [];
         foreach ($fieldDefinitions as $fieldDefinition) {
             $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($fieldDefinition);
@@ -56,5 +95,11 @@ final class ObjectBrickAdapter extends AbstractAdapter
         }
 
         return $mapping;
+    }
+
+    #[Required]
+    public function setObjectBrickDefinition(DefinitionResolverInterface $definitionResolver): void
+    {
+        $this->objectBrickDefinition = $definitionResolver;
     }
 }

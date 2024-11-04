@@ -19,10 +19,14 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Da
 use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
+use Pimcore\Model\DataObject\Classificationstore as ClassificationstoreModel;
+use Pimcore\Model\DataObject\Classificationstore\DefinitionCache;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig\Listing as GroupListing;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
@@ -37,6 +41,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     use LoggerAwareTrait;
 
     private ServiceResolverInterface $classificationService;
+
+    private LanguageServiceInterface $languageService;
 
     #[Required]
     public function setClassificationService(ServiceResolverInterface $serviceResolver): void
@@ -64,6 +70,50 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             'type' => AttributeType::NESTED,
             'properties' => $mapping,
         ];
+    }
+
+    public function normalize(mixed $value): ?array
+    {
+        if (!$value instanceof ClassificationstoreModel) {
+            return null;
+        }
+
+        $validLanguages = $this->getValidLanguages();
+        $resultItems = [];
+
+        foreach ($this->getActiveGroups($value) as $groupId => $groupConfig) {
+            $resultItems[$groupConfig->getName()] = [];
+            $keys = $this->getClassificationStoreKeysFromGroup($groupConfig);
+            foreach ($validLanguages as $validLanguage) {
+                foreach ($keys as $key) {
+                    $normalizedValue = $this->getNormalizedValue($value, $groupId, $key, $validLanguage);
+
+                    if ($normalizedValue !== null) {
+                        $resultItems[$groupConfig->getName()][$validLanguage][$key->getName()] = $normalizedValue;
+                    }
+                }
+            }
+        }
+
+        return $resultItems;
+    }
+
+    /**
+     * @return GroupConfig[]
+     */
+    private function getActiveGroups(ClassificationstoreModel $value): array
+    {
+        $groups = [];
+        foreach ($value->getActiveGroups() as $groupId => $active) {
+            if ($active) {
+                $groupConfig = GroupConfig::getById($groupId);
+                if ($groupConfig) {
+                    $groups[$groupId] = $groupConfig;
+                }
+            }
+        }
+
+        return $groups;
     }
 
     /**
@@ -115,5 +165,51 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $listing->addConditionParam('groupId = ?', $groupConfig->getId());
 
         return $listing->getList();
+    }
+
+    private function getNormalizedValue(
+        ClassificationstoreModel $classificationstore,
+        int $groupId,
+        KeyGroupRelation $key,
+        string $language
+    ): mixed {
+        try {
+            $value = $classificationstore->getLocalizedKeyValue(
+                $groupId,
+                $key->getKeyId(),
+                $language,
+                true,
+                true
+            );
+        } catch (Exception $exception) {
+            $this->logger->warning(sprintf(
+                'Could not get localized value for key %s in group %s: %s',
+                $key->getKeyId(),
+                $groupId,
+                $exception->getMessage()
+            ));
+
+            return null;
+        }
+
+        $keyConfig = DefinitionCache::get($key->getKeyId());
+        if ($keyConfig === null) {
+            return null;
+        }
+
+        $fieldDefinition = $this->classificationService->getFieldDefinitionFromKeyConfig($keyConfig);
+
+        return $this->fieldDefinitionService->normalizeValue($fieldDefinition, $value);
+    }
+
+    private function getValidLanguages(): array
+    {
+        return array_merge([MappingProperty::NOT_LOCALIZED_KEY], $this->languageService->getValidLanguages());
+    }
+
+    #[Required]
+    public function setLanguageService(LanguageServiceInterface $languageService): void
+    {
+        $this->languageService = $languageService;
     }
 }
