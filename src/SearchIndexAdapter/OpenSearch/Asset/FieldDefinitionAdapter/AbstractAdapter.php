@@ -30,7 +30,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\AdapterInterf
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\ValueObject\Collection\ArrayOfStrings;
 use ValueError;
-
+/**
+ * @internal
+ */
 abstract class AbstractAdapter implements AdapterInterface
 {
     public function __construct(

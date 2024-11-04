@@ -26,6 +26,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceI
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 
+/**
+ * @internal
+ */
 final class IndexStatsService implements IndexStatsServiceInterface
 {
     use LoggerAwareTrait;

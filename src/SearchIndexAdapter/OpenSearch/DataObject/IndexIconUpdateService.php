@@ -22,7 +22,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIco
 
 /**
  * @internal
-
  */
 final readonly class IndexIconUpdateService implements IndexIconUpdateServiceInterface
 {
