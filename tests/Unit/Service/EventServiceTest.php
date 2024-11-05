@@ -36,8 +36,8 @@ final class EventServiceTest extends Unit
     public function testDispatchAssetSearchEvent(): void
     {
         $permissions = new AssetPermissions();
-        $permissions->setView(false);
-        $permissions->setRename(false);
+        $permissions->setView(true);
+        $permissions->setRename(true);
 
         $event = new Event\Asset\PermissionEvent(
             new AssetSearchResultItem(),
@@ -51,9 +51,9 @@ final class EventServiceTest extends Unit
         );
 
         $this->assertSame($event->getPermissions(), $returnedEvent->getPermissions());
-        $this->assertFalse($returnedEvent->getPermissions()->isView());
-        $this->assertFalse($returnedEvent->getPermissions()->isRename());
-        $this->assertTrue($returnedEvent->getPermissions()->isList());
+        $this->assertTrue($returnedEvent->getPermissions()->isView());
+        $this->assertTrue($returnedEvent->getPermissions()->isRename());
+        $this->assertFalse($returnedEvent->getPermissions()->isList());
     }
 
     public function testDispatchDataObjectSearchEvent(): void
