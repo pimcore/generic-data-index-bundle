@@ -129,8 +129,6 @@ class BasicFiltersTest extends \Codeception\Test\Unit
         $this->assertCount(0, $searchResult->getItems());
     }
 
-
-
     public function testIntegerFilter()
     {
         $asset = TestHelper::createImageAsset();

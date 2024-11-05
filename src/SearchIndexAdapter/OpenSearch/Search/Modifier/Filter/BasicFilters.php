@@ -48,7 +48,7 @@ final readonly class BasicFilters
             )
         );
     }
-    
+
     #[AsSearchModifierHandler]
     public function handleIntegerFilter(IntegerFilter $idFilter, SearchModifierContextInterface $context): void
     {
