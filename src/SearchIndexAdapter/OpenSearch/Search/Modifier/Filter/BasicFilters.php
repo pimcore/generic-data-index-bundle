@@ -25,12 +25,19 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\ExcludeFoldersFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdsFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IntegerFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationServiceInterface;
 
 /**
  * @internal
  */
-final class BasicFilters
+final readonly class BasicFilters
 {
+    public function __construct(
+        private SearchPqlFieldNameTransformationServiceInterface $fieldNameTransformationService,
+    ) {
+    }
+
     #[AsSearchModifierHandler]
     public function handleIdFilter(IdFilter $idFilter, SearchModifierContextInterface $context): void
     {
@@ -38,6 +45,25 @@ final class BasicFilters
             new TermFilter(
                 field: SystemField::ID->getPath(),
                 term: $idFilter->getId(),
+            )
+        );
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleIntegerFilter(IntegerFilter $idFilter, SearchModifierContextInterface $context): void
+    {
+        $fieldName = $idFilter->getFieldName();
+        if ($idFilter->isPqlFieldNameResolutionEnabled()) {
+            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch(
+                $context->getOriginalSearch(),
+                $fieldName
+            );
+        }
+
+        $context->getSearch()->addQuery(
+            new TermFilter(
+                field: $fieldName,
+                term: $idFilter->getSearchTerm(),
             )
         );
     }

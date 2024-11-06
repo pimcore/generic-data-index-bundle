@@ -18,6 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\ExcludeFoldersFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdsFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IntegerFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Tests\Support\Util\TestHelper;
@@ -126,5 +127,24 @@ class BasicFiltersTest extends \Codeception\Test\Unit
         ;
         $searchResult = $searchService->search($assetSearch);
         $this->assertCount(0, $searchResult->getItems());
+    }
+
+    public function testIntegerFilter()
+    {
+        $asset = TestHelper::createImageAsset();
+
+        /** @var AssetSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new IntegerFilter('system_fields.userOwner', $asset->getUserOwner()))
+            ->addModifier(new IntegerFilter('system_fields.userModification', $asset->getUserModification()))
+        ;
+        $searchResult = $searchService->search($assetSearch);
+        $this->assertCount(1, $searchResult->getItems());
+        $this->assertEquals($asset->getId(), $searchResult->getItems()[0]->getId());
     }
 }
