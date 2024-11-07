@@ -20,8 +20,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch\AsSearchModifierH
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\WildcardFilterMode;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier\SearchModifierContextInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\SimpleQueryStringFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\WildcardFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\ElementKeySearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\FullTextSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\WildcardSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationServiceInterface;
 
@@ -79,5 +81,17 @@ final readonly class FullTextSearchHandlers
                     WildcardFilterMode::BOTH
                 )
             );
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleMultiMatchSearch(
+        FullTextSearch $fullValueSearch,
+        SearchModifierContextInterface $context
+    ): void {
+        if (empty($fullValueSearch->getSearchTerm())) {
+            return;
+        }
+
+        $context->getSearch()->addQuery(new SimpleQueryStringFilter($fullValueSearch->getSearchTerm()));
     }
 }
