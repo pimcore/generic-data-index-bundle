@@ -36,8 +36,8 @@ final class EventServiceTest extends Unit
     public function testDispatchAssetSearchEvent(): void
     {
         $permissions = new AssetPermissions();
-        $permissions->setView(false);
-        $permissions->setRename(false);
+        $permissions->setView(true);
+        $permissions->setRename(true);
 
         $event = new Event\Asset\PermissionEvent(
             new AssetSearchResultItem(),
@@ -51,16 +51,16 @@ final class EventServiceTest extends Unit
         );
 
         $this->assertSame($event->getPermissions(), $returnedEvent->getPermissions());
-        $this->assertFalse($returnedEvent->getPermissions()->isView());
-        $this->assertFalse($returnedEvent->getPermissions()->isRename());
-        $this->assertTrue($returnedEvent->getPermissions()->isList());
+        $this->assertTrue($returnedEvent->getPermissions()->isView());
+        $this->assertTrue($returnedEvent->getPermissions()->isRename());
+        $this->assertFalse($returnedEvent->getPermissions()->isList());
     }
 
     public function testDispatchDataObjectSearchEvent(): void
     {
         $permissions = new DataObjectPermissions();
-        $permissions->setView(false);
-        $permissions->setRename(false);
+        $permissions->setView(true);
+        $permissions->setRename(true);
 
         $event = new Event\DataObject\PermissionEvent(
             new DataObjectSearchResultItem(),
@@ -74,16 +74,16 @@ final class EventServiceTest extends Unit
         );
 
         $this->assertSame($event->getPermissions(), $returnedEvent->getPermissions());
-        $this->assertFalse($returnedEvent->getPermissions()->isView());
-        $this->assertFalse($returnedEvent->getPermissions()->isRename());
-        $this->assertTrue($returnedEvent->getPermissions()->isList());
+        $this->assertTrue($returnedEvent->getPermissions()->isView());
+        $this->assertTrue($returnedEvent->getPermissions()->isRename());
+        $this->assertFalse($returnedEvent->getPermissions()->isList());
     }
 
     public function testDispatchDocumentSearchEvent(): void
     {
         $permissions = new DocumentPermissions();
-        $permissions->setView(false);
-        $permissions->setList(false);
+        $permissions->setView(true);
+        $permissions->setList(true);
 
         $event = new Event\Document\PermissionEvent(
             new DocumentSearchResultItem(),
@@ -97,9 +97,9 @@ final class EventServiceTest extends Unit
         );
 
         $this->assertSame($event->getPermissions(), $returnedEvent->getPermissions());
-        $this->assertFalse($returnedEvent->getPermissions()->isView());
-        $this->assertFalse($returnedEvent->getPermissions()->isList());
-        $this->assertTrue($returnedEvent->getPermissions()->isPublish());
+        $this->assertTrue($returnedEvent->getPermissions()->isView());
+        $this->asserttrue($returnedEvent->getPermissions()->isList());
+        $this->assertFalse($returnedEvent->getPermissions()->isPublish());
     }
 
     public function testEventDispatcherCall(): void

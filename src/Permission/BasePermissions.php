@@ -21,8 +21,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Permission;
  */
 abstract class BasePermissions
 {
-    // TODO: Change default value once development of API is finished
-    protected const DEFAULT_VALUE = true;
+    protected const DEFAULT_VALUE = false;
 
     private bool $list = self::DEFAULT_VALUE;
 

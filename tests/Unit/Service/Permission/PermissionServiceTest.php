@@ -39,7 +39,7 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  */
 final class PermissionServiceTest extends Unit
 {
-    private const DEFAULT_VALUE = true;
+    private const DEFAULT_VALUE = false;
 
     private User $user;
 
