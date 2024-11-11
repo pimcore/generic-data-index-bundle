@@ -1,4 +1,4 @@
-name: "Codeception Tests"
+name: "Codeception Tests with Open Search"
 
 on:
     # Enable Later.
@@ -20,7 +20,6 @@ env:
     PIMCORE_TEST: 1
     PIMCORE_TEST_DB_DSN: "mysql://root@127.0.0.1:33006/pimcore_test"
     PIMCORE_OPEN_SEARCH_HOST: "localhost:39200"
-    PIMCORE_ELASTIC_SEARCH_HOST: "localhost:5300"
     CODECEPTION_BUNDLE_PATH: "bundles/pimcore/generic-data-index-bundle/"
 
 jobs:
@@ -34,7 +33,6 @@ jobs:
                     - { php-version: "8.2", dependencies: "lowest", pimcore_version: "", experimental: false, search_engine: "openSearch" }
                     - { php-version: "8.3", dependencies: "highest", pimcore_version: "", experimental: false, search_engine: "openSearch"}
                     - { php-version: "8.3", dependencies: "highest", pimcore_version: "11.x-dev as 11.99.9", experimental: true, search_engine: "openSearch"}
-                    - { php-version: "8.3", dependencies: "highest", pimcore_version: "11.x-dev as 11.99.9", experimental: true, search_engine: "elasticsearch"}
 
         services:
             mariadb:
@@ -56,19 +54,6 @@ jobs:
                     OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
                     discovery.type: "single-node"
                     DISABLE_SECURITY_PLUGIN: true
-
-            elastic:
-                image: elasticsearch:8.5.3
-                ports:
-                    - 5300:9200
-                env:
-                    discovery.type: "single-node"
-                    ES_JAVA_OPTS: "-Xms1g -Xmx1g"
-                    xpack.security.enabled: "true"
-                    xpack.security.authc.anonymous.roles: "superuser,kibana_admin,kibana_system,kibana_user"
-                    ELASTIC_USERNAME: "elastic"
-                    ELASTIC_PASSWORD: "somethingsecret"
-                if: ${{ matrix.search_engine == 'elasticsearch' }}
 
         steps:
             -   name: "Checkout code"
@@ -105,19 +90,6 @@ jobs:
                   mkdir src
                   chmod 755 .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
                   .github/ci/scripts/setup-pimcore-environment-functional-tests.sh "${{ matrix.search_engine }}"
-
-            - name: "Wait for Elasticsearch to be up"
-              run: |
-                  if [ "${{ matrix.search_engine }}" == "elasticsearch" ]; then
-                    echo "Waiting for Elasticsearch to be ready..."
-                    until curl -s -u elastic:somethingsecret http://localhost:5300/_cluster/health | grep -q '"status":"green"'; do
-                      echo "Waiting... Elasticsearch is not yet available."
-                      sleep 5
-                    done
-                    echo "Elasticsearch is up and running!"
-                  else
-                    echo "Using OpenSearch for testing, skipping Elasticsearch wait."
-                  fi       
 
             - name: "Update Pimcore version"
               env:
