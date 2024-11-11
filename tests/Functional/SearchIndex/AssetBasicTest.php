@@ -22,7 +22,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\Search
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
-use Pimcore\SearchClient\Exception\ClientException;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 class AssetBasicTest extends \Codeception\Test\Unit

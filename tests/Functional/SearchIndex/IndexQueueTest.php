@@ -25,7 +25,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
 use Pimcore\Db;
 use Pimcore\Model\Element\ElementInterface;
-use Pimcore\SearchClient\Exception\ClientException;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 class IndexQueueTest extends Unit

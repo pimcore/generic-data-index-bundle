@@ -24,7 +24,6 @@ use Pimcore\Db;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\MappingTest;
-use Pimcore\SearchClient\Exception\ClientException;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 class DataObjectBasicTest extends \Codeception\Test\Unit

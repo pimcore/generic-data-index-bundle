@@ -28,7 +28,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
-use Pimcore\SearchClient\Exception\ClientException;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 /**

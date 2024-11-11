@@ -18,7 +18,6 @@ namespace Functional\OpenSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
-use Pimcore\SearchClient\Exception\ClientException;
 use Pimcore\SearchClient\SearchClientInterface;
 use Pimcore\Tests\Support\Util\TestHelper;
 

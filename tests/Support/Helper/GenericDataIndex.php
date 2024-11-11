@@ -158,6 +158,7 @@ class GenericDataIndex extends \Codeception\Module
 
         if (isset($response['found'])) {
             $this->assertFalse($response['found'], 'Check OpenSearch document id of element');
+
             return;
         }
 
