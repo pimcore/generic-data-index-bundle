@@ -31,9 +31,9 @@ jobs:
         strategy:
             matrix:
                 include:
-                    #- { php-version: "8.2", dependencies: "lowest", pimcore_version: "", experimental: false, search_engine: "openSearch" }
-                    #- { php-version: "8.3", dependencies: "highest", pimcore_version: "", experimental: false, search_engine: "openSearch"}
-                    #- { php-version: "8.3", dependencies: "highest", pimcore_version: "11.x-dev as 11.99.9", experimental: true, search_engine: "openSearch"}
+                    - { php-version: "8.2", dependencies: "lowest", pimcore_version: "", experimental: false, search_engine: "openSearch" }
+                    - { php-version: "8.3", dependencies: "highest", pimcore_version: "", experimental: false, search_engine: "openSearch"}
+                    - { php-version: "8.3", dependencies: "highest", pimcore_version: "11.x-dev as 11.99.9", experimental: true, search_engine: "openSearch"}
                     - { php-version: "8.3", dependencies: "highest", pimcore_version: "11.x-dev as 11.99.9", experimental: true, search_engine: "elasticsearch"}
 
         services:
@@ -68,6 +68,7 @@ jobs:
                     xpack.security.authc.anonymous.roles: "superuser,kibana_admin,kibana_system,kibana_user"
                     ELASTIC_USERNAME: "elastic"
                     ELASTIC_PASSWORD: "somethingsecret"
+                if: ${{ matrix.search_engine == 'elasticsearch' }}
 
         steps:
             -   name: "Checkout code"
