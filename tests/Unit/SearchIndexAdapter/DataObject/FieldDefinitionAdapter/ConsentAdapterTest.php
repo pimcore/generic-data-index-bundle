@@ -28,7 +28,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\Consent;
  */
 final class ConsentAdapterTest extends Unit
 {
-    public function testGetOpenSearchMapping(): void
+    public function testGetSearchIndexMapping(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);

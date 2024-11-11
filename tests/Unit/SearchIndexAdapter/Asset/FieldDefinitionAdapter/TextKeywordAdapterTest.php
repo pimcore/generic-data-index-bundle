@@ -29,7 +29,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
  */
 final class TextKeywordAdapterTest extends Unit
 {
-    public function testGetOpenSearchMapping(): void
+    public function testGetSearchIndexMapping(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $indexMappingServiceInterfaceMock = $this->getMappingService(

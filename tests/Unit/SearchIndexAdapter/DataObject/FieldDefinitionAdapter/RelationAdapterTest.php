@@ -30,7 +30,7 @@ use Pimcore\Model\Document\Page;
  */
 final class RelationAdapterTest extends Unit
 {
-    public function testOpenSearchMapping()
+    public function testGetSearchIndexMapping()
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);

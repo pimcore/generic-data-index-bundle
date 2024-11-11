@@ -30,7 +30,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox;
  */
 final class AdvancedManyToManyRelationAdapterTest extends Unit
 {
-    public function testGetOpenSearchMapping(): void
+    public function testGetSearchIndexMapping(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
@@ -98,7 +98,7 @@ final class AdvancedManyToManyRelationAdapterTest extends Unit
             ], $adapter->getIndexMapping());
     }
 
-    public function testGetOpenSearchMappingException(): void
+    public function testGetSearchIndexMappingException(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);

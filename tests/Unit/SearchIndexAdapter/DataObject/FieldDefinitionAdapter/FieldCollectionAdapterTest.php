@@ -29,7 +29,7 @@ use Pimcore\Model\DataObject\Fieldcollection;
 
 class FieldCollectionAdapterTest extends Unit
 {
-    public function testOpenSearchMapping(): void
+    public function testGetSearchIndexMapping(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
