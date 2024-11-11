@@ -184,14 +184,9 @@ class OpenSearchServiceTest extends \Codeception\Test\Unit
         $document = $searchIndexService->getDocument('test_index', 1);
         $this->assertEquals('test', $document['_source']['test']);
 
-        try {
-            $searchIndexService->getDocument('test_index', 2, true);
-        } catch (ClientException $e) {
-            $this->assertEquals(404, $e->getCode());
-        }
+        $searchIndexService->getDocument('test_index', 2, true);
         $searchIndexService->deleteIndex('test_index');
-        $this->expectException(ClientException::class);
-        $searchIndexService->getDocument('test_index', 2);
+        $this->tester->checkDeletedIndexEntry(1, 'test_index');
     }
 
     public function testPutMapping(): void

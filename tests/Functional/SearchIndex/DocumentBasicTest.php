@@ -72,9 +72,7 @@ final class DocumentBasicTest extends Unit
         $this->assertEquals($document->getKey(), $response['_source']['system_fields']['key']);
 
         $document->delete();
-
-        $this->expectException(ClientException::class);
-        $this->tester->checkIndexEntry($documentId, $indexName);
+        $this->tester->checkDeletedIndexEntry($documentId, $indexName);
     }
 
     /**

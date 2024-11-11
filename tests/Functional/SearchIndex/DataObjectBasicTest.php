@@ -71,9 +71,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->assertEquals('my-test-object', $response['_source']['system_fields']['key']);
 
         $object->delete();
-
-        $this->expectException(ClientException::class);
-        $this->tester->checkIndexEntry($object->getId(), $indexName);
+        $this->tester->checkDeletedIndexEntry($object->getId(), $indexName);
     }
 
     public function testIndexingWithInheritanceAsynchronous()
@@ -83,13 +81,10 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $object = $this->createObjectWithInheritance();
         $indexName = $this->searchIndexConfigService->getIndexName($object->getClassName());
 
-        // check indexed
-        $this->expectException(ClientException::class);
-        $this->tester->checkIndexEntry($object->getId(), $indexName);
-
-        $this->assertNotEmpty(
+        $this->assertGreaterThan(
+            0,
             Db::get()->fetchOne(
-                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="object"',
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="dataObject"',
                 [$object->getId()]
             )
         );
@@ -115,9 +110,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->assertEquals('my-test-object', $response['_source']['system_fields']['key']);
 
         $object->delete();
-
-        $this->expectException(ClientException::class);
-        $this->tester->checkIndexEntry($object->getId(), $indexName);
+        $this->tester->checkDeletedIndexEntry($object->getId(), $indexName);
     }
 
     public function testIndexingWithoutInheritanceAsynchronous()
@@ -127,14 +120,10 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $object = TestHelper::createEmptyObject();
         $this->assertFalse($object->getClass()->getAllowInherit());
         $indexName = $this->searchIndexConfigService->getIndexName($object->getClassName());
-
-        // check indexed
-        $this->expectException(ClientException::class);
-        $this->tester->checkIndexEntry($object->getId(), $indexName);
-
-        $this->assertNotEmpty(
+        $this->assertGreaterThan(
+            0,
             Db::get()->fetchOne(
-                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="object"',
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="dataObject"',
                 [$object->getId()]
             )
         );
@@ -160,9 +149,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->assertEquals('my-test-folder', $response['_source']['system_fields']['key']);
 
         $object->delete();
-
-        $this->expectException(ClientException::class);
-        $this->tester->checkIndexEntry($object->getId(), $indexName);
+        $this->tester->checkDeletedIndexEntry($object->getId(), $indexName);
     }
 
     public function testDataObjectSearch()

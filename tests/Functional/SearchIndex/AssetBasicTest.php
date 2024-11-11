@@ -69,9 +69,7 @@ class AssetBasicTest extends \Codeception\Test\Unit
         $this->assertEquals('test.jpg', $response['_source']['system_fields']['key']);
 
         $asset->delete();
-
-        $this->expectException(ClientException::class);
-        $this->tester->checkIndexEntry($asset->getId(), $indexName);
+        $this->tester->checkDeletedIndexEntry($asset->getId(), $indexName);
 
     }
 

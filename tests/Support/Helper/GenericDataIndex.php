@@ -146,6 +146,24 @@ class GenericDataIndex extends \Codeception\Module
         return $response;
     }
 
+    public function checkDeletedIndexEntry(string $id, string $index): void
+    {
+        /** @var SearchClientInterface $client */
+        $client = $this->getIndexSearchClient();
+        $response = $client->get([
+            'id' => $id,
+            'index' => $index,
+            'client' => ['ignore' => [404]],
+        ]);
+
+        if (isset($response['found'])) {
+            $this->assertFalse($response['found'], 'Check OpenSearch document id of element');
+            return;
+        }
+
+        $this->assertNotContains($id, $response);
+    }
+
     public function flushIndex()
     {
         /** @var SearchClientInterface $client */

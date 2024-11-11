@@ -117,13 +117,7 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
     private function isWindowTooLarge(Exception $e): bool
     {
         try {
-            $reason = $e->getMessage();
-            if (!$e instanceof ClientResponseException) {
-                $reason = json_decode($e->getMessage(), false, 512, JSON_THROW_ON_ERROR)
-                    ->error->caused_by->reason;
-            }
-
-            if (str_contains($reason, 'window is too large')) {
+            if (str_contains($e->getMessage(), 'window is too large')) {
                 return true;
             }
 
