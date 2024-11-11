@@ -17,10 +17,13 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\OpenSearch;
 
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ClientType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\IndexMappingService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields;
 
@@ -32,7 +35,10 @@ final class IndexMappingServiceTest extends Unit
     public function testGetMappingWithEmptyFieldDefinitions(): void
     {
         $fieldDefinitionServiceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
-        $indexMappingService = new IndexMappingService($fieldDefinitionServiceMock);
+        $indexMappingService = new IndexMappingService(
+            $fieldDefinitionServiceMock,
+            $this->getSearchIndexConfigServiceMock()
+        );
 
         $this->assertSame(
             ['properties' => []],
@@ -43,7 +49,10 @@ final class IndexMappingServiceTest extends Unit
     public function testGetMappingWhenFieldDefinitionsHasNoName()
     {
         $fieldDefinitionServiceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
-        $indexMappingService = new IndexMappingService($fieldDefinitionServiceMock);
+        $indexMappingService = new IndexMappingService(
+            $fieldDefinitionServiceMock,
+            $this->getSearchIndexConfigServiceMock()
+        );
 
         $input = new Input();
 
@@ -58,7 +67,10 @@ final class IndexMappingServiceTest extends Unit
         $fieldDefinitionServiceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class, [
             'getFieldDefinitionAdapter' => null,
         ]);
-        $indexMappingService = new IndexMappingService($fieldDefinitionServiceMock);
+        $indexMappingService = new IndexMappingService(
+            $fieldDefinitionServiceMock,
+            $this->getSearchIndexConfigServiceMock()
+        );
 
         $input = new Input();
         $input->setName('test');
@@ -83,7 +95,10 @@ final class IndexMappingServiceTest extends Unit
         $input = new Input();
         $input->setName('testInput');
 
-        $indexMappingService = new IndexMappingService($fieldDefinitionServiceMock);
+        $indexMappingService = new IndexMappingService(
+            $fieldDefinitionServiceMock,
+            $this->getSearchIndexConfigServiceMock()
+        );
         $mapping = $indexMappingService->getMappingForFieldDefinitions([$input]);
 
         $this->assertSame(
@@ -112,7 +127,10 @@ final class IndexMappingServiceTest extends Unit
         $localizedfields = new Localizedfields();
         $localizedfields->setName('localizedfields');
 
-        $indexMappingService = new IndexMappingService($fieldDefinitionServiceMock);
+        $indexMappingService = new IndexMappingService(
+            $fieldDefinitionServiceMock,
+            $this->getSearchIndexConfigServiceMock()
+        );
         $mapping = $indexMappingService->getMappingForFieldDefinitions([$localizedfields]);
         $this->assertSame(
             $this->getTransformedLocalizedFieldsMapping(),
@@ -123,7 +141,10 @@ final class IndexMappingServiceTest extends Unit
     public function testGetMappingForTextKeywordWithoutArguments(): void
     {
         $fieldDefinitionServiceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
-        $indexMappingService = new IndexMappingService($fieldDefinitionServiceMock);
+        $indexMappingService = new IndexMappingService(
+            $fieldDefinitionServiceMock,
+            $this->getSearchIndexConfigServiceMock()
+        );
 
         $this->assertSame(
             [
@@ -147,7 +168,10 @@ final class IndexMappingServiceTest extends Unit
     public function testGetMappingForTextKeywordWithArguments(): void
     {
         $fieldDefinitionServiceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
-        $indexMappingService = new IndexMappingService($fieldDefinitionServiceMock);
+        $indexMappingService = new IndexMappingService(
+            $fieldDefinitionServiceMock,
+            $this->getSearchIndexConfigServiceMock()
+        );
         $attributes = [
             'text' => [
                 'fields' => [
@@ -189,7 +213,10 @@ final class IndexMappingServiceTest extends Unit
     public function testGetMappingForAdvancedImage(): void
     {
         $fieldDefinitionServiceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
-        $indexMappingService = new IndexMappingService($fieldDefinitionServiceMock);
+        $indexMappingService = new IndexMappingService(
+            $fieldDefinitionServiceMock,
+            $this->getSearchIndexConfigServiceMock()
+        );
         $keyWordMapping = $indexMappingService->getMappingForAdvancedImage([]);
 
         $this->assertSame(
@@ -349,5 +376,12 @@ final class IndexMappingServiceTest extends Unit
                 ],
             ],
         ];
+    }
+
+    private function getSearchIndexConfigServiceMock(): SearchIndexConfigService
+    {
+        return $this->makeEmpty(SearchIndexConfigServiceInterface::class, [
+            'getClientType' => ClientType::OPEN_SEARCH->value,
+        ]);
     }
 }
