@@ -58,15 +58,15 @@ jobs:
 
             elastic:
                 image: elasticsearch:8.5.3
-                environment:
-                    - discovery.type=single-node
-                    - ES_JAVA_OPTS=-Xms1g -Xmx1g
-                    - xpack.security.enabled=true
-                    - xpack.security.authc.anonymous.roles=superuser,kibana_admin,kibana_system,kibana_user
-                    - ELASTIC_USERNAME=elastic
-                    - ELASTIC_PASSWORD=somethingsecret
                 ports:
                     - 5300:9200
+                env:
+                    discovery.type: "single-node"
+                    ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+                    xpack.security.enabled: "true"
+                    xpack.security.authc.anonymous.roles: "superuser,kibana_admin,kibana_system,kibana_user"
+                    ELASTIC_USERNAME: "elastic"
+                    ELASTIC_PASSWORD: "somethingsecret"
                 deploy:
                     resources:
                         limits:
