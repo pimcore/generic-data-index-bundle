@@ -378,7 +378,7 @@ final class IndexMappingServiceTest extends Unit
         ];
     }
 
-    private function getSearchIndexConfigServiceMock(): SearchIndexConfigService
+    private function getSearchIndexConfigServiceMock(): SearchIndexConfigServiceInterface
     {
         return $this->makeEmpty(SearchIndexConfigServiceInterface::class, [
             'getClientType' => ClientType::OPEN_SEARCH->value,
