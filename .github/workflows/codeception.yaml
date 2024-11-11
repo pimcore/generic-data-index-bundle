@@ -67,17 +67,6 @@ jobs:
                     xpack.security.authc.anonymous.roles: "superuser,kibana_admin,kibana_system,kibana_user"
                     ELASTIC_USERNAME: "elastic"
                     ELASTIC_PASSWORD: "somethingsecret"
-                deploy:
-                    resources:
-                        limits:
-                            cpus: '1'
-                            memory: '2G'
-                healthcheck:
-                    test: [ "CMD", "curl", "-f", "http://elastic:9200/_cluster/health?wait_for_status=yellow&timeout=50s" ]
-                    interval: 30s
-                    retries: 5
-                    start_period: 10s
-                    timeout: 10s
 
         steps:
             -   name: "Checkout code"
