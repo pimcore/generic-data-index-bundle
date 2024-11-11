@@ -39,7 +39,7 @@ pimcore_open_search_client:
 pimcore_elasticsearch_client:
     es_clients:
         default:
-            hosts: [ 'elastic:9200' ]
+            hosts: ['%env(PIMCORE_ELASTIC_SEARCH_HOST)%']
             username: 'elastic'
             password: 'somethingsecret'
             logger_channel: 'pimcore.elasicsearch'

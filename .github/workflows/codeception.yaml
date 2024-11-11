@@ -20,6 +20,7 @@ env:
     PIMCORE_TEST: 1
     PIMCORE_TEST_DB_DSN: "mysql://root@127.0.0.1:33006/pimcore_test"
     PIMCORE_OPEN_SEARCH_HOST: "localhost:39200"
+    PIMCORE_ELASTIC_SEARCH_HOST: "localhost:5300"
     CODECEPTION_BUNDLE_PATH: "bundles/pimcore/generic-data-index-bundle/"
 
 jobs:
@@ -103,6 +104,19 @@ jobs:
                   mkdir src
                   chmod 755 .github/ci/scripts/setup-pimcore-environment-functional-tests.sh
                   .github/ci/scripts/setup-pimcore-environment-functional-tests.sh "${{ matrix.search_engine }}"
+
+            - name: "Wait for Elasticsearch to be up"
+              run: |
+                  if [ "${{ matrix.search_engine }}" == "elasticsearch" ]; then
+                    echo "Waiting for Elasticsearch to be ready..."
+                    until curl -s -u elastic:somethingsecret http://localhost:5300/_cluster/health | grep -q '"status":"green"'; do
+                      echo "Waiting... Elasticsearch is not yet available."
+                      sleep 5
+                    done
+                    echo "Elasticsearch is up and running!"
+                  else
+                    echo "Using OpenSearch for testing, skipping Elasticsearch wait."
+                  fi       
 
             - name: "Update Pimcore version"
               env:
