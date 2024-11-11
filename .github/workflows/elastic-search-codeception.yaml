@@ -1,4 +1,4 @@
-name: "Codeception Tests with Elastic Search"
+name: "Codeception Tests with Elasticsearch"
 
 on:
     # Enable Later.
