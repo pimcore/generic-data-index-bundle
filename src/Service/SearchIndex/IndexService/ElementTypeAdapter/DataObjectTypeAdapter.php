@@ -158,8 +158,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         string $operation,
         int $operationTime,
         bool $includeElement = false
-    ): ?QueryBuilder
-    {
+    ): ?QueryBuilder {
         if (!$includeElement) {
             return null;
         }

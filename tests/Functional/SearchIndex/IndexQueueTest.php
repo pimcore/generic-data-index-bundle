@@ -133,6 +133,7 @@ class IndexQueueTest extends Unit
         $result = $this->tester->checkIndexEntry($asset->getId(), $indexName);
         $this->assertEquals($asset->getId(), $result['_source']['system_fields']['id']);
     }
+
     /**
      * @throws Exception
      */
