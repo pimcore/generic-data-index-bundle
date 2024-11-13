@@ -142,9 +142,9 @@ class IndexQueueTest extends Unit
         $this->consume();
 
         $this->checkAndDeleteElement($asset, $assetIndex);
-        //$this->consume();
+        $this->consume();
 
-        //$this->tester->checkDeletedIndexEntry($asset->getId(), $assetIndex);
+        $this->tester->checkDeletedIndexEntry($asset->getId(), $assetIndex);
     }
 
     /**
@@ -157,9 +157,9 @@ class IndexQueueTest extends Unit
         $this->consume();
 
         $this->checkAndDeleteElement($document, $documentIndex);
-        //$this->consume();
+        $this->consume();
 
-        //$this->tester->checkDeletedIndexEntry($document->getId(), $documentIndex);
+        $this->tester->checkDeletedIndexEntry($document->getId(), $documentIndex);
     }
 
     /**
@@ -172,9 +172,9 @@ class IndexQueueTest extends Unit
         $this->consume();
 
         $this->checkAndDeleteElement($object, $objectIndex);
-        //$this->consume();
+        $this->consume();
 
-        //$this->tester->checkDeletedIndexEntry($object->getId(), $objectIndex);
+        $this->tester->checkDeletedIndexEntry($object->getId(), $objectIndex);
     }
 
     private function checkAndDeleteElement(ElementInterface $element, string $indexName): void
