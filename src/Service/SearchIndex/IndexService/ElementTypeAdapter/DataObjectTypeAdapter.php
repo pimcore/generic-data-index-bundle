@@ -22,6 +22,7 @@ use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateFolderIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
@@ -105,22 +106,10 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         }
 
         if (!$element->getClass()->getAllowInherit()) {
-            if ($includeElement) {
-                return $this->dbConnection->createQueryBuilder()
-                    ->select([
-                        $element->getId(),
-                        "'" . ElementType::DATA_OBJECT->value . "'",
-                        'className',
-                        "'$operation'",
-                        "'$operationTime'",
-                        '0',
-                    ])
-                    ->from('objects') // just a dummy query to fit into the query builder interface
-                    ->where('id = :id')
-                    ->setMaxResults(1)
-                    ->setParameter('id', $element->getId());
-            }
+            return $this->getRelatedItemsQueryBuilder($element, $operation, $operationTime, $includeElement);
+        }
 
+        if ($operation !== IndexQueueOperation::UPDATE->value) {
             return null;
         }
 
@@ -162,5 +151,46 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         }
 
         throw new InvalidArgumentException('Element must be instance of ' . AbstractObject::class);
+    }
+
+    private function getRelatedItemsQueryBuilder(
+        Concrete $element,
+        string $operation,
+        int $operationTime,
+        bool $includeElement = false
+    ): ?QueryBuilder {
+        if (!$includeElement) {
+            return null;
+        }
+
+        $queryBuilder = $this->dbConnection->createQueryBuilder()
+            ->select($this->getSelectParametersByOperation($element, $operation, $operationTime))
+            ->setMaxResults(1);
+
+        if ($operation === IndexQueueOperation::DELETE->value) {
+            return $queryBuilder->from('DUAL');
+        }
+
+        return $queryBuilder
+            ->from('objects')
+            ->where('id = :id')
+            ->setParameter('id', $element->getId());
+    }
+
+    private function getSelectParametersByOperation(Concrete $element, string $operation, int $operationTime): array
+    {
+        $classId = 'className';
+        if ($operation === IndexQueueOperation::DELETE->value) {
+            $classId = "'" . $element->getClassId() . "'";
+        }
+
+        return [
+            $element->getId(),
+            "'" . ElementType::DATA_OBJECT->value . "'",
+            $classId,
+            "'$operation'",
+            "'$operationTime'",
+            '0',
+        ];
     }
 }
