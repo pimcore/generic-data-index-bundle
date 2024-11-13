@@ -133,38 +133,55 @@ class IndexQueueTest extends Unit
         $result = $this->tester->checkIndexEntry($asset->getId(), $indexName);
         $this->assertEquals($asset->getId(), $result['_source']['system_fields']['id']);
     }
+    /**
+     * @throws Exception
+     */
+    public function testAssetDeleteWithQueue(): void
+    {
+        $asset = TestHelper::createImageAsset();
+        $assetIndex = $this->searchIndexConfigService->getIndexName(self::ASSET_INDEX_NAME);
+        $this->consume();
+
+        $this->checkAndDeleteElement($asset, $assetIndex);
+        $this->consume();
+
+        $this->tester->checkDeletedIndexEntry($asset->getId(), $assetIndex);
+    }
 
     /**
      * @throws Exception
      */
-    public function testElementDeleteWithQueue(): void
+    public function testDocumentDeleteWithQueue(): void
     {
-        $this->checkAndDeleteElement(
-            TestHelper::createImageAsset(),
-            $this->searchIndexConfigService->getIndexName(self::ASSET_INDEX_NAME)
-        );
+        $document = TestHelper::createEmptyDocument();
+        $documentIndex = $this->searchIndexConfigService->getIndexName(self::DOCUMENT_INDEX_NAME);
+        $this->consume();
 
-        $this->checkAndDeleteElement(
-            TestHelper::createEmptyDocument(),
-            $this->searchIndexConfigService->getIndexName(self::DOCUMENT_INDEX_NAME)
-        );
+        $this->checkAndDeleteElement($document, $documentIndex);
+        $this->consume();
 
-        $object = TestHelper::createEmptyObject('', false);
-        $this->checkAndDeleteElement(
-            $object,
-            $this->searchIndexConfigService->getIndexName($object->getClassName())
-        );
+        $this->tester->checkDeletedIndexEntry($document->getId(), $documentIndex);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function testDataObjectDeleteWithQueue(): void
+    {
+        $object = TestHelper::createEmptyObject();
+        $objectIndex = $this->searchIndexConfigService->getIndexName($object->getClassName());
+        $this->consume();
+
+        $this->checkAndDeleteElement($object, $objectIndex);
+        $this->consume();
+
+        $this->tester->checkDeletedIndexEntry($object->getId(), $objectIndex);
     }
 
     private function checkAndDeleteElement(ElementInterface $element, string $indexName): void
     {
-        $this->consume();
         $this->tester->checkIndexEntry($element->getId(), $indexName);
-
         $element->delete();
-        $this->consume();
-        $this->expectException(Missing404Exception::class);
-        $this->tester->checkIndexEntry($element->getId(), $indexName);
     }
 
     private function consume(): void
