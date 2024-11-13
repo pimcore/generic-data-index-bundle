@@ -163,22 +163,21 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
             return null;
         }
 
-        if ($operation === IndexQueueOperation::UPDATE->value) {
-            return $this->dbConnection->createQueryBuilder()
-                ->select($this->getSelectArrayByOperation($element, $operation, $operationTime))
-                ->setMaxResults(1)
-                ->from('objects')
-                ->where('id = :id')
-                ->setParameter('id', $element->getId());
+        $queryBuilder = $this->dbConnection->createQueryBuilder()
+            ->select($this->getSelectParametersByOperation($element, $operation, $operationTime))
+            ->setMaxResults(1);
+
+        if ($operation === IndexQueueOperation::DELETE->value) {
+            return $queryBuilder->from('DUAL');
         }
 
-        return $this->dbConnection->createQueryBuilder()
-            ->select($this->getSelectArrayByOperation($element, $operation, $operationTime))
-            ->setMaxResults(1)
-            ->from('DUAL');
+        return $queryBuilder
+            ->from('objects')
+            ->where('id = :id')
+            ->setParameter('id', $element->getId());
     }
 
-    private function getSelectArrayByOperation(Concrete $element, string $operation, int $operationTime): array
+    private function getSelectParametersByOperation(Concrete $element, string $operation, int $operationTime): array
     {
         $classId = 'className';
         if ($operation === IndexQueueOperation::DELETE->value) {
