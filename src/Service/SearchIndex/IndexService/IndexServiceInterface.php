@@ -17,7 +17,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
-use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
 
 /**

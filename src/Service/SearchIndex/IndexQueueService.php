@@ -138,8 +138,7 @@ final class IndexQueueService implements IndexQueueServiceInterface
         ElementInterface $element,
         string $operation,
         bool $processSynchronously
-    ): void
-    {
+    ): void {
         $this->enqueueService->enqueueRelatedItems(
             element: $element,
             includeElement: !$processSynchronously,

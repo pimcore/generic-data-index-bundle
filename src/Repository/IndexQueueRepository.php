@@ -190,6 +190,7 @@ final class IndexQueueRepository
 
     /**
      * @throws DBALException
+     *
      * @param HitData[] $enqueueItemList
      */
     public function enqueueByItemList(array $enqueueItemList, IndexQueueOperation $operation, int $operationTime): void
@@ -225,7 +226,6 @@ final class IndexQueueRepository
             sprintf($sql, IndexQueue::TABLE, implode(',', $values))
         );
     }
-
 
     /**
      * @throws DBALException

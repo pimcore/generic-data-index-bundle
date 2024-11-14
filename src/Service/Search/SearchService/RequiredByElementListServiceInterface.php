@@ -23,6 +23,7 @@ interface RequiredByElementListServiceInterface
 {
     /**
      * Returns array of IDs,element types and index name of all elements which require passed element ($element).
+     *
      * @return HitData[]
      */
     public function getDependencyList(ElementInterface $element): array;

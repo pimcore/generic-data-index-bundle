@@ -62,7 +62,6 @@ final readonly class ElementService implements ElementServiceInterface
         };
     }
 
-
     public function classDefinitionExists(string $name): bool
     {
         try {

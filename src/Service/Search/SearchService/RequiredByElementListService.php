@@ -30,7 +30,7 @@ final readonly class RequiredByElementListService implements RequiredByElementLi
     public function __construct(
         private ElementServiceInterface $elementService,
         private FetchIdsBySearchServiceInterface $fetchIdsService,
-        private IndexNameResolverInterface  $indexNameResolver,
+        private IndexNameResolverInterface $indexNameResolver,
         private SearchProviderInterface $searchProvider,
         private TransformToAdapterSearchServiceInterface $transformToAdapterSearchService,
     ) {
