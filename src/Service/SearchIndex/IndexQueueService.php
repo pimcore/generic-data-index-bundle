@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\HandleIndexQueueEntriesException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
@@ -163,10 +164,17 @@ final class IndexQueueService implements IndexQueueServiceInterface
     private function handleEntryByOperation(string $operation, IndexQueue $entry): void
     {
         if ($operation === IndexQueueOperation::DELETE->value) {
+            $isClass = false;
+            if ($entry->getElementType() === ElementType::DATA_OBJECT->value &&
+                $entry->getElementIndexName() !== IndexName::DATA_OBJECT_FOLDER->value
+            ) {
+                $isClass = true;
+            }
+
             $this->indexService->deleteFromSpecificIndex(
                 $this->searchIndexConfigService->getIndexName(
                     $entry->getElementIndexName(),
-                    ElementType::DATA_OBJECT->value === $entry->getElementType()
+                    $isClass
                 ),
                 $entry->getElementId()
             );
