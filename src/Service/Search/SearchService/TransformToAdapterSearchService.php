@@ -22,7 +22,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\ElementSearch;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 
 /**
@@ -42,8 +41,7 @@ final readonly class TransformToAdapterSearchService implements TransformToAdapt
     public function transform(
         SearchInterface $search,
         bool $enableOrderByPageNumber = false
-    ): OpenSearchSearchInterface
-    {
+    ): OpenSearchSearchInterface {
         $index = $this->indexNameResolver->resolveIndexName($search);
 
         return match(true) {
