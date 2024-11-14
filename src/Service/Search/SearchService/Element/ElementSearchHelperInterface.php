@@ -16,7 +16,7 @@
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Model\User;
@@ -37,7 +37,7 @@ interface ElementSearchHelperInterface
         SearchInterface $search,
         string $indexName,
         bool $enableOrderByPageNumber = false
-    ): AdapterSearchInterface;
+    ): OpenSearchSearchInterface;
 
     public function hydrateSearchResultHits(
         SearchResult $searchResult,

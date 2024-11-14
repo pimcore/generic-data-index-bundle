@@ -22,6 +22,7 @@ use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\OpenSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug\SearchInformation;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
@@ -236,7 +237,7 @@ final class OpenSearchService implements SearchIndexServiceInterface
         int $page,
         int $pageSize,
         bool $aggregationsOnly = false
-    ): AdapterSearchInterface {
+    ): OpenSearchSearchInterface {
         if ($aggregationsOnly) {
             return new Search(
                 from: 0,
