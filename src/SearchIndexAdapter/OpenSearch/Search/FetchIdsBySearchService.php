@@ -86,7 +86,11 @@ final readonly class FetchIdsBySearchService implements FetchIdsBySearchServiceI
         return $ids;
     }
 
-    private function doFetchIdsAndTypes(OpenSearchSearchInterface $search, string $indexName, ?array $searchAfter = null): array
+    private function doFetchIdsAndTypes(
+        OpenSearchSearchInterface $search,
+        string $indexName,
+        ?array $searchAfter = null
+    ): array
     {
         $search->setFrom(0);
         $search->setSize($this->getPageSize());
@@ -101,7 +105,8 @@ final readonly class FetchIdsBySearchService implements FetchIdsBySearchServiceI
                 elementType: $item->getSource()[FieldCategory::SYSTEM_FIELDS->value][SystemField::ELEMENT_TYPE->value],
                 index: $item->getIndex(),
             ),
-            $hits);
+            $hits
+        );
         $lastHit = $searchResult->getLastHit();
         if ($lastHit && (count($hits) === $this->getPageSize())) {
             return array_merge($idsAndTypes, $this->doFetchIdsAndTypes($search, $indexName, $lastHit->getSort()));

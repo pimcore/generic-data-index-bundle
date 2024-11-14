@@ -174,7 +174,7 @@ final class IndexQueueRepository
     public function enqueueBySelectQuery(DBALQueryBuilder $queryBuilder): void
     {
         $sql = <<<SQL
-            INSERT INTO 
+            INSERT INTO
                 %s (elementId, elementType, elementIndexName, operation, operationTime, dispatched)
                 %s
                 ON DUPLICATE KEY
@@ -200,7 +200,7 @@ final class IndexQueueRepository
         }
 
         $sql = <<<SQL
-            INSERT INTO 
+            INSERT INTO
                 %s (elementId, elementType, elementIndexName, operation, operationTime, dispatched)
                 VALUES %s
                 ON DUPLICATE KEY
