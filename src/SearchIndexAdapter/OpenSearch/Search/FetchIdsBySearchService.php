@@ -16,11 +16,14 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSort;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSortList;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultHit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
@@ -46,6 +49,27 @@ final readonly class FetchIdsBySearchService implements FetchIdsBySearchServiceI
         return $this->doFetchIds($search, $indexName);
     }
 
+    /**
+     * @return HitData[]
+     */
+    public function fetchAllTypesAndIds(
+        OpenSearchSearchInterface $search,
+        string $indexName,
+        bool $sortById = true
+    ): array
+    {
+        $search = clone $search;
+        if ($sortById) {
+            $search->setSortList(new FieldSortList([new FieldSort(SystemField::ID->getPath())]));
+        }
+
+        if ($search->getSortList()->isEmpty()) {
+            throw new InvalidArgumentException('Search must have a sort defined to be able to fetch all ids');
+        }
+
+        return $this->doFetchIdsAndTypes($search, $indexName);
+    }
+
     private function doFetchIds(OpenSearchSearchInterface $search, string $indexName, ?array $searchAfter = null): array
     {
         $search->setFrom(0);
@@ -61,6 +85,30 @@ final readonly class FetchIdsBySearchService implements FetchIdsBySearchServiceI
         }
 
         return $ids;
+    }
+
+    private function doFetchIdsAndTypes(OpenSearchSearchInterface $search, string $indexName, ?array $searchAfter = null): array
+    {
+        $search->setFrom(0);
+        $search->setSize($this->getPageSize());
+        $search->setSource([SystemField::ELEMENT_TYPE->getPath()]);
+        $search->setSearchAfter($searchAfter);
+        $searchResult = $this->searchIndexService->search($search, $indexName);
+        $hits = $searchResult->getHits();
+        $idsAndTypes = array_map(
+            static fn (SearchResultHit $item) =>
+            new HitData(
+                id: $item->getId(),
+                elementType: $item->getSource()[FieldCategory::SYSTEM_FIELDS->value][SystemField::ELEMENT_TYPE->value],
+                index: $item->getIndex(),
+            ),
+            $hits);
+        $lastHit = $searchResult->getLastHit();
+        if ($lastHit && (count($hits) === $this->getPageSize())) {
+            return array_merge($idsAndTypes, $this->doFetchIdsAndTypes($search, $indexName, $lastHit->getSort()));
+        }
+
+        return $idsAndTypes;
     }
 
     private function getPageSize(): int

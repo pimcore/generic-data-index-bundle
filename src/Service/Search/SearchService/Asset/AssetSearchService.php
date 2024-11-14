@@ -52,7 +52,7 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
         AssetSearchInterface $assetSearch,
         PermissionTypes $permissionType = PermissionTypes::LIST
     ): AssetSearchResult {
-        $assetSearch = $this->searchHelper->addSearchRestrictions(
+        $search = $this->searchHelper->addSearchRestrictions(
             search: $assetSearch,
             userPermission: UserPermissionTypes::ASSETS->value,
             workspaceType: AssetWorkspace::WORKSPACE_TYPE,
@@ -60,7 +60,7 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
         );
 
         $searchResult = $this->searchHelper->performSearch(
-            search: $assetSearch,
+            search: $search,
             indexName: $this->assetTypeAdapter->getAliasIndexName()
         );
 
@@ -75,12 +75,12 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
                 items: $this->searchHelper->hydrateSearchResultHits(
                     $searchResult,
                     $childrenCounts,
-                    $assetSearch->getUser()
+                    $search->getUser()
                 ),
                 pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
                     searchResult: $searchResult,
-                    page: $assetSearch->getPage(),
-                    pageSize: $assetSearch->getPageSize()
+                    page: $search->getPage(),
+                    pageSize: $search->getPageSize()
                 ),
                 aggregations: $searchResult->getAggregations(),
             );

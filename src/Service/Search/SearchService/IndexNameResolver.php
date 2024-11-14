@@ -26,6 +26,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterfac
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
 /**
  * @internal
@@ -36,6 +37,7 @@ final readonly class IndexNameResolver implements IndexNameResolverInterface
         private AssetTypeAdapter $assetTypeAdapter,
         private DataObjectTypeAdapter $dataObjectTypeAdapter,
         private DocumentTypeAdapter $documentTypeAdapter,
+        private SearchIndexConfigServiceInterface $searchIndexConfigService
     ) {
     }
 
@@ -56,7 +58,7 @@ final readonly class IndexNameResolver implements IndexNameResolverInterface
         }
 
         if ($search instanceof ElementSearch) {
-            return IndexName::ELEMENT_SEARCH->value;
+            return $this->searchIndexConfigService->getIndexName(IndexName::ELEMENT_SEARCH->value);
         }
 
         throw new InvalidArgumentException('Unsupported search type: ' . get_class($search));

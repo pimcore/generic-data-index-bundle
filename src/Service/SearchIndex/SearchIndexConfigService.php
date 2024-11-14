@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\OpenSearchService;
 use Psr\Log\LoggerAwareTrait;
 
 /**
@@ -53,6 +54,30 @@ final class SearchIndexConfigService implements SearchIndexConfigServiceInterfac
         }
 
         return $this->getIndexPrefix() . strtolower($name);
+    }
+
+    /**
+     * return index name without any prefix or suffix
+     */
+    public function getShortIndexName(string $name): string
+    {
+        if (str_starts_with($name, $this->getIndexPrefixWIthClassPrefix())) {
+            $name = substr($name, 0, strlen($this->getIndexPrefixWIthClassPrefix()));
+        }
+
+        if (str_starts_with($name, $this->getIndexPrefix())) {
+            $name = substr($name, 0, strlen($this->getIndexPrefix()));
+        }
+
+        if (str_ends_with($name, '-' . OpenSearchService::INDEX_VERSION_ODD)) {
+            $name = substr($name, strlen('-' . OpenSearchService::INDEX_VERSION_ODD));
+        }
+
+        if (str_ends_with($name, '-' . OpenSearchService::INDEX_VERSION_EVEN)) {
+            $name = substr($name, strlen('-' . OpenSearchService::INDEX_VERSION_EVEN));
+        }
+
+        return $name;
     }
 
     public function prefixIndexName(string $indexName): string
@@ -102,5 +127,10 @@ final class SearchIndexConfigService implements SearchIndexConfigServiceInterfac
         }
 
         return $systemFieldsSettings;
+    }
+
+    private function getIndexPrefixWIthClassPrefix(): string
+    {
+        return $this->indexPrefix . self::CLASS_INDEX_PREFIX;
     }
 }

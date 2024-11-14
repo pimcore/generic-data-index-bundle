@@ -120,25 +120,6 @@ final class IndexService implements IndexServiceInterface
         return $this;
     }
 
-    public function updateAssetDependencies(Asset $asset): array
-    {
-        $elementsToUpdate = [];
-        foreach ($asset->getDependencies()->getRequiredBy() as $requiredByEntry) {
-            $element = null;
-            if ($requiredByEntry['type'] === 'object') {
-                $element = AbstractObject::getById($requiredByEntry['id']);
-            }
-            if ($requiredByEntry['type'] === 'asset') {
-                $element = Asset::getById($requiredByEntry['id']);
-            }
-            if ($element instanceof ElementInterface) {
-                $elementsToUpdate[] = $element;
-            }
-        }
-
-        return $elementsToUpdate;
-    }
-
     /**
      * @throws IndexDataException
      */

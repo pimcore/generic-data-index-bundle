@@ -14,21 +14,16 @@ declare(strict_types=1);
  *  @license    http://www.pimcore.org/license     GPLv3 and PCL
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
+use Pimcore\Model\Element\ElementInterface;
 
-interface FetchIdsBySearchServiceInterface
+interface RequiredByElementListServiceInterface
 {
-    public function fetchAllIds(OpenSearchSearchInterface $search, string $indexName, bool $sortById = true): array;
-
     /**
+     * Returns array of IDs,element types and index name of all elements which require passed element ($element).
      * @return HitData[]
      */
-    public function fetchAllTypesAndIds(
-        OpenSearchSearchInterface $search,
-        string $indexName,
-        bool $sortById = true
-    ): array;
+    public function getDependencyList(ElementInterface $element): array;
 }

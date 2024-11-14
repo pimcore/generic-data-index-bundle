@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Repository;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\DBAL\Query\QueryBuilder as DBALQueryBuilder;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\NonUniqueResultException;
@@ -24,6 +25,8 @@ use Doctrine\ORM\NoResultException;
 use Doctrine\ORM\QueryBuilder;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
@@ -105,7 +108,7 @@ final class IndexQueueRepository
     /**
      * @param IndexQueue[] $entries
      *
-     * @throws \Doctrine\DBAL\Exception
+     * @throws DBALException
      */
     public function deleteQueueEntries(array $entries): void
     {
@@ -166,7 +169,7 @@ final class IndexQueueRepository
     }
 
     /**
-     * @throws \Doctrine\DBAL\Exception
+     * @throws DBALException
      */
     public function enqueueBySelectQuery(DBALQueryBuilder $queryBuilder): void
     {
@@ -186,7 +189,46 @@ final class IndexQueueRepository
     }
 
     /**
-     * @throws \Doctrine\DBAL\Exception
+     * @throws DBALException
+     * @param HitData[] $enqueueItemList
+     */
+    public function enqueueByItemList(array $enqueueItemList, IndexQueueOperation $operation, int $operationTime): void
+    {
+        if (empty($enqueueItemList)) {
+            return;
+        }
+
+        $sql = <<<SQL
+            INSERT INTO 
+                %s (elementId, elementType, elementIndexName, operation, operationTime, dispatched)
+                VALUES %s
+                ON DUPLICATE KEY
+                UPDATE
+                    operation = VALUES(operation),
+                    operationTime = VALUES(operationTime),
+                    dispatched = VALUES(dispatched)
+        SQL;
+
+        $values = [];
+        foreach ($enqueueItemList as $item) {
+            $values[] = sprintf(
+                '(%s, %s, %s, %s, %s, 0)',
+                $this->connection->quote($item->getId()),
+                $this->connection->quote($item->getElementType()),
+                $this->connection->quote($item->getIndex()),
+                $operation->value,
+                $operationTime
+            );
+        }
+
+        $this->connection->executeQuery(
+            sprintf($sql, IndexQueue::TABLE, implode(',', $values))
+        );
+    }
+
+
+    /**
+     * @throws DBALException
      */
     public function dispatchItems(
         int $limit

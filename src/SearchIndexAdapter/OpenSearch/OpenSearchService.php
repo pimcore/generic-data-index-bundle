@@ -37,9 +37,9 @@ use Psr\Log\LogLevel;
  */
 final class OpenSearchService implements SearchIndexServiceInterface
 {
-    private const INDEX_VERSION_ODD = 'odd';
+    public const INDEX_VERSION_ODD = 'odd';
 
-    private const INDEX_VERSION_EVEN = 'even';
+    public const INDEX_VERSION_EVEN = 'even';
 
     use LoggerAwareTrait;
 

@@ -170,7 +170,7 @@ class IndexQueueTest extends Unit
     public function testDataObjectDeleteWithQueue(): void
     {
         $object = TestHelper::createEmptyObject();
-        $objectIndex = $this->searchIndexConfigService->getIndexName($object->getClassName());
+        $objectIndex = $this->searchIndexConfigService->getIndexName($object->getClassName(), true);
         $this->consume();
 
         $this->checkAndDeleteElement($object, $objectIndex);

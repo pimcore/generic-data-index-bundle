@@ -17,11 +17,13 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue;
 
 use Doctrine\DBAL\Exception;
+use Exception as ThrowableException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\EnqueueElementsException;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\RequiredByElementListServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -38,6 +40,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
         private TimeServiceInterface $timeService,
         private QueueMessagesDispatcher $queueMessagesDispatcher,
         private AdapterServiceInterface $typeAdapterService,
+        private RequiredByElementListServiceInterface $requiredByElementListService
     ) {
 
     }
@@ -189,9 +192,9 @@ final readonly class EnqueueService implements EnqueueServiceInterface
     }
 
     /**
-     * @throws \Exception
+     * @throws ThrowableException
      */
-    public function enqueueRelatedItemsOnUpdate(
+    public function enqueueRelatedItems(
         ElementInterface $element,
         bool $includeElement,
         string $operation
@@ -207,6 +210,23 @@ final readonly class EnqueueService implements EnqueueServiceInterface
 
         if ($subQuery) {
             $this->indexQueueRepository->enqueueBySelectQuery($subQuery);
+        }
+    }
+
+    /**
+     * @throws ThrowableException
+     */
+    public function enqueueDependentItems(
+        ElementInterface $element,
+        IndexQueueOperation $operation
+    ): void {
+        $dependentItems = $this->requiredByElementListService->getDependencyList($element);
+        foreach (array_chunk($dependentItems, 1000) as $chunk) {
+            $this->indexQueueRepository->enqueueByItemList(
+                $chunk,
+                $operation,
+                $this->timeService->getCurrentMillisecondTimestamp()
+            );
         }
     }
 
