@@ -90,8 +90,7 @@ final readonly class FetchIdsBySearchService implements FetchIdsBySearchServiceI
         OpenSearchSearchInterface $search,
         string $indexName,
         ?array $searchAfter = null
-    ): array
-    {
+    ): array {
         $search->setFrom(0);
         $search->setSize($this->getPageSize());
         $search->setSource([SystemField::ELEMENT_TYPE->getPath()]);
