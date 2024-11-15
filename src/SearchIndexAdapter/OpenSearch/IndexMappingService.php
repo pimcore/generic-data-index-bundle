@@ -25,6 +25,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Mapping;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 
+/**
+ * @internal
+ */
 readonly class IndexMappingService implements IndexMappingServiceInterface
 {
     public function __construct(

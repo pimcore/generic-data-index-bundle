@@ -22,6 +22,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLan
 use Pimcore\Tool;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
+/**
+ * @internal
+ */
 #[AsTaggedItem(priority: 1)]
 final readonly class LocalizedFieldValidator implements FieldNameValidatorInterface
 {

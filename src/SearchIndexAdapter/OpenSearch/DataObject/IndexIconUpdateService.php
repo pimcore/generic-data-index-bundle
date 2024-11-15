@@ -22,7 +22,6 @@ use Pimcore\SearchClient\SearchClientInterface;
 
 /**
  * @internal
-
  */
 final readonly class IndexIconUpdateService implements IndexIconUpdateServiceInterface
 {
