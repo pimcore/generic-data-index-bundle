@@ -22,9 +22,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Normalizer\NormalizerInterface;
 
-/**
- * @internal
- */
 abstract class AbstractAdapter implements AdapterInterface
 {
     private Data $fieldDefinition;
