@@ -24,6 +24,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSortList;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
+/**
+ * @internal
+ */
 final readonly class FetchIdsBySearchService implements FetchIdsBySearchServiceInterface
 {
     public function __construct(
