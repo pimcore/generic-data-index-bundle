@@ -30,7 +30,7 @@ use Symfony\Component\HttpKernel\KernelEvents;
  */
 final class DebugSubscriber implements EventSubscriberInterface
 {
-    private const DEBUG_SEARCH_PARAM = 'debug-open-search-queries';
+    private const DEBUG_SEARCH_PARAM = 'debug-search-queries';
 
     public function __construct(private readonly SearchIndexServiceInterface $searchIndexService)
     {
