@@ -21,6 +21,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\MappingA
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\QueryLanguage\FieldNameValidatorInterface;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
+/**
+ * @internal
+ */
 #[AsTaggedItem(priority: 2)]
 final readonly class RelationValidator implements FieldNameValidatorInterface
 {
