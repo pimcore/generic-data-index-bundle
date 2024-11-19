@@ -16,7 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\OpenSearchService;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Psr\Log\LoggerAwareTrait;
 
 /**
@@ -75,12 +75,12 @@ final class SearchIndexConfigService implements SearchIndexConfigServiceInterfac
             $name = substr($name, 0, strlen($this->getIndexPrefix()));
         }
 
-        if (str_ends_with($name, '-' . OpenSearchService::INDEX_VERSION_ODD)) {
-            $name = substr($name, strlen('-' . OpenSearchService::INDEX_VERSION_ODD));
+        if (str_ends_with($name, '-' . DefaultSearchService::INDEX_VERSION_ODD)) {
+            $name = substr($name, strlen('-' . DefaultSearchService::INDEX_VERSION_ODD));
         }
 
-        if (str_ends_with($name, '-' . OpenSearchService::INDEX_VERSION_EVEN)) {
-            $name = substr($name, strlen('-' . OpenSearchService::INDEX_VERSION_EVEN));
+        if (str_ends_with($name, '-' . DefaultSearchService::INDEX_VERSION_EVEN)) {
+            $name = substr($name, strlen('-' . DefaultSearchService::INDEX_VERSION_EVEN));
         }
 
         return $name;
