@@ -23,9 +23,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchI
  */
 final class SearchInformation
 {
-    private const VERBOSITY_VERBOSE = 2;
+    // ToDo make constants public in 2.0
+    public const VERBOSITY_VERBOSE = 2;
 
-    private const VERBOSITY_VERY_VERBOSE = 3;
+    public const VERBOSITY_VERY_VERBOSE = 3;
 
     public function __construct(
         private readonly AdapterSearchInterface $search,
