@@ -79,7 +79,7 @@ The entity name can be either 'Asset', 'Document' or the name of the data object
 
 ### Field Names
 
-The field names are named and structured the same way like in the OpenSearch index. Nested field names are supported with a dot ('.') notation.
+The field names are named and structured the same way as in the search index. Nested field names are supported with a dot ('.') notation.
 As described [here](../../05_Extending_Data_Index/06_Extend_Search_Index.md) the fields are separated into three sections (system_fields, standard_fields and custom_fields) and depending on the data type of a attribute the attribute value could be a nested structure with sub-attributes.
 
 
@@ -107,7 +107,8 @@ Localized fields can be accessed in the form 'field_name.locale' (e.g. descripti
 
 ### Query String Query Filters
 
-The PQL allows passing OpenSearch [query string queries](https://opensearch.org/docs/latest/query-dsl/full-text/query-string/#query-string-syntax) directly to the index. The query string query syntax provides even more flexibility to define the search criteria. Take a look at the [OpenSearch documentation](https://opensearch.org/docs/latest/query-dsl/full-text/query-string/#query-string-syntax) for more details.
+The PQL allows passing `query string queries` of [OpenSearch](https://opensearch.org/docs/latest/query-dsl/full-text/query-string) or [Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html) directly to the index. 
+The query string query syntax provides even more flexibility to define the search criteria. Take a look at the [OpenSearch documentation](https://opensearch.org/docs/latest/query-dsl/full-text/query-string/#query-string-syntax) or [Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax) respectively for more details.
 
 **Caution**: The automatic field detection is not supported for query string queries. So you have to use the full path for the field names.
 
@@ -126,7 +127,7 @@ All examples are based on the `Car` data object class of the [Pimcore Demo](http
 
 ## Limitations
 
-* When searching for related elements the maximum possible results amount of sub queries is 65.000, see also [terms query documentation](https://opensearch.org/docs/latest/query-dsl/term/terms/).
+* When searching for related elements the maximum possible results amount of sub queries is 65.000, see also `terms query` [OpenSearch](https://opensearch.org/docs/latest/query-dsl/term/terms/) or [Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-query.html) documentation respectively.
 * Filtering for asset metadata fields is only possible if they are defined as predefined asset metadata or via the asset metadata class definitions bundle. Custom asset metadata fields directly defined on single assets are not supported.
 * Reserved keywords (`AND`, `OR`, `LIKE`, `NOT LIKE`, `NULL`, `EMPTY`) cannot be used as field names.
 

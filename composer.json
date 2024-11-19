@@ -18,9 +18,10 @@
   "minimum-stability": "dev",
   "require": {
     "php": "~8.2.0 || ~8.3.0 ",
-    "pimcore/pimcore": "^11.3.0",
+    "pimcore/pimcore": "^11.x-dev",
     "pimcore/static-resolver-bundle": "^1.4.0",
-    "pimcore/opensearch-client": "^1.0.0",
+    "pimcore/opensearch-client": "^1.x-dev",
+    "pimcore/elasticsearch-client": "^1.x-dev",
     "doctrine/orm": "^2.17.2",
     "symfony/scheduler": "^6.4",
     "symfony/messenger": "^6.4"
@@ -42,7 +43,10 @@
   "autoload": {
     "psr-4": {
       "Pimcore\\Bundle\\GenericDataIndexBundle\\": "src/"
-    }
+    },
+    "files": [
+      "src/autoload.php"
+    ]
   },
   "autoload-dev": {
     "psr-4": {

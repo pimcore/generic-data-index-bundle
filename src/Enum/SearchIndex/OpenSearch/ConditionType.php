@@ -17,7 +17,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch;
 
 /**
- * @internal
+ * @deprecated Will be removed in 2.0, please use
+ * Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\ConditionType instead
  */
 enum ConditionType: string
 {

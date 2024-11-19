@@ -21,6 +21,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
  */
 interface SearchIndexConfigServiceInterface
 {
+    public function getClientType(): string;
+
     /**
      * returns index name for given class name
      */

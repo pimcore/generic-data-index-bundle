@@ -16,7 +16,6 @@
 namespace Functional\SearchIndex;
 
 use Exception;
-use OpenSearch\Common\Exceptions\Missing404Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
@@ -92,9 +91,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
 
         //Should also delete child element
         $object->delete();
-
-        $this->expectException(Missing404Exception::class);
-        $this->tester->checkIndexEntry($child->getId(), $indexName);
+        $this->tester->checkDeletedIndexEntry($child->getId(), $indexName);
     }
 
     public function testIndexingWithInheritanceAsynchronous()
@@ -106,7 +103,8 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $indexName = $this->dataObjectTypeAdapter->getAliasIndexName($object->getClass());
 
         // check indexed
-        $this->assertNotEmpty(
+        $this->assertGreaterThan(
+            0,
             Db::get()->fetchOne(
                 'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="dataObject"',
                 [$object->getId()]
@@ -130,7 +128,8 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $indexName = $this->dataObjectTypeAdapter->getAliasIndexName($object->getClass());
 
         // check indexed
-        $this->assertNotEmpty(
+        $this->assertGreaterThan(
+            0,
             Db::get()->fetchOne(
                 'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="dataObject"',
                 [$object->getId()]
@@ -168,9 +167,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->assertEquals('my-test-object', $response['_source']['system_fields']['key']);
 
         $object->delete();
-
-        $this->expectException(Missing404Exception::class);
-        $this->tester->checkIndexEntry($object->getId(), $indexName);
+        $this->tester->checkDeletedIndexEntry($object->getId(), $indexName);
     }
 
     public function testIndexingWithoutInheritanceAsynchronous()
@@ -182,7 +179,8 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $indexName = $this->dataObjectTypeAdapter->getAliasIndexName($object->getClass());
 
         // check indexed
-        $this->assertNotEmpty(
+        $this->assertGreaterThan(
+            0,
             Db::get()->fetchOne(
                 'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="dataObject"',
                 [$object->getId()]
@@ -210,9 +208,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->assertEquals('my-test-folder', $response['_source']['system_fields']['key']);
 
         $object->delete();
-
-        $this->expectException(Missing404Exception::class);
-        $this->tester->checkIndexEntry($object->getId(), $indexName);
+        $this->tester->checkDeletedIndexEntry($object->getId(), $indexName);
     }
 
     public function testDataObjectSearch()

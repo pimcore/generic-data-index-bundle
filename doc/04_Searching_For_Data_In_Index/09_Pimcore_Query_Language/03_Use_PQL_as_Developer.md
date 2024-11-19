@@ -22,7 +22,7 @@ $query = $queryLanguageProcessor->process(
     $indexEntityService->getByEntityName('Car') // 'Asset', 'Document' or the name of the data object class
 );
 
-// $query is now a valid OpenSearch query array which can be used to search in the index
+// $query is now a valid search index query array which can be used to search in the index
 ```
 
 ## Exception Handling

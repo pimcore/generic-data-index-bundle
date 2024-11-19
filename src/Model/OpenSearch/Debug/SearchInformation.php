@@ -20,12 +20,16 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchI
 
 /**
  * @internal
+ *
+ * @deprecated Will be removed in 2.0, please use
+ *  Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Debug\SearchInformation instead
+ * /
  */
 final class SearchInformation
 {
-    private const VERBOSITY_VERBOSE = 2;
+    public const VERBOSITY_VERBOSE = 2;
 
-    private const VERBOSITY_VERY_VERBOSE = 3;
+    public const VERBOSITY_VERY_VERBOSE = 3;
 
     public function __construct(
         private readonly AdapterSearchInterface $search,

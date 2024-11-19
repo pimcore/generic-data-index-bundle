@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ClientType;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\NodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
@@ -53,8 +54,13 @@ class Configuration implements ConfigurationInterface
                             ->addDefaultsIfNotSet()
                             ->children()
                                 ->scalarNode('client_name')
-                                    ->info('Name of OpenSearch client from the PimcoreOpenSearchClientBundle to be used.')
+                                    ->info('Name of search client from to be used.')
                                     ->defaultValue('default')
+                                ->end()
+                                ->enumNode('client_type')
+                                    ->info('Type of search client to be used.')
+                                    ->values([ClientType::OPEN_SEARCH->value, ClientType::ELASTIC_SEARCH->value])
+                                    ->defaultValue(ClientType::OPEN_SEARCH->value)
                                 ->end()
                                 ->scalarNode('index_prefix')
                                     ->defaultValue('pimcore_')

@@ -4,7 +4,7 @@
 
  This bundle is only supported on Pimcore Core Framework 11.
 
- This bundle requires minimum version of OpenSearch 2.7.
+ This bundle requires minimum version of OpenSearch 2.7. or Elasticsearch 8.0.0.
 
 :::
 
@@ -35,9 +35,9 @@ return [
 bin/console pimcore:bundle:install PimcoreGenericDataIndexBundle
 ```
 
-4) Setup open search client configuration in your Symfony configuration files (e.g. `config.yaml`):
+4) Setup search client configuration in your Symfony configuration files (e.g. `config.yaml`):
 
-See [OpenSearch Client Setup](../02_Configuration/04_Opensearch.md) for more information.
+See [OpenSearch Client Setup](../02_Configuration/04_Opensearch.md) or [Elasticsearch Client Setup](../02_Configuration/05_Elasticsearch.md) for more information.
 
 5) Setup one or multiple Symfony messenger workers for the indexing queue processing. It is recommended to use a tool like Supervisor to manage the workers.
    For more information, see the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html). 
