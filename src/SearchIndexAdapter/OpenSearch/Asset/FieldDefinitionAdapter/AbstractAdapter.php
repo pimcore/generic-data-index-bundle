@@ -31,6 +31,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\ValueObject\Collection\ArrayOfStrings;
 use ValueError;
 
+/**
+ * @deprecated Will be removed in 2.0, please use
+ * Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Asset\FieldDefinitionAdapter\AbstractAdapter
+ * instead
+ */
 abstract class AbstractAdapter implements AdapterInterface
 {
     public function __construct(

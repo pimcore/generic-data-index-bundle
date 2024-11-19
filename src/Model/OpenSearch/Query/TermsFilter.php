@@ -18,6 +18,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\ConditionType;
 
+/**
+ * @deprecated Will be removed in 2.0, please use
+ * Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter instead
+ */
 final class TermsFilter extends BoolQuery implements AsSubQueryInterface
 {
     public function __construct(

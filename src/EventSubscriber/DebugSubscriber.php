@@ -17,8 +17,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
 use Pimcore;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug\SearchInformation;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\OpenSearchService;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Debug\SearchInformation;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -45,7 +45,7 @@ final class DebugSubscriber implements EventSubscriberInterface
 
     public function onKernelResponse(ResponseEvent $event): void
     {
-        if (!$this->searchIndexService instanceof OpenSearchService) {
+        if (!$this->searchIndexService instanceof DefaultSearchService) {
             return;
         }
         if (!Pimcore::inDebugMode() || empty($event->getRequest()->query->get(self::DEBUG_SEARCH_PARAM))) {
@@ -57,7 +57,7 @@ final class DebugSubscriber implements EventSubscriberInterface
 
     private function getNormalizedSearches(int $verbosity): array
     {
-        if (!$this->searchIndexService instanceof OpenSearchService) {
+        if (!$this->searchIndexService instanceof DefaultSearchService) {
             return [];
         }
 

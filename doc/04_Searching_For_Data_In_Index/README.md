@@ -130,7 +130,7 @@ public function searchAction(SearchProviderInterface $searchProvider, SearchResu
 ## Default Search Models
 The search services mentioned above offer a flexible and structured way to search for assets, data objects and documents. Nevertheless, if there are requirements which are not covered by the search services it might be needed to develop your own customized search queries. Default search models offer a streamlined way for executing such customized search queries. They are also used by the search services internally to create the executed search queries.
 
-Take a look at the dedicated [Default search models documentation](06_DefaultSearch_Search_Models/README.md) to find out more.
+Take a look at the dedicated [Default search models documentation](06_Default_Search_Models/README.md) to find out more.
 
 ## Permissions
 The search service respects the user permissions and user workspaces in connection to his roles.
