@@ -36,6 +36,15 @@ pimcore_open_search_client:
         default:
             hosts: ['%env(PIMCORE_OPEN_SEARCH_HOST)%']
 
+pimcore_elasticsearch_client:
+    es_clients:
+        default:
+            hosts: ['%env(PIMCORE_ELASTIC_SEARCH_HOST)%']
+            username: 'elastic'
+            password: 'somethingsecret'
+            logger_channel: 'pimcore.elasicsearch'
+            ssl_verification: false
+
 pimcore:
     assets:
         metadata:

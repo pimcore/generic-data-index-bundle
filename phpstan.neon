@@ -7,6 +7,8 @@ parameters:
         - phpstan-bootstrap.php
     excludePaths:
         - src/Tests/*
+         #ToDo remove in version 2.0
+        - src/Model/OpenSearch/*
 
 includes:
     - phpstan-baseline.neon

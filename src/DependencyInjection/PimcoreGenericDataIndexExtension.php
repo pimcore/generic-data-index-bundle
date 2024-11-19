@@ -18,6 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection;
 
 use Exception;
 use InvalidArgumentException;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ClientType;
 use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\DispatchQueueMessagesHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Symfony\Component\Config\FileLocator;
@@ -84,17 +85,44 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
     private function registerIndexServiceParams(ContainerBuilder $container, array $indexSettings): void
     {
         $definition = $container->getDefinition(SearchIndexConfigServiceInterface::class);
+        $definition->setArgument('$clientType', $indexSettings['client_params']['client_type']);
         $definition->setArgument('$indexPrefix', $indexSettings['client_params']['index_prefix']);
         $definition->setArgument('$indexSettings', $indexSettings['index_settings']);
         $definition->setArgument('$searchSettings', $indexSettings['search_settings']);
         $definition->setArgument('$systemFieldsSettings', $indexSettings['system_fields_settings']);
 
         $openSearchClientId = 'pimcore.open_search_client.' . $indexSettings['client_params']['client_name'];
-        $container->setAlias('generic-data-index.opensearch-client', $openSearchClientId);
+        $container->setAlias('generic-data-index.opensearch-client', $openSearchClientId)
+            ->setDeprecated(
+                'pimcore/generic-data-index-bundle',
+                '1.3',
+                'The "%alias_id%" service alias is deprecated and will be removed in version 2.0. ' .
+                'Please use "generic-data-index.search-client" instead.'
+            );
+
+        $clientId = $this->getDefaultSearchClientId($indexSettings);
+        $container->setAlias('generic-data-index.search-client', $clientId);
 
         $container->setParameter('generic-data-index.index-prefix', $indexSettings['client_params']['index_prefix']);
 
         $definition = $container->getDefinition(DispatchQueueMessagesHandler::class);
         $definition->setArgument('$queueSettings', $indexSettings['queue_settings']);
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    private function getDefaultSearchClientId(array $indexSettings): string
+    {
+        $clientType = $indexSettings['client_params']['client_type'];
+        $clientName = $indexSettings['client_params']['client_name'];
+
+        return match ($clientType) {
+            ClientType::OPEN_SEARCH->value => 'pimcore.openSearch.custom_client.' . $clientName,
+            ClientType::ELASTIC_SEARCH->value => 'pimcore.elasticsearch.custom_client.' . $clientName,
+            default => throw new InvalidArgumentException(
+                sprintf('Invalid client type: %s', $indexSettings['client_params']['client_type'])
+            )
+        };
     }
 }

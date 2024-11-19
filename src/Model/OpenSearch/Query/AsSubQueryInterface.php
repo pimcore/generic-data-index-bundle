@@ -16,6 +16,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
+/**
+ * @deprecated Will be removed in 2.0, please use
+ * Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\AsSubQueryInterface instead
+ */
 interface AsSubQueryInterface
 {
     public function toArrayAsSubQuery(): array;

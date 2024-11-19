@@ -28,6 +28,23 @@ services:
                 soft: 65536
                 hard: 65536
 
+    elastic:
+        image: elasticsearch:8.5.3
+        environment:
+            - discovery.type=single-node
+            - ES_JAVA_OPTS=-Xms1g -Xmx1g
+            - xpack.security.enabled=true
+            - xpack.security.authc.anonymous.roles=superuser,kibana_admin,kibana_system,kibana_user
+            - ELASTIC_USERNAME=elastic
+            - ELASTIC_PASSWORD=somethingsecret
+        ports:
+            - 5300:9200
+        deploy:
+            resources:
+                limits:
+                    cpus: '1'
+                    memory: '2G'
+
     php:
         #user: '1000:1000' # set to your uid:gid
         #        image: pimcore/pimcore:PHP8.1-fpm-debug
@@ -40,9 +57,11 @@ services:
             PIMCORE_TEST: 1
             PIMCORE_TEST_DB_DSN: "mysql://pimcore:pimcore@db:3306/pimcore_test"
             PIMCORE_OPEN_SEARCH_HOST: "opensearch:9200"
+            PIMCORE_ELASTIC_SEARCH_HOST: "elastic:9200"
             CODECEPTION_BUNDLE_PATH: "bundles/pimcore/generic-data-index-bundle/"
         depends_on:
             - db
+            - elastic
             - opensearch
         volumes:
             - ../../.:/var/www/html/bundles/pimcore/generic-data-index-bundle

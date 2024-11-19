@@ -15,7 +15,6 @@
 
 namespace Functional\SearchIndex;
 
-use OpenSearch\Common\Exceptions\Missing404Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Document;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Folder;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Image;
@@ -69,9 +68,7 @@ class AssetBasicTest extends \Codeception\Test\Unit
         $this->assertEquals('test.jpg', $response['_source']['system_fields']['key']);
 
         $asset->delete();
-
-        $this->expectException(Missing404Exception::class);
-        $this->tester->checkIndexEntry($asset->getId(), $indexName);
+        $this->tester->checkDeletedIndexEntry($asset->getId(), $indexName);
 
     }
 
