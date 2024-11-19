@@ -16,7 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 
 /**
@@ -27,5 +27,5 @@ interface TransformToAdapterSearchServiceInterface
     public function transform(
         SearchInterface $search,
         bool $enableOrderByPageNumber = false
-    ): OpenSearchSearchInterface;
+    ): DefaultSearchInterface;
 }

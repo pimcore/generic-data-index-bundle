@@ -17,8 +17,18 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
 
 interface FetchIdsBySearchServiceInterface
 {
     public function fetchAllIds(DefaultSearchInterface $search, string $indexName, bool $sortById = true): array;
+
+    /**
+     * @return HitData[]
+     */
+    public function fetchAllTypesAndIds(
+        DefaultSearchInterface $search,
+        string $indexName,
+        bool $sortById = true
+    ): array;
 }

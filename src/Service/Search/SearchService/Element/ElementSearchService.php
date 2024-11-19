@@ -49,10 +49,10 @@ final readonly class ElementSearchService implements ElementSearchServiceInterfa
         ElementSearchInterface $elementSearch,
         PermissionTypes $permissionType = PermissionTypes::LIST
     ): ElementSearchResult {
-        $elementSearch = $this->searchHelper->addSearchRestrictions($elementSearch, $permissionType);
+        $search = $this->searchHelper->addSearchRestrictions($elementSearch, $permissionType);
 
         $searchResult = $this->searchHelper->performSearch(
-            $elementSearch,
+            $search,
             $this->globalIndexAliasService->getElementSearchAliasName()
         );
 
@@ -61,12 +61,12 @@ final readonly class ElementSearchService implements ElementSearchServiceInterfa
                 items: $this->searchHelper->hydrateSearchResultHits(
                     $searchResult,
                     [],
-                    $elementSearch->getUser()
+                    $search->getUser()
                 ),
                 pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
                     searchResult: $searchResult,
-                    page: $elementSearch->getPage(),
-                    pageSize: $elementSearch->getPageSize()
+                    page: $search->getPage(),
+                    pageSize: $search->getPageSize()
                 ),
                 aggregations:  $searchResult->getAggregations(),
             );

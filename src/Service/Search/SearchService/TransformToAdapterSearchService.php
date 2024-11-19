@@ -17,7 +17,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\AssetSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearch;
@@ -41,7 +41,7 @@ final readonly class TransformToAdapterSearchService implements TransformToAdapt
     public function transform(
         SearchInterface $search,
         bool $enableOrderByPageNumber = false
-    ): OpenSearchSearchInterface {
+    ): DefaultSearchInterface {
         $index = $this->indexNameResolver->resolveIndexName($search);
 
         return match(true) {

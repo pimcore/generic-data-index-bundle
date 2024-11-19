@@ -18,7 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiredByFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\FetchIdsBySearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\FetchIdsBySearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
 use Pimcore\Model\Element\ElementInterface;
 
