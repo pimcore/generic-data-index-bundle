@@ -145,7 +145,7 @@ final class QueryService implements QueryServiceInterface
         $declinedPaths = array_unique($declinedPaths);
         $declinedPaths = $this->evaluateDeclinedPaths($workspaceType, $allowedPaths, $declinedPaths);
 
-        if (count($allowedPaths) === 0) {
+        if (empty($allowedPaths)) {
             return $this->createNoWorkspaceAllowedQuery();
         }
 

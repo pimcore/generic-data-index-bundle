@@ -94,8 +94,8 @@ final class BulkOperationService implements BulkOperationServiceInterface
             if ($response['errors'] ?? true) {
                 $responseEncoded = json_encode($response, JSON_THROW_ON_ERROR);
 
-                throw new RuntimeException(
-                    'OpenSearch bulk produced errors: '. $responseEncoded
+                throw new BulkOperationException(
+                    'Bulk operation produced errors: '. $responseEncoded
                 );
             }
         } catch (Exception $e) {

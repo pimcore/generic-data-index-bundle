@@ -269,13 +269,18 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $body = $search->toArray();
 
         // Remove not allowed keys
-        $body = array_diff_key($body, array_flip([
-            '_source',
-            'sort',
-            'from',
-            'size',
-            'aggs',
-        ]));
+        $body = array_diff_key(
+            $body,
+            array_flip(
+                [
+                    '_source',
+                    'sort',
+                    'from',
+                    'size',
+                    'aggs',
+                ]
+            )
+        );
 
         $result = $this->client->count([
             'index' => $indexName,
