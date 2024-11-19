@@ -19,6 +19,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Traits;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\AsSubQueryInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\QueryInterface;
 
+/**
+ * @deprecated Will be removed in 2.0, please use
+ * Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Traits\QueryObjectsToArrayTrait instead
+ */
 trait QueryObjectsToArrayTrait
 {
     private function convertQueryObjectsToArray(array $params): array

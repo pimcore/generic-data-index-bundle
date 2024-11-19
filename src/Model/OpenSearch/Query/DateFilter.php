@@ -21,6 +21,10 @@ use DateTimeInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\QueryType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 
+/**
+ * @deprecated Will be removed in 2.0, please use
+ * Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\DateFilter instead
+ */
 final readonly class DateFilter implements QueryInterface
 {
     public const PARAM_START = 'start';

@@ -18,6 +18,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch;
 
 use Attribute;
 
+/**
+ * @deprecated Will be removed in 2.0, please use
+ * Pimcore\Bundle\GenericDataIndexBundle\Attribute\Search\AsSearchModifierHandler instead
+ */
 #[Attribute(Attribute::TARGET_CLASS | Attribute::TARGET_METHOD | Attribute::IS_REPEATABLE)]
 class AsSearchModifierHandler
 {

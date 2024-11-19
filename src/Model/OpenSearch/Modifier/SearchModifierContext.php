@@ -19,6 +19,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Modifier;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 
+/**
+ * @deprecated Will be removed in 2.0, please use
+ * Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchModifierContext instead
+ */
 readonly class SearchModifierContext implements SearchModifierContextInterface
 {
     public function __construct(

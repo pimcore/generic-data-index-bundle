@@ -17,7 +17,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation\Aggregation;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Aggregation\Aggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Asset\AssetMetaDataAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;

@@ -52,7 +52,7 @@ they are searchable through the full text search (depending on the mapping of th
 
 ### ExtractMappingEvent
 
-With this event it's possible to define the [mapping](https://opensearch.org/docs/latest/field-types/)
+With this event it's possible to define the mapping (for elasticsearch see [this mapping](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-types.html) and for openSearch please refer to [mapping](https://opensearch.org/docs/latest/field-types/)) 
 of the additional custom fields. Again there are separate events for assets and data objects.
 
 * `Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent` (assets)
@@ -121,9 +121,9 @@ class FileSizeIndexSubscriber implements EventSubscriberInterface
         $customFieldsMapping = $event->getCustomFieldsMapping();
 
         /**
-         * Take a look at the OpenSearch docs how mapping works.
+         * Take a look at the docs how mapping works.
          * A 'keyword' field would be best for regular select and multi select filters.
-         * For full text search it is possible to define sub-fields with special OpenSearch analyzers too.
+         * For full text search it is possible to define sub-fields with special search index analyzers too.
          */
         $customFieldsMapping['fileSizeSelection'] = [
             'type' => 'keyword'
@@ -200,9 +200,9 @@ class CarOwnerSubscriber implements EventSubscriberInterface
         $customFieldsMapping = $event->getCustomFieldsMapping();
 
         /**
-         * Take a look at the OpenSearch docs how mapping works.
+         * Take a look at the docs how mapping works.
          * A 'keyword' field would be best for regular select and multi select filters.
-         * For full text search it is possible to define sub-fields with special OpenSearch analyzers too.
+         * For full text search it is possible to define sub-fields with special search index analyzers too.
          */
         $customFieldsMapping['numberOfVariants'] = [
             'type' => 'integer'

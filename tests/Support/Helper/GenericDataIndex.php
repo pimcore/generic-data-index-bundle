@@ -21,7 +21,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper;
 use Codeception\Lib\ModuleContainer;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer as GenericDataIndexInstaller;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Search\Modifier\Sort\TreeSortHandlers;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\Sort\TreeSortHandlers;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
@@ -141,7 +141,7 @@ class GenericDataIndex extends \Codeception\Module
             'index' => $index,
         ]);
 
-        $this->assertEquals($id, $response['_id'], 'Check OpenSearch document id of element');
+        $this->assertEquals($id, $response['_id'], 'Check indexed document id of element');
 
         return $response;
     }
