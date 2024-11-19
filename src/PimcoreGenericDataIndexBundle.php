@@ -99,8 +99,7 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements
     private static function configureSearchModifierHandler(
         ChildDefinition $definition,
         Reflector $reflector
-    ): void
-    {
+    ): void {
         $method = ($reflector instanceof ReflectionMethod)
             ? $reflector->getName()
             : '__invoke';

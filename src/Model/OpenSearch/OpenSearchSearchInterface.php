@@ -24,6 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchI
 
 /**
  * @internal
+ *
  * @deprecated Will be removed in 2.0, please use
  * Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface instead
  */

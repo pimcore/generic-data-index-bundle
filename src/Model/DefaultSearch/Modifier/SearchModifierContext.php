@@ -23,7 +23,7 @@ readonly class SearchModifierContext implements SearchModifierContextInterface
 {
     public function __construct(
         private DefaultSearchInterface $search,
-        private SearchInterface        $originalSearch,
+        private SearchInterface $originalSearch,
     ) {
     }
 

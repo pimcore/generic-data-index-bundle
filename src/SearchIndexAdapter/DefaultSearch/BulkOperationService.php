@@ -24,7 +24,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServic
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\SearchClient\SearchClientInterface;
-use RuntimeException;
 
 /**
  * @internal
