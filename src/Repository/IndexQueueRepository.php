@@ -217,11 +217,10 @@ final class IndexQueueRepository
                 $this->connection->quote($item->getId()),
                 $this->connection->quote($item->getElementType()),
                 $this->connection->quote($item->getIndex()),
-                $operation->value,
+                $this->connection->quote($operation->value),
                 $operationTime
             );
         }
-
         $this->connection->executeQuery(
             sprintf($sql, IndexQueue::TABLE, implode(',', $values))
         );

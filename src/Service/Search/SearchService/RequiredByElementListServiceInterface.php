@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\ElementSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
 use Pimcore\Model\Element\ElementInterface;
 
@@ -26,5 +27,13 @@ interface RequiredByElementListServiceInterface
      *
      * @return HitData[]
      */
-    public function getDependencyList(ElementInterface $element): array;
+    public function getDependencyList(ElementInterface $element, ?ElementSearchInterface $search = null): array;
+
+    /**
+     * @return HitData[]
+     */
+    public function getDependencyListForCurrentPage(
+        ElementInterface $element,
+        ElementSearchInterface $search
+    ): array;
 }

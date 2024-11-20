@@ -156,7 +156,7 @@ final class IndexQueueService implements IndexQueueServiceInterface
         if ($operation === IndexQueueOperation::DELETE->value) {
             $this->enqueueService->enqueueDependentItems(
                 element: $element,
-                operation: IndexQueueOperation::DELETE
+                operation: IndexQueueOperation::UPDATE
             );
         }
     }
