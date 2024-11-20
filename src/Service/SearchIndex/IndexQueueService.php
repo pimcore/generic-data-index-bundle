@@ -18,6 +18,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\HandleIndexQueueEntriesException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
@@ -62,17 +64,7 @@ final class IndexQueueService implements IndexQueueServiceInterface
                 $this->doHandleIndexData($element, $operation);
             }
 
-            $this->enqueueService->enqueueRelatedItemsOnUpdate(
-                element: $element,
-                includeElement: !$processSynchronously,
-                operation: $operation
-            );
-
-            if ($element instanceof Asset) {
-                foreach ($this->indexService->updateAssetDependencies($element) as $asset) {
-                    $this->updateIndexQueue($asset, IndexQueueOperation::UPDATE->value);
-                }
-            }
+            $this->handleQueueByOperation($element, $operation, $processSynchronously);
 
             $this->pathService->rewriteChildrenIndexPaths($element);
         } catch (Exception $e) {
@@ -140,11 +132,50 @@ final class IndexQueueService implements IndexQueueServiceInterface
         }
     }
 
+    /**
+     * @throws Exception
+     */
+    private function handleQueueByOperation(
+        ElementInterface $element,
+        string $operation,
+        bool $processSynchronously
+    ): void {
+        $this->enqueueService->enqueueRelatedItems(
+            element: $element,
+            includeElement: !$processSynchronously,
+            operation: $operation
+        );
+
+        if (($operation === IndexQueueOperation::UPDATE->value) && $element instanceof Asset) {
+            $this->enqueueService->enqueueDependentItems(
+                element: $element,
+                operation: IndexQueueOperation::UPDATE
+            );
+        }
+
+        if ($operation === IndexQueueOperation::DELETE->value) {
+            $this->enqueueService->enqueueDependentItems(
+                element: $element,
+                operation: IndexQueueOperation::UPDATE
+            );
+        }
+    }
+
     private function handleEntryByOperation(string $operation, IndexQueue $entry): void
     {
         if ($operation === IndexQueueOperation::DELETE->value) {
+            $isClass = false;
+            if ($entry->getElementType() === ElementType::DATA_OBJECT->value &&
+                $entry->getElementIndexName() !== IndexName::DATA_OBJECT_FOLDER->value
+            ) {
+                $isClass = true;
+            }
+
             $this->indexService->deleteFromSpecificIndex(
-                $this->searchIndexConfigService->getIndexName($entry->getElementIndexName()),
+                $this->searchIndexConfigService->getIndexName(
+                    $entry->getElementIndexName(),
+                    $isClass
+                ),
                 $entry->getElementId()
             );
 

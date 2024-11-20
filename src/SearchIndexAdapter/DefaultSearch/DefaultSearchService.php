@@ -21,6 +21,7 @@ use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Debug\SearchInformation;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
@@ -37,9 +38,9 @@ use Psr\Log\LogLevel;
  */
 final class DefaultSearchService implements SearchIndexServiceInterface
 {
-    private const INDEX_VERSION_ODD = 'odd';
+    public const INDEX_VERSION_ODD = 'odd';
 
-    private const INDEX_VERSION_EVEN = 'even';
+    public const INDEX_VERSION_EVEN = 'even';
 
     use LoggerAwareTrait;
 
@@ -229,7 +230,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         int $page,
         int $pageSize,
         bool $aggregationsOnly = false
-    ): AdapterSearchInterface {
+    ): DefaultSearchInterface {
         if ($aggregationsOnly) {
             return new Search(
                 from: 0,

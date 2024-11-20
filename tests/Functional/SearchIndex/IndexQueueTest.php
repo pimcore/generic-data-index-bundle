@@ -18,9 +18,13 @@ namespace Functional\SearchIndex;
 use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
 use Pimcore\Db;
@@ -36,6 +40,8 @@ class IndexQueueTest extends Unit
     private const ASSET_INDEX_NAME = 'asset';
 
     private const DOCUMENT_INDEX_NAME = 'document';
+
+    private const IMAGE_KEY = 'image';
 
     protected function _before()
     {
@@ -177,6 +183,40 @@ class IndexQueueTest extends Unit
         $this->tester->checkDeletedIndexEntry($object->getId(), $objectIndex);
     }
 
+    /**
+     * @throws Exception
+     */
+    public function testDependenciesWithQueue(): void
+    {
+        /** @var DataObjectSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+        $dataObjectSearch = $searchProvider->createDataObjectSearch();
+
+        $asset = TestHelper::createImageAsset();
+        $object = TestHelper::createEmptyObject();
+        $object->setImage($asset);
+        $object->save();
+
+        $assetIndex = $this->searchIndexConfigService->getIndexName(self::ASSET_INDEX_NAME);
+        $objectIndex = $this->searchIndexConfigService->getIndexName($object->getClassName(), true);
+
+        $this->checkQueueEntry($asset->getId(), ElementType::ASSET->value);
+        $this->checkQueueEntry($object->getId(), ElementType::DATA_OBJECT->value);
+        $this->consume();
+
+        $this->tester->checkIndexEntry($object->getId(), $objectIndex);
+        $this->assertNotNull($this->getImageValueFromIndex($searchService, $dataObjectSearch));
+        $this->checkAndDeleteElement($asset, $assetIndex);
+
+        // asset is deleted, so the object should be updated as it has a dependency to asset
+        $this->checkQueueEntry($object->getId(), ElementType::DATA_OBJECT->value);
+        $this->consume();
+
+        $this->assertNull($this->getImageValueFromIndex($searchService, $dataObjectSearch));
+    }
+
     private function checkAndDeleteElement(ElementInterface $element, string $indexName): void
     {
         $this->tester->checkIndexEntry($element->getId(), $indexName);
@@ -186,5 +226,27 @@ class IndexQueueTest extends Unit
     private function consume(): void
     {
         $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+    }
+
+    private function checkQueueEntry(string $elementId, string $elementType): void
+    {
+        $this->assertGreaterThan(
+            0,
+            Db::get()->fetchOne(
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType=?',
+                [$elementId, $elementType]
+            )
+        );
+    }
+
+    private function getImageValueFromIndex(
+        DataObjectSearchServiceInterface $searchService,
+        DataObjectSearchInterface $dataObjectSearch
+    ): ?array {
+        $searchResult = $searchService->search($dataObjectSearch);
+        $this->assertCount(1, $searchResult->getItems());
+        $data = $searchResult->getItems()[0]->getSearchIndexData();
+
+        return $data[FieldCategory::STANDARD_FIELDS->value][self::IMAGE_KEY];
     }
 }

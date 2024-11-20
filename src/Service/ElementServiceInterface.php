@@ -16,10 +16,12 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidElementTypeException;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Document;
+use Pimcore\Model\Element\ElementInterface;
 
 /**
  * @internal
@@ -32,6 +34,11 @@ interface ElementServiceInterface
      * @throws InvalidElementTypeException
      */
     public function getElementByType(int $id, string $type): Asset|AbstractObject|Document|null;
+
+    /**
+     * @throws InvalidElementTypeException
+     */
+    public function getElementType(ElementInterface $element): ElementType;
 
     public function classDefinitionExists(string $name): bool;
 }

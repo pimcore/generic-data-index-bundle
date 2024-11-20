@@ -28,6 +28,11 @@ interface SearchIndexConfigServiceInterface
      */
     public function getIndexName(string $name, bool $isClass = false): string;
 
+    /**
+     * return index name without any prefix or suffix
+     */
+    public function getShortIndexName(string $name): string;
+
     public function prefixIndexName(string $indexName): string;
 
     public function getIndexPrefix(): string;

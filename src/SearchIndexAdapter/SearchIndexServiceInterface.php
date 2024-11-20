@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 
@@ -56,7 +57,7 @@ interface SearchIndexServiceInterface
         int $page,
         int $pageSize,
         bool $aggregationsOnly = false
-    ): AdapterSearchInterface;
+    ): DefaultSearchInterface;
 
     public function search(AdapterSearchInterface $search, string $indexName): SearchResult;
 

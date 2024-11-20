@@ -20,6 +20,8 @@ use Doctrine\DBAL\Query\QueryBuilder;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Model\DataObject\ClassDefinition;
+use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
 use Symfony\Contracts\Service\Attribute\Required;
@@ -33,17 +35,22 @@ abstract class AbstractElementTypeAdapter
 
     abstract public function supports(ElementInterface $element): bool;
 
+    /**
+     * @throws Exception
+     */
     public function getAliasIndexNameByElement(ElementInterface $element): string
     {
         return $this->searchIndexConfigService->getIndexName(
-            $this->getIndexNameShortByElement($element)
+            $this->getIndexNameShortByElement($element),
+            $element instanceof Concrete
         );
     }
 
     public function getAliasIndexName(mixed $context = null): string
     {
         return $this->searchIndexConfigService->getIndexName(
-            $this->getIndexNameShort($context)
+            $this->getIndexNameShort($context),
+            $context instanceof ClassDefinition
         );
     }
 

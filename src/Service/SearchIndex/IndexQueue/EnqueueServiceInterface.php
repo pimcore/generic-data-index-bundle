@@ -17,6 +17,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue;
 
 use Doctrine\DBAL\Exception;
+use Exception as ThrowableException;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\EnqueueElementsException;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\Element\ElementInterface;
@@ -53,12 +55,20 @@ interface EnqueueServiceInterface
     public function enqueueDocuments(): self;
 
     /**
-     * @throws \Exception
+     * @throws ThrowableException
      */
-    public function enqueueRelatedItemsOnUpdate(
+    public function enqueueRelatedItems(
         ElementInterface $element,
         bool $includeElement,
         string $operation
+    ): void;
+
+    /**
+     * @throws ThrowableException
+     */
+    public function enqueueDependentItems(
+        ElementInterface $element,
+        IndexQueueOperation $operation
     ): void;
 
     public function dispatchQueueMessages(bool $synchronously = false): void;

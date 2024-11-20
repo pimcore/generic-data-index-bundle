@@ -24,8 +24,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServic
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
-use Pimcore\Model\Asset;
-use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
@@ -118,25 +116,6 @@ final class IndexService implements IndexServiceInterface
         $this->logger->notice('Add deletion of item ID ' . $elementId . ' from ' . $indexName . ' index to bulk.');
 
         return $this;
-    }
-
-    public function updateAssetDependencies(Asset $asset): array
-    {
-        $elementsToUpdate = [];
-        foreach ($asset->getDependencies()->getRequiredBy() as $requiredByEntry) {
-            $element = null;
-            if ($requiredByEntry['type'] === 'object') {
-                $element = AbstractObject::getById($requiredByEntry['id']);
-            }
-            if ($requiredByEntry['type'] === 'asset') {
-                $element = Asset::getById($requiredByEntry['id']);
-            }
-            if ($element instanceof ElementInterface) {
-                $elementsToUpdate[] = $element;
-            }
-        }
-
-        return $elementsToUpdate;
     }
 
     /**

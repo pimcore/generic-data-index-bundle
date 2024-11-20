@@ -21,8 +21,10 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidElementTypeException;
 use Pimcore\Model\Asset;
+use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Document;
+use Pimcore\Model\Element\ElementInterface;
 
 /**
  * @internal
@@ -44,6 +46,19 @@ final readonly class ElementService implements ElementServiceInterface
             ElementType::DATA_OBJECT->value => AbstractObject::getById($id),
             ElementType::DOCUMENT->value => Document::getById($id),
             default => throw new InvalidElementTypeException('Invalid element type: ' . $type)
+        };
+    }
+
+    /**
+     * @throws InvalidElementTypeException
+     */
+    public function getElementType(ElementInterface $element): ElementType
+    {
+        return match (true) {
+            $element instanceof Asset => ElementType::ASSET,
+            $element instanceof Document => ElementType::DOCUMENT,
+            $element instanceof DataObject => ElementType::DATA_OBJECT,
+            default => throw new InvalidElementTypeException('Invalid element type: ' . $element->getType())
         };
     }
 

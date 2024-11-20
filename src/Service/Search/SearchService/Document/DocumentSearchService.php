@@ -52,7 +52,7 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
         DocumentSearchInterface $documentSearch,
         PermissionTypes $permissionType = PermissionTypes::LIST
     ): DocumentSearchResult {
-        $documentSearch = $this->searchHelper->addSearchRestrictions(
+        $search = $this->searchHelper->addSearchRestrictions(
             search: $documentSearch,
             userPermission: UserPermissionTypes::DOCUMENTS->value,
             workspaceType: DocumentWorkspace::WORKSPACE_TYPE,
@@ -60,7 +60,7 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
         );
 
         $searchResult = $this->searchHelper->performSearch(
-            search: $documentSearch,
+            search: $search,
             indexName: $this->documentTypeAdapter->getAliasIndexName()
         );
 
@@ -75,12 +75,12 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
                 items: $this->searchHelper->hydrateSearchResultHits(
                     $searchResult,
                     $childrenCounts,
-                    $documentSearch->getUser()
+                    $search->getUser()
                 ),
                 pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
                     searchResult: $searchResult,
-                    page: $documentSearch->getPage(),
-                    pageSize: $documentSearch->getPageSize()
+                    page: $search->getPage(),
+                    pageSize: $search->getPageSize()
                 ),
                 aggregations:  $searchResult->getAggregations(),
             );
