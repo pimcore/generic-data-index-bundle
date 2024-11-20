@@ -17,7 +17,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\SearchSe
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Search\SortDirection;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\ElementSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\RequiredByElementListServiceInterface;
@@ -43,8 +42,6 @@ final class RequiredByElementListServiceTest extends Unit
         $this->tester->cleanupIndex();
         $this->tester->flushIndex();
     }
-
-
 
     public function testSearchDependencyList(): void
     {
@@ -101,7 +98,7 @@ final class RequiredByElementListServiceTest extends Unit
 
     private function getDependencyIds(array $dependencyList): array
     {
-        return array_map(fn(HitData $hit) => $hit->getId(), $dependencyList);
+        return array_map(fn (HitData $hit) => $hit->getId(), $dependencyList);
     }
 
     private function assertIdArrayEquals(array $ids1, array $ids2): void

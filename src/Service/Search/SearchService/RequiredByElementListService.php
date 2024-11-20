@@ -18,8 +18,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Sort\FieldSort;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Sort\FieldSortList;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\ElementSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiredByFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
@@ -75,8 +73,7 @@ final readonly class RequiredByElementListService implements RequiredByElementLi
     public function getDependencyListForCurrentPage(
         ElementInterface $element,
         ElementSearchInterface $search
-    ): array
-    {
+    ): array {
         $search->addModifier(
             new RequiredByFilter(
                 $element->getId(),

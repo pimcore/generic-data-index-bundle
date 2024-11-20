@@ -242,8 +242,7 @@ class IndexQueueTest extends Unit
     private function getImageValueFromIndex(
         DataObjectSearchServiceInterface $searchService,
         DataObjectSearchInterface $dataObjectSearch
-    ): ?array
-    {
+    ): ?array {
         $searchResult = $searchService->search($dataObjectSearch);
         $this->assertCount(1, $searchResult->getItems());
         $data = $searchResult->getItems()[0]->getSearchIndexData();
