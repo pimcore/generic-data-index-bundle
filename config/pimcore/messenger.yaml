@@ -1,9 +1,10 @@
 framework:
     messenger:
         enabled: true
-        failure_transport: pimcore_generic_data_index_failed
         transports:
-            pimcore_generic_data_index_queue: 'doctrine://default?queue_name=pimcore_generic_data_index_queue'
+            pimcore_generic_data_index_queue:
+                dsn: 'doctrine://default?queue_name=pimcore_generic_data_index_queue'
+                failure_transport: pimcore_generic_data_index_failed
             pimcore_generic_data_index_sync: 'sync://'
             pimcore_generic_data_index_failed: 'doctrine://default?queue_name=pimcore_generic_data_index_failed'
         routing:
