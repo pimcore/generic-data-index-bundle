@@ -18,10 +18,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation\Aggregation;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\OpenSearchSearchInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermFilter;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\TermsFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Aggregation\Aggregation;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Asset\AssetMetaDataAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
@@ -60,7 +60,7 @@ abstract class AbstractAdapter implements AdapterInterface
     }
 
     /**
-     * @param OpenSearchSearchInterface $adapterSearch
+     * @param DefaultSearchInterface $adapterSearch
      *
      * @throws InvalidArgumentException
      */
