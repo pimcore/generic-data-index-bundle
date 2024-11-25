@@ -27,6 +27,8 @@ use Pimcore\Model\Metadata\Predefined;
  */
 final readonly class PredefinedAssetMetadataProvider implements MappingProviderInterface
 {
+    private const DEFAULT_METADATA = ['title', 'alt', 'copyright'];
+
     public function __construct(
         private LanguageServiceInterface $languageService,
         private FieldDefinitionServiceInterface $fieldDefinitionService
@@ -49,7 +51,7 @@ final readonly class PredefinedAssetMetadataProvider implements MappingProviderI
             );
         }
 
-        return array_merge($mappingProperties, $this->getDefaultMetadataMapping());
+        return array_merge($mappingProperties, $this->getDefaultMetadataMapping($languages));
     }
 
     private function getTypeMapping(string $type): ?array
@@ -77,15 +79,15 @@ final readonly class PredefinedAssetMetadataProvider implements MappingProviderI
     /**
      * @return MappingProperty[]
      */
-    private function getDefaultMetadataMapping(): array
+    private function getDefaultMetadataMapping(array $languages): array
     {
         $mappingProperties = [];
         foreach (self::DEFAULT_METADATA as $metadata) {
             $mappingProperties[] = new MappingProperty(
                 $metadata,
                 'input',
-                $this->getLanguageMappingByType([MappingProperty::NOT_LOCALIZED_KEY], 'input'),
-                [MappingProperty::NOT_LOCALIZED_KEY]
+                $this->getLanguageMappingByType($languages, 'input'),
+                $languages
             );
         }
 
