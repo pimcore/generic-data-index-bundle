@@ -20,6 +20,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProper
 
 interface MappingProviderInterface
 {
+    public const DEFAULT_METADATA = ['title', 'alt', 'copyright'];
+
     /**
      * @return MappingProperty[]
      */

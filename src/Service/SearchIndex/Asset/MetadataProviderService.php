@@ -52,17 +52,17 @@ final readonly class MetadataProviderService implements MetadataProviderServiceI
             if (is_array($metadata) && isset($metadata['data'], $metadata['name'], $metadata['type'])) {
                 $mappingProperty = $metaDataMap[$metadata['name']] ?? null;
                 $language = $metadata['language'] ?? null;
-                $language = $language ?: MappingProperty::NOT_LOCALIZED_KEY;
+                $metadata['language'] = $language ?: MappingProperty::NOT_LOCALIZED_KEY;
                 if ($mappingProperty
                     && $mappingProperty->getType() === $metadata['type']
-                    && in_array($language, $mappingProperty->getLanguages(), true)
+                    && in_array($metadata['language'], $mappingProperty->getLanguages(), true)
                 ) {
                     $result[] = $metadata;
                 }
             }
         }
 
-        return $result;
+        return $this->addDefaultMetadata($result);
     }
 
     /**
@@ -89,5 +89,33 @@ final readonly class MetadataProviderService implements MetadataProviderServiceI
         }
 
         return $mappingProviders;
+    }
+
+    private function addDefaultMetadata(array $assetMetadata): array
+    {
+        $indexedMetadata = array_flip(array_column($assetMetadata, 'name'));
+        foreach ($this->getDefaultMetadataValues() as $defaultEntry) {
+            if (!isset($indexedMetadata[$defaultEntry['name']])) {
+                $assetMetadata[] = $defaultEntry;
+            }
+        }
+
+        return $assetMetadata;
+    }
+
+    private function getDefaultMetadataValues(): array
+    {
+        $defaultMetadata = [];
+        foreach (MappingProviderInterface::DEFAULT_METADATA as $key) {
+
+            $defaultMetadata[] = [
+                'name' => $key,
+                'type' => 'input',
+                'language' => MappingProperty::NOT_LOCALIZED_KEY,
+                'data' => '',
+            ];
+        }
+
+        return $defaultMetadata;
     }
 }

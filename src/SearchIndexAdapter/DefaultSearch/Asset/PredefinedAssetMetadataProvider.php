@@ -41,25 +41,15 @@ final readonly class PredefinedAssetMetadataProvider implements MappingProviderI
         $languages = array_merge([MappingProperty::NOT_LOCALIZED_KEY], $this->languageService->getValidLanguages());
 
         foreach ($predefinedMetaDataList as $predefinedMetaData) {
-            $languageMapping = [
-                'properties' => [],
-            ];
-
-            if ($typeMapping = $this->getTypeMapping($predefinedMetaData->getType())) {
-                foreach ($languages as $language) {
-                    $languageMapping['properties'][$language] = $typeMapping;
-                }
-            }
-
             $mappingProperties[] = new MappingProperty(
                 $predefinedMetaData->getName(),
                 $predefinedMetaData->getType(),
-                $languageMapping,
+                $this->getLanguageMappingByType($languages, $predefinedMetaData->getType()),
                 $languages
             );
         }
 
-        return $mappingProperties;
+        return array_merge($mappingProperties, $this->getDefaultMetadataMapping());
     }
 
     private function getTypeMapping(string $type): ?array
@@ -67,5 +57,38 @@ final readonly class PredefinedAssetMetadataProvider implements MappingProviderI
         return $this->fieldDefinitionService
             ->getFieldDefinitionAdapter($type)
             ?->getIndexMapping();
+    }
+
+    private function getLanguageMappingByType(array $languages, string $type): array
+    {
+        $languageMapping = [
+            'properties' => [],
+        ];
+
+        if ($typeMapping = $this->getTypeMapping($type)) {
+            foreach ($languages as $language) {
+                $languageMapping['properties'][$language] = $typeMapping;
+            }
+        }
+
+        return $languageMapping;
+    }
+
+    /**
+     * @return MappingProperty[]
+     */
+    private function getDefaultMetadataMapping(): array
+    {
+        $mappingProperties = [];
+        foreach (self::DEFAULT_METADATA as $metadata) {
+            $mappingProperties[] = new MappingProperty(
+                $metadata,
+                'input',
+                $this->getLanguageMappingByType([MappingProperty::NOT_LOCALIZED_KEY], 'input'),
+                [MappingProperty::NOT_LOCALIZED_KEY]
+            );
+        }
+
+        return $mappingProperties;
     }
 }
