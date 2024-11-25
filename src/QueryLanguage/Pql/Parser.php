@@ -112,7 +112,7 @@ final class Parser implements ParserInterface
         if (!$token || !$token->isA(QueryTokenType::T_RPAREN)) {
             $this->throwParsingException(
                 'token type `' . QueryTokenType::T_RPAREN->value . '`',
-                '`' . ($token['type']->value ?? 'null') . '`'
+                '`' . ($token->type ?? 'null') . '`'
             );
         }
         $this->advance();
@@ -175,7 +175,7 @@ final class Parser implements ParserInterface
         $this->validateCurrentTokenNotEmpty();
 
         if (!$this->currentToken() || !$this->currentToken()->isA(...self::FIELD_NAME_TOKENS)) {
-            $tokenValue = $this->currentToken()['value'] ?? 'null';
+            $tokenValue = $this->currentToken()->value ?? 'null';
             $message = null;
             if (in_arrayi($tokenValue, ['and', 'or', 'like', 'not like', 'null', 'empty'])) {
                 $message = sprintf('Expected %s, found %s.', 'a field name', '`' . $tokenValue . '`')
@@ -186,15 +186,15 @@ final class Parser implements ParserInterface
 
         /** @var Token $fieldToken */
         $fieldToken = $this->currentToken();
-        $fieldType = $fieldToken['type'];
-        $field = $fieldToken['value'];
+        $fieldType = $fieldToken->type;
+        $field = $fieldToken->value;
         $this->advance(); // Move to operator
         $this->validateCurrentTokenNotEmpty();
 
         $operatorToken = $this->currentToken();
 
         if ($operatorToken === null || !$operatorToken->isA(...self::OPERATOR_TOKENS)) {
-            $this->throwParsingException('a comparison operator', '`' . ($operatorToken['value'] ?? 'null') . '`');
+            $this->throwParsingException('a comparison operator', '`' . $operatorToken->value . '`');
         }
 
         $this->advance(); // Move to value
@@ -205,7 +205,7 @@ final class Parser implements ParserInterface
         if (!$valueToken || !$valueToken->isA(...self::VALUE_TOKENS)) {
             $this->throwParsingException(
                 'a string, numeric value or a empty/null keyword',
-                '`' . ($valueToken['value'] ?? 'null') . '`'
+                '`' . $valueToken->value . '`'
             );
         }
 
@@ -214,7 +214,7 @@ final class Parser implements ParserInterface
         ) {
             $this->throwParsingException(
                 'a valid value',
-                '`' . ($valueToken['value'] ?? 'null') . '`',
+                '`' . $valueToken->value . '`',
                 'Operator `' . $operatorToken->value . '` does not support null/empty values'
             );
         }
@@ -345,7 +345,7 @@ final class Parser implements ParserInterface
         $query = $this->parseCondition($subQueries);
 
         if ($token = $this->currentToken()) {
-            $this->throwParsingException('end of input', '`' . ($token['value'] ?? 'null') . '`');
+            $this->throwParsingException('end of input', '`' . $token->value . '`');
         }
 
         return new ParseResult($query, $subQueries);

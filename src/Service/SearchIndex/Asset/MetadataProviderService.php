@@ -52,10 +52,10 @@ final readonly class MetadataProviderService implements MetadataProviderServiceI
             if (is_array($metadata) && isset($metadata['data'], $metadata['name'], $metadata['type'])) {
                 $mappingProperty = $metaDataMap[$metadata['name']] ?? null;
                 $language = $metadata['language'] ?? null;
-                $language = $language ?: MappingProperty::NOT_LOCALIZED_KEY;
+                $metadata['language'] = $language ?: MappingProperty::NOT_LOCALIZED_KEY;
                 if ($mappingProperty
                     && $mappingProperty->getType() === $metadata['type']
-                    && in_array($language, $mappingProperty->getLanguages(), true)
+                    && in_array($metadata['language'], $mappingProperty->getLanguages(), true)
                 ) {
                     $result[] = $metadata;
                 }
