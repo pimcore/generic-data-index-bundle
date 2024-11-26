@@ -19,7 +19,7 @@
   "require": {
     "php": "~8.2.0 || ~8.3.0 ",
     "pimcore/pimcore": "^11.x-dev",
-    "pimcore/static-resolver-bundle": "^1.4.0",
+    "pimcore/static-resolver-bundle": "^2.x-dev",
     "pimcore/opensearch-client": "^1.x-dev",
     "pimcore/elasticsearch-client": "^1.x-dev",
     "doctrine/orm": "^2.17.2",
