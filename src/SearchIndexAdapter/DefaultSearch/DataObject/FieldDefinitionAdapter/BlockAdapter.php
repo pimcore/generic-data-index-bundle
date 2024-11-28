@@ -65,7 +65,7 @@ final class BlockAdapter extends AbstractAdapter
             /** @var BlockElement $fieldValue */
             foreach ($block as $key => $fieldValue) {
                 $blockDefinition = $fieldDefinitions[$key];
-                $resultItems[$key] = $this->fieldDefinitionService->normalizeValue(
+                $resultItem[$key] = $this->fieldDefinitionService->normalizeValue(
                     $blockDefinition,
                     $fieldValue->getData()
                 );
