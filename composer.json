@@ -18,10 +18,10 @@
   "minimum-stability": "dev",
   "require": {
     "php": "~8.2.0 || ~8.3.0 ",
-    "pimcore/pimcore": "^11.x-dev",
+    "pimcore/pimcore": "^11.5",
     "pimcore/static-resolver-bundle": "^1.4.0 || ^2.0",
-    "pimcore/opensearch-client": "^1.x-dev",
-    "pimcore/elasticsearch-client": "^1.x-dev",
+    "pimcore/opensearch-client": "^1.1",
+    "pimcore/elasticsearch-client": "^1.1",
     "doctrine/orm": "^2.17.2",
     "symfony/scheduler": "^6.4",
     "symfony/messenger": "^6.4"
