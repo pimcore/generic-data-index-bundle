@@ -108,11 +108,11 @@ $classesToAlias = [
     DefaultSearchInterface::class => OpenSearchSearchInterface::class,
     AssetAbstractAdapter::class => OpenSearchAssetAbstractAdapter::class,
     DataObjectAbstractAdapter::class => OpenSearchDataObjectAbstractAdapter::class,
-    ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'BooleanAdapter' => BooleanAdapter::class,
-    ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'DateAdapter' => DateAdapter::class,
-    ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'KeywordAdapter' => KeywordAdapter::class,
-    ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'RelationAdapter' => RelationAdapter::class,
-    ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'TextKeywordAdapter' => TextKeywordAdapter::class,
+    BooleanAdapter::class => ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'BooleanAdapter',
+    DateAdapter::class => ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'DateAdapter',
+    KeywordAdapter::class => ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'KeywordAdapter',
+    RelationAdapter::class => ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'RelationAdapter',
+    TextKeywordAdapter::class => ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'TextKeywordAdapter',
 ];
 
 foreach ($classesToAlias as $originalClass => $aliasClass) {
