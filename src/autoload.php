@@ -77,7 +77,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataO
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter\AbstractAdapter as OpenSearchAssetAbstractAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\AbstractAdapter as OpenSearchDataObjectAbstractAdapter;
 
-const ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE = 'Pimcore\\Bundle\GenericDataIndexBundle\\SearchIndexAdapter\\DefaultSearch\\Asset\\FieldDefinitionAdapter\\';
+const ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE = 'Pimcore\\Bundle\GenericDataIndexBundle\\SearchIndexAdapter\\OpenSearch\\Asset\\FieldDefinitionAdapter\\';
 
 $classesToAlias = [
     AttributeType::class => OpenSearchAttributeType::class,
