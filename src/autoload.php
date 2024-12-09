@@ -68,9 +68,16 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSortList as
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Traits\QueryObjectsToArrayTrait as OpenSearchQueryObjectsToArrayTrait;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Traits\SimplifySingleTypesTrait as OpenSearchSimplifySingleTypesTrait;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Asset\FieldDefinitionAdapter\AbstractAdapter as AssetAbstractAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Asset\FieldDefinitionAdapter\BooleanAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Asset\FieldDefinitionAdapter\DateAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Asset\FieldDefinitionAdapter\KeywordAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Asset\FieldDefinitionAdapter\RelationAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Asset\FieldDefinitionAdapter\TextKeywordAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\AbstractAdapter as DataObjectAbstractAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter\AbstractAdapter as OpenSearchAssetAbstractAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\AbstractAdapter as OpenSearchDataObjectAbstractAdapter;
+
+const ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE = 'Pimcore\\Bundle\GenericDataIndexBundle\\SearchIndexAdapter\\OpenSearch\\Asset\\FieldDefinitionAdapter\\';
 
 $classesToAlias = [
     AttributeType::class => OpenSearchAttributeType::class,
@@ -101,6 +108,11 @@ $classesToAlias = [
     DefaultSearchInterface::class => OpenSearchSearchInterface::class,
     AssetAbstractAdapter::class => OpenSearchAssetAbstractAdapter::class,
     DataObjectAbstractAdapter::class => OpenSearchDataObjectAbstractAdapter::class,
+    BooleanAdapter::class => ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'BooleanAdapter',
+    DateAdapter::class => ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'DateAdapter',
+    KeywordAdapter::class => ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'KeywordAdapter',
+    RelationAdapter::class => ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'RelationAdapter',
+    TextKeywordAdapter::class => ASSET_FIELD_DEFINITION_ADAPTER_NAMESPACE . 'TextKeywordAdapter',
 ];
 
 foreach ($classesToAlias as $originalClass => $aliasClass) {
