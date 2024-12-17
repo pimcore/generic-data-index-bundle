@@ -90,20 +90,14 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $definition->setArgument('$indexSettings', $indexSettings['index_settings']);
         $definition->setArgument('$searchSettings', $indexSettings['search_settings']);
         $definition->setArgument('$systemFieldsSettings', $indexSettings['system_fields_settings']);
-        if ($indexSettings['client_params']['client_type'] === ClientType::OPEN_SEARCH->value) {
-            $openSearchClientId = 'pimcore.open_search_client.' . $indexSettings['client_params']['client_name'];
-            $container->setAlias('generic-data-index.opensearch-client', $openSearchClientId)
-                ->setDeprecated(
-                    'pimcore/generic-data-index-bundle',
-                    '1.3',
-                    'The "%alias_id%" service alias is deprecated and will be removed in version 2.0. ' .
-                    'Please use "generic-data-index.search-client" instead.'
-                );
-        }
+
         $clientId = $this->getDefaultSearchClientId($indexSettings);
         $container->setAlias('generic-data-index.search-client', $clientId);
 
-        $container->setParameter('generic-data-index.index-prefix', $indexSettings['client_params']['index_prefix']);
+        $container->setParameter(
+            'generic-data-index.index-prefix',
+            $indexSettings['client_params']['index_prefix']
+        );
 
         $definition = $container->getDefinition(DispatchQueueMessagesHandler::class);
         $definition->setArgument('$queueSettings', $indexSettings['queue_settings']);
