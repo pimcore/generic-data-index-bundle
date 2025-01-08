@@ -78,11 +78,10 @@ final class ObjectBrickAdapter extends AbstractAdapter
                 continue;
             }
 
-            $resultItems[$type] = [];
             foreach ($definition->getFieldDefinitions() as $fieldDefinition) {
                 $getter = 'get' . ucfirst($fieldDefinition->getName());
                 $value = $item->$getter();
-                $resultItems[$fieldDefinition->getName()] = $this->fieldDefinitionService->normalizeValue(
+                $resultItems[$type][$fieldDefinition->getName()] = $this->fieldDefinitionService->normalizeValue(
                     $fieldDefinition,
                     $value
                 );
