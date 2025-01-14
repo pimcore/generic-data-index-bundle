@@ -34,11 +34,17 @@ final class SearchIndexConfigService implements SearchIndexConfigServiceInterfac
     public const SYSTEM_FIELD_DATA_OBJECT = 'data_object';
 
     public function __construct(
+        private readonly string $clientType,
         private readonly string $indexPrefix,
         private readonly array $indexSettings,
         private readonly array $searchSettings,
         private readonly array $systemFieldsSettings,
     ) {
+    }
+
+    public function getClientType(): string
+    {
+        return $this->clientType;
     }
 
     /**

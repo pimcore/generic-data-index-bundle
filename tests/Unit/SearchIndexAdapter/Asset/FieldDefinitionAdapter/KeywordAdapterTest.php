@@ -18,9 +18,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\As
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Search;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\Asset\FieldDefinitionAdapter\KeywordAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Asset\FieldDefinitionAdapter\KeywordAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
 /**
@@ -28,7 +28,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
  */
 final class KeywordAdapterTest extends Unit
 {
-    public function testGetOpenSearchMapping(): void
+    public function testGetSearchIndexMapping(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $adapter = new KeywordAdapter(

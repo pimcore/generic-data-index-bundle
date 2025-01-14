@@ -21,6 +21,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Debug\SearchInformati
 use RuntimeException;
 use Throwable;
 
+/**
+ * @deprecated Will be removed in 2.0, please use
+ * Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\SearchFailedException instead
+ */
 final class SearchFailedException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
 {
     public function __construct(

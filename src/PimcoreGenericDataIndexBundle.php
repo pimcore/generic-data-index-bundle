@@ -16,7 +16,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle;
 
+use Pimcore\Bundle\ElasticsearchClientBundle\PimcoreElasticsearchClientBundle;
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch\AsSearchModifierHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Attribute\Search\AsSearchModifierHandler as SearchModifierHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\SearchModifierHandlerPass;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\ServiceLocatorPass;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\ServiceTag;
@@ -61,6 +63,7 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements
 
     public static function registerDependentBundles(BundleCollection $collection): void
     {
+        $collection->addBundle(new PimcoreElasticsearchClientBundle());
         $collection->addBundle(new PimcoreOpenSearchClientBundle());
         $collection->addBundle(new PimcoreStaticResolverBundle());
     }
@@ -68,21 +71,41 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements
     private function registerSearchModifierAttribute(ContainerBuilder $container): void
     {
         $container->registerAttributeForAutoconfiguration(
+            SearchModifierHandler::class,
+            static function (
+                ChildDefinition $definition,
+                SearchModifierHandler $attribute,
+                Reflector $reflector
+            ): void {
+                self::configureSearchModifierHandler($definition, $reflector);
+            }
+        );
+
+        /**
+         * @TODO Remove this in version 2.0
+         */
+        $container->registerAttributeForAutoconfiguration(
             AsSearchModifierHandler::class,
             static function (
                 ChildDefinition $definition,
                 AsSearchModifierHandler $attribute,
                 Reflector $reflector
             ): void {
-
-                $method = ($reflector instanceof ReflectionMethod)
-                    ? $reflector->getName()
-                    : '__invoke';
-
-                $definition->addTag(ServiceTag::SEARCH_MODIFIER_HANDLER->value, [
-                    'method' => $method,
-                ]);
+                self::configureSearchModifierHandler($definition, $reflector);
             }
         );
+    }
+
+    private static function configureSearchModifierHandler(
+        ChildDefinition $definition,
+        Reflector $reflector
+    ): void {
+        $method = ($reflector instanceof ReflectionMethod)
+            ? $reflector->getName()
+            : '__invoke';
+
+        $definition->addTag(ServiceTag::SEARCH_MODIFIER_HANDLER->value, [
+            'method' => $method,
+        ]);
     }
 }

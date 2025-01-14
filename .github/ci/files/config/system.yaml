@@ -52,7 +52,7 @@ pimcore:
     applicationlog:
         mail_notification:
             send_log_summary: false
-            filter_priority: null
+            filter_priority: 0
             mail_receiver: ''
         archive_treshold: '30'
         archive_alternative_database: ''

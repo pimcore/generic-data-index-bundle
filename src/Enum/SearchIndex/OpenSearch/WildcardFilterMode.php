@@ -16,6 +16,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch;
 
+/**
+ * @deprecated Will be removed in 2.0, please use
+ * Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\WildcardFilterMode instead
+ */
 enum WildcardFilterMode
 {
     case BOTH; // *term*

@@ -16,13 +16,17 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Sort\FieldSort;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Sort\FieldSortList;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation\Aggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Aggregation\AggregationList;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\QueryInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\QueryList;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSort;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Sort\FieldSortList;
 
+/**
+ * @deprecated Will be removed in 2.0, please use
+ * Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search instead
+ */
 final class Search implements OpenSearchSearchInterface
 {
     public function __construct(

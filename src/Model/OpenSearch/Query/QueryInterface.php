@@ -18,6 +18,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\OpenSearch\QueryType;
 
+/**
+ * @deprecated Will be removed in 2.0, please use
+ * Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\QueryInterface instead
+ */
 interface QueryInterface
 {
     public function getType(): QueryType|string;

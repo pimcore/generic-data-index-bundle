@@ -17,7 +17,6 @@ namespace Functional\SearchIndex;
 
 use Codeception\Test\Unit;
 use Exception;
-use OpenSearch\Common\Exceptions\Missing404Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
@@ -107,9 +106,7 @@ class IndexQueueTest extends Unit
         $indexName = $this->searchIndexConfigService->getIndexName(self::ASSET_INDEX_NAME);
 
         $asset = TestHelper::createImageAsset();
-
-        $this->expectException(Missing404Exception::class);
-        $this->tester->checkIndexEntry($asset->getId(), $indexName);
+        $this->tester->checkDeletedIndexEntry($asset->getId(), $indexName);
     }
 
     public function testAssetSaveProcessQueue(): void
@@ -122,7 +119,8 @@ class IndexQueueTest extends Unit
 
         $asset = TestHelper::createImageAsset();
 
-        $this->assertNotEmpty(
+        $this->assertGreaterThan(
+            0,
             Db::get()->fetchOne(
                 'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="asset"',
                 [$asset->getId()]

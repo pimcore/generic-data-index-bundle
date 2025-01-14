@@ -127,10 +127,10 @@ public function searchAction(SearchProviderInterface $searchProvider, SearchResu
 }
 ```
 
-## OpenSearch Search Models
-The search services mentioned above offer a flexible and structured way to search for assets, data objects and documents. Nevertheless if there are requirements which are not covered by the search services it might be needed to develop your own customized open search queries. The OpenSearch search models offer a streamlined way for executing such customized search queries. They are also used by the search services internally to create the executed OpenSearch search queries.
+## Default Search Models
+The search services mentioned above offer a flexible and structured way to search for assets, data objects and documents. Nevertheless, if there are requirements which are not covered by the search services it might be needed to develop your own customized search queries. Default search models offer a streamlined way for executing such customized search queries. They are also used by the search services internally to create the executed search queries.
 
-Take a look at the dedicated [OpenSearch search models documentation](06_OpenSearch_Search_Models/README.md) to find out more.
+Take a look at the dedicated [Default search models documentation](06_Default_Search_Models/README.md) to find out more.
 
 ## Permissions
 The search service respects the user permissions and user workspaces in connection to his roles.
@@ -141,9 +141,9 @@ Details about permissions and workspaces can be found in the [permissions and wo
 The [Pimcore Query Language (PQL)](./09_Pimcore_Query_Language/README.md) is a query language which can be used to provide the user a flexible way to define search criteria for data objects, assets and documents.
 
 
-## Debug OpenSearch Queries
-To debug the OpenSearch queries which are created by the search service, it is possible to use the following magic parameter in the URL (when debug mode is enabled):
+## Debug Search Queries
+To debug the Search queries which are created by the search service, it is possible to use the following magic parameter in the URL (when debug mode is enabled):
 
-| Get Parameter             | Description                                                                                                                                                                                                    |
-|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `debug-open-search-queries` | Will change the response of the called URL and outputs all executed OpenSearch queries. <br/><br/>It is possible to influence the output verbosity with the value of the parameter (1=normal, 2=verbose, 3=very verbose) |
+| Get Parameter             | Description                                                                                                                                                                                                          |
+|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `debug-search-queries` | Will change the response of the called URL and outputs all executed search queries. <br/><br/>It is possible to influence the output verbosity with the value of the parameter (1=normal, 2=verbose, 3=very verbose) |

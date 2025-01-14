@@ -15,7 +15,7 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\Filter;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query\DateFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\DateFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Asset\AssetMetaDataFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;

@@ -18,6 +18,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Query;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\OpenSearch\Traits\QueryObjectsToArrayTrait;
 
+/**
+ * @deprecated Will be removed in 2.0, please use
+ * Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\Query instead
+ */
 final class Query implements QueryInterface
 {
     use QueryObjectsToArrayTrait;
