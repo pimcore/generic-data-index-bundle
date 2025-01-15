@@ -211,6 +211,10 @@ pimcore_generic_data_index:
           type: keyword
         index:
           type: integer
+        childrenSortBy:
+          type: keyword
+        childrenSortOrder:
+          type: keyword
       asset:
         mimetype:
           type: keyword
