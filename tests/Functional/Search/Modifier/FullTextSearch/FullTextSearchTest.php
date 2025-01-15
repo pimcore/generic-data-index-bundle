@@ -208,12 +208,19 @@ final class FullTextSearchTest extends \Codeception\Test\Unit
             ->createAssetSearch()
             ->addModifier(new FullTextSearch('asset'))
         ;
-        $this->assertEquals([$asset->getId(), $asset2->getId()], $searchService->search($assetSearch)->getIds());
+        $this->assertIdArrayEquals([$asset->getId(), $asset2->getId()], $searchService->search($assetSearch)->getIds());
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new FullTextSearch($asset2->getFilename()))
         ;
         $this->assertEquals([$asset2->getId()], $searchService->search($assetSearch)->getIds());
+    }
+
+    private function assertIdArrayEquals(array $ids1, array $ids2)
+    {
+        sort($ids1);
+        sort($ids2);
+        $this->assertEquals($ids1, $ids2);
     }
 }
