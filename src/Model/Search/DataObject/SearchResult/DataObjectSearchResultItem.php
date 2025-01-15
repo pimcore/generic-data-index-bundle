@@ -33,6 +33,10 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 
     private int $index;
 
+    private string $childrenSortBy;
+
+    private string $childrenSortOrder;
+
     private bool $published;
 
     private string $path;
@@ -126,6 +130,30 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
     public function setIndex(int $index): DataObjectSearchResultItem
     {
         $this->index = $index;
+
+        return $this;
+    }
+
+    public function getChildrenSortBy(): string
+    {
+        return $this->childrenSortBy;
+    }
+
+    public function setChildrenSortBy(string $childrenSortBy): DataObjectSearchResultItem
+    {
+        $this->childrenSortBy = $childrenSortBy;
+
+        return $this;
+    }
+
+    public function getChildrenSortOrder(): string
+    {
+        return $this->childrenSortOrder;
+    }
+
+    public function setChildrenSortOrder(string $childrenSortOrder): DataObjectSearchResultItem
+    {
+        $this->childrenSortOrder = $childrenSortOrder;
 
         return $this;
     }
