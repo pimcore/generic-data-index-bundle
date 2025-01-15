@@ -37,7 +37,7 @@ readonly class DataObjectSearchResultDenormalizer implements DenormalizerInterfa
     public function denormalize(
         mixed $data,
         string $type,
-        string $format = null,
+        ?string $format = null,
         array $context = []
     ): DataObjectSearchResultItem {
 
@@ -92,7 +92,7 @@ readonly class DataObjectSearchResultDenormalizer implements DenormalizerInterfa
 
     }
 
-    public function supportsDenormalization(mixed $data, string $type, string $format = null): bool
+    public function supportsDenormalization(mixed $data, string $type, ?string $format = null): bool
     {
         return is_array($data) && is_subclass_of($type, DataObjectSearchResultItem::class);
     }

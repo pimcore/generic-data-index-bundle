@@ -24,7 +24,7 @@ final class AggregationList
     ) {
     }
 
-    public function addAggregation(Aggregation $aggregation = null): AggregationList
+    public function addAggregation(?Aggregation $aggregation = null): AggregationList
     {
         if ($aggregation !== null) {
             $this->aggregations[] = $aggregation;

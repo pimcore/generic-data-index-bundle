@@ -97,7 +97,7 @@ final class ObjectBrickAdapter extends AbstractAdapter
         mixed $value,
         string $key,
         ?string $language = null,
-        callable $callback = null
+        ?callable $callback = null
     ): array {
         if (!$value instanceof Objectbrick) {
             return [];

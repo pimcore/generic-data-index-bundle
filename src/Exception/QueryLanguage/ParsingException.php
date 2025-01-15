@@ -28,7 +28,7 @@ final class ParsingException extends Exception
         private readonly ?Token $token,
         ?string $message = null,
         private readonly ?int $position = null,
-        Exception $previous = null
+        ?Exception $previous = null
     ) {
         $message = $message ?? sprintf('Expected %s, found %s.', $expected, $found);
 

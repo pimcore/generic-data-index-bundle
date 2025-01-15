@@ -36,7 +36,7 @@ final class DeploymentReindexCommand extends AbstractCommand
     public function __construct(
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly ClassDefinitionReindexServiceInterface $classDefinitionReindexService,
-        string $name = null
+        ?string $name = null
     ) {
         parent::__construct($name);
     }

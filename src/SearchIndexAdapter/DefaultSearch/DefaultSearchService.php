@@ -125,7 +125,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
     }
 
-    public function createIndex(string $indexName, array $mappings = null): DefaultSearchService
+    public function createIndex(string $indexName, ?array $mappings = null): DefaultSearchService
     {
         $this->deleteIndex($indexName, true);
 
@@ -161,7 +161,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         return $this->indexAliasService->addAlias($aliasName, $indexName);
     }
 
-    public function existsAlias(string $aliasName, string $indexName = null): bool
+    public function existsAlias(string $aliasName, ?string $indexName = null): bool
     {
         return $this->indexAliasService->existsAlias($aliasName, $indexName);
     }

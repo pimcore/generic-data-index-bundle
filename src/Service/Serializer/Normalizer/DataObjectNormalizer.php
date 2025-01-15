@@ -52,7 +52,7 @@ final class DataObjectNormalizer implements NormalizerInterface
      *
      * @throws Exception
      */
-    public function normalize(mixed $object, string $format = null, array $context = []): array
+    public function normalize(mixed $object, ?string $format = null, array $context = []): array
     {
         $skipLazyLoadedFields = SerializerContext::SKIP_LAZY_LOADED_FIELDS->containedInContext($context);
 
@@ -69,7 +69,7 @@ final class DataObjectNormalizer implements NormalizerInterface
         return [];
     }
 
-    public function supportsNormalization(mixed $data, string $format = null): bool
+    public function supportsNormalization(mixed $data, ?string $format = null): bool
     {
         return $data instanceof AbstractObject;
     }

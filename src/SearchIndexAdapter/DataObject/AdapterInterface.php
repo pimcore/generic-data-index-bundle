@@ -47,6 +47,6 @@ interface AdapterInterface
         mixed $value,
         string $key,
         ?string $language = null,
-        callable $callback = null
+        ?callable $callback = null
     ): array;
 }

@@ -27,7 +27,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchI
  */
 interface DefaultSearchInterface extends AdapterSearchInterface
 {
-    public function addQuery(QueryInterface $query = null): DefaultSearchInterface;
+    public function addQuery(?QueryInterface $query = null): DefaultSearchInterface;
 
     public function addSort(FieldSort $sort): DefaultSearchInterface;
 

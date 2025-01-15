@@ -90,8 +90,8 @@ final readonly class LocateInTreeService implements LocateInTreeServiceInterface
 
     private function createDefaultSearch(
         SearchInterface $search,
-        int $pageSize = null,
-        SearchResult $searchAfterSearchResult = null
+        ?int $pageSize = null,
+        ?SearchResult $searchAfterSearchResult = null
     ): Search {
         $pageSize = $pageSize ?? $search->getPageSize();
 
