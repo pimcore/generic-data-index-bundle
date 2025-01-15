@@ -109,6 +109,8 @@ final class DataObjectNormalizer implements NormalizerInterface
             SystemField::TYPE->value => $dataObject->getType(),
             SystemField::KEY->value => $dataObject->getKey(),
             SystemField::INDEX->value => $dataObject->getIndex(),
+            SystemField::CHILDREN_SORT_BY->value => $dataObject->getChildrenSortBy(),
+            SystemField::CHILDREN_SORT_ORDER->value => $dataObject->getChildrenSortOrder(),
             SystemField::PATH->value => $dataObject->getPath(),
             SystemField::FULL_PATH->value => $dataObject->getRealFullPath(),
             SystemField::USER_OWNER->value => $dataObject->getUserOwner(),
