@@ -37,11 +37,11 @@ interface SearchIndexServiceInterface
      */
     public function reindex(string $indexName, array $mapping): void;
 
-    public function createIndex(string $indexName, array $mappings = null): self;
+    public function createIndex(string $indexName, ?array $mappings = null): self;
 
     public function addAlias(string $aliasName, string $indexName): array;
 
-    public function existsAlias(string $aliasName, string $indexName = null): bool;
+    public function existsAlias(string $aliasName, ?string $indexName = null): bool;
 
     public function deleteAlias(string $indexName, string $aliasName): array;
 

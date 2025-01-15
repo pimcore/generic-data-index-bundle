@@ -97,7 +97,7 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         mixed $value,
         string $key,
         ?string $language = null,
-        callable $callback = null
+        ?callable $callback = null
     ): array {
         $indexData = $this->getIndexData($value);
         if (empty($indexData)) {

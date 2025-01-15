@@ -46,7 +46,7 @@ final class AssetNormalizer implements NormalizerInterface
     ) {
     }
 
-    public function normalize(mixed $object, string $format = null, array $context = []): array
+    public function normalize(mixed $object, ?string $format = null, array $context = []): array
     {
         $skipLazyLoadedFields = SerializerContext::SKIP_LAZY_LOADED_FIELDS->containedInContext($context);
 
@@ -63,7 +63,7 @@ final class AssetNormalizer implements NormalizerInterface
         return [];
     }
 
-    public function supportsNormalization(mixed $data, string $format = null): bool
+    public function supportsNormalization(mixed $data, ?string $format = null): bool
     {
         return $data instanceof Asset;
     }

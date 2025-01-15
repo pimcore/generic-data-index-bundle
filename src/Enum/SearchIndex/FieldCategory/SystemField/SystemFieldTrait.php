@@ -20,7 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 
 trait SystemFieldTrait
 {
-    public function getPath(string $subField = null): string
+    public function getPath(?string $subField = null): string
     {
         $path = FieldCategory::SYSTEM_FIELDS->value . '.' . $this->value;
 

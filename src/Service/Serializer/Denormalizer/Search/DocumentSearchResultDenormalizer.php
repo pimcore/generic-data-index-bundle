@@ -35,7 +35,7 @@ readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
     public function denormalize(
         mixed $data,
         string $type,
-        string $format = null,
+        ?string $format = null,
         array $context = []
     ): DocumentSearchResultItem {
 
@@ -74,7 +74,7 @@ readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
             ->setHasWorkflowWithPermissions(SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data));
     }
 
-    public function supportsDenormalization(mixed $data, string $type, string $format = null): bool
+    public function supportsDenormalization(mixed $data, string $type, ?string $format = null): bool
     {
         return is_array($data) && is_subclass_of($type, DocumentSearchResultItem::class);
     }

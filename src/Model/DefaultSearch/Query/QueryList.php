@@ -32,7 +32,7 @@ final class QueryList
     ) {
     }
 
-    public function addQuery(QueryInterface $query = null): QueryList
+    public function addQuery(?QueryInterface $query = null): QueryList
     {
         if ($query instanceof BoolQuery && !$query->isEmpty()) {
             if ($this->boolQuery !== null) {

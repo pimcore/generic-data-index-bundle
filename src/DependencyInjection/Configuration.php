@@ -131,8 +131,11 @@ class Configuration implements ConfigurationInterface
         return $treeBuilder;
     }
 
-    private function buildVariableNode(string $name, array $defaultValue = [], string $documentation = null): NodeDefinition
-    {
+    private function buildVariableNode(
+        string $name,
+        array $defaultValue = [],
+        ?string $documentation = null
+    ): NodeDefinition {
         $node = new VariableNodeDefinition($name);
         if ($documentation) {
             $node->info($documentation);

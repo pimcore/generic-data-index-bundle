@@ -76,7 +76,7 @@ abstract class AbstractAdapter implements AdapterInterface
         mixed $value,
         string $key,
         ?string $language = null,
-        callable $callback = null
+        ?callable $callback = null
     ): array {
         if (!$this->fieldDefinition->isEmpty($value)) {
             return [];

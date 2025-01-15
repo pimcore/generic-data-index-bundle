@@ -117,7 +117,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         mixed $value,
         string $key,
         ?string $language = null,
-        callable $callback = null
+        ?callable $callback = null
     ): array {
         $classificationStore = $this->getClassificationStoreDefinition();
         $languages = $this->getValidLanguages($classificationStore);

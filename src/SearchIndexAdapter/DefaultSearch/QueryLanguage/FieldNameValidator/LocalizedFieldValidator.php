@@ -32,7 +32,7 @@ final readonly class LocalizedFieldValidator implements FieldNameValidatorInterf
 
     public function __construct(
         private MappingAnalyzerServiceInterface $mappingAnalyzerService,
-        string $defaultLanguage = null
+        ?string $defaultLanguage = null
     ) {
         $this->defaultLocale = $defaultLanguage ?? Tool::getDefaultLanguage();
     }

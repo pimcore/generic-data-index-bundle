@@ -24,7 +24,7 @@ final class FieldSortList
     ) {
     }
 
-    public function addSort(FieldSort $sort = null): FieldSortList
+    public function addSort(?FieldSort $sort = null): FieldSortList
     {
         if ($sort !== null) {
             $this->sort[] = $sort;

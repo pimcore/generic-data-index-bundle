@@ -47,7 +47,7 @@ final class IndexAliasService implements IndexAliasServiceInterface
         return $this->client->updateIndexAliases($params);
     }
 
-    public function existsAlias(string $aliasName, string $indexName = null): bool
+    public function existsAlias(string $aliasName, ?string $indexName = null): bool
     {
         return $this->client->existsIndexAlias([
             'name' => $aliasName,

@@ -74,7 +74,7 @@ final class Search implements DefaultSearchInterface
         return $this;
     }
 
-    public function addQuery(QueryInterface $query = null): DefaultSearchInterface
+    public function addQuery(?QueryInterface $query = null): DefaultSearchInterface
     {
         $this->queryList->addQuery($query);
 
