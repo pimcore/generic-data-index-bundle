@@ -216,8 +216,7 @@ final readonly class PermissionService implements PermissionServiceInterface
         string $fullPath,
         int $parentId,
         BasePermissions $permissions
-    ): BasePermissions
-    {
+    ): BasePermissions {
         if ($fullPath === '/' && $parentId === 0) {
             $permissions->setDelete(false);
             $permissions->setRename(false);
