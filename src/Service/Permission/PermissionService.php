@@ -50,6 +50,7 @@ final readonly class PermissionService implements PermissionServiceInterface
         /** @var AssetPermissions $permissions */
         $permissions = $this->getPermissions(
             elementPath: $asset->getFullPath(),
+            parentId: $asset->getParentId(),
             permissionsType: AssetWorkspace::WORKSPACE_TYPE,
             defaultPermissions: $permissions,
             user: $user
@@ -66,6 +67,7 @@ final readonly class PermissionService implements PermissionServiceInterface
         /** @var DocumentPermissions $permissions */
         $permissions = $this->getPermissions(
             elementPath: $document->getFullPath(),
+            parentId: $document->getParentId(),
             permissionsType: DocumentWorkspace::WORKSPACE_TYPE,
             defaultPermissions: $permissions,
             user: $user
@@ -82,6 +84,7 @@ final readonly class PermissionService implements PermissionServiceInterface
         /** @var DataObjectPermissions $permissions */
         $permissions = $this->getPermissions(
             elementPath: $object->getFullPath(),
+            parentId: $object->getParentId(),
             permissionsType: DataObjectWorkspace::WORKSPACE_TYPE,
             defaultPermissions: $permissions,
             user: $user,
@@ -111,17 +114,18 @@ final readonly class PermissionService implements PermissionServiceInterface
 
     private function getPermissions(
         string $elementPath,
+        int $parentId,
         string $permissionsType,
         BasePermissions $defaultPermissions,
         ?User $user
-    ): ?BasePermissions {
+    ): BasePermissions {
         $adminPermissions = $this->getAdminUserPermissions(
             $user,
             $defaultPermissions
         );
 
         if ($adminPermissions) {
-            return $adminPermissions;
+            return $this->addRootNodePermissions($elementPath, $parentId, $adminPermissions);
         }
 
         $userWorkspaces = $this->workspaceService->getRelevantWorkspaces(
@@ -136,8 +140,9 @@ final readonly class PermissionService implements PermissionServiceInterface
                 $elementPath
             );
         }
+        $permissions = $this->getPermissionsFromWorkspaces($userWorkspaces, $userRoleWorkspaces) ?? $defaultPermissions;
 
-        return $this->getPermissionsFromWorkspaces($userWorkspaces, $userRoleWorkspaces);
+        return $this->addRootNodePermissions($elementPath, $parentId, $permissions);
     }
 
     private function getAdminUserPermissions(
@@ -205,5 +210,22 @@ final readonly class PermissionService implements PermissionServiceInterface
         }
 
         return $workspacePermissions;
+    }
+
+    private function addRootNodePermissions(
+        string $fullPath,
+        int $parentId,
+        BasePermissions $permissions
+    ): BasePermissions
+    {
+        if ($fullPath === '/' && $parentId === 0) {
+            $permissions->setDelete(false);
+            $permissions->setRename(false);
+            if (method_exists($permissions, 'setUnpublish')) {
+                $permissions->setUnpublish(false);
+            }
+        }
+
+        return $permissions;
     }
 }
