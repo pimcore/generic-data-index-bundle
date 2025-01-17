@@ -54,7 +54,7 @@ final readonly class PermissionService implements PermissionServiceInterface
             permissionsType: AssetWorkspace::WORKSPACE_TYPE,
             defaultPermissions: $permissions,
             user: $user
-        ) ?? $permissions;
+        );
 
         return $this->eventService->dispatchAssetSearchEvent($asset, $permissions)->getPermissions();
     }
@@ -71,7 +71,7 @@ final readonly class PermissionService implements PermissionServiceInterface
             permissionsType: DocumentWorkspace::WORKSPACE_TYPE,
             defaultPermissions: $permissions,
             user: $user
-        ) ?? $permissions;
+        );
 
         return $this->eventService->dispatchDocumentSearchEvent($document, $permissions)->getPermissions();
     }
@@ -88,7 +88,7 @@ final readonly class PermissionService implements PermissionServiceInterface
             permissionsType: DataObjectWorkspace::WORKSPACE_TYPE,
             defaultPermissions: $permissions,
             user: $user,
-        ) ?? $permissions;
+        );
 
         return $this->eventService->dispatchDataObjectSearchEvent($object, $permissions)->getPermissions();
     }
