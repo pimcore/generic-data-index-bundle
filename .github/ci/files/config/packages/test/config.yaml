@@ -25,6 +25,7 @@ doctrine:
                 mapping_types:
                     enum: string
                     bit: boolean
+                server_version: '10.11.4-MariaDB-1:10.11.4+maria~ubu2204'
 
 parameters:
     pimcore_test.db.dsn: '%env(PIMCORE_TEST_DB_DSN)%'
