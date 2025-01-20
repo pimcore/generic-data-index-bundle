@@ -54,9 +54,9 @@ final class PermissionServiceTest extends Unit
     public function _before(): void
     {
         $this->user = new User();
-        $this->assetSearchResult = new AssetSearchResultItem();
-        $this->dataObjectSearchResult = new DataObjectSearchResultItem();
-        $this->documentSearchResultItem = new DocumentSearchResultItem();
+        $this->assetSearchResult = (new AssetSearchResultItem())->setParentId(1);
+        $this->dataObjectSearchResult = (new DataObjectSearchResultItem())->setParentId(1);
+        $this->documentSearchResultItem = (new DocumentSearchResultItem())->setParentId(1);
     }
 
     public function testAssetPermissionWithUserOnRoot(): void
@@ -67,13 +67,14 @@ final class PermissionServiceTest extends Unit
             type: AssetWorkspace::WORKSPACE_TYPE
         )]);
         $assetPermission = $this->getPermissionServiceWithUser()->getAssetPermissions(
-            $this->assetSearchResult->setFullPath('/'),
+            $this->assetSearchResult->setParentId(0)->setFullPath('/'),
             $this->user
         );
 
         $this->assertTrue($assetPermission->isView());
         $this->assertTrue($assetPermission->isList());
         $this->assertFalse($assetPermission->isDelete());
+        $this->assertFalse($assetPermission->isRename());
     }
 
     public function testAssetPermissionWithUserOnCustomPath(): void
@@ -160,12 +161,13 @@ final class PermissionServiceTest extends Unit
     {
         $permissionService = $this->getPermissionServiceWithoutUser();
         $assetPermission = $permissionService->getAssetPermissions(
-            $this->assetSearchResult->setFullPath('/'),
+            $this->assetSearchResult->setParentId(0)->setFullPath('/'),
             null
         );
         $this->assertSame(self::DEFAULT_VALUE, $assetPermission->isList());
         $this->assertSame(self::DEFAULT_VALUE, $assetPermission->isView());
         $this->assertSame(self::DEFAULT_VALUE, $assetPermission->isRename());
+        $this->assertSame(self::DEFAULT_VALUE, $assetPermission->isDelete());
     }
 
     public function testObjectPermissionWithUserOnRoot(): void
@@ -176,15 +178,16 @@ final class PermissionServiceTest extends Unit
             type: DataObjectWorkspace::WORKSPACE_TYPE
         )]);
         $permission = $this->getPermissionServiceWithUser()->getDataObjectPermissions(
-            $this->dataObjectSearchResult->setFullPath('/'),
+            $this->dataObjectSearchResult->setParentId(0)->setFullPath('/'),
             $this->user
         );
 
         $this->assertTrue($permission->isView());
         $this->assertTrue($permission->isList());
         $this->assertTrue($permission->isPublish());
-        $this->assertTrue($permission->isUnpublish());
         $this->assertFalse($permission->isDelete());
+        $this->assertFalse($permission->isUnpublish());
+        $this->assertFalse($permission->isRename());
     }
 
     public function testObjectPermissionWithUserOnCustomPath(): void
@@ -272,7 +275,7 @@ final class PermissionServiceTest extends Unit
     {
         $permissionService = $this->getPermissionServiceWithoutUser();
         $permission = $permissionService->getDataObjectPermissions(
-            $this->dataObjectSearchResult->setFullPath('/'),
+            $this->dataObjectSearchResult->setParentId(0)->setFullPath('/'),
             null
         );
 
@@ -290,15 +293,16 @@ final class PermissionServiceTest extends Unit
             type: DocumentWorkspace::WORKSPACE_TYPE
         )]);
         $permission = $this->getPermissionServiceWithUser()->getDocumentPermissions(
-            $this->documentSearchResultItem->setFullPath('/'),
+            $this->documentSearchResultItem->setParentId(0)->setFullPath('/'),
             $this->user
         );
 
         $this->assertTrue($permission->isView());
         $this->assertTrue($permission->isSave());
         $this->assertTrue($permission->isPublish());
-        $this->assertTrue($permission->isUnpublish());
+        $this->assertFalse($permission->isUnpublish());
         $this->assertFalse($permission->isList());
+        $this->assertFalse($permission->isDelete());
     }
 
     public function testDocumentPermissionWithUserOnCustomPath(): void
