@@ -30,7 +30,7 @@ jobs:
         strategy:
             matrix:
                 include:
-                    - { php-version: "8.3", dependencies: "highest", pimcore_version: "11.x-dev as 11.99.9", experimental: true, search_engine: "elasticsearch"}
+                    - { php-version: "8.3", dependencies: "highest", pimcore_version: "^11.5", experimental: true, search_engine: "elasticsearch"}
 
         services:
             mariadb:
