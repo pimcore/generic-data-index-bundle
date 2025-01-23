@@ -29,8 +29,6 @@ final class DataObjectPermissions extends BasePermissions
 
     private ?string $localizedView = null;
 
-    private ?string $layouts = null;
-
     public function isSave(): bool
     {
         return $this->save;
@@ -69,16 +67,6 @@ final class DataObjectPermissions extends BasePermissions
     public function setLocalizedView(?string $localizedView): void
     {
         $this->localizedView = $localizedView;
-    }
-
-    public function isLayouts(): ?string
-    {
-        return $this->layouts;
-    }
-
-    public function setLayouts(?string $layout): void
-    {
-        $this->layouts = $layout;
     }
 
     public function getClassProperties(array $properties = []): array

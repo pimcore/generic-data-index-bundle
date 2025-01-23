@@ -27,6 +27,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspa
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\EventService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceService;
 use Pimcore\Bundle\StaticResolverBundle\Models\User\UserResolver;
 use Pimcore\Bundle\StaticResolverBundle\Models\User\UserResolverInterface;
@@ -473,6 +474,7 @@ final class PermissionServiceTest extends Unit
     {
         return new PermissionService(
             $this->getEventService(),
+            $this->makeEmpty(LanguageServiceInterface::class),
             new WorkspaceService(
                 $this->makeEmpty(UserResolverInterface::class, [
                     'getUserRoleById' => $this->role,
@@ -485,6 +487,7 @@ final class PermissionServiceTest extends Unit
     {
         return new PermissionService(
             $this->getEventService(),
+            $this->makeEmpty(LanguageServiceInterface::class),
             new WorkspaceService(
                 new UserResolver()
             )

@@ -28,6 +28,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspa
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\WorkspaceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\EventServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceServiceInterface;
 use Pimcore\Model\User;
 
@@ -36,8 +37,14 @@ use Pimcore\Model\User;
  */
 final readonly class PermissionService implements PermissionServiceInterface
 {
+    private const SPECIAL_PERMISSIONS = [
+        'localizedView',
+        'localizedEdit',
+    ];
+
     public function __construct(
         private EventServiceInterface $eventService,
+        private LanguageServiceInterface $languageService,
         private WorkspaceServiceInterface $workspaceService,
     ) {
     }
@@ -102,14 +109,41 @@ final readonly class PermissionService implements PermissionServiceInterface
         return $this->getPermissionValue($permissions, $permission);
     }
 
-    public function getPermissionValue(BasePermissions $permissions, string $permission): bool
-    {
+    public function getPermissionValue(
+        AssetPermissions|DocumentPermissions|DataObjectPermissions $permissions,
+        string $permission,
+        ?string $permissionValueKey = null
+    ): bool {
         $getter = 'is' . ucfirst($permission);
-        if (method_exists($permissions, $getter)) {
-            return $permissions->$getter();
+        if (!method_exists($permissions, $getter)) {
+            return false;
         }
 
-        return false;
+        $value = $permissions->$getter();
+        if ($permissions instanceof DataObjectPermissions && !is_bool($value)) {
+            return in_array(
+                $permissionValueKey,
+                $this->getSpecialPermissionValues($permissions, $permission),
+                true
+            );
+        }
+
+        return $value;
+    }
+
+    public function getSpecialPermissionValues(DataObjectPermissions $permissions, string $permission): array
+    {
+        if (!in_array($permission, self::SPECIAL_PERMISSIONS)) {
+            return [];
+        }
+
+        $getter = 'is' . ucfirst($permission);
+        $permissionValues = $permissions->$getter();
+        if ($permissionValues === null) {
+            return [];
+        }
+
+        return explode(',', $permissionValues);
     }
 
     private function getPermissions(
@@ -155,9 +189,15 @@ final readonly class PermissionService implements PermissionServiceInterface
 
         $properties = $permissions->getClassProperties();
         foreach ($properties as $property => $value) {
+            $setter = 'set' . ucfirst($property);
             if (is_bool($value)) {
-                $setter = 'set' . ucfirst($property);
                 $permissions->$setter(true);
+
+                continue;
+            }
+
+            if (in_array($property, self::SPECIAL_PERMISSIONS, true)) {
+                $permissions->$setter(implode(',', $this->languageService->getValidLanguages()));
             }
         }
 

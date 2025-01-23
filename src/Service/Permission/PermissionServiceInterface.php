@@ -20,7 +20,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetS
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\BasePermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\WorkspaceInterface;
@@ -51,5 +50,11 @@ interface PermissionServiceInterface
         string $permission
     ): bool;
 
-    public function getPermissionValue(BasePermissions $permissions, string $permission): bool;
+    public function getPermissionValue(
+        AssetPermissions|DocumentPermissions|DataObjectPermissions $permissions,
+        string $permission,
+        ?string $permissionValueKey = null
+    ): bool;
+
+    public function getSpecialPermissionValues(DataObjectPermissions $permissions, string $permission): array;
 }

@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\AssetToSearchResultItemTransformerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\DataObjectToSearchResultItemTransformerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\DocumentToSearchResultItemTransformerInterface;
@@ -41,14 +42,29 @@ final readonly class ElementPermissionService implements ElementPermissionServic
     public function isAllowed(
         string $permission,
         ElementInterface $element,
-        User $user
+        User $user,
+        ?string $specialPermission = null
     ): bool {
         return match (true) {
             $element instanceof Asset => $this->isAssetAllowed($permission, $element, $user),
-            $element instanceof DataObject => $this->isDataObjectAllowed($element, $permission, $user),
+            $element instanceof DataObject => $this->isDataObjectAllowed(
+                $element,
+                $permission,
+                $user,
+                $specialPermission
+            ),
             $element instanceof Document => $this->isDocumentAllowed($element, $permission, $user),
             default => false,
         };
+    }
+
+    public function getSpecialPermissions(DataObject $dataObject, User $user, string $permission): array
+    {
+
+        return $this->permissionService->getSpecialPermissionValues(
+            $this->getPermissionsFromDataObject($dataObject, $user),
+            $permission
+        );
     }
 
     private function isAssetAllowed(
@@ -69,16 +85,15 @@ final readonly class ElementPermissionService implements ElementPermissionServic
     private function isDataObjectAllowed(
         DataObject $dataObject,
         string $permission,
-        User $user
+        User $user,
+        ?string $specialPermission = null
     ): bool {
-        $dataObjectSearchResultItem = $this->dataObjectTransformer->transform($dataObject, $user);
 
-        $permissions = $this->permissionService->getDataObjectPermissions(
-            $dataObjectSearchResultItem,
-            $user
+        return $this->permissionService->getPermissionValue(
+            $this->getPermissionsFromDataObject($dataObject, $user),
+            $permission,
+            $specialPermission
         );
-
-        return $this->permissionService->getPermissionValue($permissions, $permission);
     }
 
     private function isDocumentAllowed(
@@ -94,5 +109,15 @@ final readonly class ElementPermissionService implements ElementPermissionServic
         );
 
         return $this->permissionService->getPermissionValue($permissions, $permission);
+    }
+
+    private function getPermissionsFromDataObject(DataObject $dataObject, User $user): DataObjectPermissions
+    {
+        $dataObjectSearchResultItem = $this->dataObjectTransformer->transform($dataObject, $user);
+
+        return $this->permissionService->getDataObjectPermissions(
+            $dataObjectSearchResultItem,
+            $user
+        );
     }
 }
