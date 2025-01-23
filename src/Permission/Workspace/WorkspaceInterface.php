@@ -16,7 +16,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\BasePermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermissions;
 
 /**
  * @internal
@@ -25,5 +27,5 @@ interface WorkspaceInterface
 {
     public function getPath(): string;
 
-    public function getPermissions(): BasePermissions;
+    public function getPermissions(): AssetPermissions|DataObjectPermissions|DocumentPermissions;
 }

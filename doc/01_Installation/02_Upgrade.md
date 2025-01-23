@@ -17,6 +17,8 @@ Following steps are necessary during updating to newer versions.
 - Removed deprecated class `Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\OpenSearch\DataObject\FieldDefinitionAdapter\AbstractAdapter` please use `Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\AbstractAdapter` instead
 - Added default prefix `data-object_` prefix to all data object class definition index names. This change is necessary to avoid conflicts with other index names.
 - Add element type to the `getIds` method of `Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\SearchResult\ElementSearchResult`
+- Added `getSpecialPermissions` method to `Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\ElementPermissionServiceInterface` to get special permissions workspace language permissions for elements
+- Removed layout permission from `Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions` as they are not index relevant
 
 #### Interface changes
 - Added `PermissionTypes $permissionType` parameter with default type `PermissionTypes::LIST` to

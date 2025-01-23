@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 
+use Pimcore\Model\DataObject;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\User;
 
@@ -24,6 +25,9 @@ interface ElementPermissionServiceInterface
     public function isAllowed(
         string $permission,
         ElementInterface $element,
-        User $user
+        User $user,
+        ?string $specialPermission = null
     ): bool;
+
+    public function getSpecialPermissions(DataObject $dataObject, User $user, string $permission): array;
 }

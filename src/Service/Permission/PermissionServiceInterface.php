@@ -51,5 +51,11 @@ interface PermissionServiceInterface
         string $permission
     ): bool;
 
-    public function getPermissionValue(BasePermissions $permissions, string $permission): bool;
+    public function getPermissionValue(
+        AssetPermissions|DocumentPermissions|DataObjectPermissions $permissions,
+        string $permission,
+        ?string $permissionValueKey = null
+    ): bool;
+
+    public function getSpecialPermissionValues(DataObjectPermissions $permissions, string $permission): array;
 }
