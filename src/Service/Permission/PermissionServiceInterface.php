@@ -20,7 +20,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetS
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
-use Pimcore\Bundle\GenericDataIndexBundle\Permission\BasePermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\WorkspaceInterface;

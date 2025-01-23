@@ -19,7 +19,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Permission;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\BasePermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
@@ -31,7 +30,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\WorkspaceInterfac
 use Pimcore\Bundle\GenericDataIndexBundle\Service\EventServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceServiceInterface;
-use Pimcore\Model\DataObject\ClassDefinition\CustomLayout\Listing;
 use Pimcore\Model\User;
 
 /**
@@ -115,8 +113,7 @@ final readonly class PermissionService implements PermissionServiceInterface
         AssetPermissions|DocumentPermissions|DataObjectPermissions $permissions,
         string $permission,
         ?string $permissionValueKey = null
-    ): bool
-    {
+    ): bool {
         $getter = 'is' . ucfirst($permission);
         if (!method_exists($permissions, $getter)) {
             return false;
@@ -195,6 +192,7 @@ final readonly class PermissionService implements PermissionServiceInterface
             $setter = 'set' . ucfirst($property);
             if (is_bool($value)) {
                 $permissions->$setter(true);
+
                 continue;
             }
 

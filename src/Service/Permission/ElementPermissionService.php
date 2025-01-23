@@ -25,7 +25,6 @@ use Pimcore\Model\DataObject;
 use Pimcore\Model\Document;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\User;
-use Pimcore\Model\UserInterface;
 
 /**
  * @internal
