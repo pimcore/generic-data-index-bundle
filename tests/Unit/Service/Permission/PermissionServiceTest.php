@@ -474,6 +474,7 @@ final class PermissionServiceTest extends Unit
     {
         return new PermissionService(
             $this->getEventService(),
+            $this->makeEmpty(LanguageServiceInterface::class),
             new WorkspaceService(
                 $this->makeEmpty(UserResolverInterface::class, [
                     'getUserRoleById' => $this->role,
