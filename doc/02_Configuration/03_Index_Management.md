@@ -71,21 +71,26 @@ pimcore_generic_data_index:
 
 ### Repairing Indices
 
-Sometimes it might be needed to delete and recreate the index (for example if the mapping changed and
-cannot be updated).
+Sometimes it might be needed to delete and recreate the index from the Pimcore database
+(for example if the mapping changed and cannot be updated).
 
-Do this with the index update command and pass -r option.
+Do this with the index update command and pass `-r` option (which deletes and recreates the index).
 ```
 # delete index and recreate it
 bin/console generic-data-index:update:index -r
 ```
+Without the `-r` option, the index mapping is just updated and all items are added into the queue
+for a reindex from the Pimcore database. 
+
 
 ### Updating Index Structure for Data Indices
 
 Index mapping is updated automatically e.g. when adding system languages or new fields to the class definition. 
 Sometimes it might be necessary to update the index structure manually.
 
-Do this with the reindex command.
+Do this with the reindex command. This command does native opensearch/elasticsearch re-indexing. So it does not 
+index data from the database but reindexes data within the search indices.
+
 ```
 # updates index mapping with native reindexing
 bin/console generic-data-index:reindex
