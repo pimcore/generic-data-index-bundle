@@ -71,19 +71,14 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
             $loader->load('doctrine_migrations.yaml');
         }
 
-        $filename = __DIR__ . '/../../config/doctrine.yaml';
-
-        try {
-            $config = Yaml::parseFile($filename);
-        } catch (ParseException $e) {
-            throw new InvalidArgumentException(sprintf('The file "%s" does not contain valid YAML.', $filename), 0, $e);
-        }
+        $config = $this->getParsedConfig(__DIR__ . '/../../config/doctrine.yaml');
 
         $container->prependExtensionConfig('doctrine', $config['doctrine']);
     }
 
     private function registerIndexServiceParams(ContainerBuilder $container, array $indexSettings): void
     {
+        $indexSettings['index_settings'] = $this->getIndexSettings($indexSettings['index_settings']);
         $definition = $container->getDefinition(SearchIndexConfigServiceInterface::class);
         $definition->setArgument('$clientType', $indexSettings['client_params']['client_type']);
         $definition->setArgument('$indexPrefix', $indexSettings['client_params']['index_prefix']);
@@ -108,6 +103,38 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $definition = $container->getDefinition(DispatchQueueMessagesHandler::class);
         $definition->setArgument('$queueSettings', $indexSettings['queue_settings']);
     }
+
+    private function getIndexSettings(array $indexSettings): array
+    {
+        $defaultIndexSettings = $this->getParsedConfig(
+            __DIR__ . '/../../config/pimcore/default_index_settings.yaml'
+        );
+
+        return $this->mergeConfig($defaultIndexSettings, $indexSettings);
+    }
+
+    private function mergeConfig(array $default, array $custom): array
+    {
+        foreach ($custom as $key => $value) {
+            $default[$key] = is_array($value) && isset($default[$key]) && is_array($default[$key])
+                ? $this->mergeConfig($default[$key], $value)
+                : $value;
+        }
+
+        return $default;
+    }
+
+    private function getParsedConfig(string $fileLocation): array
+    {
+        try {
+            return Yaml::parseFile($fileLocation);
+        } catch (ParseException $e) {
+            throw new InvalidArgumentException(
+                sprintf('The file "%s" does not contain valid YAML.', $fileLocation), 0, $e
+            );
+        }
+    }
+
 
     /**
      * @throws InvalidArgumentException
