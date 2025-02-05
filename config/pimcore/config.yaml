@@ -17,8 +17,6 @@ pimcore_generic_data_index:
               type: text
               analyzer: standard
               search_analyzer: generic_data_index_whitespace_analyzer
-
-    index_settings: []
     system_fields_settings:
       general:
         id:
