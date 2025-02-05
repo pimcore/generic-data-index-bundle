@@ -124,13 +124,18 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         return $default;
     }
 
+    /**
+     * @throws InvalidArgumentException
+     */
     private function getParsedConfig(string $fileLocation): array
     {
         try {
             return Yaml::parseFile($fileLocation);
         } catch (ParseException $e) {
             throw new InvalidArgumentException(
-                sprintf('The file "%s" does not contain valid YAML.', $fileLocation), 0, $e
+                sprintf('The file "%s" does not contain valid YAML.', $fileLocation),
+                0,
+                $e
             );
         }
     }
