@@ -135,7 +135,6 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         }
     }
 
-
     /**
      * @throws InvalidArgumentException
      */
