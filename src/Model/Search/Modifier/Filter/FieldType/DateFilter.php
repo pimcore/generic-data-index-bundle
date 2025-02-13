@@ -37,7 +37,8 @@ final readonly class DateFilter implements SearchModifierInterface
     ) {
         $this->startDate = is_int($startDate) ? Carbon::createFromTimestamp($startDate, date_default_timezone_get()) :
             $startDate;
-        $this->endDate = is_int($endDate) ? Carbon::createFromTimestamp($endDate, date_default_timezone_get()) : $endDate;
+        $this->endDate = is_int($endDate) ? Carbon::createFromTimestamp($endDate, date_default_timezone_get()) :
+            $endDate;
         $this->onDate = is_int($onDate) ? Carbon::createFromTimestamp($onDate, date_default_timezone_get()) : $onDate;
     }
 

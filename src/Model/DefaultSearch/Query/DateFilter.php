@@ -42,9 +42,12 @@ final readonly class DateFilter implements QueryInterface
         int|Carbon|null $onTimestamp = null,
         private bool $roundToDay = true,
     ) {
-        $this->startDate = is_int($startTimestamp) ? Carbon::createFromTimestamp($startTimestamp, date_default_timezone_get()) : $startTimestamp;
-        $this->endDate = is_int($endTimestamp) ? Carbon::createFromTimestamp($endTimestamp, date_default_timezone_get()) : $endTimestamp;
-        $this->onDate = is_int($onTimestamp) ? Carbon::createFromTimestamp($onTimestamp, date_default_timezone_get()) : $onTimestamp;
+        $this->startDate = is_int($startTimestamp) ?
+            Carbon::createFromTimestamp($startTimestamp, date_default_timezone_get()) : $startTimestamp;
+        $this->endDate = is_int($endTimestamp) ?
+            Carbon::createFromTimestamp($endTimestamp, date_default_timezone_get()) : $endTimestamp;
+        $this->onDate = is_int($onTimestamp) ?
+            Carbon::createFromTimestamp($onTimestamp, date_default_timezone_get()) : $onTimestamp;
     }
 
     public static function createFromArray(string $field, array $params, bool $roundToDay = true): DateFilter
