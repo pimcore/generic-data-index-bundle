@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingService;
+use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolver;
 
 /**
  * @internal
