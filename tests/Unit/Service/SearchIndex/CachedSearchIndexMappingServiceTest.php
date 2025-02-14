@@ -20,7 +20,6 @@ use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingService;
 use Pimcore\Bundle\StaticResolverBundle\Contract\Lib\Cache\RuntimeCacheResolverContract;
-use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 
 /**
  * @internal
