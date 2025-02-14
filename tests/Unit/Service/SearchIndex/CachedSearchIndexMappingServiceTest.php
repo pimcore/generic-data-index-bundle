@@ -36,7 +36,7 @@ final class CachedSearchIndexMappingServiceTest extends Unit
         });
 
         $this->cachedSearchIndexMappingService = new CachedSearchIndexMappingService(
-            new RuntimeCacheResolver(),
+            new RuntimeCacheResolverContract(),
             $searchIndexServiceMock
         );
     }
