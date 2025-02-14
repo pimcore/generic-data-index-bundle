@@ -19,8 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingService;
-use Pimcore\Bundle\StaticResolverBundle\Contract\Lib\Cache\RuntimeCacheResolverContract;
-use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
+use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolver;
 
 /**
  * @internal
@@ -37,7 +36,7 @@ final class CachedSearchIndexMappingServiceTest extends Unit
         });
 
         $this->cachedSearchIndexMappingService = new CachedSearchIndexMappingService(
-            new RuntimeCacheResolverContract(),
+            new RuntimeCacheResolver(),
             $searchIndexServiceMock
         );
     }
