@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingService;
+use Pimcore\Bundle\StaticResolverBundle\Contract\Lib\Cache\RuntimeCacheResolverContract;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 
 /**
@@ -30,37 +31,13 @@ final class CachedSearchIndexMappingServiceTest extends Unit
 
     public function _before(): void
     {
-        $runtimeCacheResolver = new class implements RuntimeCacheResolverInterface {
-            private ?array $cacheEntry = null;
-
-            public function load(string $id): mixed
-            {
-                return $this->cacheEntry;
-            }
-
-            public function save(mixed $data, string $id): void
-            {
-                $this->cacheEntry = $data;
-            }
-
-            public function isRegistered(string $index): bool
-            {
-                return is_array($this->cacheEntry);
-            }
-
-            public function clear(array $keepItems = []): void
-            {
-                $this->cacheEntry = null;
-            }
-        };
-
         $searchIndexServiceMock = $this->createMock(SearchIndexServiceInterface::class);
         $searchIndexServiceMock->method('getMapping')->willReturnCallback(function (string $indexName) {
             return [$indexName . 'df' . uniqid('', true)];
         });
 
         $this->cachedSearchIndexMappingService = new CachedSearchIndexMappingService(
-            $runtimeCacheResolver,
+            new RuntimeCacheResolverContract(),
             $searchIndexServiceMock
         );
     }
