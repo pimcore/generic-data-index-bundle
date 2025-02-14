@@ -35,9 +35,11 @@ final readonly class DateFilter implements SearchModifierInterface
         private bool $roundToDay = true,
         private bool $enablePqlFieldNameResolution = true,
     ) {
-        $this->startDate = is_int($startDate) ? Carbon::createFromTimestamp($startDate) : $startDate;
-        $this->endDate = is_int($endDate) ? Carbon::createFromTimestamp($endDate) : $endDate;
-        $this->onDate = is_int($onDate) ? Carbon::createFromTimestamp($onDate) : $onDate;
+        $this->startDate = is_int($startDate) ? Carbon::createFromTimestamp($startDate, date_default_timezone_get()) :
+            $startDate;
+        $this->endDate = is_int($endDate) ? Carbon::createFromTimestamp($endDate, date_default_timezone_get()) :
+            $endDate;
+        $this->onDate = is_int($onDate) ? Carbon::createFromTimestamp($onDate, date_default_timezone_get()) : $onDate;
     }
 
     public function getStartDate(): ?Carbon

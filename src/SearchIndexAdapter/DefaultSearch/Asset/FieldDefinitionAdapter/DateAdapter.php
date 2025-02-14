@@ -38,7 +38,7 @@ final class DateAdapter extends AbstractAdapter
     public function normalize(mixed $value): ?string
     {
         if (!empty($value)) {
-            return Carbon::createFromTimestamp($value)->format(DateTimeInterface::ATOM);
+            return Carbon::createFromTimestamp($value, date_default_timezone_get())->format(DateTimeInterface::ATOM);
         }
 
         return null;
