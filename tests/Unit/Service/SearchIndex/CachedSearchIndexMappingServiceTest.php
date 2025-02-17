@@ -35,8 +35,11 @@ final class CachedSearchIndexMappingServiceTest extends Unit
             return [$indexName . 'df' . uniqid('', true)];
         });
 
+        $cacheResolver = new RuntimeCacheResolver();
+        $cacheResolver->clear();
+
         $this->cachedSearchIndexMappingService = new CachedSearchIndexMappingService(
-            new RuntimeCacheResolver(),
+            $cacheResolver,
             $searchIndexServiceMock
         );
     }
