@@ -23,7 +23,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\TagF
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
-use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 class TreeFiltersTest extends \Codeception\Test\Unit
@@ -213,7 +212,6 @@ class TreeFiltersTest extends \Codeception\Test\Unit
         $searchResult = $searchService->search($assetSearch);
 
         $this->assertCount(2, $searchResult->getIds());
-
 
         $assetSearch = $searchProvider
             ->createDataObjectSearch()

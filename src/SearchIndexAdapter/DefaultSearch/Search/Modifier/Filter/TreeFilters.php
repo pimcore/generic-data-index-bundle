@@ -180,8 +180,8 @@ final class TreeFilters
                         field: SystemField::TYPE->getPath(),
                         term: 'folder'
                     ),
-                    $query
-                ]
+                    $query,
+                ],
             ]);
         }
 
