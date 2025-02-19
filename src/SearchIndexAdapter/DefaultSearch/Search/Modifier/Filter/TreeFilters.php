@@ -22,6 +22,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemF
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\BoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ClassIdsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\PathFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\TagFilter;
@@ -155,5 +157,36 @@ final class TreeFilters
             $boolQuery
         );
 
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleClassesFilter(
+        ClassIdsFilter $classesFilter,
+        SearchModifierContextInterface $context
+    ): void {
+        if (empty($classesFilter->getClassIds())) {
+            return;
+        }
+
+        $query = new TermsFilter(
+            field: SystemField::CLASS_NAME->getPath('keyword'),
+            terms: $classesFilter->getClassIds()
+        );
+
+        if ($classesFilter->includeFolders()) {
+            $query = new BoolQuery([
+                ConditionType::SHOULD->value => [
+                    new TermFilter(
+                        field: SystemField::TYPE->getPath(),
+                        term: 'folder'
+                    ),
+                    $query,
+                ],
+            ]);
+        }
+
+        $context->getSearch()->addQuery(
+            new BoolQuery([ConditionType::MUST->value => [$query]])
+        );
     }
 }
