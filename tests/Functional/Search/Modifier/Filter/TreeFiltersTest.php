@@ -16,11 +16,14 @@
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\Filter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\ExcludeFoldersFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ClassIdsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\PathFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\TagFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 class TreeFiltersTest extends \Codeception\Test\Unit
@@ -192,6 +195,45 @@ class TreeFiltersTest extends \Codeception\Test\Unit
         // Asset has parent2 assigned directly and parent1 assigned via child
         $this->assertCount(1, $searchResult->getIds());
         $this->assertEquals($asset->getId(), $searchResult->getIds()[0]);
+    }
+
+    public function testClassIdsFilter(): void
+    {
+        $objects = TestHelper::createEmptyObjects(count: 2);
+        $folder = TestHelper::createObjectFolder();
+
+        /** @var DataObjectSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $assetSearch = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new ClassIdsFilter([$objects[0]->getClassId()]));
+        $searchResult = $searchService->search($assetSearch);
+
+        $this->assertCount(2, $searchResult->getIds());
+
+
+        $assetSearch = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new ClassIdsFilter([$objects[0]->getClassId()], true));
+        $searchResult = $searchService->search($assetSearch);
+
+        $this->assertCount(3, $searchResult->getIds());
+
+        $assetSearch = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new ClassIdsFilter(['someNonExistingClass']));
+        $searchResult = $searchService->search($assetSearch);
+
+        $this->assertEmpty($searchResult->getIds());
+        $assetSearch = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new ClassIdsFilter(['someNonExistingClass'], true));
+        $searchResult = $searchService->search($assetSearch);
+
+        $this->assertEquals([$folder->getId()], $searchResult->getIds());
     }
 
     private function assertIdArrayEquals(array $ids1, array $ids2)
