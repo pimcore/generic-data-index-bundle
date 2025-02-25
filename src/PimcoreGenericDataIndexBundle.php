@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Attribute\OpenSearch\AsSearchModifierH
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\Search\AsSearchModifierHandler as SearchModifierHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\SearchModifierHandlerPass;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\ServiceLocatorPass;
+use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\PimcoreGenericDataIndexExtension;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\ServiceTag;
 use Pimcore\Bundle\OpenSearchClientBundle\PimcoreOpenSearchClientBundle;
 use Pimcore\Bundle\StaticResolverBundle\PimcoreStaticResolverBundle;
@@ -34,12 +35,18 @@ use ReflectionMethod;
 use Reflector;
 use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 
 class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements
     PimcoreBundleAdminClassicInterface,
     DependentBundleInterface
 {
     use BundleAdminClassicTrait;
+
+    public function getContainerExtension(): ExtensionInterface
+    {
+        return new PimcoreGenericDataIndexExtension();
+    }
 
     public function getPath(): string
     {
