@@ -2,6 +2,13 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 1.4.0
+- [Indexing] Added class ID field for data object elements
+- [Searching] Added new `ClassIdsFilter` modifier to search for data object elements by class ID or class name
+- Execute the following command to reindex all elements to be able to use all new features:
+
+  ```bin/console generic-data-index:update:index```
+
 ## Upgrade to 1.3.0
 - [Indexing] Added support for Elasticsearch in parallel to Opensearch. Opensearch remains the default search technology. If you are using Elasticsearch, you need to update your symfony configuration as follows:
 ```yml 
