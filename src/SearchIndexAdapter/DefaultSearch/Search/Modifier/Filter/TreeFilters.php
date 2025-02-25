@@ -168,8 +168,13 @@ final class TreeFilters
             return;
         }
 
+        $field = SystemField::CLASS_ID;
+        if ($classesFilter->useClassName()) {
+            $field = SystemField::CLASS_NAME;
+        }
+
         $query = new TermsFilter(
-            field: SystemField::CLASS_NAME->getPath('keyword'),
+            field: $field->getPath('keyword'),
             terms: $classesFilter->getClassIds()
         );
 

@@ -22,7 +22,8 @@ final readonly class ClassIdsFilter implements SearchModifierInterface
 {
     public function __construct(
         private array $classIds,
-        private bool $includeFolders = false
+        private bool $includeFolders = false,
+        private bool $useClassName = false
     ) {
     }
 
@@ -37,5 +38,10 @@ final readonly class ClassIdsFilter implements SearchModifierInterface
     public function includeFolders(): bool
     {
         return $this->includeFolders;
+    }
+
+    public function useClassName(): bool
+    {
+        return $this->useClassName;
     }
 }
