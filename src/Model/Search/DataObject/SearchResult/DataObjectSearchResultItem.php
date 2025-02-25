@@ -55,6 +55,8 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 
     private ?int $modificationDate;
 
+    private string $classId;
+
     private string $className;
 
     private ?string $classDefinitionIcon;
@@ -262,6 +264,18 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
     public function setModificationDate(?int $modificationDate): DataObjectSearchResultItem
     {
         $this->modificationDate = $modificationDate;
+
+        return $this;
+    }
+
+    public function getClassId(): string
+    {
+        return $this->classId;
+    }
+
+    public function setClassId(string $classId): DataObjectSearchResultItem
+    {
+        $this->classId = $classId;
 
         return $this;
     }
