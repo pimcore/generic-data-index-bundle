@@ -72,25 +72,23 @@ final class QueryService implements QueryServiceInterface
 
     private function getWorkspaceGroupsQuery(string $workspaceType, ?User $user, string $permission): BoolQuery
     {
-        $workspaceGroups = $this->getGroupedWorkspaces(
+        $workspaceGroup = $this->getGroupedWorkspaces(
             $workspaceType,
             $user
         );
 
-        if (empty($workspaceGroups)) {
+        if (empty($workspaceGroup)) {
             return $this->createNoWorkspaceAllowedQuery();
         }
 
         $workspacesQuery = new BoolQuery();
 
-        foreach ($workspaceGroups as $group) {
-            $workspacesQuery->addCondition(
-                ConditionType::SHOULD->value,
-                [
-                    'bool' => $this->createWorkspacesGroupQuery($workspaceType, $group, $permission)->toArray(),
-                ]
-            );
-        }
+        $workspacesQuery->addCondition(
+            ConditionType::SHOULD->value,
+            [
+                'bool' => $this->createWorkspacesGroupQuery($workspaceType, $workspaceGroup, $permission)->toArray(),
+            ]
+        );
 
         return $workspacesQuery;
     }
@@ -102,13 +100,17 @@ final class QueryService implements QueryServiceInterface
             return $groupedWorkspaces;
         }
 
+        $existingPaths = [];
         $userWorkspaces = $this->workspaceService->getUserWorkspaces(
             $workspaceType,
             $user
         );
 
         if (!empty($userWorkspaces)) {
-            $groupedWorkspaces[] = $userWorkspaces;
+            $groupedWorkspaces = $userWorkspaces;
+            foreach ($groupedWorkspaces as $workspace) {
+                $existingPaths[$workspace->getPath()] = true;
+            }
         }
 
         foreach ($user->getRoles() as $roleId) {
@@ -117,8 +119,12 @@ final class QueryService implements QueryServiceInterface
                 $roleId
             );
 
-            if (!empty($roleWorkspaces)) {
-                $groupedWorkspaces[] = $roleWorkspaces;
+            foreach ($roleWorkspaces as $workspace) {
+                // Do not override user workspaces with role ones
+                if (!isset($existingPaths[$workspace->getPath()])) {
+                    $groupedWorkspaces[] = $workspace;
+                    $existingPaths[$workspace->getPath()] = true;
+                }
             }
         }
 
