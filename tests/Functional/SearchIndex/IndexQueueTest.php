@@ -97,8 +97,8 @@ class IndexQueueTest extends Unit
                 ElementType::ASSET->value,
                 IndexName::ASSET->value,
                 IndexQueueOperation::UPDATE->value,
-                1234,
-                0,
+                '1234',
+                '0',
             ])
         );
         $this->assertEquals(

@@ -155,7 +155,7 @@ final class IndexQueueRepository
         array_unshift($fields, $idField);
 
         $qb = $this->connection->createQueryBuilder()
-            ->select(...$fields)
+            ->addSelect(...$fields)
             ->from($tableName);
 
         $this->addWhereStatements($qb, $whereParameters);
