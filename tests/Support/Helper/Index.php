@@ -26,7 +26,6 @@ use Pimcore\Tests\Support\Helper\ClassManager;
 use Pimcore\Tests\Support\Helper\DataType\TestDataHelper;
 use Pimcore\Tests\Support\Helper\Model;
 use Pimcore\Tests\Support\Util\TestHelper;
-use Pimcore\Version;
 
 class Index extends Model
 {
