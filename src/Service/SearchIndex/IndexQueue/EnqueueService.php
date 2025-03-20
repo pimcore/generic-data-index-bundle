@@ -104,7 +104,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                 ElementType::DATA_OBJECT->value,
                 $classDefinition->getName(),
                 IndexQueueOperation::UPDATE->value,
-                $this->timeService->getCurrentMillisecondTimestamp(),
+                (string)$this->timeService->getCurrentMillisecondTimestamp(),
                 '0',
             ],
             'oo_id'
