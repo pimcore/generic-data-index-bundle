@@ -19,11 +19,11 @@
   "require": {
     "php": "~8.3.0 || ~8.4.0 ",
     "nesbot/carbon": "^3.8.4",
-    "pimcore/pimcore": "dev-dbal-v4-support as 12.99",
+    "pimcore/pimcore": "^12.0",
     "pimcore/static-resolver-bundle": "^1.4.0 || ^2.0",
     "pimcore/opensearch-client": "^1.1",
     "pimcore/elasticsearch-client": "^1.1",
-    "doctrine/orm": "^2.17.2",
+    "doctrine/orm": "^2.17.2 || ^3.0",
     "symfony/scheduler": "^6.4",
     "symfony/messenger": "^6.4"
   },
