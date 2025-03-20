@@ -112,16 +112,17 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         if ($operation !== IndexQueueOperation::UPDATE->value) {
             return null;
         }
+        $selects = [
+            'id',
+            "'" . ElementType::DATA_OBJECT->value . "'",
+            'className',
+            "'$operation'",
+            "'$operationTime'",
+            '0',
+        ];
 
         $select = $this->dbConnection->createQueryBuilder()
-            ->addSelect([
-                'id',
-                "'" . ElementType::DATA_OBJECT->value . "'",
-                'className',
-                "'$operation'",
-                "'$operationTime'",
-                '0',
-            ])
+            ->addSelect(...$selects)
             ->from('objects')
             ->where('classId = :classId')
             ->andWhere('path LIKE :path')
