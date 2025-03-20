@@ -94,6 +94,7 @@ final class DocumentTypeAdapter extends AbstractElementTypeAdapter
             "'$operationTime'",
             '0',
         ];
+
         return $this->dbConnection->createQueryBuilder()
             ->select(...$selects)
             ->from('DUAL') // just a dummy query to fit into the query builder interface
