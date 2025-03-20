@@ -119,7 +119,7 @@ final class IndexQueueRepository
             foreach ($chunk as $entry) {
                 $condition[] = sprintf(
                     '(elementId = %s AND elementType = %s and operationTime = %s)',
-                    $this->connection->quote($entry->getElementId()),
+                    $this->connection->quote((string)$entry->getElementId()),
                     $this->connection->quote($entry->getElementType()),
                     $this->connection->quote($entry->getOperationTime())
                 );
@@ -155,7 +155,7 @@ final class IndexQueueRepository
         array_unshift($fields, $idField);
 
         $qb = $this->connection->createQueryBuilder()
-            ->select($fields)
+            ->select(...$fields)
             ->from($tableName);
 
         $this->addWhereStatements($qb, $whereParameters);
