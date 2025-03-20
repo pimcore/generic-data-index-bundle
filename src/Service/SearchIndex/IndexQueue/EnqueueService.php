@@ -125,7 +125,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                     ElementType::DATA_OBJECT->value,
                     IndexName::DATA_OBJECT_FOLDER->value,
                     IndexQueueOperation::UPDATE->value,
-                    $this->timeService->getCurrentMillisecondTimestamp(),
+                    (string)$this->timeService->getCurrentMillisecondTimestamp(),
                     '0',
                 ],
             )->where('type = "folder"');
