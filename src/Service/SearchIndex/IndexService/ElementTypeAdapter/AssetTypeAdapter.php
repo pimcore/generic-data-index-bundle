@@ -88,7 +88,7 @@ final class AssetTypeAdapter extends AbstractElementTypeAdapter
     ): ?QueryBuilder {
 
         $selects = [
-            $element->getId(),
+            (string)$element->getId(),
             "'" . ElementType::ASSET->value . "'",
             "'" . IndexName::ASSET->value . "'",
             "'$operation'",
@@ -97,7 +97,7 @@ final class AssetTypeAdapter extends AbstractElementTypeAdapter
         ];
 
         return $this->dbConnection->createQueryBuilder()
-            ->select(...$selects)
+            ->addSelect(...$selects)
             ->from('DUAL') // just a dummy query to fit into the query builder interface
             ->setMaxResults(1);
     }

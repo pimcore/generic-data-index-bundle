@@ -114,7 +114,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         }
 
         $select = $this->dbConnection->createQueryBuilder()
-            ->select([
+            ->addSelect([
                 'id',
                 "'" . ElementType::DATA_OBJECT->value . "'",
                 'className',
@@ -164,7 +164,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         }
 
         $queryBuilder = $this->dbConnection->createQueryBuilder()
-            ->select($this->getSelectParametersByOperation($element, $operation, $operationTime))
+            ->addSelect(...$this->getSelectParametersByOperation($element, $operation, $operationTime))
             ->setMaxResults(1);
 
         if ($operation === IndexQueueOperation::DELETE->value) {
@@ -185,7 +185,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         }
 
         return [
-            $element->getId(),
+            (string)$element->getId(),
             "'" . ElementType::DATA_OBJECT->value . "'",
             $classId,
             "'$operation'",
