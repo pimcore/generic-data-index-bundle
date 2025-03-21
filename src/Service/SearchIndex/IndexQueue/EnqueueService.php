@@ -65,7 +65,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                 ElementType::ASSET->value,
                 IndexName::ASSET->value,
                 IndexQueueOperation::UPDATE->value,
-                $this->timeService->getCurrentMillisecondTimestamp(),
+                (string)$this->timeService->getCurrentMillisecondTimestamp(),
                 '0',
             ],
             'id',
@@ -80,7 +80,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
             [
                 ElementType::DATA_OBJECT->value,
                 IndexQueueOperation::UPDATE->value,
-                $this->timeService->getCurrentMillisecondTimestamp(),
+                (string)$this->timeService->getCurrentMillisecondTimestamp(),
                 '0',
             ],
             'id, className',
@@ -177,7 +177,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                     ElementType::DOCUMENT->value,
                     IndexName::DOCUMENT->value,
                     IndexQueueOperation::UPDATE->value,
-                    $this->timeService->getCurrentMillisecondTimestamp(),
+                    (string)$this->timeService->getCurrentMillisecondTimestamp(),
                     '0',
                 ]
             );
