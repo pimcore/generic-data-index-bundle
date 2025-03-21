@@ -65,8 +65,8 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                 ElementType::ASSET->value,
                 IndexName::ASSET->value,
                 IndexQueueOperation::UPDATE->value,
-                $this->timeService->getCurrentMillisecondTimestamp(),
-                0,
+                (string)$this->timeService->getCurrentMillisecondTimestamp(),
+                '0',
             ],
             'id',
             ['ctype' => ElementType::ASSET->value, 'tagid' => $tag->getId()],
@@ -80,8 +80,8 @@ final readonly class EnqueueService implements EnqueueServiceInterface
             [
                 ElementType::DATA_OBJECT->value,
                 IndexQueueOperation::UPDATE->value,
-                $this->timeService->getCurrentMillisecondTimestamp(),
-                0,
+                (string)$this->timeService->getCurrentMillisecondTimestamp(),
+                '0',
             ],
             'id, className',
             ['ctype' => ElementType::DATA_OBJECT->value, 'tagid' => $tag->getId()],
@@ -104,8 +104,8 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                 ElementType::DATA_OBJECT->value,
                 $classDefinition->getName(),
                 IndexQueueOperation::UPDATE->value,
-                $this->timeService->getCurrentMillisecondTimestamp(),
-                0,
+                (string)$this->timeService->getCurrentMillisecondTimestamp(),
+                '0',
             ],
             'oo_id'
         );
@@ -125,8 +125,8 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                     ElementType::DATA_OBJECT->value,
                     IndexName::DATA_OBJECT_FOLDER->value,
                     IndexQueueOperation::UPDATE->value,
-                    $this->timeService->getCurrentMillisecondTimestamp(),
-                    0,
+                    (string)$this->timeService->getCurrentMillisecondTimestamp(),
+                    '0',
                 ],
             )->where('type = "folder"');
             $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
@@ -151,8 +151,8 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                     ElementType::ASSET->value,
                     IndexName::ASSET->value,
                     IndexQueueOperation::UPDATE->value,
-                    $this->timeService->getCurrentMillisecondTimestamp(),
-                    0,
+                    (string)$this->timeService->getCurrentMillisecondTimestamp(),
+                    '0',
                 ]
             );
             $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
@@ -177,8 +177,8 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                     ElementType::DOCUMENT->value,
                     IndexName::DOCUMENT->value,
                     IndexQueueOperation::UPDATE->value,
-                    $this->timeService->getCurrentMillisecondTimestamp(),
-                    0,
+                    (string)$this->timeService->getCurrentMillisecondTimestamp(),
+                    '0',
                 ]
             );
             $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);

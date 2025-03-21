@@ -112,16 +112,17 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         if ($operation !== IndexQueueOperation::UPDATE->value) {
             return null;
         }
+        $selects = [
+            'id',
+            "'" . ElementType::DATA_OBJECT->value . "'",
+            'className',
+            "'$operation'",
+            "'$operationTime'",
+            '0',
+        ];
 
         $select = $this->dbConnection->createQueryBuilder()
-            ->select([
-                'id',
-                "'" . ElementType::DATA_OBJECT->value . "'",
-                'className',
-                "'$operation'",
-                "'$operationTime'",
-                '0',
-            ])
+            ->addSelect(...$selects)
             ->from('objects')
             ->where('classId = :classId')
             ->andWhere('path LIKE :path')
@@ -164,7 +165,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         }
 
         $queryBuilder = $this->dbConnection->createQueryBuilder()
-            ->select($this->getSelectParametersByOperation($element, $operation, $operationTime))
+            ->addSelect(...$this->getSelectParametersByOperation($element, $operation, $operationTime))
             ->setMaxResults(1);
 
         if ($operation === IndexQueueOperation::DELETE->value) {
@@ -185,7 +186,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         }
 
         return [
-            $element->getId(),
+            (string)$element->getId(),
             "'" . ElementType::DATA_OBJECT->value . "'",
             $classId,
             "'$operation'",
