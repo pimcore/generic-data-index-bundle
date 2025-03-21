@@ -151,7 +151,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                     ElementType::ASSET->value,
                     IndexName::ASSET->value,
                     IndexQueueOperation::UPDATE->value,
-                    $this->timeService->getCurrentMillisecondTimestamp(),
+                    (string)$this->timeService->getCurrentMillisecondTimestamp(),
                     '0',
                 ]
             );
