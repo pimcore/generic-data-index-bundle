@@ -181,8 +181,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         AbstractObject $element,
         string $operation,
         int $operationTime
-    ): array
-    {
+    ): array {
         return [
             $element->getId(),
             "'" . ElementType::DATA_OBJECT->value . "'",

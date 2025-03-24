@@ -76,7 +76,6 @@ final class DocumentBasicTest extends Unit
         $this->tester->checkDeletedIndexEntry($documentId, $indexName);
     }
 
-
     public function testFolderIndexingAsynchronous()
     {
         $this->tester->disableSynchronousProcessing();
@@ -103,7 +102,6 @@ final class DocumentBasicTest extends Unit
         $this->tester->consume();
         $this->tester->checkDeletedIndexEntry($folder->getId(), $indexName);
     }
-
 
     /**
      * @throws Exception
