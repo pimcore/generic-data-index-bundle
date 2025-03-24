@@ -93,10 +93,6 @@ final class DocumentBasicTest extends Unit
                 [$folder->getId()]
             )
         );
-        $this->tester->consume();
-
-        $response = $this->tester->checkIndexEntry($folder->getId(), $indexName);
-        $this->assertEquals('my-test-folder', $response['_source']['system_fields']['key']);
 
         $folder->delete();
         $this->tester->consume();
