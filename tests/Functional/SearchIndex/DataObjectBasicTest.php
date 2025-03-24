@@ -17,6 +17,7 @@ namespace Functional\SearchIndex;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
@@ -208,6 +209,32 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->assertEquals('my-test-folder', $response['_source']['system_fields']['key']);
 
         $object->delete();
+        $this->tester->checkDeletedIndexEntry($object->getId(), $indexName);
+    }
+
+    public function testFolderIndexingAsynchronous()
+    {
+        $this->tester->disableSynchronousProcessing();
+        $object = TestHelper::createObjectFolder();
+        $indexName = $this->dataObjectTypeAdapter->getAliasIndexName();
+
+        $object->setKey('my-test-folder');
+        $object->save();
+
+        $this->assertGreaterThan(
+            0,
+            Db::get()->fetchOne(
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="dataObject"',
+                [$object->getId()]
+            )
+        );
+        $this->tester->consume();
+
+        $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
+        $this->assertEquals('my-test-folder', $response['_source']['system_fields']['key']);
+
+        $object->delete();
+        $this->tester->consume();
         $this->tester->checkDeletedIndexEntry($object->getId(), $indexName);
     }
 
