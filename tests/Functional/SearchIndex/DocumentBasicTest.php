@@ -18,6 +18,7 @@ namespace Functional\SearchIndex;
 
 use Codeception\Test\Unit;
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\SearchResultItem\Email;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\SearchResultItem\Folder;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\SearchResultItem\HardLink;
@@ -28,6 +29,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
+use Pimcore\Db;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 /**
@@ -58,7 +60,7 @@ final class DocumentBasicTest extends Unit
         $indexName = $searchIndexConfigService->getIndexName('document');
 
         $document = TestHelper::createEmptyDocument();
-        $documentId = (string)$document->getId();
+        $documentId = $document->getId();
 
         // check indexed
         $response = $this->tester->checkIndexEntry($documentId, $indexName);
@@ -73,6 +75,35 @@ final class DocumentBasicTest extends Unit
         $document->delete();
         $this->tester->checkDeletedIndexEntry($documentId, $indexName);
     }
+
+
+    public function testFolderIndexingAsynchronous()
+    {
+        $this->tester->disableSynchronousProcessing();
+        $searchIndexConfigService = $this->tester->grabService(SearchIndexConfigServiceInterface::class);
+        $indexName = $searchIndexConfigService->getIndexName(IndexName::DOCUMENT->value);
+        $folder = TestHelper::createDocumentFolder();
+
+        $folder->setKey('my-test-folder');
+        $folder->save();
+
+        $this->assertGreaterThan(
+            0,
+            Db::get()->fetchOne(
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="document"',
+                [$folder->getId()]
+            )
+        );
+        $this->tester->consume();
+
+        $response = $this->tester->checkIndexEntry($folder->getId(), $indexName);
+        $this->assertEquals('my-test-folder', $response['_source']['system_fields']['key']);
+
+        $folder->delete();
+        $this->tester->consume();
+        $this->tester->checkDeletedIndexEntry($folder->getId(), $indexName);
+    }
+
 
     /**
      * @throws Exception

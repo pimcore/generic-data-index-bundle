@@ -127,7 +127,7 @@ class IndexQueueTest extends Unit
             )
         );
 
-        $this->consume();
+        $this->tester->consume();
         $result = $this->tester->checkIndexEntry($asset->getId(), $indexName);
         $this->assertEquals($asset->getId(), $result['_source']['system_fields']['id']);
     }
@@ -139,10 +139,10 @@ class IndexQueueTest extends Unit
     {
         $asset = TestHelper::createImageAsset();
         $assetIndex = $this->searchIndexConfigService->getIndexName(self::ASSET_INDEX_NAME);
-        $this->consume();
+        $this->tester->consume();
 
         $this->checkAndDeleteElement($asset, $assetIndex);
-        $this->consume();
+        $this->tester->consume();
 
         $this->tester->checkDeletedIndexEntry($asset->getId(), $assetIndex);
     }
@@ -154,10 +154,10 @@ class IndexQueueTest extends Unit
     {
         $document = TestHelper::createEmptyDocument();
         $documentIndex = $this->searchIndexConfigService->getIndexName(self::DOCUMENT_INDEX_NAME);
-        $this->consume();
+        $this->tester->consume();
 
         $this->checkAndDeleteElement($document, $documentIndex);
-        $this->consume();
+        $this->tester->consume();
 
         $this->tester->checkDeletedIndexEntry($document->getId(), $documentIndex);
     }
@@ -169,10 +169,10 @@ class IndexQueueTest extends Unit
     {
         $object = TestHelper::createEmptyObject();
         $objectIndex = $this->searchIndexConfigService->getIndexName($object->getClassName());
-        $this->consume();
+        $this->tester->consume();
 
         $this->checkAndDeleteElement($object, $objectIndex);
-        $this->consume();
+        $this->tester->consume();
 
         $this->tester->checkDeletedIndexEntry($object->getId(), $objectIndex);
     }
@@ -181,10 +181,5 @@ class IndexQueueTest extends Unit
     {
         $this->tester->checkIndexEntry($element->getId(), $indexName);
         $element->delete();
-    }
-
-    private function consume(): void
-    {
-        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
     }
 }

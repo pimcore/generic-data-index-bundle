@@ -101,11 +101,11 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         int $operationTime,
         bool $includeElement = false
     ): ?QueryBuilder {
-        if (!$element instanceof Concrete) {
+        if (!$element instanceof AbstractObject) {
             return null;
         }
 
-        if (!$element->getClass()->getAllowInherit()) {
+        if (!$element instanceof Concrete || !$element->getClass()->getAllowInherit()) {
             return $this->getRelatedItemsQueryBuilder($element, $operation, $operationTime, $includeElement);
         }
 
@@ -154,7 +154,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
     }
 
     private function getRelatedItemsQueryBuilder(
-        Concrete $element,
+        AbstractObject $element,
         string $operation,
         int $operationTime,
         bool $includeElement = false
@@ -177,20 +177,30 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
             ->setParameter('id', $element->getId());
     }
 
-    private function getSelectParametersByOperation(Concrete $element, string $operation, int $operationTime): array
+    private function getSelectParametersByOperation(
+        AbstractObject $element,
+        string $operation,
+        int $operationTime
+    ): array
     {
-        $classId = 'className';
-        if ($operation === IndexQueueOperation::DELETE->value) {
-            $classId = "'" . $element->getClassId() . "'";
-        }
-
         return [
             $element->getId(),
             "'" . ElementType::DATA_OBJECT->value . "'",
-            $classId,
+            $this->getIndexName($element, $operation),
             "'$operation'",
             "'$operationTime'",
             '0',
         ];
+    }
+
+    private function getIndexName(AbstractObject $element, string $operation): string
+    {
+        if ($element instanceof Concrete) {
+            return $operation === IndexQueueOperation::DELETE->value
+                ? "'{$element->getClassName()}'"
+                : 'className';
+        }
+
+        return "'" . IndexName::DATA_OBJECT_FOLDER->value . "'";
     }
 }
