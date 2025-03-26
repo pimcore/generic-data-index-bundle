@@ -1,6 +1,6 @@
 pimcore_generic_data_index:
     resource: "../../src/Controller/"
-    type:     annotation
+    type:     attribute
     prefix:   /pimcore_generic_data_index
     options:
         expose: true
