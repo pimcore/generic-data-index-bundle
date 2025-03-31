@@ -117,15 +117,17 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
             return null;
         }
 
+        $selects = [
+            'id',
+            "'" . ElementType::DATA_OBJECT->value . "'",
+            'className',
+            "'$operation'",
+            "'$operationTime'",
+            '0',
+        ];
+
         $select = $this->dbConnection->createQueryBuilder()
-            ->select([
-                'id',
-                "'" . ElementType::DATA_OBJECT->value . "'",
-                'className',
-                "'$operation'",
-                "'$operationTime'",
-                '0',
-            ])
+            ->addSelect(...$selects)
             ->from('objects')
             ->where('classId = :classId')
             ->andWhere('path LIKE :path')
