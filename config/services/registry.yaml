@@ -6,5 +6,5 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository:
         arguments:
-            - "@doctrine.orm.pimcore_generic_data_index_entity_manager"
+            - "@doctrine.orm.default_entity_manager"
 
