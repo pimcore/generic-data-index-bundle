@@ -123,6 +123,7 @@ All examples are based on the `Car` data object class of the [Pimcore Demo](http
 | `genericImages:Asset.fullPath LIKE "/Car Images/vw/*"`              | All cars with a image linked in the `genericImages` image gallery which is contained in the asset folder `/Car Images/vw`. |
 | `color = "red" OR color = "blue"`                                   | All red or blue cars using standard PQL syntax.                                                                            |
 | `series = empty AND color="red"`                                    | All models where the series is empty and the color is red.                                                                 |
+| `License.expiryDate <= 'now+2d/d'`                                  | All elements whose license expires in two days - if the field is a date field you can use [date-math](https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#date-math) syntax of elastic search/opensearch.|
 | `Query("standard_fields.color:(red OR blue)")`                      | All red or blue cars using simple query string syntax.                                                                     |
 
 ## Limitations

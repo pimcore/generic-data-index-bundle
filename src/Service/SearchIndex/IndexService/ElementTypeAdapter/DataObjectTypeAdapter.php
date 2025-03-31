@@ -105,24 +105,27 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
             return null;
         }
 
-        if (!$element instanceof Concrete || !$element->getClass()->getAllowInherit()) {
-            return $this->getRelatedItemsQueryBuilder($element, $operation, $operationTime, $includeElement);
+        if (
+            ($operation === IndexQueueOperation::DELETE->value) ||
+            !$element instanceof Concrete ||
+            !$element->getClass()->getAllowInherit()
+        ) {
+            return $this->getElementQueryBuilder($element, $operation, $operationTime, $includeElement);
         }
 
         if ($operation !== IndexQueueOperation::UPDATE->value) {
             return null;
         }
-        $selects = [
-            'id',
-            "'" . ElementType::DATA_OBJECT->value . "'",
-            'className',
-            "'$operation'",
-            "'$operationTime'",
-            '0',
-        ];
 
         $select = $this->dbConnection->createQueryBuilder()
-            ->addSelect(...$selects)
+            ->select([
+                'id',
+                "'" . ElementType::DATA_OBJECT->value . "'",
+                'className',
+                "'$operation'",
+                "'$operationTime'",
+                '0',
+            ])
             ->from('objects')
             ->where('classId = :classId')
             ->andWhere('path LIKE :path')
@@ -154,7 +157,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         throw new InvalidArgumentException('Element must be instance of ' . AbstractObject::class);
     }
 
-    private function getRelatedItemsQueryBuilder(
+    private function getElementQueryBuilder(
         AbstractObject $element,
         string $operation,
         int $operationTime,
@@ -165,7 +168,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         }
 
         $queryBuilder = $this->dbConnection->createQueryBuilder()
-            ->addSelect(...$this->getSelectParametersByOperation($element, $operation, $operationTime))
+            ->addSelect(...$this->getSelectParameters($element, $operation, $operationTime))
             ->setMaxResults(1);
 
         if ($operation === IndexQueueOperation::DELETE->value) {
@@ -178,7 +181,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
             ->setParameter('id', $element->getId());
     }
 
-    private function getSelectParametersByOperation(
+    private function getSelectParameters(
         AbstractObject $element,
         string $operation,
         int $operationTime
