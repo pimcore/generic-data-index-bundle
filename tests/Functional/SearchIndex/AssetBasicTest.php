@@ -15,6 +15,7 @@
 
 namespace Functional\SearchIndex;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Document;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Folder;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Image;
@@ -22,6 +23,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\Search
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Db;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 class AssetBasicTest extends \Codeception\Test\Unit
@@ -70,6 +72,29 @@ class AssetBasicTest extends \Codeception\Test\Unit
         $asset->delete();
         $this->tester->checkDeletedIndexEntry($asset->getId(), $indexName);
 
+    }
+
+    public function testFolderIndexingAsynchronous()
+    {
+        $this->tester->disableSynchronousProcessing();
+        $searchIndexConfigService = $this->tester->grabService(SearchIndexConfigServiceInterface::class);
+        $indexName = $searchIndexConfigService->getIndexName(IndexName::ASSET->value);
+        $folder = TestHelper::createAssetFolder();
+
+        $folder->setKey('my-test-folder');
+        $folder->save();
+
+        $this->assertGreaterThan(
+            0,
+            Db::get()->fetchOne(
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="asset"',
+                [$folder->getId()]
+            )
+        );
+
+        $folder->delete();
+        $this->tester->consume();
+        $this->tester->checkDeletedIndexEntry($folder->getId(), $indexName);
     }
 
     public function testAssetSearch()

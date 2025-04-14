@@ -132,7 +132,7 @@ class GenericDataIndex extends \Codeception\Module
         return $this->grabService('generic-data-index.search-client');
     }
 
-    public function checkIndexEntry(string $id, string $index): array
+    public function checkIndexEntry(int|string $id, string $index): array
     {
         /** @var SearchClientInterface $client */
         $client = $this->getIndexSearchClient();
@@ -146,7 +146,7 @@ class GenericDataIndex extends \Codeception\Module
         return $response;
     }
 
-    public function checkDeletedIndexEntry(string $id, string $index): void
+    public function checkDeletedIndexEntry(int|string $id, string $index): void
     {
         /** @var SearchClientInterface $client */
         $client = $this->getIndexSearchClient();
@@ -248,5 +248,10 @@ class GenericDataIndex extends \Codeception\Module
         $client = $this->getIndexSearchClient();
 
         return $client->getIndexMapping(['index' => $indexName]);
+    }
+
+    public function consume(): void
+    {
+        $this->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
     }
 }

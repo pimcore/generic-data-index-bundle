@@ -101,12 +101,16 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         int $operationTime,
         bool $includeElement = false
     ): ?QueryBuilder {
-        if (!$element instanceof Concrete) {
+        if (!$element instanceof AbstractObject) {
             return null;
         }
 
-        if (!$element->getClass()->getAllowInherit()) {
-            return $this->getRelatedItemsQueryBuilder($element, $operation, $operationTime, $includeElement);
+        if (
+            ($operation === IndexQueueOperation::DELETE->value) ||
+            !$element instanceof Concrete ||
+            !$element->getClass()->getAllowInherit()
+        ) {
+            return $this->getElementQueryBuilder($element, $operation, $operationTime, $includeElement);
         }
 
         if ($operation !== IndexQueueOperation::UPDATE->value) {
@@ -153,8 +157,8 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         throw new InvalidArgumentException('Element must be instance of ' . AbstractObject::class);
     }
 
-    private function getRelatedItemsQueryBuilder(
-        Concrete $element,
+    private function getElementQueryBuilder(
+        AbstractObject $element,
         string $operation,
         int $operationTime,
         bool $includeElement = false
@@ -164,7 +168,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         }
 
         $queryBuilder = $this->dbConnection->createQueryBuilder()
-            ->select($this->getSelectParametersByOperation($element, $operation, $operationTime))
+            ->select($this->getSelectParameters($element, $operation, $operationTime))
             ->setMaxResults(1);
 
         if ($operation === IndexQueueOperation::DELETE->value) {
@@ -177,20 +181,29 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
             ->setParameter('id', $element->getId());
     }
 
-    private function getSelectParametersByOperation(Concrete $element, string $operation, int $operationTime): array
-    {
-        $classId = 'className';
-        if ($operation === IndexQueueOperation::DELETE->value) {
-            $classId = "'" . $element->getClassId() . "'";
-        }
-
+    private function getSelectParameters(
+        AbstractObject $element,
+        string $operation,
+        int $operationTime
+    ): array {
         return [
             $element->getId(),
             "'" . ElementType::DATA_OBJECT->value . "'",
-            $classId,
+            $this->getIndexName($element, $operation),
             "'$operation'",
             "'$operationTime'",
             '0',
         ];
+    }
+
+    private function getIndexName(AbstractObject $element, string $operation): string
+    {
+        if ($element instanceof Concrete) {
+            return $operation === IndexQueueOperation::DELETE->value
+                ? "'{$element->getClassName()}'"
+                : 'className';
+        }
+
+        return "'" . IndexName::DATA_OBJECT_FOLDER->value . "'";
     }
 }

@@ -87,7 +87,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
                 [$object->getId()]
             )
         );
-        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+        $this->tester->consume();
         $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
         $this->assertEquals($object->getKey(), $response['_source']['system_fields']['key']);
     }
@@ -126,9 +126,35 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
                 [$object->getId()]
             )
         );
-        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+        $this->tester->consume();
         $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
         $this->assertEquals($object->getKey(), $response['_source']['system_fields']['key']);
+    }
+
+    public function testFolderIndexingAsynchronous()
+    {
+        $this->tester->disableSynchronousProcessing();
+        $object = TestHelper::createObjectFolder();
+        $indexName = $this->searchIndexConfigService->getIndexName(IndexName::DATA_OBJECT_FOLDER->value);
+
+        $object->setKey('my-test-folder');
+        $object->save();
+
+        $this->assertGreaterThan(
+            0,
+            Db::get()->fetchOne(
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType="dataObject"',
+                [$object->getId()]
+            )
+        );
+        $this->tester->consume();
+
+        $response = $this->tester->checkIndexEntry($object->getId(), $indexName);
+        $this->assertEquals('my-test-folder', $response['_source']['system_fields']['key']);
+
+        $object->delete();
+        $this->tester->consume();
+        $this->tester->checkDeletedIndexEntry($object->getId(), $indexName);
     }
 
     public function testFolderIndexing()
@@ -189,19 +215,19 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->assertNull($settingsStoreService->getClassMappingCheckSum($classId));
 
         $class->save();
-        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+        $this->tester->consume();
         $checkSum = $settingsStoreService->getClassMappingCheckSum($classId);
         $this->assertNotNull($checkSum);
 
         $class->save();
-        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+        $this->tester->consume();
         $this->assertEquals($checkSum, $settingsStoreService->getClassMappingCheckSum($classId));
 
         $input = new Input();
         $input->setName('settingsTest');
         $class->addFieldDefinition('settingsTest', $input);
         $class->save();
-        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+        $this->tester->consume();
         $this->assertNotEquals($checkSum, $settingsStoreService->getClassMappingCheckSum($classId));
     }
 
@@ -216,7 +242,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $input->setName('mappingTest');
         $class->addFieldDefinition('mappingTest', $input);
         $class->save();
-        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+        $this->tester->consume();
 
         $indexName = $this->tester->getIndexName($object->getClassName());
         $mapping = $this->tester->getIndexMapping($index);
@@ -225,7 +251,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
 
         $class->setFieldDefinitions($originalFields);
         $class->save();
-        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+        $this->tester->consume();
 
         $indexName = $this->tester->getIndexName($object->getClassName());
         $mapping = $this->tester->getIndexMapping($index);
