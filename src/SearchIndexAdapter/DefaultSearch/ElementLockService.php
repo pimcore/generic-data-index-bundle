@@ -148,7 +148,7 @@ final class ElementLockService implements ElementLockServiceInterface
         return $result['hits']['total']['value'];
     }
 
-    private function addLockedChildrenQuery(DefaultSearchInterface $search, string $path): void
+    private function addLockedChildrenQuery(DefaultSearchInterface $search, string $fullPath): void
     {
         $search->addQuery(
             new BoolQuery([
@@ -156,7 +156,7 @@ final class ElementLockService implements ElementLockServiceInterface
                     [
                         ConditionType::WILDCARD->value => [
                             SystemField::FULL_PATH->getPath(AttributeType::KEYWORD->value) => [
-                                'value' => $path . '/*'
+                                'value' => $fullPath . '/*'
                             ]
                         ]
                     ],
@@ -176,11 +176,11 @@ final class ElementLockService implements ElementLockServiceInterface
         );
     }
 
-    private function addLockedPropagateParentsQuery(DefaultSearchInterface $search, string $path): void
+    private function addLockedPropagateParentsQuery(DefaultSearchInterface $search, string $fullPath): void
     {
         $search->addQuery(new TermsFilter(
             SystemField::FULL_PATH->getPath('keyword'),
-            $this->pathService->getAllParentPaths([$path])
+            $this->pathService->getAllParentPaths([$fullPath])
         ));
         $search->addQuery(new TermFilter(
             SystemField::LOCKED->getPath('keyword'),
@@ -196,8 +196,18 @@ final class ElementLockService implements ElementLockServiceInterface
             IndexName::DOCUMENT->value,
         ];
 
-         $indexName = in_array($type, $defaultIndexNames, true) ? $type : IndexName::ELEMENT_SEARCH->value;
+        $type = $this->getLongType($type);
+        $indexName = in_array($type, $defaultIndexNames, true) ? $type : IndexName::ELEMENT_SEARCH->value;
 
-         return $this->searchIndexConfigService->getIndexName($indexName);
+        return $this->searchIndexConfigService->getIndexName($indexName);
+    }
+
+    private function getLongType(string $type): string
+    {
+        if ($type === 'object' || $type === 'dataObject') {
+            return IndexName::DATA_OBJECT->value;
+        }
+
+        return $type;
     }
 }

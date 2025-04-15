@@ -5,6 +5,7 @@ Following steps are necessary during updating to newer versions.
 ## Upgrade to 2.0.0
 - [Indexing] Added inherited fields indicator to data object indexing
 - [Indexing] Added functionality to enqueue dependent items
+- Added a new method `isElementLocked()` to the `ElementLockService`, which provides functionality to retrieve element locked status based on the index data
 
 ### BC-Breaks
 - Removed deprecated alias `generic-data-index.opensearch-client` and replaced it with `generic-data-index.search-client`
@@ -19,6 +20,7 @@ Following steps are necessary during updating to newer versions.
 - Add element type to the `getIds` method of `Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Element\SearchResult\ElementSearchResult`
 - Added `getSpecialPermissions` method to `Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\ElementPermissionServiceInterface` to get special permissions workspace language permissions for elements
 - Removed layout permission from `Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions` as they are not index relevant
+- Removed property `isLocked` from Index for elements as it needs to be dynamically calculated
 
 #### Interface changes
 - Added `PermissionTypes $permissionType` parameter with default type `PermissionTypes::LIST` to
