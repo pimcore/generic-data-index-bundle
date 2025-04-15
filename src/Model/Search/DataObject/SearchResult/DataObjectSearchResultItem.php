@@ -50,8 +50,6 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 
     private ?string $locked;
 
-    private bool $isLocked;
-
     private ?int $creationDate;
 
     private ?int $modificationDate;
@@ -231,18 +229,6 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
     public function setLocked(?string $locked): DataObjectSearchResultItem
     {
         $this->locked = $locked;
-
-        return $this;
-    }
-
-    public function isLocked(): bool
-    {
-        return $this->isLocked;
-    }
-
-    public function setIsLocked(?bool $isLocked): DataObjectSearchResultItem
-    {
-        $this->isLocked = (bool)$isLocked;
 
         return $this;
     }

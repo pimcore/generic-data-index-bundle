@@ -60,7 +60,6 @@ readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
             ->setUserOwner(SystemField::USER_OWNER->getData($data) ?? 0)
             ->setUserModification(SystemField::USER_MODIFICATION->getData($data))
             ->setLocked(SystemField::LOCKED->getData($data))
-            ->setIsLocked(SystemField::IS_LOCKED->getData($data))
             ->setCreationDate(strtotime(SystemField::CREATION_DATE->getData($data)))
             ->setModificationDate(strtotime(SystemField::MODIFICATION_DATE->getData($data)));
 

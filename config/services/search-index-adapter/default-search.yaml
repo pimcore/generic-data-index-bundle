@@ -33,6 +33,11 @@ services:
         arguments:
             $client: '@generic-data-index.search-client'
 
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\ElementLockServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\ElementLockService
+        arguments:
+            $client: '@generic-data-index.search-client'
+
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Pagination\PaginationInfoService
 

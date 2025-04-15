@@ -100,7 +100,6 @@ final class AssetNormalizer implements NormalizerInterface
             SystemField::USER_OWNER->value => $asset->getUserOwner(),
             SystemField::USER_MODIFICATION->value => $asset->getUserModification(),
             SystemField::LOCKED->value => $asset->getLocked(),
-            SystemField::IS_LOCKED->value => $asset->isLocked(),
         ];
 
         if (!$skipLazyLoadedFields) {

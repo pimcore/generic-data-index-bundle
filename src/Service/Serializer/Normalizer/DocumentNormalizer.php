@@ -98,7 +98,6 @@ final class DocumentNormalizer implements NormalizerInterface
             SystemField::USER_OWNER->value => $document->getUserOwner(),
             SystemField::USER_MODIFICATION->value => $document->getUserModification(),
             SystemField::LOCKED->value => $document->getLocked(),
-            SystemField::IS_LOCKED->value => $document->isLocked(),
         ];
 
         if ($handler = $this->documentTypeSerializationHandlerService->getSerializationHandler($document->getType())) {

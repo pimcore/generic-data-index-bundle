@@ -116,7 +116,6 @@ final class DataObjectNormalizer implements NormalizerInterface
             SystemField::USER_OWNER->value => $dataObject->getUserOwner(),
             SystemField::USER_MODIFICATION->value => $dataObject->getUserModification(),
             SystemField::LOCKED->value => $dataObject->getLocked(),
-            SystemField::IS_LOCKED->value => $dataObject->isLocked(),
         ];
 
         if ($dataObject instanceof Concrete) {

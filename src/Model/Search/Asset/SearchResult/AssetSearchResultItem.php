@@ -45,8 +45,6 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
 
     private ?string $locked;
 
-    private bool $isLocked;
-
     /** @var AssetMetaData[] */
     private array $metaData;
 
@@ -201,18 +199,6 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
     public function setLocked(?string $locked): AssetSearchResultItem
     {
         $this->locked = $locked;
-
-        return $this;
-    }
-
-    public function isLocked(): bool
-    {
-        return $this->isLocked;
-    }
-
-    public function setIsLocked(bool $isLocked): AssetSearchResultItem
-    {
-        $this->isLocked = $isLocked;
 
         return $this;
     }
