@@ -82,7 +82,6 @@ class ElementLockServiceTest extends Unit
             ->setLocked('self')
             ->save();
 
-
         $this->assetIsUnlocked($asset1);
         $this->assetIsLocked($folder1); // marked locked because of folder 2
         $this->assetIsUnlocked($asset2);

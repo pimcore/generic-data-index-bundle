@@ -18,7 +18,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\ConditionType;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
@@ -140,9 +139,9 @@ final class ElementLockService implements ElementLockServiceInterface
 
     private function getResultCount(DefaultSearchInterface $search, string $indexName): int
     {
-        $result = $this->client->search( [
+        $result = $this->client->search([
             'index' => $indexName,
-            'body' => $search->toArray()
+            'body' => $search->toArray(),
         ]);
 
         return $result['hits']['total']['value'];
@@ -156,22 +155,22 @@ final class ElementLockService implements ElementLockServiceInterface
                     [
                         ConditionType::WILDCARD->value => [
                             SystemField::FULL_PATH->getPath(AttributeType::KEYWORD->value) => [
-                                'value' => $fullPath . '/*'
-                            ]
-                        ]
+                                'value' => $fullPath . '/*',
+                            ],
+                        ],
                     ],
                     [
                         ConditionType::EXISTS->value => [
-                            'field' => SystemField::LOCKED->getPath(AttributeType::KEYWORD->value)
-                        ]
-                    ]
+                            'field' => SystemField::LOCKED->getPath(AttributeType::KEYWORD->value),
+                        ],
+                    ],
                 ],
                 ConditionType::MUST_NOT->value => [
                     new TermFilter(
                         SystemField::LOCKED->getPath(AttributeType::KEYWORD->value),
                         ''
-                    )
-                ]
+                    ),
+                ],
             ])
         );
     }
