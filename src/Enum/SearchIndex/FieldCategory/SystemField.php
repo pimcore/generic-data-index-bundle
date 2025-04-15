@@ -48,7 +48,6 @@ enum SystemField: string
     case USER_OWNER = 'userOwner';
     case USER_MODIFICATION = 'userModification';
     case LOCKED = 'locked';
-    case IS_LOCKED = 'isLocked';
     case HAS_WORKFLOW_WITH_PERMISSIONS = 'hasWorkflowWithPermissions';
     case FILE_SIZE = 'fileSize';
     case DEPENDENCIES = 'dependencies';

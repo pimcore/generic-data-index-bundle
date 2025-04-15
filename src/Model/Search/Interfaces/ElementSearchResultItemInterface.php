@@ -59,10 +59,6 @@ interface ElementSearchResultItemInterface
 
     public function setLocked(?string $locked): ElementSearchResultItemInterface;
 
-    public function isLocked(): bool;
-
-    public function setIsLocked(bool $isLocked): ElementSearchResultItemInterface;
-
     public function getCreationDate(): ?int;
 
     public function setCreationDate(?int $creationDate): ElementSearchResultItemInterface;

@@ -84,8 +84,6 @@ pimcore_generic_data_index:
           type: integer
         lock:
           type: keyword
-        isLocked:
-          type: boolean
         hasWorkflowWithPermissions:
           type: boolean
         dependencies:

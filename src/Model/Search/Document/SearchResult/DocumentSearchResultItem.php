@@ -43,8 +43,6 @@ class DocumentSearchResultItem implements ElementSearchResultItemInterface
 
     private ?string $locked;
 
-    private bool $isLocked;
-
     private ?int $creationDate;
 
     private ?int $modificationDate;
@@ -182,18 +180,6 @@ class DocumentSearchResultItem implements ElementSearchResultItemInterface
     public function setLocked(?string $locked): DocumentSearchResultItem
     {
         $this->locked = $locked;
-
-        return $this;
-    }
-
-    public function isLocked(): bool
-    {
-        return $this->isLocked;
-    }
-
-    public function setIsLocked(?bool $isLocked): DocumentSearchResultItem
-    {
-        $this->isLocked = (bool)$isLocked;
 
         return $this;
     }
