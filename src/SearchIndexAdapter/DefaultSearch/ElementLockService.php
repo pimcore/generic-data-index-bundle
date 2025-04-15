@@ -18,6 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\ConditionType;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\QueryType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
@@ -153,7 +154,7 @@ final class ElementLockService implements ElementLockServiceInterface
             new BoolQuery([
                 ConditionType::MUST->value => [
                     [
-                        ConditionType::WILDCARD->value => [
+                        QueryType::WILDCARD->value => [
                             SystemField::FULL_PATH->getPath(AttributeType::KEYWORD->value) => [
                                 'value' => $fullPath . '/*',
                             ],

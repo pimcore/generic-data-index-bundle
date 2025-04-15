@@ -20,4 +20,5 @@ enum QueryType: string
 {
     case BOOL = 'bool';
     case TERMS = 'terms';
+    case WILDCARD = 'wildcard';
 }
