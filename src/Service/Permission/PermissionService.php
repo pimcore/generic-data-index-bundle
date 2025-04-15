@@ -176,6 +176,10 @@ final readonly class PermissionService implements PermissionServiceInterface
             return $this->workspaceService->getDeepestWorkspace($userWorkspaces)->getPermissions();
         }
 
+        if (empty($userWorkspaces)) {
+            return $this->workspaceService->getDeepestWorkspace($roleWorkspaces)->getPermissions();
+        }
+
         $userWorkspace = $this->workspaceService->getDeepestWorkspace($userWorkspaces);
         $roleWorkspace = $this->workspaceService->getDeepestWorkspace($roleWorkspaces);
 
