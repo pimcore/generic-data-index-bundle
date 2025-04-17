@@ -31,9 +31,9 @@ class TagIndexingTest extends Unit
     private Folder $folder1;
 
     private Tag $tagElement;
-    
+
     private array $objects;
-    
+
     private array $tags;
 
     private DataObjectTypeAdapter $dataObjectTypeAdapter;
