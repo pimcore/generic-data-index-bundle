@@ -96,9 +96,11 @@ final class PathService implements PathServiceInterface
         return array_map(static fn (string $path) => rtrim($path, '/') . '/', $paths);
     }
 
-    public function getAllParentPaths(array $paths): array
+    public function getAllParentPaths(array $paths, bool $removeSubPaths = true): array
     {
-        $paths = $this->removeSubPaths($paths);
+        if ($removeSubPaths) {
+            $paths = $this->removeSubPaths($paths);
+        }
         if (count($paths) === 1 && $paths[0] === '/') {
             return [];
         }
@@ -112,6 +114,7 @@ final class PathService implements PathServiceInterface
                 }
             }
         }
+        $result = array_unique($result);
         sort($result);
 
         return $result;

@@ -21,6 +21,7 @@ Following steps are necessary during updating to newer versions.
 - Added `getSpecialPermissions` method to `Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\ElementPermissionServiceInterface` to get special permissions workspace language permissions for elements
 - Removed layout permission from `Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions` as they are not index relevant
 - Removed property `isLocked` from Index for elements as it needs to be dynamically calculated
+- Changed workspace permissions evaluation in order to align more with the Pimcore Classic bundle permission system
 
 #### Interface changes
 - Added `PermissionTypes $permissionType` parameter with default type `PermissionTypes::LIST` to
