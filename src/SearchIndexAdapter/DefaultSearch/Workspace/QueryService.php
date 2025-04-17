@@ -193,7 +193,8 @@ final class QueryService implements QueryServiceInterface
         return $query;
     }
 
-    private function keepDeclinedPathsWithinAllowed(array $declinedPaths, array $allowedPaths): array {
+    private function keepDeclinedPathsWithinAllowed(array $declinedPaths, array $allowedPaths): array
+    {
         foreach ($declinedPaths as $index => $declinedPath) {
             $isIncluded = false;
             foreach ($allowedPaths as $allowedPath) {
@@ -222,6 +223,7 @@ final class QueryService implements QueryServiceInterface
                     ],
                 ]
             );
+
             return;
         }
 
@@ -410,7 +412,7 @@ final class QueryService implements QueryServiceInterface
             return [];
         }
 
-        $allowedParentPaths = $this->pathService->getAllParentPaths($allowedPaths,  false);
+        $allowedParentPaths = $this->pathService->getAllParentPaths($allowedPaths, false);
         $declinedParentPaths = [];
         foreach ($allowedParentPaths as $allowedParentPath) {
             foreach ($declinedPaths as $declinedPath) {

@@ -24,12 +24,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
 use Pimcore\Model\User\Workspace\Asset as WorkspaceAsset;
-use Pimcore\Model\User\Workspace\Document as WorkspaceDocument;
 use Pimcore\Model\User\Workspace\DataObject as WorkspaceDataObject;
+use Pimcore\Model\User\Workspace\Document as WorkspaceDocument;
 
 class Service extends Module
 {
-
     /**
      * @throws InvalidArgumentException
      */

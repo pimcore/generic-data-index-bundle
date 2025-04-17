@@ -272,7 +272,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-asset-folder-1',
             '/test-asset-folder-1/sub-folder-1',
             '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
-            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1'
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
         ], $user);
 
         $user = $this->createUserWithAssetWorkspaces([
@@ -288,7 +288,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             '/test-asset-folder-1',
             '/test-asset-folder-1/sub-folder-1',
             '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
-            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1'
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
         ], $user);
 
         $user = $this->createUserWithAssetWorkspaces([

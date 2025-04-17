@@ -29,12 +29,19 @@ use Pimcore\Tests\Support\Util\TestHelper;
 class PermissionServiceTest extends Unit
 {
     protected IndexTester $tester;
+
     private User $user;
+
     private Asset $asset1;
+
     private Asset $asset2;
+
     private Folder $folder1;
+
     private Folder $folder2;
+
     private PermissionServiceInterface $permissionService;
+
     private AssetSearchServiceInterface $assetSearchService;
 
     protected function _before(): void
@@ -66,7 +73,7 @@ class PermissionServiceTest extends Unit
                     path: '/',
                     permissions: ['list' => true],
                     type: AssetWorkspace::WORKSPACE_TYPE
-                )
+                ),
             ]
         );
 
@@ -88,7 +95,7 @@ class PermissionServiceTest extends Unit
                     path: $this->folder1->getFullPath(),
                     permissions: ['list' => false],
                     type: AssetWorkspace::WORKSPACE_TYPE
-                )
+                ),
             ]
         );
 
@@ -100,7 +107,6 @@ class PermissionServiceTest extends Unit
         );
         $asset1Permissions = $this->permissionService->getAssetPermissions($resultAsset1, $this->user);
         $asset2Permissions = $this->permissionService->getAssetPermissions($resultAsset2, $this->user);
-
 
         $this->assertTrue($rootPermissions->isList());
         $this->assertFalse($asset1Permissions->isList());
@@ -125,7 +131,7 @@ class PermissionServiceTest extends Unit
                     path: $this->folder2->getFullPath(),
                     permissions: ['list' => true],
                     type: AssetWorkspace::WORKSPACE_TYPE
-                )
+                ),
             ]
         );
 
@@ -141,7 +147,6 @@ class PermissionServiceTest extends Unit
         $folder1Permissions = $this->permissionService->getAssetPermissions($resultFolder1, $this->user);
         $folder2Permissions = $this->permissionService->getAssetPermissions($resultFolder2, $this->user);
         $asset2Permissions = $this->permissionService->getAssetPermissions($resultAsset2, $this->user);
-
 
         $this->assertTrue($rootPermissions->isList());
         $this->assertFalse($folder1Permissions->isList());
