@@ -1,7 +1,7 @@
 version: '3.0'
 services:
     php-generic-data-index-bundle:
-        image: pimcore/pimcore:php8.2-debug-dev
+        image: pimcore/pimcore:php8.3-latest
         environment:
             PHP_IDE_CONFIG: serverName=localhost
         volumes:

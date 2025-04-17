@@ -25,8 +25,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\Synchro
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Event\Model\TagEvent;
 use Pimcore\Event\TagEvents;
-use Pimcore\Model\Asset;
-use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Model\Element\Service;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
@@ -50,6 +49,7 @@ final readonly class TagIndexUpdateSubscriber implements EventSubscriberInterfac
             TagEvents::PRE_DELETE => 'deleteTag',
             TagEvents::POST_ADD_TO_ELEMENT => 'updateTagAssignment',
             TagEvents::POST_REMOVE_FROM_ELEMENT => 'updateTagAssignment',
+            TagEvents::POST_BATCH_ASSIGN_TAGS_TO_ELEMENT => 'batchUpdateTagAssignment',
         ];
     }
 
@@ -73,19 +73,50 @@ final readonly class TagIndexUpdateSubscriber implements EventSubscriberInterfac
             return;
         }
 
-        $element = Service::getElementById($event->getArgument('elementType'), $event->getArgument('elementId'));
+        $element = Service::getElementById(
+            $event->getArgument('elementType'),
+            $event->getArgument('elementId')
+        );
+        if (!$element instanceof ElementInterface) {
+            return;
+        }
 
-        //only update when element is object or asset
-        if ($element instanceof AbstractObject || $element instanceof Asset) {
+        $this->indexQueueService
+            ->updateIndexQueue(
+                element: $element,
+                operation: IndexQueueOperation::UPDATE->value,
+                processSynchronously: $this->synchronousProcessing->isEnabled()
+            )
+            ->commit();
+
+        $this->queueMessagesDispatcher->dispatchQueueMessages();
+    }
+
+    public function batchUpdateTagAssignment(TagEvent $event): void
+    {
+        if (!$this->installer->isInstalled()) {
+            return;
+        }
+
+        $type = $event->getArgument('elementType');
+        $ids = $event->getArgument('elementIds');
+
+        foreach ($ids as $id) {
+            $element = Service::getElementById($type, $id);
+            if (!$element instanceof ElementInterface) {
+                continue;
+            }
+
             $this->indexQueueService
                 ->updateIndexQueue(
                     element: $element,
                     operation: IndexQueueOperation::UPDATE->value,
                     processSynchronously: $this->synchronousProcessing->isEnabled()
-                )
-                ->commit();
-
-            $this->queueMessagesDispatcher->dispatchQueueMessages();
+                );
         }
+
+        $this->indexQueueService->commit();
+        $this->queueMessagesDispatcher->dispatchQueueMessages();
+
     }
 }
