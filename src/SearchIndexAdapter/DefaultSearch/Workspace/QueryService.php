@@ -42,6 +42,10 @@ final class QueryService implements QueryServiceInterface
 {
     use LoggerAwareTrait;
 
+    private const string ALLOWED_PATHS_KEY = 'allowedPaths';
+
+    private const string DECLINED_PATHS_KEY = 'declinedPaths';
+
     public function __construct(
         private readonly PermissionServiceInterface $permissionService,
         private readonly WorkspaceServiceInterface $workspaceService,
@@ -72,27 +76,16 @@ final class QueryService implements QueryServiceInterface
 
     private function getWorkspaceGroupsQuery(string $workspaceType, ?User $user, string $permission): BoolQuery
     {
-        $workspaceGroups = $this->getGroupedWorkspaces(
-            $workspaceType,
-            $user
-        );
+        $group = $this->getGroupedWorkspaces($workspaceType, $user);
 
-        if (empty($workspaceGroups)) {
+        if (empty($group)) {
             return $this->createNoWorkspaceAllowedQuery();
         }
 
-        $workspacesQuery = new BoolQuery();
-
-        foreach ($workspaceGroups as $group) {
-            $workspacesQuery->addCondition(
-                ConditionType::SHOULD->value,
-                [
-                    'bool' => $this->createWorkspacesGroupQuery($workspaceType, $group, $permission)->toArray(),
-                ]
-            );
-        }
-
-        return $workspacesQuery;
+        return $this->createWorkspacesGroupQuery(
+            $workspaceType,
+            $this->getCategorizedWorkspacePaths($group, $permission)
+        );
     }
 
     private function getGroupedWorkspaces(string $workspaceType, ?User $user): array
@@ -107,27 +100,26 @@ final class QueryService implements QueryServiceInterface
             $user
         );
 
-        if (!empty($userWorkspaces)) {
-            $groupedWorkspaces[] = $userWorkspaces;
+        /** @var WorkspaceInterface $userWorkspace */
+        foreach ($userWorkspaces as $userWorkspace) {
+            $groupedWorkspaces[$userWorkspace->getPath()] = $userWorkspace;
         }
 
         foreach ($user->getRoles() as $roleId) {
-            $roleWorkspaces = $this->workspaceService->getRoleWorkspaces(
-                $workspaceType,
-                $roleId
-            );
-
-            if (!empty($roleWorkspaces)) {
-                $groupedWorkspaces[] = $roleWorkspaces;
+            $roleWorkspaces = $this->workspaceService->getRoleWorkspaces($workspaceType, $roleId);
+            /** @var WorkspaceInterface $roleWorkspace */
+            foreach ($roleWorkspaces as $roleWorkspace) {
+                if (!isset($groupedWorkspaces[$roleWorkspace->getPath()])) {
+                    $groupedWorkspaces[$roleWorkspace->getPath()] = $roleWorkspace;
+                }
             }
         }
 
         return $groupedWorkspaces;
     }
 
-    private function createWorkspacesGroupQuery(string $workspaceType, array $group, string $permission): BoolQuery
+    private function getCategorizedWorkspacePaths(array $group, string $permission): array
     {
-
         $allowedPaths = [];
         $declinedPaths = [];
 
@@ -143,7 +135,19 @@ final class QueryService implements QueryServiceInterface
 
         $allowedPaths = array_unique($allowedPaths);
         $declinedPaths = array_unique($declinedPaths);
-        $declinedPaths = $this->evaluateDeclinedPaths($workspaceType, $allowedPaths, $declinedPaths);
+        $declinedPaths = $this->keepDeclinedPathsWithinAllowed($declinedPaths, $allowedPaths);
+
+        return [
+            self::ALLOWED_PATHS_KEY => $allowedPaths,
+            self::DECLINED_PATHS_KEY => $declinedPaths,
+        ];
+    }
+
+    private function createWorkspacesGroupQuery(string $workspaceType, array $categorizedPaths): BoolQuery
+    {
+        $allowedPaths = $categorizedPaths[self::ALLOWED_PATHS_KEY];
+        $originalDeclinedPaths = $categorizedPaths[self::DECLINED_PATHS_KEY];
+        $declinedPaths = $this->evaluateDeclinedPaths($workspaceType, $allowedPaths, $originalDeclinedPaths);
 
         if (empty($allowedPaths)) {
             return $this->createNoWorkspaceAllowedQuery();
@@ -151,63 +155,19 @@ final class QueryService implements QueryServiceInterface
 
         $excludedPaths = $this->evaluateExcludedPaths($allowedPaths, $declinedPaths);
         $excludedFullPaths = $this->evaluateExcludedFullPaths($allowedPaths, $declinedPaths);
-        $additionalIncludedPaths = [];
 
         $query = new BoolQuery();
 
+        $this->addQueryByMainPath($query, $allowedPaths);
         $allowedMainPaths = $this->pathService->removeSubPaths($allowedPaths);
 
-        if (count($allowedMainPaths) === 1 && $allowedMainPaths[0] === '/') {
-            $query->addCondition(
-                ConditionType::SHOULD->value,
-                [
-                    'exists' => [
-                        'field' => SystemField::FULL_PATH->getPath(),
-                    ],
-                ]
-            );
-        } else {
-            $query->addCondition(
-                ConditionType::SHOULD->value,
-                [
-                    'terms' => [
-                        SystemField::FULL_PATH->getPath() => $allowedMainPaths,
-                    ],
-                ]
-            );
-        }
-
         if (count($excludedFullPaths) > 0) {
-
-            $query->addCondition(
-                ConditionType::MUST_NOT->value,
-                [
-                    'terms' => [
-                        SystemField::FULL_PATH->getPath() => $this->pathService->removeSubPaths($excludedFullPaths),
-                    ],
-                ]
-            );
+            $this->addQueryToExcludeFullPaths($query, $excludedFullPaths);
         }
 
+        $additionalIncludedPaths = [];
         if (count($excludedPaths) > 0) {
-            $query->addCondition(
-                ConditionType::MUST_NOT->value,
-                [
-                    'terms' => [
-                        SystemField::PATH->getPath('keyword')
-                        => $this->pathService->appendSlashes($excludedPaths),
-                    ],
-                ]
-            );
-
-            $query->addCondition(
-                ConditionType::MUST_NOT->value,
-                [
-                    'terms' => [
-                        SystemField::FULL_PATH->getPath('keyword') => $excludedPaths,
-                    ],
-                ]
-            );
+            $this->addQueryForExcludedPaths($query, $excludedPaths);
 
             /* we need to explicitly include all allowed sub paths
                as all direct children are excluded by the condition above */
@@ -221,24 +181,106 @@ final class QueryService implements QueryServiceInterface
            as otherwise it will not be possible to navigate to the allowed paths in the tree */
         $additionalIncludedPaths = array_merge(
             $additionalIncludedPaths,
-            $this->pathService->getAllParentPaths($allowedMainPaths)
+            $this->pathService->getAllParentPaths($allowedMainPaths),
+            $this->getAllDeclinedParentPaths($originalDeclinedPaths, $allowedPaths)
         );
+        $additionalIncludedPaths = array_unique($additionalIncludedPaths);
 
         if (count($additionalIncludedPaths)) {
-
-            return new BoolQuery([
-                ConditionType::SHOULD->value => [
-                    $query,
-                    [
-                        'terms' => [
-                            SystemField::FULL_PATH->getPath('keyword') => $additionalIncludedPaths,
-                        ],
-                    ],
-                ],
-            ]);
+            return $this->addQueryForAdditionalIncludedPaths($query, $additionalIncludedPaths);
         }
 
         return $query;
+    }
+
+    private function keepDeclinedPathsWithinAllowed(array $declinedPaths, array $allowedPaths): array {
+        foreach ($declinedPaths as $index => $declinedPath) {
+            $isIncluded = false;
+            foreach ($allowedPaths as $allowedPath) {
+                if ($declinedPath === $allowedPath || $this->pathService->isSubPath($declinedPath, $allowedPath)) {
+                    $isIncluded = true;
+                }
+            }
+            if (!$isIncluded) {
+                unset($declinedPaths[$index]);
+            }
+        }
+
+        return $declinedPaths;
+    }
+
+    private function addQueryByMainPath(BoolQuery $query, array $allowedPaths): void
+    {
+        $allowedMainPaths = $this->pathService->removeSubPaths($allowedPaths);
+
+        if (count($allowedMainPaths) === 1 && $allowedMainPaths[0] === '/') {
+            $query->addCondition(
+                ConditionType::SHOULD->value,
+                [
+                    'exists' => [
+                        'field' => SystemField::FULL_PATH->getPath(),
+                    ],
+                ]
+            );
+            return;
+        }
+
+        $query->addCondition(
+            ConditionType::SHOULD->value,
+            [
+                'terms' => [
+                    SystemField::FULL_PATH->getPath() => $allowedMainPaths,
+                ],
+            ]
+        );
+    }
+
+    private function addQueryToExcludeFullPaths(BoolQuery $query, array $excludedFullPaths): void
+    {
+        $query->addCondition(
+            ConditionType::MUST_NOT->value,
+            [
+                'terms' => [
+                    SystemField::FULL_PATH->getPath() => $this->pathService->removeSubPaths($excludedFullPaths),
+                ],
+            ]
+        );
+    }
+
+    private function addQueryForExcludedPaths(BoolQuery $query, array $excludedPaths): void
+    {
+        $query->addCondition(
+            ConditionType::MUST_NOT->value,
+            [
+                'terms' => [
+                    SystemField::PATH->getPath('keyword')
+                    => $this->pathService->appendSlashes($excludedPaths),
+                ],
+            ]
+        );
+
+        $query->addCondition(
+            ConditionType::MUST_NOT->value,
+            [
+                'terms' => [
+                    SystemField::FULL_PATH->getPath('keyword') => $excludedPaths,
+                ],
+            ]
+        );
+    }
+
+    private function addQueryForAdditionalIncludedPaths(BoolQuery $query, array $additionalIncludedPaths): BoolQuery
+    {
+        return new BoolQuery([
+            ConditionType::SHOULD->value => [
+                $query,
+                [
+                    'terms' => [
+                        SystemField::FULL_PATH->getPath('keyword') => $additionalIncludedPaths,
+                    ],
+                ],
+            ],
+        ]);
     }
 
     /**
@@ -296,6 +338,9 @@ final class QueryService implements QueryServiceInterface
             $result = $this->searchIndexService->search($search, $indexName);
             $buckets = $result->getAggregation('paths')?->getBuckets() ?? [];
             foreach ($buckets as $bucket) {
+                if ($bucket->getKey() === '/') {
+                    continue;
+                }
                 $declinedPaths[] = rtrim($bucket->getKey(), '/');
             }
         }
@@ -357,5 +402,29 @@ final class QueryService implements QueryServiceInterface
                 ],
             ],
         ]);
+    }
+
+    private function getAllDeclinedParentPaths(array $declinedPaths, array $allowedPaths): array
+    {
+        if (empty($declinedPaths)) {
+            return [];
+        }
+
+        $allowedParentPaths = $this->pathService->getAllParentPaths($allowedPaths,  false);
+        $declinedParentPaths = [];
+        foreach ($allowedParentPaths as $allowedParentPath) {
+            foreach ($declinedPaths as $declinedPath) {
+                if ($allowedParentPath === $declinedPath ||
+                    $this->pathService->isSubPath($allowedParentPath, $declinedPath)
+                ) {
+                    $declinedParentPaths[] = $allowedParentPath;
+                }
+            }
+        }
+
+        $declinedParentPaths = array_unique($declinedParentPaths);
+        sort($declinedParentPaths);
+
+        return $declinedParentPaths;
     }
 }

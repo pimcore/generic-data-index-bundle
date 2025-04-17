@@ -212,6 +212,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         $this->assertAssetSearchResultFolders([
             '/',
             '/test-asset-folder-1',
+            '/test-asset-folder-1/sub-folder-1',
             '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
             '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
             '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2',
@@ -226,6 +227,8 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         $this->assertAssetSearchResultFolders([
             '/',
             '/test-asset-folder-1',
+            '/test-asset-folder-1/sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
             '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
         ], $user);
 
@@ -238,6 +241,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         $this->assertAssetSearchResultFolders([
             '/',
             '/test-asset-folder-1',
+            '/test-asset-folder-1/sub-folder-1',
             '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
             '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2',
             '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-3',
@@ -253,8 +257,40 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         ]);
         $this->assertAssetSearchResultFolders([
             '/',
+            '/test-asset-folder-1',
             '/test-asset-folder-1/sub-folder-1',
         ], $user);
+
+        $user = $this->createUserWithAssetWorkspaces([
+            '/test-asset-folder-1' => true,
+            '/test-asset-folder-1/sub-folder-1' => false,
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1' => false,
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1' => true,
+        ]);
+        $this->assertAssetSearchResultFolders([
+            '/',
+            '/test-asset-folder-1',
+            '/test-asset-folder-1/sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1'
+        ], $user);
+
+        $user = $this->createUserWithAssetWorkspaces([
+            '/' => false,
+            '/test-asset-folder-1' => false,
+            '/test-asset-folder-1/sub-folder-1' => true,
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1' => false,
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1' => true,
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2' => false,
+        ]);
+        $this->assertAssetSearchResultFolders([
+            '/',
+            '/test-asset-folder-1',
+            '/test-asset-folder-1/sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1'
+        ], $user);
+
         $user = $this->createUserWithAssetWorkspaces([
             '/' => true,
             '/test-asset-folder-1' => false,
@@ -265,11 +301,23 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         ]);
         $this->assertAssetSearchResultFolders([
             '/',
+            '/test-asset-folder-1',
+            '/test-asset-folder-1/sub-folder-1',
             '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
             '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
             '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-3',
         ], $user);
 
+        $user = $this->createUserWithAssetWorkspaces([
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2' => true,
+        ]);
+        $this->assertAssetSearchResultFolders([
+            '/',
+            '/test-asset-folder-1',
+            '/test-asset-folder-1/sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2',
+        ], $user);
     }
 
     public function testHandleElementWorkspacesQuery(): void

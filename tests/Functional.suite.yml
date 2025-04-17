@@ -3,6 +3,7 @@ modules:
     enabled:
         - \Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper\Index
         - \Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper\GenericDataIndex
+        - \Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper\Service
         - \Pimcore\Tests\Support\Helper\DataType\TestDataHelper
         - \Pimcore\Tests\Support\Helper\ClassManager
         - \Pimcore\Tests\Support\Helper\Pimcore:

@@ -33,5 +33,5 @@ interface PathServiceInterface
 
     public function appendSlashes(array $paths): array;
 
-    public function getAllParentPaths(array $paths): array;
+    public function getAllParentPaths(array $paths, bool $removeSubPaths = true): array;
 }
