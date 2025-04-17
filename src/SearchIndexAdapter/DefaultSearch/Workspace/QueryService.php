@@ -42,9 +42,9 @@ final class QueryService implements QueryServiceInterface
 {
     use LoggerAwareTrait;
 
-    private const string ALLOWED_PATHS_KEY = 'allowedPaths';
+    private const ALLOWED_PATHS_KEY = 'allowedPaths';
 
-    private const string DECLINED_PATHS_KEY = 'declinedPaths';
+    private const DECLINED_PATHS_KEY = 'declinedPaths';
 
     public function __construct(
         private readonly PermissionServiceInterface $permissionService,
