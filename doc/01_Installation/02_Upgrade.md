@@ -5,8 +5,12 @@ Following steps are necessary during updating to newer versions.
 ## Upgrade to 2.0.0
 - [Indexing] Added inherited fields indicator to data object indexing
 - [Indexing] Added functionality to enqueue dependent items
+- [Indexing] Added class ID field for data object elements
+- [Searching] Added new `ClassIdsFilter` modifier to search for data object elements by class ID or class name
 - Added a new method `isElementLocked()` to the `ElementLockService`, which provides functionality to retrieve element locked status based on the index data
-
+- Execute the following command to reindex all elements to be able to use all new features:
+  ```bin/console generic-data-index:update:index```
+  
 ### BC-Breaks
 - Removed deprecated alias `generic-data-index.opensearch-client` and replaced it with `generic-data-index.search-client`
 - Removed all deprecated classes from OpenSearch namespaces and replaced them with DefaultSearch namespace instead.
@@ -40,12 +44,6 @@ Following steps are necessary during updating to newer versions.
   - `ElementSearchServiceInterface::search`  now requires a `ElementSearchInterface`
 - `SearchProviderInterface` now returns type specific search interfaces
 
-## Upgrade to 1.4.0
-- [Indexing] Added class ID field for data object elements
-- [Searching] Added new `ClassIdsFilter` modifier to search for data object elements by class ID or class name
-- Execute the following command to reindex all elements to be able to use all new features:
-
-  ```bin/console generic-data-index:update:index```
 
 ## Upgrade to 1.3.0
 - [Indexing] Added support for Elasticsearch in parallel to Opensearch. Opensearch remains the default search technology. If you are using Elasticsearch, you need to update your symfony configuration as follows:
