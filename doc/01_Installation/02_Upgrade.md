@@ -9,7 +9,7 @@ Following steps are necessary during updating to newer versions.
 - [Searching] Added new `ClassIdsFilter` modifier to search for data object elements by class ID or class name
 - Added a new method `isElementLocked()` to the `ElementLockService`, which provides functionality to retrieve element locked status based on the index data
 - Execute the following command to reindex all elements to be able to use all new features:
-  ```bin/console generic-data-index:update:index```
+  ```bin/console generic-data-index:update:index -r```
   
 ### BC-Breaks
 - Removed deprecated alias `generic-data-index.opensearch-client` and replaced it with `generic-data-index.search-client`
