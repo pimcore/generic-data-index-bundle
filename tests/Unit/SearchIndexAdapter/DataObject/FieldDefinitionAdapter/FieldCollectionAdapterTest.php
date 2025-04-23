@@ -51,9 +51,6 @@ class FieldCollectionAdapterTest extends Unit
             [
                 'type' => AttributeType::NESTED,
                 'properties' => [
-                    'my-type' => [
-                        'type' => AttributeType::NESTED,
-                    ],
                 ],
             ],
             $mapping
