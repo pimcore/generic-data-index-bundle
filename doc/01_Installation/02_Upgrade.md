@@ -6,6 +6,7 @@ Following steps are necessary during updating to newer versions.
 - [Indexing] Added inherited fields indicator to data object indexing
 - [Indexing] Added functionality to enqueue dependent items
 - [Indexing] Added class ID field for data object elements
+- [Indexing] Added prefix for index names of data objects, these names changed from e.g. `pimcore_car` to `pimcore_data-object_car`. Old indexes are **not deleted** automatically. You need to delete them manually if necessary.
 - [Searching] Added new `ClassIdsFilter` modifier to search for data object elements by class ID or class name
 - Added a new method `isElementLocked()` to the `ElementLockService`, which provides functionality to retrieve element locked status based on the index data
 - Execute the following command to reindex all elements to be able to use all new features:
