@@ -66,7 +66,7 @@ final class DataObjectNormalizer implements NormalizerInterface
         return [];
     }
 
-    public function supportsNormalization(mixed $data, ?string $format = null): bool
+    public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool
     {
         return $data instanceof AbstractObject;
     }
