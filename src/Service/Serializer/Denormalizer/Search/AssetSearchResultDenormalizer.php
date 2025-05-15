@@ -84,8 +84,7 @@ final readonly class AssetSearchResultDenormalizer implements DenormalizerInterf
         string $type,
         ?string $format = null,
         array $context = []
-    ): bool
-    {
+    ): bool {
         return is_array($data) && is_subclass_of($type, AssetSearchResultItem::class);
     }
 
