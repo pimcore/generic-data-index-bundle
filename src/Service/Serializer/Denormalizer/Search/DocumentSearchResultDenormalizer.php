@@ -19,7 +19,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\Doc
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandlerService;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
-readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
+/**
+ * @internal
+ */
+final readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
 {
     public function __construct(
         private DocumentTypeSerializationHandlerService $documentTypeSerializationHandlerService
@@ -70,8 +73,19 @@ readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
             ->setHasWorkflowWithPermissions(SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data));
     }
 
-    public function supportsDenormalization(mixed $data, string $type, ?string $format = null): bool
-    {
+    public function supportsDenormalization(
+        mixed $data,
+        string $type,
+        ?string $format = null,
+        array $context = []
+    ): bool {
         return is_array($data) && is_subclass_of($type, DocumentSearchResultItem::class);
+    }
+
+    public function getSupportedTypes(?string $format): array
+    {
+        return [
+            '*' => false,
+        ];
     }
 }

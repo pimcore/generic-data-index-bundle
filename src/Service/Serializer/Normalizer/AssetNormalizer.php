@@ -60,9 +60,16 @@ final class AssetNormalizer implements NormalizerInterface
         return [];
     }
 
-    public function supportsNormalization(mixed $data, ?string $format = null): bool
+    public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool
     {
         return $data instanceof Asset;
+    }
+
+    public function getSupportedTypes(?string $format): array
+    {
+        return [
+            '*' => false,
+        ];
     }
 
     private function normalizeFolder(Asset\Folder $folder, bool $skipLazyLoadedFields): array

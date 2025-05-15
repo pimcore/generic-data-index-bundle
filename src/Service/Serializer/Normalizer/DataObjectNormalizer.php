@@ -66,9 +66,16 @@ final class DataObjectNormalizer implements NormalizerInterface
         return [];
     }
 
-    public function supportsNormalization(mixed $data, ?string $format = null): bool
+    public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool
     {
         return $data instanceof AbstractObject;
+    }
+
+    public function getSupportedTypes(?string $format): array
+    {
+        return [
+            '*' => false,
+        ];
     }
 
     private function normalizeFolder(Folder $folder, bool $skipLazyLoadedFields): array
