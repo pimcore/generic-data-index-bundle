@@ -76,9 +76,21 @@ readonly class AssetSearchResultDenormalizer implements DenormalizerInterface
 
     }
 
-    public function supportsDenormalization(mixed $data, string $type, ?string $format = null): bool
+    public function supportsDenormalization(
+        mixed $data,
+        string $type,
+        ?string $format = null,
+        array $context = []
+    ): bool
     {
         return is_array($data) && is_subclass_of($type, AssetSearchResultItem::class);
+    }
+
+    public function getSupportedTypes(?string $format): array
+    {
+        return [
+            '*' => false,
+        ];
     }
 
     /**
