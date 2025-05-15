@@ -24,8 +24,7 @@
     "pimcore/opensearch-client": "^2.0",
     "pimcore/elasticsearch-client": "^2.0",
     "doctrine/orm": "^3.0",
-    "symfony/scheduler": "^6.4",
-    "symfony/messenger": "^6.4"
+    "symfony/scheduler": "^6.4"
   },
   "require-dev": {
     "roave/security-advisories": "dev-latest",
