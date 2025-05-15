@@ -19,7 +19,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultA
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultHit;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
-class SearchResultDenormalizer implements DenormalizerInterface
+/**
+ * @internal
+ */
+final class SearchResultDenormalizer implements DenormalizerInterface
 {
     /**
      * @param array $data
@@ -38,9 +41,20 @@ class SearchResultDenormalizer implements DenormalizerInterface
         );
     }
 
-    public function supportsDenormalization(mixed $data, string $type, ?string $format = null): bool
-    {
+    public function supportsDenormalization(
+        mixed $data,
+        string $type,
+        ?string $format = null,
+        array $context = []
+    ): bool {
         return is_array($data) && is_subclass_of($type, SearchResult::class);
+    }
+
+    public function getSupportedTypes(?string $format): array
+    {
+        return [
+            '*' => false,
+        ];
     }
 
     /**

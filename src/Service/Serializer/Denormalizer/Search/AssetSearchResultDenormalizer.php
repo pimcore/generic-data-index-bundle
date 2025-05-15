@@ -22,7 +22,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProper
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandlerService;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
-readonly class AssetSearchResultDenormalizer implements DenormalizerInterface
+/**
+ * @internal
+ */
+final readonly class AssetSearchResultDenormalizer implements DenormalizerInterface
 {
     public function __construct(
         private AssetTypeSerializationHandlerService $assetTypeSerializationHandlerService
@@ -76,9 +79,20 @@ readonly class AssetSearchResultDenormalizer implements DenormalizerInterface
 
     }
 
-    public function supportsDenormalization(mixed $data, string $type, ?string $format = null): bool
-    {
+    public function supportsDenormalization(
+        mixed $data,
+        string $type,
+        ?string $format = null,
+        array $context = []
+    ): bool {
         return is_array($data) && is_subclass_of($type, AssetSearchResultItem::class);
+    }
+
+    public function getSupportedTypes(?string $format): array
+    {
+        return [
+            '*' => false,
+        ];
     }
 
     /**
