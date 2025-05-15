@@ -19,7 +19,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultA
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResultHit;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
-class SearchResultDenormalizer implements DenormalizerInterface
+/**
+ * @internal
+ */
+final class SearchResultDenormalizer implements DenormalizerInterface
 {
     /**
      * @param array $data

@@ -21,7 +21,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\S
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DataObjectTypeSerializationHandlerService;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
-readonly class DataObjectSearchResultDenormalizer implements DenormalizerInterface
+/**
+ * @internal
+ */
+final readonly class DataObjectSearchResultDenormalizer implements DenormalizerInterface
 {
     public function __construct(
         private DataObjectTypeSerializationHandlerService $typeHandlerService
