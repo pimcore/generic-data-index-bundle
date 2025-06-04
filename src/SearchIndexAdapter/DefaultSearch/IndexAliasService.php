@@ -52,9 +52,6 @@ final class IndexAliasService implements IndexAliasServiceInterface
         return $this->client->existsIndexAlias([
             'name' => $aliasName,
             'index' => $indexName,
-            'client' => [
-                'ignore' => [404],
-            ],
         ]);
     }
 

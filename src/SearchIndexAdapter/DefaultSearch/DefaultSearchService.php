@@ -169,9 +169,6 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     {
         return $this->client->existsIndex([
             'index' => $indexName,
-            'client' => [
-                'ignore' => [404],
-            ],
         ]);
     }
 
