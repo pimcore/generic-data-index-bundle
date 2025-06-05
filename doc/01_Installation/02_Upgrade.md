@@ -2,6 +2,12 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 2.1.0
+- Added support for Symfony 7
+- [Indexing] Added sort index for documents
+- Execute the following command to reindex all elements to be able to use all new features:
+  ```bin/console generic-data-index:update:index -r```
+
 ## Upgrade to 2.0.0
 - [Indexing] Added inherited fields indicator to data object indexing
 - [Indexing] Added functionality to enqueue dependent items

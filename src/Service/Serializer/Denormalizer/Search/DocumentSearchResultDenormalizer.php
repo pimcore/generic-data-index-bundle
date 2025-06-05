@@ -54,6 +54,7 @@ final readonly class DocumentSearchResultDenormalizer implements DenormalizerInt
             ->setParentId(SystemField::PARENT_ID->getData($data))
             ->setType(SystemField::TYPE->getData($data))
             ->setKey(SystemField::KEY->getData($data))
+            ->setIndex(SystemField::INDEX->getData($data))
             ->setPath(SystemField::PATH->getData($data))
             ->setPublished(SystemField::PUBLISHED->getData($data))
             ->setFullPath(SystemField::FULL_PATH->getData($data))

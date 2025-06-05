@@ -98,6 +98,8 @@ pimcore_generic_data_index:
       document:
         published:
           type: boolean
+        index:
+          type: integer
         controller:
           type: keyword
         template:

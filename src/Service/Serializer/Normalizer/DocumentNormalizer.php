@@ -97,6 +97,7 @@ final class DocumentNormalizer implements NormalizerInterface
             SystemField::PUBLISHED->value => $document->isPublished(),
             SystemField::TYPE->value => $document->getType(),
             SystemField::KEY->value => $document->getKey(),
+            SystemField::INDEX->value => $document->getIndex(),
             SystemField::PATH->value => $document->getPath(),
             SystemField::FULL_PATH->value => $document->getRealFullPath(),
             SystemField::USER_OWNER->value => $document->getUserOwner(),
