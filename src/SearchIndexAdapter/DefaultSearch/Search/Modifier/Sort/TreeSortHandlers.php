@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchMod
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Sort\FieldSort;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Sort\FieldSortList;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\OrderByPageNumber;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByIndexField;
@@ -97,7 +98,9 @@ final class TreeSortHandlers
         OrderByIndexField $indexSort,
         SearchModifierContextInterface $context
     ): void {
-        if (!$context->getOriginalSearch() instanceof DataObjectSearch) {
+        if (!$context->getOriginalSearch() instanceof DataObjectSearch &&
+            !$context->getOriginalSearch() instanceof DocumentSearch
+        ) {
             return;
         }
 
