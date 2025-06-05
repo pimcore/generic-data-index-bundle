@@ -28,6 +28,8 @@ class DocumentSearchResultItem implements ElementSearchResultItemInterface
 
     private string $key;
 
+    private int $index;
+
     private bool $published;
 
     private string $path;
@@ -105,6 +107,18 @@ class DocumentSearchResultItem implements ElementSearchResultItemInterface
     public function setKey(string $key): DocumentSearchResultItem
     {
         $this->key = $key;
+
+        return $this;
+    }
+
+    public function getIndex(): int
+    {
+        return $this->index;
+    }
+
+    public function setIndex(int $index): DocumentSearchResultItem
+    {
+        $this->index = $index;
 
         return $this;
     }
