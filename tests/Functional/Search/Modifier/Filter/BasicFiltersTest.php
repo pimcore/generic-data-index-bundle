@@ -150,10 +150,11 @@ class BasicFiltersTest extends \Codeception\Test\Unit
     public function testBooleanFilter()
     {
         $objects = TestHelper::createEmptyObjects(count: 3);
-        $objects[0]->setPublished(true)->save();
+        $objects[1]->setPublished(false)->save();
+        $objects[2]->setPublished(false)->save();
 
         /** @var DataObjectSearchServiceInterface $searchService */
-        $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
+        $searchService = $this->tester->grabService(DataObjectSearchServiceInterface::class);
         /** @var SearchProviderInterface $searchProvider */
         $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
 
