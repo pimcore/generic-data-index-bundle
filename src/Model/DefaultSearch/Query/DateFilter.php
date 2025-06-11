@@ -66,10 +66,10 @@ final readonly class DateFilter implements QueryInterface
         }
 
         foreach ($params as $key => $value) {
-            if (!is_int($value)) {
+            if (!is_int($value) && (!$value instanceof Carbon)) {
                 throw new InvalidArgumentException(
                     sprintf(
-                        'Invalid value for parameter %s, expected integer, got %s',
+                        'Invalid value for parameter %s, expected integer or instanceof of Carbon, got %s',
                         $key,
                         gettype($value)
                     )
