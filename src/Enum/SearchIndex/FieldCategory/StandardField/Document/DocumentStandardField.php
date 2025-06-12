@@ -17,4 +17,5 @@ enum DocumentStandardField: string
 {
     case NAVIGATION_TITLE = 'navigation_title';
     case NAVIGATION_NAME = 'navigation_name';
+    case NAVIGATION_EXCLUDE = 'navigation_exclude';
 }

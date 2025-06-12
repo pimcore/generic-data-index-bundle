@@ -130,6 +130,7 @@ final class DocumentNormalizer implements NormalizerInterface
         $fieldNames = [
             DocumentStandardField::NAVIGATION_TITLE->value,
             DocumentStandardField::NAVIGATION_NAME->value,
+            DocumentStandardField::NAVIGATION_EXCLUDE->value,
         ];
         $properties = $document->getProperties();
         foreach ($fieldNames as $fieldName) {
