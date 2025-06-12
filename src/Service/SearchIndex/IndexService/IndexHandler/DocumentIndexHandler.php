@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\StandardField\Document\DocumentStandardField;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Document\ExtractMappingEvent;
@@ -77,6 +78,9 @@ final class DocumentIndexHandler extends AbstractIndexHandler
             'properties' => [
                 DocumentStandardField::NAVIGATION_NAME->value => $keywordMapping,
                 DocumentStandardField::NAVIGATION_TITLE->value => $keywordMapping,
+                DocumentStandardField::NAVIGATION_EXCLUDE->value => [
+                    'type' => AttributeType::BOOLEAN->value,
+                ],
             ],
         ];
     }
