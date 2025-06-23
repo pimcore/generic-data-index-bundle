@@ -2,16 +2,13 @@
 declare(strict_types=1);
 
 /**
- * Pimcore
- *
- * This source file is available under two different licenses:
- * - GNU General Public License version 3 (GPLv3)
- * - Pimcore Commercial License (PCL)
+ * This source file is available under the terms of the
+ * Pimcore Open Core License (POCL)
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (https://www.pimcore.com)
+ *  @license    Pimcore Open Core License (POCL)
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search;
@@ -22,7 +19,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\Doc
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandlerService;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
-readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
+/**
+ * @internal
+ */
+final readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
 {
     public function __construct(
         private DocumentTypeSerializationHandlerService $documentTypeSerializationHandlerService
@@ -54,6 +54,7 @@ readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
             ->setParentId(SystemField::PARENT_ID->getData($data))
             ->setType(SystemField::TYPE->getData($data))
             ->setKey(SystemField::KEY->getData($data))
+            ->setIndex(SystemField::INDEX->getData($data))
             ->setPath(SystemField::PATH->getData($data))
             ->setPublished(SystemField::PUBLISHED->getData($data))
             ->setFullPath(SystemField::FULL_PATH->getData($data))
@@ -73,8 +74,19 @@ readonly class DocumentSearchResultDenormalizer implements DenormalizerInterface
             ->setHasWorkflowWithPermissions(SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data));
     }
 
-    public function supportsDenormalization(mixed $data, string $type, ?string $format = null): bool
-    {
+    public function supportsDenormalization(
+        mixed $data,
+        string $type,
+        ?string $format = null,
+        array $context = []
+    ): bool {
         return is_array($data) && is_subclass_of($type, DocumentSearchResultItem::class);
+    }
+
+    public function getSupportedTypes(?string $format): array
+    {
+        return [
+            '*' => false,
+        ];
     }
 }

@@ -1,6 +1,6 @@
 {
   "name": "pimcore/generic-data-index-bundle",
-  "license": "GPL-3.0-or-later",
+  "license": "proprietary",
   "type": "pimcore-bundle",
   "description": "Pimcore Generic data index Bundle",
   "config": {
@@ -21,11 +21,10 @@
     "nesbot/carbon": "^3.8.4",
     "pimcore/pimcore": "^12.0",
     "pimcore/static-resolver-bundle": "^3.0",
-    "pimcore/opensearch-client": "^1.1",
-    "pimcore/elasticsearch-client": "^1.1",
+    "pimcore/opensearch-client": "^2.0",
+    "pimcore/elasticsearch-client": "^2.0",
     "doctrine/orm": "^3.0",
-    "symfony/scheduler": "^6.4",
-    "symfony/messenger": "^6.4"
+    "symfony/scheduler": "^6.4 || ^7.2"
   },
   "require-dev": {
     "roave/security-advisories": "dev-latest",

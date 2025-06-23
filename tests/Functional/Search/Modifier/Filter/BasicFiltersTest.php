@@ -1,25 +1,24 @@
 <?php
 
 /**
- * Pimcore
- *
- * This source file is available under two different licenses:
- * - GNU General Public License version 3 (GPLv3)
- * - Pimcore Commercial License (PCL)
+ * This source file is available under the terms of the
+ * Pimcore Open Core License (POCL)
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (https://www.pimcore.com)
+ *  @license    Pimcore Open Core License (POCL)
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\Filter;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\BooleanFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\ExcludeFoldersFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IntegerFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Tests\Support\Util\TestHelper;
 
@@ -146,5 +145,32 @@ class BasicFiltersTest extends \Codeception\Test\Unit
         $searchResult = $searchService->search($assetSearch);
         $this->assertCount(1, $searchResult->getItems());
         $this->assertEquals($asset->getId(), $searchResult->getItems()[0]->getId());
+    }
+
+    public function testBooleanFilter()
+    {
+        $objects = TestHelper::createEmptyObjects(count: 3);
+        $objects[1]->setPublished(false)->save();
+        $objects[2]->setPublished(false)->save();
+
+        /** @var DataObjectSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService(DataObjectSearchServiceInterface::class);
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $search = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new BooleanFilter('system_fields.published', true))
+        ;
+        $searchResult = $searchService->search($search);
+        $this->assertCount(1, $searchResult->getItems());
+        $this->assertEquals($objects[0]->getId(), $searchResult->getItems()[0]->getId());
+
+        $search = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new BooleanFilter('system_fields.published', false))
+        ;
+        $searchResult = $searchService->search($search);
+        $this->assertCount(2, $searchResult->getItems());
     }
 }

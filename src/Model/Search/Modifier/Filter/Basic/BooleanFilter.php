@@ -15,6 +15,27 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Bas
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 
-final class ExcludeFoldersFilter implements SearchModifierInterface
+final readonly class BooleanFilter implements SearchModifierInterface
 {
+    public function __construct(
+        private string $fieldName,
+        private bool $searchTerm,
+        private bool $enablePqlFieldNameResolution = true,
+    ) {
+    }
+
+    public function getFieldName(): string
+    {
+        return $this->fieldName;
+    }
+
+    public function getSearchTerm(): bool
+    {
+        return $this->searchTerm;
+    }
+
+    public function isPqlFieldNameResolutionEnabled(): bool
+    {
+        return $this->enablePqlFieldNameResolution;
+    }
 }

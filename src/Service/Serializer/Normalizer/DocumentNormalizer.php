@@ -2,16 +2,13 @@
 declare(strict_types=1);
 
 /**
- * Pimcore
- *
- * This source file is available under two different licenses:
- * - GNU General Public License version 3 (GPLv3)
- * - Pimcore Commercial License (PCL)
+ * This source file is available under the terms of the
+ * Pimcore Open Core License (POCL)
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (https://www.pimcore.com)
+ *  @license    Pimcore Open Core License (POCL)
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer;
@@ -59,9 +56,16 @@ final class DocumentNormalizer implements NormalizerInterface
         return [];
     }
 
-    public function supportsNormalization(mixed $data, ?string $format = null): bool
+    public function supportsNormalization(mixed $data, ?string $format = null, array $context = []): bool
     {
         return $data instanceof Document;
+    }
+
+    public function getSupportedTypes(?string $format): array
+    {
+        return [
+            '*' => false,
+        ];
     }
 
     private function normalizeFolder(Document\Folder $folder, bool $skipLazyLoadedFields): array
@@ -93,6 +97,7 @@ final class DocumentNormalizer implements NormalizerInterface
             SystemField::PUBLISHED->value => $document->isPublished(),
             SystemField::TYPE->value => $document->getType(),
             SystemField::KEY->value => $document->getKey(),
+            SystemField::INDEX->value => $document->getIndex(),
             SystemField::PATH->value => $document->getPath(),
             SystemField::FULL_PATH->value => $document->getRealFullPath(),
             SystemField::USER_OWNER->value => $document->getUserOwner(),
@@ -125,6 +130,7 @@ final class DocumentNormalizer implements NormalizerInterface
         $fieldNames = [
             DocumentStandardField::NAVIGATION_TITLE->value,
             DocumentStandardField::NAVIGATION_NAME->value,
+            DocumentStandardField::NAVIGATION_EXCLUDE->value,
         ];
         $properties = $document->getProperties();
         foreach ($fieldNames as $fieldName) {

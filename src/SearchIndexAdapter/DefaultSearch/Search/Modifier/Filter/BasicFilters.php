@@ -2,16 +2,13 @@
 declare(strict_types=1);
 
 /**
- * Pimcore
- *
- * This source file is available under two different licenses:
- * - GNU General Public License version 3 (GPLv3)
- * - Pimcore Commercial License (PCL)
+ * This source file is available under the terms of the
+ * Pimcore Open Core License (POCL)
  * Full copyright and license information is available in
  * LICENSE.md which is distributed with this source code.
  *
- *  @copyright  Copyright (c) Pimcore GmbH (http://www.pimcore.org)
- *  @license    http://www.pimcore.org/license     GPLv3 and PCL
+ *  @copyright  Copyright (c) Pimcore GmbH (https://www.pimcore.com)
+ *  @license    Pimcore Open Core License (POCL)
  */
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\Filter;
@@ -22,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchMod
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\BoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\BooleanFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\ExcludeFoldersFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdsFilter;
@@ -50,10 +48,10 @@ final readonly class BasicFilters
     }
 
     #[AsSearchModifierHandler]
-    public function handleIntegerFilter(IntegerFilter $idFilter, SearchModifierContextInterface $context): void
+    public function handleIntegerFilter(IntegerFilter $integerFilter, SearchModifierContextInterface $context): void
     {
-        $fieldName = $idFilter->getFieldName();
-        if ($idFilter->isPqlFieldNameResolutionEnabled()) {
+        $fieldName = $integerFilter->getFieldName();
+        if ($integerFilter->isPqlFieldNameResolutionEnabled()) {
             $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch(
                 $context->getOriginalSearch(),
                 $fieldName
@@ -63,7 +61,26 @@ final readonly class BasicFilters
         $context->getSearch()->addQuery(
             new TermFilter(
                 field: $fieldName,
-                term: $idFilter->getSearchTerm(),
+                term: $integerFilter->getSearchTerm(),
+            )
+        );
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleBooleanFilter(BooleanFilter $booleanFilter, SearchModifierContextInterface $context): void
+    {
+        $fieldName = $booleanFilter->getFieldName();
+        if ($booleanFilter->isPqlFieldNameResolutionEnabled()) {
+            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch(
+                $context->getOriginalSearch(),
+                $fieldName
+            );
+        }
+
+        $context->getSearch()->addQuery(
+            new TermFilter(
+                field: $fieldName,
+                term: $booleanFilter->getSearchTerm(),
             )
         );
     }
