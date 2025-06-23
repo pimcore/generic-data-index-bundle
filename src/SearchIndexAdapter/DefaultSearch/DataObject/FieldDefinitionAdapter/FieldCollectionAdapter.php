@@ -46,19 +46,19 @@ final class FieldCollectionAdapter extends AbstractAdapter
             if (!$fieldCollectionDefinition) {
                 continue;
             }
+            $mapping[$allowedType] = [
+                'type' => AttributeType::NESTED,
+                'properties' => [],
+            ];
             foreach ($fieldCollectionDefinition->getFieldDefinitions() as $fieldDefinition) {
                 $fieldDefinitionAdapter = $this->getFieldDefinitionService()
                     ->getFieldDefinitionAdapter($fieldDefinition);
                 if ($fieldDefinitionAdapter) {
-                    $mapping[$fieldDefinition->getName()] = $fieldDefinitionAdapter->getIndexMapping();
+                    $mapping[$allowedType]['properties'][$fieldDefinition->getName()] =
+                        $fieldDefinitionAdapter->getIndexMapping();
                 }
             }
         }
-
-        // Add type mapping
-        $mapping['type'] = [
-            'type' => AttributeType::TEXT,
-        ];
 
         return [
                 'type' => AttributeType::NESTED,
@@ -77,19 +77,20 @@ final class FieldCollectionAdapter extends AbstractAdapter
 
         foreach ($items as $item) {
             $type = $item->getType();
-            $fieldCollectionDefinition = $this->fieldCollectionDefinition->getByKey($item->getType());
+            $fieldCollectionDefinition = $this->fieldCollectionDefinition->getByKey($type);
             if (!$fieldCollectionDefinition) {
                 continue;
             }
-            $resultItem = ['type' => $type];
+            $resultItem = [];
 
             foreach ($fieldCollectionDefinition->getFieldDefinitions() as $fieldDefinition) {
                 $getter = 'get' . ucfirst($fieldDefinition->getName());
                 $value = $item->$getter();
-                $resultItem[$fieldDefinition->getName()] = $this->fieldDefinitionService->normalizeValue(
-                    $fieldDefinition,
-                    $value
-                );
+                $resultItem[$type][$fieldDefinition->getName()] =
+                    $this->fieldDefinitionService->normalizeValue(
+                        $fieldDefinition,
+                        $value
+                    );
             }
 
             $resultItems[] = $resultItem;

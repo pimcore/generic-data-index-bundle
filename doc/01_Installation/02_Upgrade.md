@@ -5,6 +5,7 @@ Following steps are necessary during updating to newer versions.
 ## Upgrade to 2.1.0
 - Added support for Symfony 7
 - [Indexing] Added sort index for documents
+- [Indexing] Improved indexing of field collections to prevent mapping conflicts when properties have the same name but different types
 - Execute the following command to reindex all elements to be able to use all new features:
   ```bin/console generic-data-index:update:index -r```
 

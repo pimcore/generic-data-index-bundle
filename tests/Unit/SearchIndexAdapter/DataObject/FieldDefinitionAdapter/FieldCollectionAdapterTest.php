@@ -44,14 +44,13 @@ class FieldCollectionAdapterTest extends Unit
         $adapter->setFieldCollectionDefinition($definitionResolverMock);
         $mapping = $adapter->getIndexMapping();
 
-        $this->assertSame([
+        $this->assertSame(
+            [
                 'type' => AttributeType::NESTED,
                 'properties' => [
-                    'type' => [
-                        'type' => AttributeType::TEXT,
-                    ],
                 ],
-            ], $mapping
+            ],
+            $mapping
         );
 
     }
