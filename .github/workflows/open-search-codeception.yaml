@@ -47,7 +47,7 @@ jobs:
                     MYSQL_ALLOW_EMPTY_PASSWORD: yes
 
             opensearch:
-                image: opensearchproject/opensearch:latest
+                image: opensearchproject/opensearch:2
                 ports:
                     - 39200:9200
                 env:
