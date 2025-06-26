@@ -2,7 +2,7 @@
 
 :::info
 
-This bundle requires minimum version of OpenSearch 2.7.
+Supported versions of OpenSearch are 2.7. to 2.19
 
 :::
 
