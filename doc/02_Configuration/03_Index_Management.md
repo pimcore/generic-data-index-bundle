@@ -107,7 +107,14 @@ php bin/console messenger:failed:retry -vv
 
 For the further commands please refer to the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html#saving-retrying-failed-messages).
 
-## Configuring the Maximum Item Limit
+## Configuring index options (Maximum Item Limit, ...)
+
+You can configure different options to use with your indices. The available options can differ depending on which 
+engine you are using. Make sure to check the corresponding documentation, before using any options.
+
+See the `Maxium Item Limit` and `Total fields limit` section for examples.
+
+### Maximum Item limit
 
 A maximum of 10000 items can be retrieved and viewed, because of the maximum default item limit.
 To increase this limit, configuration can be adjusted as follows:
@@ -119,11 +126,27 @@ pimcore_generic_data_index:
             max_result_window: 20000
 ```
 
+### Total fields limit
+
+A maximum of 1000 fields can be used with your indces. 
+To increase this limit, configuration can be adjusted as follows:
+
+```yaml
+pimcore_generic_data_index:
+    index_service:
+        index_settings:
+            mapping.total_fields.limit: 20000
+```
+
+:::info
+
 If an index was already created before setting this parameter, the index needs to be recreated.
 
 ```
 bin/console generic-data-index:update:index -r
 ```
+
+:::
 
 ## Deployment and Index Management
 
