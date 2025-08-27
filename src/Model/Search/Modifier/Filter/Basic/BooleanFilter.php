@@ -19,7 +19,7 @@ final readonly class BooleanFilter implements SearchModifierInterface
 {
     public function __construct(
         private string $fieldName,
-        private bool $searchTerm,
+        private null|bool $searchTerm,
         private bool $enablePqlFieldNameResolution = true,
     ) {
     }
@@ -29,7 +29,7 @@ final readonly class BooleanFilter implements SearchModifierInterface
         return $this->fieldName;
     }
 
-    public function getSearchTerm(): bool
+    public function getSearchTerm(): null|bool
     {
         return $this->searchTerm;
     }

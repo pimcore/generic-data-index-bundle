@@ -149,9 +149,11 @@ class BasicFiltersTest extends \Codeception\Test\Unit
 
     public function testBooleanFilter()
     {
-        $objects = TestHelper::createEmptyObjects(count: 3);
+        $objects = TestHelper::createEmptyObjects(count: 4);
         $objects[1]->setPublished(false)->save();
         $objects[2]->setPublished(false)->save();
+
+        $objects[3]->setPublished(null)->save();
 
         /** @var DataObjectSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService(DataObjectSearchServiceInterface::class);
@@ -172,5 +174,12 @@ class BasicFiltersTest extends \Codeception\Test\Unit
         ;
         $searchResult = $searchService->search($search);
         $this->assertCount(2, $searchResult->getItems());
+
+        $search = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new BooleanFilter('system_fields.published', null))
+        ;
+        $searchResult = $searchService->search($search);
+        $this->assertCount(1, $searchResult->getItems());
     }
 }
