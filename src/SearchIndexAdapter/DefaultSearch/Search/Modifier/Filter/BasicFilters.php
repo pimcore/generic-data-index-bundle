@@ -82,7 +82,6 @@ final readonly class BasicFilters
             field: $fieldName,
         );
 
-
         if ($booleanFilter->getSearchTerm() !== null) {
             $query = new TermFilter(
                 field: $fieldName,
