@@ -83,7 +83,6 @@ final readonly class BasicFilters
             term: $booleanFilter->getSearchTerm(),
         );
 
-
         if ($booleanFilter->getSearchTerm() === null) {
             $query = new BoolExistsQuery(
                 field: $fieldName,
