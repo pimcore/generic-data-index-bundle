@@ -78,14 +78,15 @@ final readonly class BasicFilters
             );
         }
 
-        $query = new BoolExistsQuery(
+        $query = new TermFilter(
             field: $fieldName,
+            term: $booleanFilter->getSearchTerm(),
         );
 
-        if ($booleanFilter->getSearchTerm()) {
-            $query = new TermFilter(
+
+        if ($booleanFilter->getSearchTerm() === null) {
+            $query = new BoolExistsQuery(
                 field: $fieldName,
-                term: $booleanFilter->getSearchTerm(),
             );
         }
 
