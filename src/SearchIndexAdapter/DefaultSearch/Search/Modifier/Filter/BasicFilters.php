@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\Search\AsSearchModifierHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchModifierContextInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\BoolExistsQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\BoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter;
@@ -77,11 +78,19 @@ final readonly class BasicFilters
             );
         }
 
-        $context->getSearch()->addQuery(
-            new TermFilter(
+        $query = new BoolExistsQuery(
+            field: $fieldName,
+        );
+
+        if ($booleanFilter->getSearchTerm() !== null) {
+            $query = new TermFilter(
                 field: $fieldName,
                 term: $booleanFilter->getSearchTerm(),
-            )
+            );
+        }
+
+        $context->getSearch()->addQuery(
+            $query
         );
     }
 
