@@ -86,10 +86,10 @@ final class AssetTypeAdapter extends AbstractElementTypeAdapter
 
         $selects = [
             (string)$element->getId(),
-            "'" . ElementType::ASSET->value . "'",
-            "'" . IndexName::ASSET->value . "'",
-            "'$operation'",
-            "'$operationTime'",
+            "'" . ElementType::ASSET->value . "' as " . $this->dbConnection->quoteIdentifier('elementType'),
+            "'" . IndexName::ASSET->value . "' as " . $this->dbConnection->quoteIdentifier('className'),
+            "'$operation' as " . $this->dbConnection->quoteIdentifier('operation'),
+            "'$operationTime' as " . $this->dbConnection->quoteIdentifier('operationTime'),
             '0',
         ];
 
