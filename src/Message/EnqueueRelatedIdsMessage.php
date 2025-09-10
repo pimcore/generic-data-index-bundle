@@ -25,15 +25,14 @@ final readonly class EnqueueRelatedIdsMessage
         private ElementType $elementType,
         private string $operation,
         private bool $addParentElement
-    )
-    {
-    }   
+    ) {
+    }
 
     public function getElementId(): int
     {
         return $this->elementId;
     }
-    
+
     public function getElementType(): ElementType
     {
         return $this->elementType;

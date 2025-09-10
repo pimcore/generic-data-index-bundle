@@ -24,8 +24,8 @@ interface IndexQueueServiceInterface
     public function updateIndexQueue(
         ElementInterface $element,
         string $operation,
-        bool $processSynchronously = false,    
-        bool $enqueueRelatedItems = true,   
+        bool $processSynchronously = false,
+        bool $enqueueRelatedItems = true,
         bool $enqueueRelatedItemsAsync = false
     ): IndexQueueService;
 

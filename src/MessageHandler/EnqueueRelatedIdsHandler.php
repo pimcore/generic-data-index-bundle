@@ -13,16 +13,14 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\MessageHandler;
 
-use Exception;
-use Pimcore\Model\Element\Service;
-use Pimcore\Model\Element\ElementInterface;
-use Pimcore\Model\DataObject\AbstractObject;
-use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\EnqueueRelatedIdsMessage;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
+use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\Element\ElementInterface;
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
  * @internal
@@ -44,10 +42,10 @@ final readonly class EnqueueRelatedIdsHandler
 
         $element = $this->elementService->getElementByType($message->getElementId(), $elementType->value);
 
-        if($element === null) {
+        if ($element === null) {
             $element = new ElementInterface();
         }
-        if($elementType === ElementType::DATA_OBJECT) {
+        if ($elementType === ElementType::DATA_OBJECT) {
             $inheritanceBackup = AbstractObject::getGetInheritedValues();
             AbstractObject::setGetInheritedValues(true);
         }
@@ -60,7 +58,7 @@ final readonly class EnqueueRelatedIdsHandler
             false
         )->commit();
 
-        if($inheritanceBackup !== null) {
+        if ($inheritanceBackup !== null) {
             AbstractObject::setGetInheritedValues($inheritanceBackup);
         }
 

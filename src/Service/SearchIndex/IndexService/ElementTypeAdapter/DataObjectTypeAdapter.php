@@ -188,9 +188,9 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         int $operationTime
     ): array {
         return [
-            (string)$element->getId() . " as " . $this->dbConnection->quoteIdentifier('id'),
+            (string)$element->getId() . ' as ' . $this->dbConnection->quoteIdentifier('id'),
             "'" . ElementType::DATA_OBJECT->value . "' as " . $this->dbConnection->quoteIdentifier('elementType'),
-            $this->getIndexName($element, $operation) . " as " . $this->dbConnection->quoteIdentifier('className'),
+            $this->getIndexName($element, $operation) . ' as ' . $this->dbConnection->quoteIdentifier('className'),
             "'$operation' as " . $this->dbConnection->quoteIdentifier('operation'),
             "'$operationTime' as " . $this->dbConnection->quoteIdentifier('operationTime'),
             '0',

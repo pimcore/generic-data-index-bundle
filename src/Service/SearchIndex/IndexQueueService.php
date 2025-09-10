@@ -14,24 +14,24 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\HandleIndexQueueEntriesException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
+use Pimcore\Bundle\GenericDataIndexBundle\Message\EnqueueRelatedIdsMessage;
+use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
-use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
-use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Message\EnqueueRelatedIdsMessage;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\HandleIndexQueueEntriesException;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexServiceInterface;
 
 /**
  * @internal
@@ -48,7 +48,7 @@ final class IndexQueueService implements IndexQueueServiceInterface
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly ElementServiceInterface $elementService,
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
-        private readonly MessageBusInterface $messageBus   
+        private readonly MessageBusInterface $messageBus
     ) {
     }
 
@@ -66,14 +66,14 @@ final class IndexQueueService implements IndexQueueServiceInterface
                 $this->doHandleIndexData($element, $operation);
             }
 
-            if($enqueueRelatedItems || $processSynchronously === false) {
+            if ($enqueueRelatedItems || $processSynchronously === false) {
                 if ($enqueueRelatedItemsAsync) {
                     $this->dispatchEnqueueRelatedIdsMessage($element, $operation, !$processSynchronously);
                 } else {
                     $this->handleQueueByOperation($element, $operation, $processSynchronously);
                 }
-            }          
-         
+            }
+
             $this->pathService->rewriteChildrenIndexPaths($element);
         } catch (Exception $e) {
             $this->logger->error(
@@ -216,8 +216,8 @@ final class IndexQueueService implements IndexQueueServiceInterface
     ): void {
         $this->messageBus->dispatch(
             new EnqueueRelatedIdsMessage(
-                $element->getId(),  
-                $this->elementService->getElementType($element),              
+                $element->getId(),
+                $this->elementService->getElementType($element),
                 $operation,
                 $addParentElement
             )

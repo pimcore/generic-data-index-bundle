@@ -66,16 +66,16 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         Service::useInheritedValues(true, fn () =>
             $this->indexQueueService
                 ->updateIndexQueue(
-                        $dataObject,
-                        IndexQueueOperation::UPDATE->value,
-                        $this->synchronousProcessing->isEnabled(),
-                        $dataObject->hasChildren(includingUnpublished: true),
-                        true
-                    )                    
+                    $dataObject,
+                    IndexQueueOperation::UPDATE->value,
+                    $this->synchronousProcessing->isEnabled(),
+                    $dataObject->hasChildren(includingUnpublished: true),
+                    true
+                )
                 ->commit()
         );
-       
-        $this->queueMessagesDispatcher->dispatchQueueMessages();        
+
+        $this->queueMessagesDispatcher->dispatchQueueMessages();
     }
 
     public function deleteDataObject(DataObjectEvent $event): void
