@@ -19,7 +19,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Model\DataObject\AbstractObject;
-use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -41,7 +40,7 @@ final readonly class EnqueueRelatedIdsHandler
         $elementType = $message->getElementType();
         $element = $this->elementService->getElementByType($message->getElementId(), $elementType->value);
 
-        if($elementType === ElementType::DATA_OBJECT) {
+        if ($elementType === ElementType::DATA_OBJECT) {
             $inheritanceBackup = AbstractObject::getGetInheritedValues();
             AbstractObject::setGetInheritedValues(true);
         }
