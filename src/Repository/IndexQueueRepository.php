@@ -13,22 +13,22 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Repository;
 
-use Exception;
-use Throwable;
 use Doctrine\DBAL\Connection;
-use Doctrine\ORM\QueryBuilder;
-use Doctrine\ORM\NoResultException;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\DBAL\Query\QueryBuilder as DBALQueryBuilder;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\NonUniqueResultException;
+use Doctrine\ORM\NoResultException;
+use Doctrine\ORM\QueryBuilder;
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
-use Symfony\Component\Serializer\Exception\ExceptionInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
-use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Symfony\Component\Serializer\Exception\ExceptionInterface;
+use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
+use Throwable;
 
 final class IndexQueueRepository
 {
@@ -85,15 +85,15 @@ final class IndexQueueRepository
                 $dispatchId = $this->dispatchItems($limit);
 
                 $sql = sprintf(
-                    'SELECT * FROM %s WHERE %s = :dispatchId FOR UPDATE SKIP LOCKED', 
-                    $this->connection->quoteIdentifier(IndexQueue::TABLE), 
+                    'SELECT * FROM %s WHERE %s = :dispatchId FOR UPDATE SKIP LOCKED',
+                    $this->connection->quoteIdentifier(IndexQueue::TABLE),
                     $this->connection->quoteIdentifier('dispatched')
                 );
 
                 return $this->connection->executeQuery(
-                    $sql, 
+                    $sql,
                     ['dispatchId' => $dispatchId]
-                )->fetchAllAssociative();              
+                )->fetchAllAssociative();
             }
 
             $sql = sprintf(
@@ -105,8 +105,8 @@ final class IndexQueueRepository
             );
 
             return $this->connection->executeQuery(
-                $sql                
-            )->fetchAllAssociative();  
+                $sql
+            )->fetchAllAssociative();
         } catch (Exception $e) {
             $this->logger->error('getUnhandledIndexQueueEntries failed! Error: ' . $e->getMessage());
         }
@@ -181,22 +181,22 @@ final class IndexQueueRepository
      * @throws DBALException
      */
     public function enqueueBySelectQuery(
-        DBALQueryBuilder $queryBuilder      
+        DBALQueryBuilder $queryBuilder
     ): void {
         $result = $this->connection->fetchAllAssociative($queryBuilder->getSQL(), $queryBuilder->getParameters());
-        if(empty($result)) {
-            return;        
-        }      
+        if (empty($result)) {
+            return;
+        }
 
         $ids = array_column($result, 'id');
         $elementType = (string)$result[0]['elementType'];
-        $elementIndexName = (string)$result[0]['className'];        
+        $elementIndexName = (string)$result[0]['className'];
         $operation = (string)$result[0]['operation'];
-        $operationTime = (int)$result[0]['operationTime'];        
+        $operationTime = (int)$result[0]['operationTime'];
 
-        foreach(array_chunk($ids, self::BATCH_SIZE) as $chunk) {                
-            try {    
-                $this->connection->beginTransaction();                
+        foreach (array_chunk($ids, self::BATCH_SIZE) as $chunk) {
+            try {
+                $this->connection->beginTransaction();
                 $this->updateFromChunk(
                     $chunk,
                     $elementType,
@@ -210,13 +210,14 @@ final class IndexQueueRepository
                     $operation,
                     $operationTime
                 );
-                $this->connection->commit();                
+                $this->connection->commit();
             } catch (Throwable $e) {
                 $this->connection->rollBack();
+
                 throw $e;
-            }                
-        }        
-    }      
+            }
+        }
+    }
 
     /**
      * @throws DBALException
@@ -323,15 +324,14 @@ final class IndexQueueRepository
         }
 
         return $queryBuilder;
-    }    
+    }
 
     private function updateFromChunk(
         array $chunk,
-        string $elementType,        
+        string $elementType,
         string $operation,
         int $operationTime
-        ): void 
-    {
+    ): void {
         $updateSql = sprintf(
             'UPDATE %s SET operation = ?, operationTime = ?, dispatched = 0 WHERE elementId IN (%s) AND elementType = ?',
             $this->connection->quoteIdentifier(IndexQueue::TABLE),
@@ -353,13 +353,12 @@ final class IndexQueueRepository
         string $elementIndexName,
         string $operation,
         int $operationTime
-        ): void 
-    {
+    ): void {
         $insertSql = sprintf(
-                    'INSERT IGNORE INTO %s (elementId, elementType, elementIndexName, operation, operationTime, dispatched) VALUES %s',
-                    IndexQueue::TABLE,
-                    implode(',', array_fill(0, count($chunk), '(?, ?, ?, ?, ?, 0)'))
-                );
+            'INSERT IGNORE INTO %s (elementId, elementType, elementIndexName, operation, operationTime, dispatched) VALUES %s',
+            IndexQueue::TABLE,
+            implode(',', array_fill(0, count($chunk), '(?, ?, ?, ?, ?, 0)'))
+        );
 
         $insertParams = [];
         foreach ($chunk as $id) {

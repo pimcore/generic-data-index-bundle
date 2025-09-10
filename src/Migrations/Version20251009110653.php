@@ -29,39 +29,39 @@ final class Version20251009110653 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        if(!$schema->hasTable(IndexQueue::TABLE)) {
+        if (!$schema->hasTable(IndexQueue::TABLE)) {
             return;
         }
         $table = $schema->getTable(IndexQueue::TABLE);
         $pk = $table->getPrimaryKey();
-        if($pk === null || $pk->getColumns() === ['id']) {
+        if ($pk === null || $pk->getColumns() === ['id']) {
             return;
         }
-        
+
         $table->dropPrimaryKey();
         $table->addColumn('id', 'bigint', ['autoincrement' => true]);
         $table->setPrimaryKey(['id']);
-        if(!$table->hasIndex($this->indexName)) {
-            $table->addUniqueIndex(['elementId', 'elementType'], $this->indexName);           
-        }        
+        if (!$table->hasIndex($this->indexName)) {
+            $table->addUniqueIndex(['elementId', 'elementType'], $this->indexName);
+        }
     }
 
     public function down(Schema $schema): void
     {
-        if(!$schema->hasTable(IndexQueue::TABLE)) {
+        if (!$schema->hasTable(IndexQueue::TABLE)) {
             return;
         }
         $table = $schema->getTable(IndexQueue::TABLE);
         $pk = $table->getPrimaryKey();
-        if($pk === null || $pk->getColumns() !== ['id']) {
+        if ($pk === null || $pk->getColumns() !== ['id']) {
             return;
         }
-        
+
         $table->dropPrimaryKey();
         $table->dropColumn('id');
         $table->setPrimaryKey(['elementId', 'elementType']);
-        if($table->hasIndex($this->indexName)) {
+        if ($table->hasIndex($this->indexName)) {
             $table->dropIndex($this->indexName);
-        }        
+        }
     }
 }
