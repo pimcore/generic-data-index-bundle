@@ -85,7 +85,7 @@ final class AssetTypeAdapter extends AbstractElementTypeAdapter
     ): ?QueryBuilder {
 
         $selects = [
-            (string)$element->getId(),
+            (string)$element->getId() . " as " . $this->dbConnection->quoteIdentifier('id'),
             "'" . ElementType::ASSET->value . "' as " . $this->dbConnection->quoteIdentifier('elementType'),
             "'" . IndexName::ASSET->value . "' as " . $this->dbConnection->quoteIdentifier('className'),
             "'$operation' as " . $this->dbConnection->quoteIdentifier('operation'),

@@ -54,7 +54,8 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
             ->updateIndexQueue(
                 element: $event->getDocument(),
                 operation: IndexQueueOperation::UPDATE->value,
-                processSynchronously: $this->synchronousProcessing->isEnabled()
+                processSynchronously: $this->synchronousProcessing->isEnabled(),
+                enqueueRelatedItemsAsync: true
             )
             ->commit();
 

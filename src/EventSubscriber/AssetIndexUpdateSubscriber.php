@@ -54,7 +54,8 @@ final readonly class AssetIndexUpdateSubscriber implements EventSubscriberInterf
             ->updateIndexQueue(
                 element: $event->getAsset(),
                 operation: IndexQueueOperation::UPDATE->value,
-                processSynchronously: $this->synchronousProcessing->isEnabled()
+                processSynchronously: $this->synchronousProcessing->isEnabled(),
+                enqueueRelatedItemsAsync:true,
             )
             ->commit();
 

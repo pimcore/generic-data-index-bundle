@@ -21,7 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceI
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Event\DataObjectEvents;
 use Pimcore\Event\Model\DataObjectEvent;
-use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\DataObject\Service;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -62,19 +62,20 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $inheritanceBackup = AbstractObject::getGetInheritedValues();
-        AbstractObject::setGetInheritedValues(true);
-
-        $this->indexQueueService
-            ->updateIndexQueue(
-                element: $event->getObject(),
-                operation: IndexQueueOperation::UPDATE->value,
-                processSynchronously: $this->synchronousProcessing->isEnabled()
-            )
-            ->commit();
-        $this->queueMessagesDispatcher->dispatchQueueMessages();
-
-        AbstractObject::setGetInheritedValues($inheritanceBackup);
+        $dataObject = $event->getObject();
+        Service::useInheritedValues(true, fn () =>
+            $this->indexQueueService
+                ->updateIndexQueue(
+                        $dataObject,
+                        IndexQueueOperation::UPDATE->value,
+                        $this->synchronousProcessing->isEnabled(),
+                        $dataObject->hasChildren(includingUnpublished: true),
+                        true
+                    )                    
+                ->commit()
+        );
+       
+        $this->queueMessagesDispatcher->dispatchQueueMessages();        
     }
 
     public function deleteDataObject(DataObjectEvent $event): void
@@ -83,11 +84,13 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
             return;
         }
 
+        $dataObject = $event->getObject();
         $this->indexQueueService
             ->updateIndexQueue(
-                element: $event->getObject(),
-                operation: IndexQueueOperation::DELETE->value,
-                processSynchronously: $this->synchronousProcessing->isEnabled()
+                $dataObject,
+                IndexQueueOperation::DELETE->value,
+                $this->synchronousProcessing->isEnabled(),
+                $dataObject->hasChildren(includingUnpublished: true)
             )
             ->commit();
         $this->queueMessagesDispatcher->dispatchQueueMessages();
