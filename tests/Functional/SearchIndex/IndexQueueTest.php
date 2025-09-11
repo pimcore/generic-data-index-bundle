@@ -72,8 +72,7 @@ class IndexQueueTest extends Unit
 
         TestHelper::createImageAsset();
 
-        //Since the queue is processed asynchronously we need to run the worker here
-        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+        $this->tester->consume();
 
         $this->assertEquals(1, $indexQueueRepository->countIndexQueueEntries());
         $this->assertTrue($indexQueueRepository->dispatchableItemExists());
@@ -125,8 +124,7 @@ class IndexQueueTest extends Unit
 
         $asset = TestHelper::createImageAsset();
 
-        //Since the queue is processed asynchronously we need to run the worker here
-        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+        $this->tester->consume();
 
         $this->assertGreaterThan(
             0,
@@ -202,8 +200,7 @@ class IndexQueueTest extends Unit
         $object->setImage($asset);
         $object->save();
 
-        //Since the queue is processed asynchronously we need to run the worker here
-        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+        $this->tester->consume();
 
         $assetIndex = $this->searchIndexConfigService->getIndexName(self::ASSET_INDEX_NAME);
         $objectIndex = $this->searchIndexConfigService->getIndexName($object->getClassName(), true);
