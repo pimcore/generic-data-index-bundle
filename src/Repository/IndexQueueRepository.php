@@ -13,23 +13,23 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Repository;
 
-use Exception;
-use Throwable;
 use Doctrine\DBAL\Connection;
-use Doctrine\ORM\QueryBuilder;
-use Doctrine\ORM\NoResultException;
-use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\NonUniqueResultException;
 use Doctrine\DBAL\Exception as DBALException;
 use Doctrine\DBAL\Query\QueryBuilder as DBALQueryBuilder;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\NonUniqueResultException;
+use Doctrine\ORM\NoResultException;
+use Doctrine\ORM\QueryBuilder;
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
-use Symfony\Component\Serializer\Exception\ExceptionInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
-use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Symfony\Component\Serializer\Exception\ExceptionInterface;
+use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
+use Throwable;
 
 final class IndexQueueRepository
 {
@@ -205,9 +205,9 @@ final class IndexQueueRepository
             $elementIndexName
         ] = $this->getValuesFromSqlResult($result);
 
-
         foreach (array_chunk($ids, self::BATCH_SIZE) as $chunk) {
             $effectiveChunkSize = count($chunk);
+
             try {
                 $this->connection->beginTransaction();
 
@@ -227,7 +227,7 @@ final class IndexQueueRepository
                         $operationTime
                     );
                 }
-                
+
                 $this->connection->commit();
             } catch (Throwable $e) {
                 $this->connection->rollBack();
@@ -361,7 +361,7 @@ final class IndexQueueRepository
             $this->connection->quoteIdentifier('operation'),
             $this->connection->quoteIdentifier('operationTime'),
             $this->connection->quoteIdentifier('dispatched'),
-            $this->connection->quoteIdentifier('elementId'),            
+            $this->connection->quoteIdentifier('elementId'),
             $placeholders,
             $this->connection->quoteIdentifier('elementType')
         );
@@ -406,7 +406,7 @@ final class IndexQueueRepository
                 $elementType,
                 $elementIndexName,
                 $operation,
-                $operationTime
+                $operationTime,
             ]);
         }
 
@@ -422,37 +422,32 @@ final class IndexQueueRepository
         if (empty($result)) {
             return [];
         }
-        
+
         $firstRow = $result[0];
         $keys = array_keys($firstRow);
         $columnCount = count($keys);
 
         $ids = array_column($result, $keys[0]);
         $elementType = $firstRow[$keys[1]];
-                
+
         $elementIndexName = match ($elementType) {
             ElementType::ASSET->value, ElementType::DOCUMENT->value => $elementType,
-            ElementType::DATA_OBJECT->value => $firstRow['className'] ?? 
-            $firstRow
-            [
+            ElementType::DATA_OBJECT->value => $firstRow['className'] ??
+            $firstRow[
                 $keys[2]
-            ] ?? 
+            ] ??
             null,
             default => null,
         };
- 
-        $operation = $firstRow
-        [
-            $keys
-            [
+
+        $operation = $firstRow[
+            $keys[
                     $columnCount > 5 ? 3 : 2
             ]
         ];
 
-        $operationTime = (int)$firstRow
-        [
-            $keys
-            [
+        $operationTime = (int)$firstRow[
+            $keys[
                 $columnCount > 5 ? 4 : 3
             ]
         ];
@@ -462,7 +457,7 @@ final class IndexQueueRepository
             $elementType,
             $operation,
             $operationTime,
-            $elementIndexName
+            $elementIndexName,
         ];
     }
 }
