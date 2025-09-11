@@ -13,22 +13,23 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Repository;
 
+use Exception;
+use Throwable;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Exception as DBALException;
-use Doctrine\DBAL\Query\QueryBuilder as DBALQueryBuilder;
+use Doctrine\ORM\QueryBuilder;
+use Doctrine\ORM\NoResultException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\NonUniqueResultException;
-use Doctrine\ORM\NoResultException;
-use Doctrine\ORM\QueryBuilder;
-use Exception;
+use Doctrine\DBAL\Exception as DBALException;
+use Doctrine\DBAL\Query\QueryBuilder as DBALQueryBuilder;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
-use Throwable;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 
 final class IndexQueueRepository
 {
@@ -421,19 +422,40 @@ final class IndexQueueRepository
         if (empty($result)) {
             return [];
         }
-
+        
         $firstRow = $result[0];
         $keys = array_keys($firstRow);
+        $columnCount = count($keys);
 
         $ids = array_column($result, $keys[0]);
-        $elementType = (string)$firstRow[$keys[1]];
-        $elementIndexName = $firstRow['className'] ?? null;
-        
-        $operationIndex = count($firstRow) > 5 ? 3 : 2;
-        $timeIndex = count($firstRow) > 5 ? 4 : 3;
+        $elementType = $firstRow[$keys[1]];
+                
+        $elementIndexName = match ($elementType) {
+            ElementType::ASSET->value, ElementType::DOCUMENT->value => $elementType,
+            ElementType::DATA_OBJECT->value => $firstRow['className'] ?? 
+            $firstRow
+            [
+                $keys[2]
+            ] ?? 
+            null,
+            default => null,
+        };
+ 
+        $operation = $firstRow
+        [
+            $keys
+            [
+                    $columnCount > 5 ? 3 : 2
+            ]
+        ];
 
-        $operation = (string)$firstRow[$keys[$operationIndex]];
-        $operationTime = (int)$firstRow[$keys[$timeIndex]];
+        $operationTime = (int)$firstRow
+        [
+            $keys
+            [
+                $columnCount > 5 ? 4 : 3
+            ]
+        ];
 
         return [
             $ids,
