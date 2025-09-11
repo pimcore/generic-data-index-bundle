@@ -166,7 +166,7 @@ final class IndexQueueRepository
 
         $qb = $this->connection->createQueryBuilder()
             ->addSelect(...$fields)
-            ->from($tableName);        
+            ->from($tableName);
 
         $this->addWhereStatements($qb, $whereParameters);
 
