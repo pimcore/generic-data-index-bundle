@@ -162,19 +162,11 @@ final class IndexQueueRepository
         array $whereParameters = []
     ): DBALQueryBuilder {
         $fields = $this->quoteParameters($fields);
-        $fields['id'] = $idField;
-
-        $aliasFields = array_map(
-            function ($value, $key) {
-                return $value . ' AS ' . $key;
-            },
-            $fields,
-            array_keys($fields)
-        );
+        array_unshift($fields, $idField);
 
         $qb = $this->connection->createQueryBuilder()
-            ->addSelect(...$aliasFields)
-            ->from($tableName);
+            ->addSelect(...$fields)
+            ->from($tableName);        
 
         $this->addWhereStatements($qb, $whereParameters);
 
