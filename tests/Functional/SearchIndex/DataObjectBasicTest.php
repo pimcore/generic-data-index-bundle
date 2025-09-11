@@ -99,6 +99,9 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $child = $this->createChildObject($object);
         $indexName = $this->dataObjectTypeAdapter->getAliasIndexName($object->getClass());
 
+        //Since the queue is processed asynchronously we need to run the worker here
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+
         // check indexed
         $this->assertGreaterThan(
             0,
@@ -123,6 +126,9 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $object = $this->createObjectWithInheritance();
         $child = $this->createChildObject($object);
         $indexName = $this->dataObjectTypeAdapter->getAliasIndexName($object->getClass());
+
+        //Since the queue is processed asynchronously we need to run the worker here
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
 
         // check indexed
         $this->assertGreaterThan(
@@ -175,6 +181,9 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $this->assertFalse($object->getClass()->getAllowInherit());
         $indexName = $this->dataObjectTypeAdapter->getAliasIndexName($object->getClass());
 
+        //Since the queue is processed asynchronously we need to run the worker here
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+
         // check indexed
         $this->assertGreaterThan(
             0,
@@ -216,6 +225,9 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
 
         $object->setKey('my-test-folder');
         $object->save();
+
+        //Since the queue is processed asynchronously we need to run the worker here
+        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
 
         $this->assertGreaterThan(
             0,
