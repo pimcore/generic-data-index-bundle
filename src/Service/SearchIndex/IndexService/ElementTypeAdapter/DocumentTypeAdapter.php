@@ -84,11 +84,11 @@ final class DocumentTypeAdapter extends AbstractElementTypeAdapter
         bool $includeElement = false
     ): ?QueryBuilder {
         $selects = [
-            (string)$element->getId() . ' as ' . $this->dbConnection->quoteIdentifier('id'),
-            "'" . ElementType::DOCUMENT->value . "' as " . $this->dbConnection->quoteIdentifier('elementType'),
-            "'" . IndexName::DOCUMENT->value . "' as " . $this->dbConnection->quoteIdentifier('className'),
-            "'$operation' as " . $this->dbConnection->quoteIdentifier('operation'),
-            "'$operationTime' as " . $this->dbConnection->quoteIdentifier('operationTime'),
+            (string)$element->getId(),
+            "'" . ElementType::DOCUMENT->value . "'",
+            "'" . IndexName::DOCUMENT->value . "'",
+            "'$operation'",
+            "'$operationTime'",
             '0',
         ];
 

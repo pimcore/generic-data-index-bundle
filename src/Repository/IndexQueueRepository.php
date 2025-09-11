@@ -161,10 +161,18 @@ final class IndexQueueRepository
         array $whereParameters = []
     ): DBALQueryBuilder {
         $fields = $this->quoteParameters($fields);
-        array_unshift($fields, $idField);
+        $fields['id'] = $idField;
+
+        $aliasFields = array_map(
+            function ($value, $key) {
+                return $value . ' AS ' . $key;
+            },
+            $fields,
+            array_keys($fields)
+        );
 
         $qb = $this->connection->createQueryBuilder()
-            ->addSelect(...$fields)
+            ->addSelect(...$aliasFields)
             ->from($tableName);
 
         $this->addWhereStatements($qb, $whereParameters);
@@ -188,28 +196,37 @@ final class IndexQueueRepository
             return;
         }
 
-        $ids = array_column($result, 'id');
-        $elementType = (string)$result[0]['elementType'];
-        $elementIndexName = (string)$result[0]['className'];
-        $operation = (string)$result[0]['operation'];
-        $operationTime = (int)$result[0]['operationTime'];
+        [
+            $ids,
+            $elementType,
+            $operation,
+            $operationTime,
+            $elementIndexName
+        ] = $this->getValuesFromSqlResult($result);
+
 
         foreach (array_chunk($ids, self::BATCH_SIZE) as $chunk) {
+            $effectiveChunkSize = count($chunk);
             try {
                 $this->connection->beginTransaction();
-                $this->updateFromChunk(
+
+                $affectedRows = $this->insertFromChunk(
                     $chunk,
                     $elementType,
                     $operation,
-                    $operationTime
+                    $operationTime,
+                    $elementIndexName
                 );
-                $this->insertFromChunk(
-                    $chunk,
-                    $elementType,
-                    $elementIndexName,
-                    $operation,
-                    $operationTime
-                );
+
+                if ($affectedRows < $effectiveChunkSize) {
+                    $this->updateFromChunk(
+                        $chunk,
+                        $elementType,
+                        $operation,
+                        $operationTime
+                    );
+                }
+                
                 $this->connection->commit();
             } catch (Throwable $e) {
                 $this->connection->rollBack();
@@ -331,44 +348,99 @@ final class IndexQueueRepository
         string $elementType,
         string $operation,
         int $operationTime
-    ): void {
+    ): int {
+        if (empty($chunk)) {
+            return 0;
+        }
+
+        $placeholders = str_repeat('?,', count($chunk) - 1) . '?';
         $updateSql = sprintf(
-            'UPDATE %s SET operation = ?, operationTime = ?, dispatched = 0 WHERE elementId IN (%s) AND elementType = ?',
+            'UPDATE %s SET %s = ?, %s = ?, %s = 0 WHERE %s IN (%s) AND %s = ?',
             $this->connection->quoteIdentifier(IndexQueue::TABLE),
-            implode(',', array_fill(0, count($chunk), '?'))
+            $this->connection->quoteIdentifier('operation'),
+            $this->connection->quoteIdentifier('operationTime'),
+            $this->connection->quoteIdentifier('dispatched'),
+            $this->connection->quoteIdentifier('elementId'),            
+            $placeholders,
+            $this->connection->quoteIdentifier('elementType')
         );
 
-        $updateParams = [$operation, $operationTime];
-        foreach ($chunk as $id) {
-            $updateParams[] = $id;
-        }
-        $updateParams[] = $elementType;
+        $updateParams = array_merge(
+            [$operation, $operationTime],
+            $chunk,
+            [$elementType]
+        );
 
-        $this->connection->executeStatement($updateSql, $updateParams);
+        return $this->connection->executeStatement($updateSql, $updateParams);
     }
 
     private function insertFromChunk(
         array $chunk,
         string $elementType,
-        string $elementIndexName,
         string $operation,
-        int $operationTime
-    ): void {
+        int $operationTime,
+        ?string $elementIndexName = null,
+    ): int {
+        if (empty($chunk)) {
+            return 0;
+        }
+
+        $placeholders = str_repeat('(?, ?, ?, ?, ?, 0),', count($chunk) - 1) . '(?, ?, ?, ?, ?, 0)';
         $insertSql = sprintf(
-            'INSERT IGNORE INTO %s (elementId, elementType, elementIndexName, operation, operationTime, dispatched) VALUES %s',
-            IndexQueue::TABLE,
-            implode(',', array_fill(0, count($chunk), '(?, ?, ?, ?, ?, 0)'))
+            'INSERT IGNORE INTO %s (%s, %s, %s, %s, %s, %s) VALUES %s',
+            $this->connection->quoteIdentifier(IndexQueue::TABLE),
+            $this->connection->quoteIdentifier('elementId'),
+            $this->connection->quoteIdentifier('elementType'),
+            $this->connection->quoteIdentifier('elementIndexName'),
+            $this->connection->quoteIdentifier('operation'),
+            $this->connection->quoteIdentifier('operationTime'),
+            $this->connection->quoteIdentifier('dispatched'),
+            $placeholders
         );
 
         $insertParams = [];
         foreach ($chunk as $id) {
-            $insertParams[] = $id;
-            $insertParams[] = $elementType;
-            $insertParams[] = $elementIndexName;
-            $insertParams[] = $operation;
-            $insertParams[] = $operationTime;
+            $insertParams = array_merge($insertParams, [
+                $id,
+                $elementType,
+                $elementIndexName,
+                $operation,
+                $operationTime
+            ]);
         }
 
-        $this->connection->executeStatement($insertSql, $insertParams);
+        return $this->connection->executeStatement($insertSql, $insertParams);
+    }
+
+    /*
+    * @TODO: Refactor to avoid that all values have to be in a specific order. Either use aliases or pass the keys as parameters.
+    * Both things can be considered breaking changes.
+    */
+    private function getValuesFromSqlResult(array $result): array
+    {
+        if (empty($result)) {
+            return [];
+        }
+
+        $firstRow = $result[0];
+        $keys = array_keys($firstRow);
+
+        $ids = array_column($result, $keys[0]);
+        $elementType = (string)$firstRow[$keys[1]];
+        $elementIndexName = $firstRow['className'] ?? null;
+        
+        $operationIndex = count($firstRow) > 5 ? 3 : 2;
+        $timeIndex = count($firstRow) > 5 ? 4 : 3;
+
+        $operation = (string)$firstRow[$keys[$operationIndex]];
+        $operationTime = (int)$firstRow[$keys[$timeIndex]];
+
+        return [
+            $ids,
+            $elementType,
+            $operation,
+            $operationTime,
+            $elementIndexName
+        ];
     }
 }
