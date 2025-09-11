@@ -81,9 +81,6 @@ class AssetBasicTest extends \Codeception\Test\Unit
         $folder->setKey('my-test-folder');
         $folder->save();
 
-        //Since the queue is processed asynchronously we need to run the worker here
-        $this->tester->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
-
         $this->assertGreaterThan(
             0,
             Db::get()->fetchOne(
