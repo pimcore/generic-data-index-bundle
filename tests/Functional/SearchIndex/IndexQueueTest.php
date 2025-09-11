@@ -46,6 +46,7 @@ class IndexQueueTest extends Unit
             SearchIndexConfigServiceInterface::class
         );
         $this->tester->disableSynchronousProcessing();
+        $this->tester->enableSynchronousProcessingRelatedIds();
         $this->tester->clearQueue();
     }
 

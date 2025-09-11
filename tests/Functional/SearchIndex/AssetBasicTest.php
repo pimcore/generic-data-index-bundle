@@ -33,6 +33,7 @@ class AssetBasicTest extends \Codeception\Test\Unit
     protected function _before()
     {
         $this->tester->enableSynchronousProcessing();
+        $this->tester->enableSynchronousProcessingRelatedIds();
     }
 
     protected function _after()

@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -35,7 +36,8 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         private readonly Installer $installer,
         private readonly IndexQueueServiceInterface $indexQueueService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
-        private readonly SynchronousProcessingServiceInterface $synchronousProcessing
+        private readonly SynchronousProcessingServiceInterface $synchronousProcessing,
+        private readonly SynchronousProcessingRelatedIdsServiceInterface $synchronousProcessingRelatedIds
     ) {
     }
 
@@ -70,7 +72,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
                     IndexQueueOperation::UPDATE->value,
                     $this->synchronousProcessing->isEnabled(),
                     $dataObject->hasChildren(includingUnpublished: true),
-                    true
+                    $this->synchronousProcessingRelatedIds->isEnabled() === false
                 )
                 ->commit()
         );

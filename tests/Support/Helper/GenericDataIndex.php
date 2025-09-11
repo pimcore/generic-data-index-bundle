@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer as GenericDataIndexInstaller;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\Sort\TreeSortHandlers;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -109,6 +110,18 @@ class GenericDataIndex extends \Codeception\Module
     public function disableSynchronousProcessing(): void
     {
         $synchronousProcessing = $this->grabService(SynchronousProcessingServiceInterface::class);
+        $synchronousProcessing->disable();
+    }
+
+    public function enableSynchronousProcessingRelatedIds(): void
+    {
+        $synchronousProcessing = $this->grabService(SynchronousProcessingRelatedIdsServiceInterface::class);
+        $synchronousProcessing->enable();
+    }
+
+    public function disableSynchronousProcessingRelatedIds(): void
+    {
+        $synchronousProcessing = $this->grabService(SynchronousProcessingRelatedIdsServiceInterface::class);
         $synchronousProcessing->disable();
     }
 
