@@ -128,5 +128,4 @@ final readonly class NestedTypeFilters
 
         return (new SimpleQueryStringFilter($modifier->getSearchTerm()))->toArrayAsSubQuery();
     }
-
 }

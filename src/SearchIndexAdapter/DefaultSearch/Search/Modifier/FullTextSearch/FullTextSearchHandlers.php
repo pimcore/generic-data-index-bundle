@@ -67,7 +67,7 @@ final readonly class FullTextSearchHandlers
 
         $context->getSearch()->addQuery($query);
     }
-    
+
     public function getWildCardSubQuery(
         WildcardSearch $wildcardSearch,
         ?string $prefix = null,

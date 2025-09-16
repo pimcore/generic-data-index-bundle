@@ -61,7 +61,7 @@ final readonly class BasicFilters
         IntegerFilter $integerFilter,
         ?string $prefix = null,
         ?SearchInterface $search = null
-    ): TermFilter{
+    ): TermFilter {
         $fieldName = $integerFilter->getFieldName();
         if ($prefix) {
             $fieldName = $prefix . '.' . $fieldName;
