@@ -126,7 +126,7 @@ final class DateAdapterTest extends Unit
                 'range' => [
                     'standard_fields.test.en' => [
                         'format' => "yyyy-MM-dd'T'HH:mm:ssz",
-                        'gte' => '2000-01-01T00:00:00+00:00',
+                        'gte' => '2000-01-01T23:59:59+00:00',
                     ],
                 ],
             ],
