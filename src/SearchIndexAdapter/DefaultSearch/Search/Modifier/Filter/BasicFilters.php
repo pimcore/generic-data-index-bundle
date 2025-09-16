@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\BoolExistsQu
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\BoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\BooleanFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\ExcludeFoldersFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
@@ -51,46 +52,60 @@ final readonly class BasicFilters
     #[AsSearchModifierHandler]
     public function handleIntegerFilter(IntegerFilter $integerFilter, SearchModifierContextInterface $context): void
     {
+        $context->getSearch()->addQuery(
+            $this->getIntegerQuery($integerFilter, null, $context->getOriginalSearch())
+        );
+    }
+
+    public function getIntegerQuery(
+        IntegerFilter $integerFilter,
+        ?string $prefix = null,
+        ?SearchInterface $search = null
+    ): TermFilter{
         $fieldName = $integerFilter->getFieldName();
-        if ($integerFilter->isPqlFieldNameResolutionEnabled()) {
-            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch(
-                $context->getOriginalSearch(),
-                $fieldName
-            );
+        if ($prefix) {
+            $fieldName = $prefix . '.' . $fieldName;
+        }
+        if ($search && $integerFilter->isPqlFieldNameResolutionEnabled()) {
+            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch($search, $fieldName);
         }
 
-        $context->getSearch()->addQuery(
-            new TermFilter(
-                field: $fieldName,
-                term: $integerFilter->getSearchTerm(),
-            )
+        return new TermFilter(
+            field: $fieldName,
+            term: $integerFilter->getSearchTerm(),
         );
     }
 
     #[AsSearchModifierHandler]
     public function handleBooleanFilter(BooleanFilter $booleanFilter, SearchModifierContextInterface $context): void
     {
+        $context->getSearch()->addQuery(
+            $this->getBooleanQuery($booleanFilter, null, $context->getOriginalSearch())
+        );
+    }
+
+    public function getBooleanQuery(
+        BooleanFilter $booleanFilter,
+        ?string $prefix = null,
+        ?SearchInterface $search = null
+    ): BoolExistsQuery|TermFilter {
         $fieldName = $booleanFilter->getFieldName();
-        if ($booleanFilter->isPqlFieldNameResolutionEnabled()) {
-            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch(
-                $context->getOriginalSearch(),
-                $fieldName
-            );
+        if ($prefix) {
+            $fieldName = $prefix . '.' . $fieldName;
+        }
+        if ($search && $booleanFilter->isPqlFieldNameResolutionEnabled()) {
+            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch($search, $fieldName);
         }
 
-        $query = new BoolExistsQuery(
-            field: $fieldName,
-        );
-
         if ($booleanFilter->getSearchTerm() !== null) {
-            $query = new TermFilter(
+            return new TermFilter(
                 field: $fieldName,
                 term: $booleanFilter->getSearchTerm(),
             );
         }
 
-        $context->getSearch()->addQuery(
-            $query
+        return new BoolExistsQuery(
+            field: $fieldName,
         );
     }
 

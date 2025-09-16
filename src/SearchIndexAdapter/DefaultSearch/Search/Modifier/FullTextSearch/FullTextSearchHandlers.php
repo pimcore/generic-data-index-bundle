@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemF
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\SimpleQueryStringFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\WildcardFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\ElementKeySearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\FullTextSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\WildcardSearch;
@@ -58,26 +59,34 @@ final readonly class FullTextSearchHandlers
         WildcardSearch $wildcardSearch,
         SearchModifierContextInterface $context
     ): void {
-        if (empty($wildcardSearch->getSearchTerm())) {
+        $query = $this->getWildCardSubQuery($wildcardSearch, null, $context->getOriginalSearch());
+
+        if ($query === null) {
             return;
         }
 
-        $fieldName = $wildcardSearch->getFieldName();
-        if ($wildcardSearch->isPqlFieldNameResolutionEnabled()) {
-            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch(
-                $context->getOriginalSearch(),
-                $fieldName
-            );
+        $context->getSearch()->addQuery($query);
+    }
+    
+    public function getWildCardSubQuery(
+        WildcardSearch $wildcardSearch,
+        ?string $prefix = null,
+        ?SearchInterface $search = null
+    ): ?WildcardFilter {
+        if (empty($wildcardSearch->getSearchTerm())) {
+            return null;
         }
 
-        $context->getSearch()
-            ->addQuery(
-                new WildcardFilter(
-                    $fieldName,
-                    $wildcardSearch->getSearchTerm(),
-                    WildcardFilterMode::BOTH
-                )
-            );
+        $fieldName = $wildcardSearch->getFieldName();
+        if ($prefix) {
+            $fieldName = $prefix . '.' . $fieldName;
+        }
+
+        if ($search && $wildcardSearch->isPqlFieldNameResolutionEnabled()) {
+            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch($search, $fieldName);
+        }
+
+        return new WildcardFilter($fieldName, $wildcardSearch->getSearchTerm(), WildcardFilterMode::BOTH);
     }
 
     #[AsSearchModifierHandler]
