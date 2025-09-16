@@ -69,6 +69,27 @@ pimcore_generic_data_index:
             max_batch_size: 400
 ```
 
+#### Related elements
+
+The indexing queue is automatically populated whenever an element undergoes an update operation. This process includes not only the modified element itself but also any related elements. By default, this indexing occurs asynchronously through Symfony Messenger.
+
+For scenarios requiring immediate processing, you can temporarily switch to synchronous mode by utilizing the `SynchronousProcessingRelatedIdsServiceInterface`.
+
+Available methods are:
+
+| Method | Description |
+|--------|-------------|
+| `enable()` | Activates synchronous processing mode |
+| `disable()` | Reverts to asynchronous processing mode |
+| `isEnabled()` | Returns the current processing mode status |
+
+:::info
+
+Currently the `SynchronousProcessingRelatedIdsServiceInterface` interface does not influence the behavior of delete operations. They are always processed synchronously.
+
+:::
+
+
 ### Repairing Indices
 
 Sometimes it might be needed to delete and recreate the index from the Pimcore database
