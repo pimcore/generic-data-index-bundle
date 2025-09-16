@@ -98,24 +98,19 @@ final readonly class DateFilter implements QueryInterface
 
     public function getParams(): array
     {
-        $params = [
-            'format' => "yyyy-MM-dd'T'HH:mm:ssz",
-        ];
+        $params = ['format' => "yyyy-MM-dd'T'HH:mm:ssz"];
+
         if ($this->onDate) {
             $params['gte'] = $this->getStartOfDay($this->onDate)->format(DateTimeInterface::ATOM);
             $params['lte'] =  $this->getEndOfDay($this->onDate)->format(DateTimeInterface::ATOM);
-        } else {
-            if ($this->startDate) {
-                $params['gte'] = $this->getStartOfDay($this->startDate)->format(DateTimeInterface::ATOM);
-            }
-            if ($this->endDate) {
-                $params['lte'] = $this->getEndOfDay($this->endDate)->format(DateTimeInterface::ATOM);
-            }
+
+            return [$this->field => $params];
         }
 
-        return [
-            $this->field => $params,
-        ];
+        $params = $this->addStartParams($params);
+        $params = $this->addEndParams($params);
+
+        return [$this->field => $params];
     }
 
     public function toArray(bool $withType = false): array
@@ -160,6 +155,40 @@ final readonly class DateFilter implements QueryInterface
     public function getOnDate(): Carbon
     {
         return $this->onDate;
+    }
+
+    private function addStartParams(array $params): array
+    {
+        if (!$this->startDate) {
+            return $params;
+        }
+
+        if ($this->endDate) {
+            $params['gte'] = $this->getStartOfDay($this->startDate)->format(DateTimeInterface::ATOM);
+
+            return $params;
+        }
+
+        $params['gte'] = $this->getEndOfDay($this->startDate)->format(DateTimeInterface::ATOM);
+
+        return $params;
+    }
+
+    private function addEndParams(array $params): array
+    {
+        if (!$this->endDate) {
+            return $params;
+        }
+
+        if ($this->startDate) {
+            $params['lte'] = $this->getEndOfDay($this->endDate)->format(DateTimeInterface::ATOM);
+
+            return $params;
+        }
+
+        $params['lte'] = $this->getStartOfDay($this->endDate)->format(DateTimeInterface::ATOM);
+
+        return $params;
     }
 
     private function getStartOfDay(Carbon $date): Carbon
