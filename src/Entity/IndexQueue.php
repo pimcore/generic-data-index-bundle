@@ -29,10 +29,13 @@ class IndexQueue
     public const TABLE = 'generic_data_index_queue';
 
     #[ORM\Id]
+    #[ORM\Column(type: 'bigint')]
+
+    private int $id;
+    
     #[ORM\Column(type: 'integer', options: ['unsigned' => true])]
     private int $elementId;
-
-    #[ORM\Id]
+    
     #[ORM\Column(type: 'string', length: 20)]
     private string $elementType;
 
@@ -47,6 +50,18 @@ class IndexQueue
 
     #[ORM\Column(type: 'bigint', options: ['unsigned' => true, 'default' => 0])]
     private string $dispatched;
+
+    public function getId(): int
+    {
+        return $this->id;
+    }
+
+    public function setId(int $id): IndexQueue
+    {
+        $this->id = $id;
+
+        return $this;
+    }
 
     public function getElementId(): int
     {
