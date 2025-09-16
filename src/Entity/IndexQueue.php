@@ -30,12 +30,11 @@ class IndexQueue
 
     #[ORM\Id]
     #[ORM\Column(type: 'bigint')]
-
     private int $id;
-    
+
     #[ORM\Column(type: 'integer', options: ['unsigned' => true])]
     private int $elementId;
-    
+
     #[ORM\Column(type: 'string', length: 20)]
     private string $elementType;
 

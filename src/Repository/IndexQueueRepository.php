@@ -123,19 +123,19 @@ final class IndexQueueRepository
     public function deleteQueueEntries(array $entries): void
     {
         $chunks = array_chunk($entries, self::BATCH_SIZE);
-        foreach($chunks as $chunk) {
+        foreach ($chunks as $chunk) {
             $condition = [];
 
             /** @var IndexQueue $entry */
             foreach ($chunk as $entry) {
                 $condition[] = sprintf(
-                    '(%s, %s)',                    
+                    '(%s, %s)',
                     $this->connection->quote((string)$entry->getId()),
                     $this->connection->quote($entry->getOperationTime())
                 );
             }
 
-            $condition = sprintf("(%s, %s) IN (%s) ORDER BY %s ASC LIMIT %s",                
+            $condition = sprintf('(%s, %s) IN (%s) ORDER BY %s ASC LIMIT %s',
                 $this->connection->quoteIdentifier('id'),
                 $this->connection->quoteIdentifier('operationTime'),
                 implode(',', $condition),
@@ -145,7 +145,7 @@ final class IndexQueueRepository
 
             //delete handled entry from queue table
             $this->connection->executeQuery('DELETE FROM ' . IndexQueue::TABLE . ' WHERE ' . $condition);
-        }      
+        }
     }
 
     /**
