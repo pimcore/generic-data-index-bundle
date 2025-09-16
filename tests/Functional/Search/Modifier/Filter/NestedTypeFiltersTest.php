@@ -12,16 +12,17 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\Filter;
 
-use Carbon\Carbon;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\DateFilter;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\MultiSelectFilter;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IntegerFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\NestedFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\WildcardSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Model\DataObject\Unittest;
 use Pimcore\Tests\Support\Util\TestHelper;
 
-class NestedTypeFiltersTest extends \Codeception\Test\Unit
+class NestedTypeFiltersTest extends Unit
 {
     /**
      * @var \Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester
@@ -42,115 +43,15 @@ class NestedTypeFiltersTest extends \Codeception\Test\Unit
     }
 
     // tests
-    public function testMultiSelectFilter()
+    public function testNestedFilterWithIntegerFilter()
     {
-        /**
-         * @var Unittest $object1
-         * @var Unittest $object2
-         * @var Unittest $object3
-         * @var Unittest $object4
-         */
-        $object1 = TestHelper::createEmptyObject()->setKey('object1')->save();
-        $object2 = TestHelper::createEmptyObject()->setKey('object2')->save();
-        $object3 = TestHelper::createEmptyObject()->setKey('object3')->save();
-        $object4 = TestHelper::createEmptyObject()->setKey('object4')->save();
-
-        /** @var DataObjectSearchServiceInterface $searchService */
-        $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
-        /** @var SearchProviderInterface $searchProvider */
-        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
-
-        $elementSearch = $searchProvider
-            ->createDataObjectSearch()
-            ->addModifier(new MultiSelectFilter('key', ['object1', 'object2']))
-        ;
-        $searchResult = $searchService->search($elementSearch);
-        $this->assertIdArrayEquals([$object1->getId(), $object2->getId()], $searchResult->getIds());
-
-        $elementSearch = $searchProvider
-            ->createDataObjectSearch()
-            ->addModifier(new MultiSelectFilter('system_fields.key', ['object3', 'object4'], false))
-        ;
-        $searchResult = $searchService->search($elementSearch);
-        $this->assertIdArrayEquals([$object3->getId(), $object4->getId()], $searchResult->getIds());
-
-        $elementSearch = $searchProvider
-            ->createDataObjectSearch()
-            ->addModifier(new MultiSelectFilter('key', ['object3', 'object4'], false))
-        ;
-        $searchResult = $searchService->search($elementSearch);
-        $this->assertIdArrayEquals([], $searchResult->getIds());
-    }
-
-    public function testDateFilterAsset()
-    {
-        $asset1 = TestHelper::createImageAsset()
-            ->addMetadata('testDate', 'date', strtotime('2020-01-01'))
-            ->save();
-
-        $asset2 = TestHelper::createImageAsset()
-            ->addMetadata('testDate', 'date', strtotime('2020-02-02 12:00:00'))
-            ->save();
-
-        $asset3 = TestHelper::createImageAsset()
-            ->addMetadata('testDate', 'date', strtotime('2020-03-03'))
-            ->save();
-
-        /** @var AssetSearchServiceInterface $searchService */
-        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
-        /** @var SearchProviderInterface $searchProvider */
-        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
-
-        $assetSearch = $searchProvider
-            ->createAssetSearch()
-            ->addModifier(new DateFilter('testDate', Carbon::create('2019', 12, 31)));
-        $searchResult = $searchService->search($assetSearch);
-        $this->assertIdArrayEquals([$asset1->getId(), $asset2->getId(), $asset3->getId()], $searchResult->getIds());
-
-        $assetSearch = $searchProvider
-            ->createAssetSearch()
-            ->addModifier(new DateFilter('testDate', Carbon::create('2019', 12, 31), Carbon::create('2020', 1, 15)));
-        $searchResult = $searchService->search($assetSearch);
-        $this->assertIdArrayEquals([$asset1->getId()], $searchResult->getIds());
-
-        $assetSearch = $searchProvider
-            ->createAssetSearch()
-            ->addModifier(new DateFilter('testDate', null, null, Carbon::create('2020', 2, 2)));
-        $searchResult = $searchService->search($assetSearch);
-        $this->assertIdArrayEquals([$asset2->getId()], $searchResult->getIds());
-
-        $assetSearch = $searchProvider
-            ->createAssetSearch()
-            ->addModifier(new DateFilter('testDate', null, null, Carbon::create('2020', 2, 2), false));
-        $searchResult = $searchService->search($assetSearch);
-        $this->assertIdArrayEquals([], $searchResult->getIds());
-
-        $assetSearch = $searchProvider
-            ->createAssetSearch()
-            ->addModifier(new DateFilter('standard_fields.testDate.default', null, null, Carbon::create('2020', 2, 2), true, false));
-        $searchResult = $searchService->search($assetSearch);
-        $this->assertIdArrayEquals([$asset2->getId()], $searchResult->getIds());
-
-        $assetSearch = $searchProvider
-            ->createAssetSearch()
-            ->addModifier(new DateFilter('testDate', null, null, Carbon::create('2020', 2, 2), true, false));
-        $searchResult = $searchService->search($assetSearch);
-        $this->assertIdArrayEquals([], $searchResult->getIds());
-    }
-
-    public function testDateFilterDataObject()
-    {
-        $dataObject1 = TestHelper::createEmptyObject()
-            ->setDate(Carbon::create('2020', 1, 1))
-            ->save();
-
-        $dataObject2 = TestHelper::createEmptyObject()
-            ->setDate(Carbon::create('2020', 2, 2, 12))
-            ->save();
-
-        $dataObject3 = TestHelper::createEmptyObject()
-            ->setDate(Carbon::create('2020', 3, 3))
-            ->save();
+        $seed = 68;
+        /** @var Unittest $object1 */
+        $object1 = $this->tester->createFullyFledgedObjectUnittest(seed: $seed);
+        /** @var Unittest $object2 */
+        $this->tester->createFullyFledgedObjectUnittest();
+        /** @var Unittest $object3 */
+        $object3 = $this->tester->createFullyFledgedObjectUnittest(seed: $seed);
 
         /** @var DataObjectSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
@@ -159,54 +60,56 @@ class NestedTypeFiltersTest extends \Codeception\Test\Unit
 
         $dataObjectSearch = $searchProvider
             ->createDataObjectSearch()
-            ->setClassDefinition($dataObject1->getClass())
-            ->addModifier(new DateFilter('date', Carbon::create('2019', 12, 31)))
-        ;
-        $searchResult = $searchService->search($dataObjectSearch);
-        $this->assertIdArrayEquals([$dataObject1->getId(), $dataObject2->getId(), $dataObject3->getId()], $searchResult->getIds());
+            ->addModifier(new NestedFilter(
+                'structuredtable.row1',
+                new IntegerFilter('col1', $seed + 1)
+            ));
 
-        $dataObjectSearch = $searchProvider
-            ->createDataObjectSearch()
-            ->addModifier(new DateFilter('date', Carbon::create('2019', 12, 31), Carbon::create('2020', 1, 15)))
-        ;
         $searchResult = $searchService->search($dataObjectSearch);
-        $this->assertIdArrayEquals([$dataObject1->getId()], $searchResult->getIds());
-
-        $dataObjectSearch = $searchProvider
-            ->createDataObjectSearch()
-            ->addModifier(new DateFilter('date', null, null, Carbon::create('2020', 2, 2)))
-        ;
-        $searchResult = $searchService->search($dataObjectSearch);
-        $this->assertIdArrayEquals([$dataObject2->getId()], $searchResult->getIds());
-
-        $dataObjectSearch = $searchProvider
-            ->createDataObjectSearch()
-            ->setClassDefinition($dataObject1->getClass())
-            ->addModifier(new DateFilter('date', null, null, Carbon::create('2020', 2, 2), false))
-        ;
-        $searchResult = $searchService->search($dataObjectSearch);
-        $this->assertIdArrayEquals([], $searchResult->getIds());
-
-        $dataObjectSearch = $searchProvider
-            ->createDataObjectSearch()
-            ->addModifier(new DateFilter('standard_fields.date', null, null, Carbon::create('2020', 2, 2), true, false))
-        ;
-        $searchResult = $searchService->search($dataObjectSearch);
-        $this->assertIdArrayEquals([$dataObject2->getId()], $searchResult->getIds());
-
-        $dataObjectSearch = $searchProvider
-            ->createDataObjectSearch()
-            ->addModifier(new DateFilter('date', null, null, Carbon::create('2020', 2, 2), true, false))
-        ;
-        $searchResult = $searchService->search($dataObjectSearch);
-        $this->assertIdArrayEquals([], $searchResult->getIds());
-
+        $this->assertIdArrayContains([$object1->getId(), $object3->getId()], $searchResult->getIds());
     }
 
-    private function assertIdArrayEquals(array $ids1, array $ids2)
+    // tests
+    public function testNestedFilterWithWildcardFilter()
     {
-        sort($ids1);
-        sort($ids2);
-        $this->assertEquals($ids1, $ids2);
+        $seed = 33;
+        /** @var Unittest $object1 */
+        $object1 = $this->tester->createFullyFledgedObjectUnittest(seed: $seed);
+        /** @var Unittest $object2 */
+        $object2 = $this->tester->createFullyFledgedObjectUnittest();
+        /** @var Unittest $object3 */
+        $object3 = $this->tester->createFullyFledgedObjectUnittest(seed: $seed);
+
+        /** @var DataObjectSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $dataObjectSearch = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new NestedFilter(
+                'structuredtable.row1',
+                new WildcardSearch('col2', 'text_a_' . $seed)
+            ));
+
+        $searchResult = $searchService->search($dataObjectSearch);
+        $this->assertIdArrayContains([$object1->getId(), $object3->getId()], $searchResult->getIds());
+
+        $dataObjectSearch = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new NestedFilter(
+                'structuredtable.row1',
+                new WildcardSearch('col2', 'text_a_1')
+            ));
+
+        $searchResult = $searchService->search($dataObjectSearch);
+        $this->assertEquals($object2->getId(), $searchResult->getIds()[0]);
+    }
+
+    private function assertIdArrayContains(array $expectedIds, array $actualIds): void
+    {
+        foreach ($expectedIds as $expectedId) {
+            $this->assertContains($expectedId, $actualIds, "Expected ID {$expectedId} not found in result");
+        }
     }
 }

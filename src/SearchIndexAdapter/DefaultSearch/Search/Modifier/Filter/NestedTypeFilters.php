@@ -52,7 +52,7 @@ final readonly class NestedTypeFilters
         }
 
         $context->getSearch()->addQuery(
-            new NestedFilter($this->buildPath($filter->getPath()), $subQuery)
+            new NestedFilter($this->buildFieldPrefix($filter->getFieldName()), $subQuery)
         );
     }
 
@@ -67,14 +67,14 @@ final readonly class NestedTypeFilters
         }
 
         $context->getSearch()->addQuery(
-            new NestedFilter($this->buildPath($filter->getFieldName()), $subQuery)
+            new NestedFilter($this->buildFieldPrefix($filter->getFieldName()), $subQuery)
         );
     }
 
     private function getSubQuery(ClassificationStoreFilter|NestedFilterParam $filter, SearchInterface $search): ?array
     {
         $modifier = $filter->getSubModifier();
-        $fieldName = $filter->getFieldName();
+        $fieldName = $this->buildFieldPrefix($filter->getFieldName());
         if ($filter instanceof ClassificationStoreFilter) {
             $fieldName = $this->buildStoreFieldPrefix($filter);
         }
@@ -105,7 +105,7 @@ final readonly class NestedTypeFilters
         };
     }
 
-    private function buildPath(string $fieldName): string
+    private function buildFieldPrefix(string $fieldName): string
     {
         return 'standard_fields.' . $fieldName;
     }

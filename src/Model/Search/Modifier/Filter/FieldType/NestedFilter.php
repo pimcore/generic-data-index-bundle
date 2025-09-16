@@ -18,15 +18,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierIn
 final readonly class NestedFilter implements SearchModifierInterface
 {
     public function __construct(
-        private string $path,
         private string $fieldName,
         private SearchModifierInterface $subModifier
     ) {
-    }
-
-    public function getPath(): string
-    {
-        return $this->path;
     }
 
     public function getFieldName(): string
