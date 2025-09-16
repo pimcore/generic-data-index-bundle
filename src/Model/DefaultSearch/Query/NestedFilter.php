@@ -37,16 +37,6 @@ final class NestedFilter extends BoolQuery implements AsSubQueryInterface
         return $this->path;
     }
 
-    public function getField(): string
-    {
-        return $this->field;
-    }
-
-    public function getValue(): string
-    {
-        return $this->value;
-    }
-
     public function toArrayAsSubQuery(): array
     {
         return [
