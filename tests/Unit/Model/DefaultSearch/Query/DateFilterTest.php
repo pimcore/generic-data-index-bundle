@@ -69,7 +69,7 @@ final class DateFilterTest extends Unit
             'range' => [
                 'datefield' => [
                     'format' => "yyyy-MM-dd'T'HH:mm:ssz",
-                    'lte' => '2000-01-01T23:59:59+00:00',
+                    'lte' => '2000-01-01T00:00:00+00:00',
                 ],
             ],
         ], $dateFilter->toArray(true));
@@ -120,7 +120,7 @@ final class DateFilterTest extends Unit
         self::assertSame([
             'datefield' => [
                 'format' => "yyyy-MM-dd'T'HH:mm:ssz",
-                'lte' => '2000-01-01T23:59:59+00:00',
+                'lte' => '2000-01-01T00:00:00+00:00',
             ],
         ], $dateFilter->getParams());
 
