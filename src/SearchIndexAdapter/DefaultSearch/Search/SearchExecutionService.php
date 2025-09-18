@@ -42,21 +42,30 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
     /**
      * @throws SearchFailedException
      */
-    public function executeSearch(AdapterSearchInterface $search, string $indexName): SearchResult
-    {
+    public function executeSearch(
+        AdapterSearchInterface $search, 
+        string $indexName,
+        int|bool $trackTotalHits = null
+    ): SearchResult
+    {        
         try {
             $stopWatch = new Stopwatch();
             $stopWatch->start('search');
 
+            $searchParams = [
+                'index' => $indexName,
+                'body' => $search->toArray()
+            ];
+
+            if ($trackTotalHits !== null) {
+                $searchParams['body']['track_total_hits'] = $trackTotalHits;
+            }
+
             $defaultSearchResult = $this
                 ->client
-                ->search([
-                    'index' => $indexName,
-                    'body' => $search->toArray(),
-                ]);
+                ->search($searchParams);
 
             $executionTime = $stopWatch->stop('search')->getDuration();
-
         } catch (Exception $e) {
             $searchInformation = new SearchInformation(
                 $search,
