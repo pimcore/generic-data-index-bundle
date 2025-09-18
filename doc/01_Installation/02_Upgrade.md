@@ -2,6 +2,9 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 2.2.0
+- [Indexing] Added `id` column as new primary key to `generic_data_index_queue`. Please make sure to execute migrations.
+
 ## Upgrade to 2.1.0
 - Added support for Symfony 7
 - [Indexing] Added sort index for documents
