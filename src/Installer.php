@@ -13,17 +13,18 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle;
 
-use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Exception;
-use Doctrine\DBAL\Platforms\AbstractPlatform;
-use Doctrine\DBAL\Schema\Comparator;
-use Doctrine\DBAL\Schema\Schema;
-use Doctrine\DBAL\Schema\SchemaException;
 use Pimcore;
-use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
-use Pimcore\Bundle\GenericDataIndexBundle\Migrations\Version20240325081139;
-use Pimcore\Extension\Bundle\Installer\Exception\InstallationException;
+use Doctrine\DBAL\Exception;
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Schema\Schema;
+use Doctrine\DBAL\Schema\Comparator;
+use Doctrine\DBAL\Schema\SchemaException;
+use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
+use Pimcore\Extension\Bundle\Installer\Exception\InstallationException;
+use Pimcore\Bundle\GenericDataIndexBundle\Migrations\Version20240325081139;
+use Pimcore\Bundle\GenericDataIndexBundle\Migrations\Version20251009110653;
 
 /**
  * @internal
@@ -40,7 +41,7 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
 
     public function getLastMigrationVersionClassName(): ?string
     {
-        return Version20240325081139::class;
+        return Version20251009110653::class;
     }
 
     /**
@@ -89,6 +90,7 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
     {
         if (!$schema->hasTable(IndexQueue::TABLE)) {
             $queueTable = $schema->createTable(IndexQueue::TABLE);
+            $queueTable->addColumn('id', 'bigint', ['autoincrement' => true]);
             $queueTable->addColumn('elementId', 'integer', ['notnull' => true, 'unsigned' => true]);
             $queueTable->addColumn('elementType', 'string', ['notnull' => true, 'length' => 20]);
             $queueTable->addColumn('elementIndexName', 'string', ['notnull' => true, 'length' => 255]);
@@ -100,7 +102,8 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
                 'default' => 0,
             ]);
 
-            $queueTable->setPrimaryKey(['elementId', 'elementType']);
+            $queueTable->setPrimaryKey(['id']);
+            $queueTable->addUniqueIndex(['elementId', 'elementType'], IndexQueue::TABLE . '_element_id_type');
             $queueTable->addIndex(['dispatched'], IndexQueue::TABLE . '_dispatched');
             $queueTable->addIndex(['operationTime'], IndexQueue::TABLE . '_operation_time');
         }
