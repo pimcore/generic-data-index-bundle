@@ -32,7 +32,7 @@ interface SearchExecutionServiceInterface
     public function executeSearch(
         AdapterSearchInterface $search,
         string $indexName,
-        int|bool $trackTotalHits = null
+        int|bool|null $trackTotalHits = null
     ): SearchResult;
 
     /**
