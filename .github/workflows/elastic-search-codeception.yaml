@@ -29,7 +29,7 @@ env:
 jobs:
     codeception-tests:
         name: "Codeception tests"
-        runs-on: "ubuntu-latest"
+        runs-on: "Qodana-Runner"
         continue-on-error: ${{ matrix.experimental }}
         strategy:
             matrix:
