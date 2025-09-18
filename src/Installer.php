@@ -13,18 +13,17 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle;
 
-use Pimcore;
-use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Schema\Schema;
-use Doctrine\DBAL\Schema\Comparator;
-use Doctrine\DBAL\Schema\SchemaException;
+use Doctrine\DBAL\Exception;
 use Doctrine\DBAL\Platforms\AbstractPlatform;
-use Symfony\Component\HttpKernel\Bundle\BundleInterface;
+use Doctrine\DBAL\Schema\Comparator;
+use Doctrine\DBAL\Schema\Schema;
+use Doctrine\DBAL\Schema\SchemaException;
+use Pimcore;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
-use Pimcore\Extension\Bundle\Installer\Exception\InstallationException;
-use Pimcore\Bundle\GenericDataIndexBundle\Migrations\Version20240325081139;
 use Pimcore\Bundle\GenericDataIndexBundle\Migrations\Version20251009110653;
+use Pimcore\Extension\Bundle\Installer\Exception\InstallationException;
+use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 
 /**
  * @internal
