@@ -56,7 +56,15 @@ interface SearchIndexServiceInterface
         bool $aggregationsOnly = false
     ): DefaultSearchInterface;
 
-    public function search(AdapterSearchInterface $search, string $indexName): SearchResult;
+    /**
+     * Execute a search query.
+     * Set $trackTotalHits = true to enable accurate hit counts, an integer to set a maximum count or leave it at null to use the engines default value.
+     */
+    public function search(
+        AdapterSearchInterface $search,
+        string $indexName,
+        int|bool|null $trackTotalHits = true
+    ): SearchResult;
 
     public function getStats(string $indexName): array;
 
