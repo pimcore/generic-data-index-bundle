@@ -61,9 +61,9 @@ interface SearchIndexServiceInterface
      * Set $trackTotalHits = true to enable accurate hit counts, an integer to set a maximum count or leave it at null to use the engines default value.
      */
     public function search(
-        AdapterSearchInterface $search,
-        string $indexName,
-        int|bool|null $trackTotalHits = null
+        AdapterSearchInterface $search, 
+        string $indexName, 
+        int|bool|null $trackTotalHits = true
     ): SearchResult;
 
     public function getStats(string $indexName): array;

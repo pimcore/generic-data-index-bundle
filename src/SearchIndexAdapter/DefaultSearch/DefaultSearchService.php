@@ -245,9 +245,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
      * @throws SearchFailedException
      */
     public function search(
-        AdapterSearchInterface $search,
-        string $indexName,
-        int|bool|null $trackTotalHits = null
+        AdapterSearchInterface $search, 
+        string $indexName, 
+        int|bool|null $trackTotalHits = true
     ): SearchResult {
         return $this->searchExecutionService->executeSearch(
             $search,

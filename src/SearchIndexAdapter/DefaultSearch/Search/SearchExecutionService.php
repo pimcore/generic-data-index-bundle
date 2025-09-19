@@ -45,8 +45,8 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
     public function executeSearch(
         AdapterSearchInterface $search,
         string $indexName,
-        int|bool|null $trackTotalHits = null
-    ): SearchResult {
+        int|bool|null $trackTotalHits = true
+    ): SearchResult {        
         try {
             $stopWatch = new Stopwatch();
             $stopWatch->start('search');
