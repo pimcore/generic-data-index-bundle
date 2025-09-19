@@ -3,6 +3,9 @@
 Following steps are necessary during updating to newer versions.
 
 ## Upgrade to 2.1.0
+- Added `trackTotalHits` parameter to `DefaultSearchService` and `SearchExecutionService`. The default value is true,       which means that total hits will always be computed accurately, even if they exceed the search engines threshold for accurate hit calculation. Change this parameter to `null`, to use the default threshold, pass an integer value to set a specific one.
+
+## Upgrade to 2.1.0
 - Added support for Symfony 7
 - [Indexing] Added sort index for documents
 - [Indexing] Improved indexing of field collections to prevent mapping conflicts when properties have the same name but different types
