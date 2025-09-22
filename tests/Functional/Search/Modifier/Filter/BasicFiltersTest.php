@@ -14,12 +14,15 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\BooleanFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\ExcludeFoldersFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\ExcludeVariantsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IntegerFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\NumberFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 class BasicFiltersTest extends \Codeception\Test\Unit
@@ -68,6 +71,31 @@ class BasicFiltersTest extends \Codeception\Test\Unit
         $searchResult = $searchService->search($assetSearch);
         $this->assertCount(1, $searchResult->getItems());
         $this->assertNotEquals('folder', $searchResult->getItems()[0]->getType());
+    }
+
+    // tests
+    public function testExcludeVariants()
+    {
+        $object = TestHelper::createEmptyObject(save: false);
+        $object->setType(AbstractObject::OBJECT_TYPE_VARIANT);
+        $object->save();
+
+        TestHelper::createEmptyObject();
+
+        /** @var DataObjectSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService(DataObjectSearchServiceInterface::class);
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $search = $searchProvider->createDataObjectSearch();
+        $searchResult = $searchService->search($search);
+        $this->assertCount(2, $searchResult->getItems());
+
+        $search = $searchProvider->createDataObjectSearch();
+        $search->addModifier(new ExcludeVariantsFilter());
+        $searchResult = $searchService->search($search);
+        $this->assertCount(1, $searchResult->getItems());
+        $this->assertNotEquals(AbstractObject::OBJECT_TYPE_VARIANT, $searchResult->getItems()[0]->getType());
     }
 
     public function testIdFilter()
@@ -143,6 +171,23 @@ class BasicFiltersTest extends \Codeception\Test\Unit
             ->addModifier(new IntegerFilter('system_fields.userModification', $asset->getUserModification()))
         ;
         $searchResult = $searchService->search($assetSearch);
+        $this->assertCount(1, $searchResult->getItems());
+        $this->assertEquals($asset->getId(), $searchResult->getItems()[0]->getId());
+    }
+
+    public function testNumberFilter()
+    {
+        $number = 124;
+        $asset = $this->tester->createFullyFledgedObject();
+
+        /** @var DataObjectSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService(DataObjectSearchServiceInterface::class);
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $search = $searchProvider->createDataObjectSearch();
+        $search->addModifier(new NumberFilter('number', $number));
+        $searchResult = $searchService->search($search);
         $this->assertCount(1, $searchResult->getItems());
         $this->assertEquals($asset->getId(), $searchResult->getItems()[0]->getId());
     }

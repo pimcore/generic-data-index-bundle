@@ -15,10 +15,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\Search\AsSearchModifierHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchModifierContextInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\BoolExistsQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\DateFilter as DateFilterQuery;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\MultiBoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\Query as QueryFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter as TermsFilterQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\BooleanMultiSelectFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\DateFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\MultiSelectFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\NumberRangeFilter;
@@ -98,6 +101,44 @@ final readonly class FieldTypeFilters
     }
 
     #[AsSearchModifierHandler]
+    public function handleBooleanMultiSelectFilter(
+        BooleanMultiSelectFilter $filter,
+        SearchModifierContextInterface $context
+    ): void {
+        $context->getSearch()->addQuery(
+            $this->getBooleanMultiSelectFilter($filter, null, $context->getOriginalSearch())
+        );
+    }
+
+    public function getBooleanMultiSelectFilter(
+        BooleanMultiSelectFilter $filter,
+        ?string $prefix = null,
+        ?SearchInterface $search = null
+    ): null|BoolExistsQuery|MultiBoolQuery|TermsFilterQuery {
+        if (count($filter->getValues()) === 0) {
+            return null;
+        }
+
+        $fieldName = $filter->getField();
+        if ($prefix) {
+            $fieldName = $prefix . '.' . $fieldName;
+        }
+
+        if ($search && $filter->isPqlFieldNameResolutionEnabled()) {
+            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch($search, $fieldName);
+        }
+
+        $hasNull = in_array(null, $filter->getValues(), true);
+        $nonNullValues = array_filter($filter->getValues(), static fn($v) => $v !== null);
+
+        return match (true) {
+            $hasNull && $nonNullValues !== [] => new MultiBoolQuery($fieldName, $nonNullValues),
+            $hasNull => new BoolExistsQuery($fieldName),
+            default => new TermsFilterQuery($fieldName, $nonNullValues),
+        };
+    }
+
+    #[AsSearchModifierHandler]
     public function handleNumberRangeFilter(
         NumberRangeFilter $numberRangeFilter,
         SearchModifierContextInterface $context
@@ -125,8 +166,8 @@ final readonly class FieldTypeFilters
             'range',
             [
                 $fieldName => [
-                    'gte' => $numberRangeFilter->getMin(),
-                    'lte' => $numberRangeFilter->getMax(),
+                    'gt' => $numberRangeFilter->getMin(),
+                    'lt' => $numberRangeFilter->getMax(),
                 ],
             ]
         );

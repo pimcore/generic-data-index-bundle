@@ -13,6 +13,7 @@
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\Filter;
 
 use Carbon\Carbon;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\BooleanMultiSelectFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\DateFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\MultiSelectFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
@@ -77,6 +78,52 @@ class FieldTypeFiltersTest extends \Codeception\Test\Unit
         $elementSearch = $searchProvider
             ->createDataObjectSearch()
             ->addModifier(new MultiSelectFilter('key', ['object3', 'object4'], false))
+        ;
+        $searchResult = $searchService->search($elementSearch);
+        $this->assertIdArrayEquals([], $searchResult->getIds());
+    }
+
+    // tests
+    public function testBooleanMultiSelectFilter()
+    {
+        /**
+         * @var Unittest $object1
+         * @var Unittest $object2
+         */
+        $object1 = TestHelper::createEmptyObject()->setKey('object1')->setCheckbox(true)->save();
+        $object2 = TestHelper::createEmptyObject()->setKey('object2')->save();
+
+        /** @var DataObjectSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService(DataObjectSearchServiceInterface::class);
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $elementSearch = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new BooleanMultiSelectFilter('checkbox', [true, null]))
+        ;
+        $searchResult = $searchService->search($elementSearch);
+        $this->assertIdArrayEquals([$object1->getId(), $object2->getId()], $searchResult->getIds());
+
+        $elementSearch = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new BooleanMultiSelectFilter('checkbox', [true]))
+        ;
+        $searchResult = $searchService->search($elementSearch);
+        $this->assertCount(1, $searchResult->getIds());
+        $this->assertEquals($object1->getId(), $searchResult->getIds()[0]);
+
+        $object2->setCheckbox(false)->save();
+        $elementSearch = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new BooleanMultiSelectFilter('checkbox', [true, false]))
+        ;
+        $searchResult = $searchService->search($elementSearch);
+        $this->assertIdArrayEquals([$object1->getId(), $object2->getId()], $searchResult->getIds());
+
+        $elementSearch = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new BooleanMultiSelectFilter('checkbox', [true, false], false))
         ;
         $searchResult = $searchService->search($elementSearch);
         $this->assertIdArrayEquals([], $searchResult->getIds());
