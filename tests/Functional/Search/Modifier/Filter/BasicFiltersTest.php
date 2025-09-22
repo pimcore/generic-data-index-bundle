@@ -167,18 +167,27 @@ class BasicFiltersTest extends \Codeception\Test\Unit
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new IntegerFilter('system_fields.userOwner', $asset->getUserOwner()))
-            ->addModifier(new IntegerFilter('system_fields.userModification', $asset->getUserModification()))
+            ->addModifier(new IntegerFilter('userOwner', $asset->getUserOwner()))
+            ->addModifier(new IntegerFilter('userModification', $asset->getUserModification()))
         ;
         $searchResult = $searchService->search($assetSearch);
         $this->assertCount(1, $searchResult->getItems());
         $this->assertEquals($asset->getId(), $searchResult->getItems()[0]->getId());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new IntegerFilter('userOwner', $asset->getUserOwner(), false))
+        ;
+        $searchResult = $searchService->search($assetSearch);
+        $this->assertEmpty($searchResult->getItems());
     }
 
     public function testNumberFilter()
     {
         $number = 124;
-        $asset = $this->tester->createFullyFledgedObject();
+        $object = $this->tester->createFullyFledgedObjectUnittest();
+        $object2 = $this->tester->createFullyFledgedObjectUnittest();
+        $object2->setNumber(420)->save();
 
         /** @var DataObjectSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService(DataObjectSearchServiceInterface::class);
@@ -189,7 +198,12 @@ class BasicFiltersTest extends \Codeception\Test\Unit
         $search->addModifier(new NumberFilter('number', $number));
         $searchResult = $searchService->search($search);
         $this->assertCount(1, $searchResult->getItems());
-        $this->assertEquals($asset->getId(), $searchResult->getItems()[0]->getId());
+        $this->assertEquals($object->getId(), $searchResult->getItems()[0]->getId());
+
+        $search = $searchProvider->createDataObjectSearch();
+        $search->addModifier(new NumberFilter('number', $number, false));
+        $searchResult = $searchService->search($search);
+        $this->assertEmpty($searchResult->getItems());
     }
 
     public function testBooleanFilter()
