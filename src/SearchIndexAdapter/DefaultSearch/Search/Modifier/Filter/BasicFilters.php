@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\Filter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\Search\AsSearchModifierHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\ConditionType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\BoolExistsQuery;
@@ -150,7 +151,7 @@ final readonly class BasicFilters
     private function excludeTypeQuery(string $type): BoolQuery
     {
         return new BoolQuery([
-            'must_not' => [
+            ConditionType::MUST_NOT->value => [
                 new TermFilter(
                     field: SystemField::TYPE->getPath(),
                     term: $type,
