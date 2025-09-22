@@ -24,9 +24,16 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 interface SearchExecutionServiceInterface
 {
     /**
+     * Execute a search query.
+     * Set $trackTotalHits = true to enable accurate hit counts, an integer to set a maximum count or leave it at null to use the engines default value.
+     *
      * @throws SearchFailedException
      */
-    public function executeSearch(AdapterSearchInterface $search, string $indexName): SearchResult;
+    public function executeSearch(
+        AdapterSearchInterface $search,
+        string $indexName,
+        int|bool|null $trackTotalHits = true
+    ): SearchResult;
 
     /**
      * @return SearchInformation[]
