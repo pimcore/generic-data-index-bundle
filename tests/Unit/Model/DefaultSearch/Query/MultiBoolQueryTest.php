@@ -100,25 +100,18 @@ final class MultiBoolQueryTest extends Unit
         $terms = [false];
 
         $multiBoolQuery = new MultiBoolQuery($field, $terms);
-
         $expected = [
             'bool' => [
                 'should' => [
                     [
                         'bool' => [
-                            'filter' => [
-                                'bool' => [
-                                    'must_not' => [
-                                        'exists' => ['field' => $field],
-                                    ],
-                                ],
+                            'must_not' => [
+                                'exists' => ['field' => $field],
                             ],
                         ],
                     ],
                     [
-                        'filter' => [
-                            'terms' => [$field => $terms],
-                        ],
+                        'terms' => [$field => $terms],
                     ],
                 ],
                 'minimum_should_match' => 1,
@@ -158,16 +151,16 @@ final class MultiBoolQueryTest extends Unit
         self::assertArrayHasKey('filter', $result);
         self::assertArrayHasKey('bool', $result['filter']);
         self::assertArrayHasKey('should', $result['filter']['bool']);
-        
+
         // Should contain BoolExistsQuery and TermsFilter
         $shouldConditions = $result['filter']['bool']['should'];
         self::assertCount(2, $shouldConditions);
-        
-        // First condition should be BoolExistsQuery (must_not exists)
+
+        // The first condition should be BoolExistsQuery (must_not exists)
         self::assertArrayHasKey('bool', $shouldConditions[0]);
         self::assertArrayHasKey('must_not', $shouldConditions[0]['bool']);
-        
-        // Second condition should be TermsFilter
+
+        // The second condition should be TermsFilter
         self::assertArrayHasKey('terms', $shouldConditions[1]);
         self::assertSame($terms, $shouldConditions[1]['terms'][$field]);
     }
@@ -180,12 +173,12 @@ final class MultiBoolQueryTest extends Unit
         $multiBoolQuery = new MultiBoolQuery($field, $terms);
 
         self::assertSame($field, $multiBoolQuery->getField());
-        
+
         $result = $multiBoolQuery->toArrayAsSubQuery();
         $shouldConditions = $result['bool']['should'];
-        
+
         // Verify field is used correctly in both conditions
-        self::assertSame($field, $shouldConditions[0]['bool']['filter']['bool']['must_not']['exists']['field']);
-        self::assertArrayHasKey($field, $shouldConditions[1]['filter']['terms']);
+        self::assertSame($field, $shouldConditions[0]['bool']['must_not']['exists']['field']);
+        self::assertArrayHasKey($field, $shouldConditions[1]['terms']);
     }
 }

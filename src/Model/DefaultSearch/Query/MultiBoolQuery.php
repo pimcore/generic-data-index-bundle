@@ -52,8 +52,8 @@ final class MultiBoolQuery extends BoolQuery implements AsSubQueryInterface
         return [
             QueryType::BOOL->value => [
                 ConditionType::SHOULD->value => [
-                    (new BoolExistsQuery($this->field))->toArray(),
-                    (new TermsFilter($this->field, $this->terms))->toArray(),
+                    (new BoolExistsQuery($this->field))->toArrayAsSubQuery(),
+                    (new TermsFilter($this->field, $this->terms))->toArrayAsSubQuery(),
                 ],
                 'minimum_should_match' => 1,
             ],
