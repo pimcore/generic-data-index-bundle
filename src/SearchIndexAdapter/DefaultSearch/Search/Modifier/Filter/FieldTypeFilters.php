@@ -15,7 +15,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\Search\AsSearchModifierHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchModifierContextInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\DateFilter as DateFilterQuery;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\Query as QueryFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter as TermsFilterQuery;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\DateFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\MultiSelectFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\NumberRangeFilter;
@@ -36,22 +39,32 @@ final readonly class FieldTypeFilters
         DateFilter $dateFilter,
         SearchModifierContextInterface $context
     ): void {
+        $context->getSearch()->addQuery($this->getDateFilterQuery(
+            $dateFilter,
+            null,
+            $context->getOriginalSearch())
+        );
+    }
+
+    public function getDateFilterQuery(
+        DateFilter $dateFilter,
+        ?string $prefix = null,
+        ?SearchInterface $search = null
+    ): DateFilterQuery {
         $fieldName = $dateFilter->getField();
-        if ($dateFilter->isPqlFieldNameResolutionEnabled()) {
-            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch(
-                $context->getOriginalSearch(),
-                $fieldName
-            );
+        if ($prefix) {
+            $fieldName = $prefix . '.' . $fieldName;
+        }
+        if ($search && $dateFilter->isPqlFieldNameResolutionEnabled()) {
+            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch($search, $fieldName);
         }
 
-        $context->getSearch()->addQuery(
-            new Query\DateFilter(
-                $fieldName,
-                $dateFilter->getStartDate(),
-                $dateFilter->getEndDate(),
-                $dateFilter->getOnDate(),
-                $dateFilter->isRoundToDay()
-            )
+        return new DateFilterQuery(
+            $fieldName,
+            $dateFilter->getStartDate(),
+            $dateFilter->getEndDate(),
+            $dateFilter->getOnDate(),
+            $dateFilter->isRoundToDay()
         );
     }
 
@@ -60,19 +73,27 @@ final readonly class FieldTypeFilters
         MultiSelectFilter $multiSelectFilter,
         SearchModifierContextInterface $context
     ): void {
+        $context->getSearch()->addQuery(
+            $this->getMultiSelectQuery($multiSelectFilter, null, $context->getOriginalSearch())
+        );
+    }
+
+    public function getMultiSelectQuery(
+        MultiSelectFilter $multiSelectFilter,
+        ?string $prefix = null,
+        ?SearchInterface $search = null
+    ): TermsFilterQuery {
         $fieldName = $multiSelectFilter->getField();
-        if ($multiSelectFilter->isPqlFieldNameResolutionEnabled()) {
-            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch(
-                $context->getOriginalSearch(),
-                $fieldName
-            );
+        if ($prefix) {
+            $fieldName = $prefix . '.' . $fieldName;
+        }
+        if ($search && $multiSelectFilter->isPqlFieldNameResolutionEnabled()) {
+            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch($search, $fieldName);
         }
 
-        $context->getSearch()->addQuery(
-            new Query\TermsFilter(
-                $fieldName,
-                $multiSelectFilter->getValues()
-            )
+        return new TermsFilterQuery(
+            $fieldName,
+            $multiSelectFilter->getValues(),
         );
     }
 
@@ -81,22 +102,33 @@ final readonly class FieldTypeFilters
         NumberRangeFilter $numberRangeFilter,
         SearchModifierContextInterface $context
     ): void {
-        $fieldName = $numberRangeFilter->getField();
-        if ($numberRangeFilter->isPqlFieldNameResolutionEnabled()) {
-            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch(
-                $context->getOriginalSearch(),
-                $fieldName
-            );
-        }
 
         $context->getSearch()->addQuery(
-            new Query\Query('range', [
+            $this->getNumberRangeFilter($numberRangeFilter, null, $context->getOriginalSearch())
+        );
+    }
+
+    public function getNumberRangeFilter(
+        NumberRangeFilter $numberRangeFilter,
+        ?string $prefix = null,
+        ?SearchInterface $search = null
+    ): QueryFilter {
+        $fieldName = $numberRangeFilter->getField();
+        if ($prefix) {
+            $fieldName = $prefix . '.' . $fieldName;
+        }
+        if ($search && $numberRangeFilter->isPqlFieldNameResolutionEnabled()) {
+            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch($search, $fieldName);
+        }
+
+        return new QueryFilter(
+            'range',
+            [
                 $fieldName => [
                     'gte' => $numberRangeFilter->getMin(),
                     'lte' => $numberRangeFilter->getMax(),
                 ],
-            ])
+            ]
         );
-
     }
 }
