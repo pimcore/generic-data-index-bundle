@@ -1,13 +1,5 @@
 # Installation of Generic Data Index
 
-:::info
-
- This bundle is only supported on Pimcore Core Framework 11.
-
- This bundle requires minimum version of OpenSearch 2.7. or Elasticsearch 8.0.0.
-
-:::
-
  ## Bundle Installation
 
 To install the Generic Data Index bundle, follow the steps below:
