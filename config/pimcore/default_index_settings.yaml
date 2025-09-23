@@ -7,7 +7,7 @@ index:
 number_of_shards: 1
 number_of_replicas: 0
 max_ngram_diff: 30
-max_result_window: 10000
+max_result_window: 10000000
 analysis:
   analyzer:
     generic_data_index_ngram_analyzer:
