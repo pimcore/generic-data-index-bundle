@@ -129,7 +129,7 @@ final readonly class FieldTypeFilters
         }
 
         $hasNull = in_array(null, $filter->getValues(), true);
-        $nonNullValues = array_filter($filter->getValues(), static fn($v) => $v !== null);
+        $nonNullValues = array_filter($filter->getValues(), static fn ($v) => $v !== null);
 
         return match (true) {
             $hasNull && $nonNullValues !== [] => new MultiBoolQuery($fieldName, $nonNullValues),
