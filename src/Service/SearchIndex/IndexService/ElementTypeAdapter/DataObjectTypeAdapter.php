@@ -126,11 +126,13 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         $select = $this->dbConnection->createQueryBuilder()
             ->addSelect(...$selects)
             ->from('objects')
+            ->where('type = :objectType')
             ->where('classId = :classId')
             ->andWhere('path LIKE :path')
             ->setParameters([
                 'classId' => $element->getClassId(),
                 'path' => $element->getRealFullPath() . '/%',
+                'objectType' => 'object',
             ]);
 
         if ($includeElement) {

@@ -37,6 +37,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
     {
         $this->dataObjectTypeAdapter = $this->tester->grabService(DataObjectTypeAdapter::class);
         $this->tester->enableSynchronousProcessing();
+        $this->tester->enableSynchronousProcessingRelatedIds();
         $this->tester->clearQueue();
     }
 

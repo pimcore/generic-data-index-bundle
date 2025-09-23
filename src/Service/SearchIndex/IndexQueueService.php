@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\HandleIndexQueueEntriesException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
+use Pimcore\Bundle\GenericDataIndexBundle\Message\EnqueueRelatedIdsMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface;
@@ -30,6 +31,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\Index
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * @internal
@@ -45,14 +47,17 @@ final class IndexQueueService implements IndexQueueServiceInterface
         private readonly IndexQueueRepository $indexQueueRepository,
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly ElementServiceInterface $elementService,
-        private readonly SearchIndexConfigServiceInterface $searchIndexConfigService
+        private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
+        private readonly MessageBusInterface $messageBus
     ) {
     }
 
     public function updateIndexQueue(
         ElementInterface $element,
         string $operation,
-        bool $processSynchronously = false
+        bool $processSynchronously = false,
+        bool $enqueueRelatedItems = true,
+        bool $enqueueRelatedItemsAsync = false
     ): IndexQueueService {
         try {
             $this->checkOperationValid($operation);
@@ -61,7 +66,13 @@ final class IndexQueueService implements IndexQueueServiceInterface
                 $this->doHandleIndexData($element, $operation);
             }
 
-            $this->handleQueueByOperation($element, $operation, $processSynchronously);
+            if ($enqueueRelatedItems || $processSynchronously === false) {
+                if ($enqueueRelatedItemsAsync) {
+                    $this->dispatchEnqueueRelatedIdsMessage($element, $operation, !$processSynchronously);
+                } else {
+                    $this->handleQueueByOperation($element, $operation, $processSynchronously);
+                }
+            }
 
             $this->pathService->rewriteChildrenIndexPaths($element);
         } catch (Exception $e) {
@@ -196,5 +207,20 @@ final class IndexQueueService implements IndexQueueServiceInterface
         ], true)) {
             throw new IndexDataException(sprintf('Operation %s not valid', $operation));
         }
+    }
+
+    private function dispatchEnqueueRelatedIdsMessage(
+        ElementInterface $element,
+        string $operation,
+        bool $addParentElement
+    ): void {
+        $this->messageBus->dispatch(
+            new EnqueueRelatedIdsMessage(
+                $element->getId(),
+                $this->elementService->getElementType($element),
+                $operation,
+                $addParentElement
+            )
+        );
     }
 }

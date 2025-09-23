@@ -22,12 +22,14 @@ use Doctrine\ORM\NoResultException;
 use Doctrine\ORM\QueryBuilder;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
+use Throwable;
 
 final class IndexQueueRepository
 {
@@ -36,6 +38,8 @@ final class IndexQueueRepository
     public const AND_OPERATOR = 'and';
 
     public const OR_OPERATOR = 'or';
+
+    public const BATCH_SIZE = 500;
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
@@ -79,22 +83,31 @@ final class IndexQueueRepository
     ): array {
         try {
             if ($dispatch) {
-
                 $dispatchId = $this->dispatchItems($limit);
 
-                return $this->createQueryBuilder('q')
-                    ->where('q.dispatched = :dispatchId')
-                    ->setParameter(':dispatchId', $dispatchId)
-                    ->getQuery()
-                    ->getArrayResult();
+                $sql = sprintf(
+                    'SELECT * FROM %s WHERE %s = :dispatchId FOR UPDATE SKIP LOCKED',
+                    $this->connection->quoteIdentifier(IndexQueue::TABLE),
+                    $this->connection->quoteIdentifier('dispatched')
+                );
+
+                return $this->connection->executeQuery(
+                    $sql,
+                    ['dispatchId' => $dispatchId]
+                )->fetchAllAssociative();
             }
 
-            return $this->createQueryBuilder('q')
-                ->orderBy('q.operationTime')
-                ->setMaxResults($limit)
-                ->getQuery()
-                ->getArrayResult();
+            $sql = sprintf(
+                'SELECT * FROM %s WHERE %s = 0 ORDER BY %s ASC LIMIT %s FOR UPDATE SKIP LOCKED',
+                $this->connection->quoteIdentifier(IndexQueue::TABLE),
+                $this->connection->quoteIdentifier('dispatched'),
+                $this->connection->quoteIdentifier('operationTime'),
+                $limit
+            );
 
+            return $this->connection->executeQuery(
+                $sql
+            )->fetchAllAssociative();
         } catch (Exception $e) {
             $this->logger->error('getUnhandledIndexQueueEntries failed! Error: ' . $e->getMessage());
         }
@@ -109,20 +122,26 @@ final class IndexQueueRepository
      */
     public function deleteQueueEntries(array $entries): void
     {
-        foreach (array_chunk($entries, 500) as $chunk) {
+        $chunks = array_chunk($entries, self::BATCH_SIZE);
+        foreach ($chunks as $chunk) {
             $condition = [];
 
             /** @var IndexQueue $entry */
             foreach ($chunk as $entry) {
                 $condition[] = sprintf(
-                    '(elementId = %s AND elementType = %s and operationTime = %s)',
-                    $this->connection->quote((string)$entry->getElementId()),
-                    $this->connection->quote($entry->getElementType()),
+                    '(%s, %s)',
+                    $this->connection->quote((string)$entry->getId()),
                     $this->connection->quote($entry->getOperationTime())
                 );
             }
 
-            $condition = '(' . implode(' OR ', $condition) . ')';
+            $condition = sprintf('(%s, %s) IN (%s) ORDER BY %s ASC LIMIT %s',
+                $this->connection->quoteIdentifier('id'),
+                $this->connection->quoteIdentifier('operationTime'),
+                implode(',', $condition),
+                $this->connection->quoteIdentifier('id'),
+                self::BATCH_SIZE
+            );
 
             //delete handled entry from queue table
             $this->connection->executeQuery('DELETE FROM ' . IndexQueue::TABLE . ' WHERE ' . $condition);
@@ -137,6 +156,7 @@ final class IndexQueueRepository
         //bigint field potentially exceed max php int values on 32 bit systems, therefore this is handled as string
         $entry['operationTime'] = (string)$entry['operationTime'];
         $entry['dispatched'] = (string)$entry['dispatched'];
+        $entry['id'] = (string)$entry['id'];
 
         return $this->denormalizer->denormalize($entry, IndexQueue::class);
     }
@@ -168,21 +188,52 @@ final class IndexQueueRepository
     /**
      * @throws DBALException
      */
-    public function enqueueBySelectQuery(DBALQueryBuilder $queryBuilder): void
-    {
-        $sql = <<<SQL
-            INSERT INTO
-                %s (elementId, elementType, elementIndexName, operation, operationTime, dispatched)
-                %s
-                ON DUPLICATE KEY
-                UPDATE
-                    operation = VALUES(operation),
-                    operationTime = VALUES(operationTime),
-                    dispatched = VALUES(dispatched)
-        SQL;
+    public function enqueueBySelectQuery(
+        DBALQueryBuilder $queryBuilder
+    ): void {
+        $result = $this->connection->fetchAllAssociative($queryBuilder->getSQL(), $queryBuilder->getParameters());
+        if (empty($result)) {
+            return;
+        }
 
-        $sql = sprintf($sql, IndexQueue::TABLE, $queryBuilder->getSQL());
-        $this->connection->executeQuery($sql, $queryBuilder->getParameters());
+        [
+            $ids,
+            $elementType,
+            $operation,
+            $operationTime,
+            $elementIndexName
+        ] = $this->getValuesFromSqlResult($result);
+
+        foreach (array_chunk($ids, self::BATCH_SIZE) as $chunk) {
+            $effectiveChunkSize = count($chunk);
+
+            try {
+                $this->connection->beginTransaction();
+
+                $affectedRows = $this->insertFromChunk(
+                    $chunk,
+                    $elementType,
+                    $operation,
+                    $operationTime,
+                    $elementIndexName
+                );
+
+                if ($affectedRows < $effectiveChunkSize) {
+                    $this->updateFromChunk(
+                        $chunk,
+                        $elementType,
+                        $operation,
+                        $operationTime
+                    );
+                }
+
+                $this->connection->commit();
+            } catch (Throwable $e) {
+                $this->connection->rollBack();
+
+                throw $e;
+            }
+        }
     }
 
     /**
@@ -290,5 +341,122 @@ final class IndexQueueRepository
         }
 
         return $queryBuilder;
+    }
+
+    private function updateFromChunk(
+        array $chunk,
+        string $elementType,
+        string $operation,
+        int $operationTime
+    ): int {
+        if (empty($chunk)) {
+            return 0;
+        }
+
+        $placeholders = str_repeat('?,', count($chunk) - 1) . '?';
+        $updateSql = sprintf(
+            'UPDATE %s SET %s = ?, %s = ?, %s = 0 WHERE %s IN (%s) AND %s = ?',
+            $this->connection->quoteIdentifier(IndexQueue::TABLE),
+            $this->connection->quoteIdentifier('operation'),
+            $this->connection->quoteIdentifier('operationTime'),
+            $this->connection->quoteIdentifier('dispatched'),
+            $this->connection->quoteIdentifier('elementId'),
+            $placeholders,
+            $this->connection->quoteIdentifier('elementType')
+        );
+
+        $updateParams = array_merge(
+            [$operation, $operationTime],
+            $chunk,
+            [$elementType]
+        );
+
+        return $this->connection->executeStatement($updateSql, $updateParams);
+    }
+
+    private function insertFromChunk(
+        array $chunk,
+        string $elementType,
+        string $operation,
+        int $operationTime,
+        ?string $elementIndexName = null,
+    ): int {
+        if (empty($chunk)) {
+            return 0;
+        }
+
+        $placeholders = str_repeat('(?, ?, ?, ?, ?, 0),', count($chunk) - 1) . '(?, ?, ?, ?, ?, 0)';
+        $insertSql = sprintf(
+            'INSERT IGNORE INTO %s (%s, %s, %s, %s, %s, %s) VALUES %s',
+            $this->connection->quoteIdentifier(IndexQueue::TABLE),
+            $this->connection->quoteIdentifier('elementId'),
+            $this->connection->quoteIdentifier('elementType'),
+            $this->connection->quoteIdentifier('elementIndexName'),
+            $this->connection->quoteIdentifier('operation'),
+            $this->connection->quoteIdentifier('operationTime'),
+            $this->connection->quoteIdentifier('dispatched'),
+            $placeholders
+        );
+
+        $insertParams = [];
+        foreach ($chunk as $id) {
+            $insertParams = array_merge($insertParams, [
+                $id,
+                $elementType,
+                $elementIndexName,
+                $operation,
+                $operationTime,
+            ]);
+        }
+
+        return $this->connection->executeStatement($insertSql, $insertParams);
+    }
+
+    /*
+    * @TODO: Refactor to avoid that all values have to be in a specific order. Either use aliases or pass the keys as parameters.
+    * Both things can be considered breaking changes.
+    */
+    private function getValuesFromSqlResult(array $result): array
+    {
+        if (empty($result)) {
+            return [];
+        }
+
+        $firstRow = $result[0];
+        $keys = array_keys($firstRow);
+        $columnCount = count($keys);
+
+        $ids = array_column($result, $keys[0]);
+        $elementType = $firstRow[$keys[1]];
+
+        $elementIndexName = match ($elementType) {
+            ElementType::ASSET->value, ElementType::DOCUMENT->value => $elementType,
+            ElementType::DATA_OBJECT->value => $firstRow['className'] ??
+            $firstRow[
+                $keys[2]
+            ] ??
+            null,
+            default => null,
+        };
+
+        $operation = $firstRow[
+            $keys[
+                    $columnCount > 5 ? 3 : 2
+            ]
+        ];
+
+        $operationTime = (int)$firstRow[
+            $keys[
+                $columnCount > 5 ? 4 : 3
+            ]
+        ];
+
+        return [
+            $ids,
+            $elementType,
+            $operation,
+            $operationTime,
+            $elementIndexName,
+        ];
     }
 }

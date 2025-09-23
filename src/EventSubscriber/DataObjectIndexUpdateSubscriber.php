@@ -16,12 +16,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Event\DataObjectEvents;
 use Pimcore\Event\Model\DataObjectEvent;
-use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\DataObject\Service;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -35,7 +36,8 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         private readonly Installer $installer,
         private readonly IndexQueueServiceInterface $indexQueueService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
-        private readonly SynchronousProcessingServiceInterface $synchronousProcessing
+        private readonly SynchronousProcessingServiceInterface $synchronousProcessing,
+        private readonly SynchronousProcessingRelatedIdsServiceInterface $synchronousProcessingRelatedIds
     ) {
     }
 
@@ -62,19 +64,20 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
             return;
         }
 
-        $inheritanceBackup = AbstractObject::getGetInheritedValues();
-        AbstractObject::setGetInheritedValues(true);
+        $dataObject = $event->getObject();
+        Service::useInheritedValues(true, fn () =>
+            $this->indexQueueService
+                ->updateIndexQueue(
+                    $dataObject,
+                    IndexQueueOperation::UPDATE->value,
+                    $this->synchronousProcessing->isEnabled(),
+                    $dataObject->hasChildren(includingUnpublished: true),
+                    $this->synchronousProcessingRelatedIds->isEnabled() === false
+                )
+                ->commit()
+        );
 
-        $this->indexQueueService
-            ->updateIndexQueue(
-                element: $event->getObject(),
-                operation: IndexQueueOperation::UPDATE->value,
-                processSynchronously: $this->synchronousProcessing->isEnabled()
-            )
-            ->commit();
         $this->queueMessagesDispatcher->dispatchQueueMessages();
-
-        AbstractObject::setGetInheritedValues($inheritanceBackup);
     }
 
     public function deleteDataObject(DataObjectEvent $event): void
@@ -83,11 +86,13 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
             return;
         }
 
+        $dataObject = $event->getObject();
         $this->indexQueueService
             ->updateIndexQueue(
-                element: $event->getObject(),
-                operation: IndexQueueOperation::DELETE->value,
-                processSynchronously: $this->synchronousProcessing->isEnabled()
+                $dataObject,
+                IndexQueueOperation::DELETE->value,
+                $this->synchronousProcessing->isEnabled(),
+                $dataObject->hasChildren(includingUnpublished: true)
             )
             ->commit();
         $this->queueMessagesDispatcher->dispatchQueueMessages();

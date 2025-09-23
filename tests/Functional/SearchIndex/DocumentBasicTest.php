@@ -41,6 +41,7 @@ final class DocumentBasicTest extends Unit
     protected function _before(): void
     {
         $this->tester->enableSynchronousProcessing();
+        $this->tester->enableSynchronousProcessingRelatedIds();
         $this->documentSearchService = $this->tester->grabService(DocumentSearchServiceInterface::class);
     }
 
