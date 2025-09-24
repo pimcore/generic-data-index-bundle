@@ -14,12 +14,15 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\Filter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\Search\AsSearchModifierHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\NestedFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\SimpleQueryStringFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\BooleanFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IntegerFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\NumberFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\BooleanMultiSelectFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\ClassificationStoreFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\DateFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\MultiSelectFilter;
@@ -83,14 +86,17 @@ final readonly class NestedTypeFilters
             $modifier instanceof BooleanFilter =>
             $this->basicFilters->getBooleanQuery($modifier, $fieldName, $search)->toArrayAsSubQuery(),
 
-            $modifier instanceof IntegerFilter =>
-            $this->basicFilters->getIntegerQuery($modifier, $fieldName, $search)->toArrayAsSubQuery(),
+            $modifier instanceof IntegerFilter, $modifier instanceof NumberFilter =>
+            $this->basicFilters->getNumberQuery($modifier, $fieldName, $search)->toArrayAsSubQuery(),
 
             $modifier instanceof DateFilter =>
             $this->fieldTypeFilters->getDateFilterQuery($modifier, $fieldName, $search)->toArray(true),
 
             $modifier instanceof MultiSelectFilter =>
             $this->fieldTypeFilters->getMultiSelectQuery($modifier, $fieldName, $search)->toArrayAsSubQuery(),
+
+            $modifier instanceof BooleanMultiSelectFilter =>
+            $this->fieldTypeFilters->getBooleanMultiSelectFilter($modifier, $fieldName, $search)?->toArrayAsSubQuery(),
 
             $modifier instanceof NumberRangeFilter =>
             $this->fieldTypeFilters->getNumberRangeFilter($modifier, $fieldName, $search)->toArray(true),
@@ -107,13 +113,14 @@ final readonly class NestedTypeFilters
 
     private function buildFieldPrefix(string $fieldName): string
     {
-        return 'standard_fields.' . $fieldName;
+        return  FieldCategory::STANDARD_FIELDS->value . '.' . $fieldName;
     }
 
     private function buildStoreFieldPrefix(ClassificationStoreFilter $filter): string
     {
         return sprintf(
-            'standard_fields.%s.%s.%s',
+            '%s.%s.%s.%s',
+            FieldCategory::STANDARD_FIELDS->value,
             $filter->getFieldName(),
             $filter->getGroup(),
             $filter->getLocale(),

@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\Filter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\Search\AsSearchModifierHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\ConditionType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\BoolExistsQuery;
@@ -23,10 +24,13 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\BooleanFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\ExcludeFoldersFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\ExcludeVariantsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IntegerFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\NumberFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationServiceInterface;
+use Pimcore\Model\DataObject\AbstractObject;
 
 /**
  * @internal
@@ -53,26 +57,34 @@ final readonly class BasicFilters
     public function handleIntegerFilter(IntegerFilter $integerFilter, SearchModifierContextInterface $context): void
     {
         $context->getSearch()->addQuery(
-            $this->getIntegerQuery($integerFilter, null, $context->getOriginalSearch())
+            $this->getNumberQuery($integerFilter, null, $context->getOriginalSearch())
         );
     }
 
-    public function getIntegerQuery(
-        IntegerFilter $integerFilter,
+    #[AsSearchModifierHandler]
+    public function handleNumberFilter(NumberFilter $numberFilter, SearchModifierContextInterface $context): void
+    {
+        $context->getSearch()->addQuery(
+            $this->getNumberQuery($numberFilter, null, $context->getOriginalSearch())
+        );
+    }
+
+    public function getNumberQuery(
+        IntegerFilter|NumberFilter $filter,
         ?string $prefix = null,
         ?SearchInterface $search = null
     ): TermFilter {
-        $fieldName = $integerFilter->getFieldName();
+        $fieldName = $filter->getFieldName();
         if ($prefix) {
             $fieldName = $prefix . '.' . $fieldName;
         }
-        if ($search && $integerFilter->isPqlFieldNameResolutionEnabled()) {
+        if ($search && $filter->isPqlFieldNameResolutionEnabled()) {
             $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch($search, $fieldName);
         }
 
         return new TermFilter(
             field: $fieldName,
-            term: $integerFilter->getSearchTerm(),
+            term: $filter->getSearchTerm(),
         );
     }
 
@@ -125,13 +137,26 @@ final readonly class BasicFilters
         ExcludeFoldersFilter $excludeFoldersFilter,
         SearchModifierContextInterface $context
     ): void {
-        $context->getSearch()->addQuery(new BoolQuery([
-            'must_not' => [
+        $context->getSearch()->addQuery($this->excludeTypeQuery(AbstractObject::OBJECT_TYPE_FOLDER));
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleExcludeVariantsFilter(
+        ExcludeVariantsFilter $excludeVariantsFilter,
+        SearchModifierContextInterface $context
+    ): void {
+        $context->getSearch()->addQuery($this->excludeTypeQuery(AbstractObject::OBJECT_TYPE_VARIANT));
+    }
+
+    private function excludeTypeQuery(string $type): BoolQuery
+    {
+        return new BoolQuery([
+            ConditionType::MUST_NOT->value => [
                 new TermFilter(
                     field: SystemField::TYPE->getPath(),
-                    term: 'folder',
+                    term: $type,
                 ),
             ],
-        ]));
+        ]);
     }
 }

@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Fie
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\BooleanFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IntegerFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\NumberFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\FullTextSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\WildcardSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
@@ -25,8 +26,8 @@ final readonly class ClassificationStoreFilter implements SearchModifierInterfac
     public function __construct(
         private string $fieldName,
         private string $group,
-        private BooleanFilter|DateFilter|FullTextSearch|IntegerFilter|MultiSelectFilter|NumberRangeFilter|
-        WildcardSearch $subModifier,
+        private BooleanFilter|DateFilter|FullTextSearch|IntegerFilter|MultiSelectFilter|BooleanMultiSelectFilter|
+        NumberFilter|NumberRangeFilter|WildcardSearch $subModifier,
         private string $locale = MappingProperty::NOT_LOCALIZED_KEY,
     ) {
     }
@@ -42,7 +43,7 @@ final readonly class ClassificationStoreFilter implements SearchModifierInterfac
     }
 
     public function getSubModifier(): BooleanFilter|DateFilter|FullTextSearch|IntegerFilter|
-    MultiSelectFilter|NumberRangeFilter|WildcardSearch
+    MultiSelectFilter|BooleanMultiSelectFilter|NumberFilter|NumberRangeFilter|WildcardSearch
     {
         return $this->subModifier;
     }

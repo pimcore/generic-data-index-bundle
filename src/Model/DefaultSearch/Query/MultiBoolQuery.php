@@ -14,18 +14,23 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\ConditionType;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\QueryType;
 
-final class TermsFilter extends BoolQuery implements AsSubQueryInterface
+final class MultiBoolQuery extends BoolQuery implements AsSubQueryInterface
 {
     public function __construct(
         private readonly string $field,
-        /** @var (int|string|bool)[] */
+        /** @var (bool)[] */
         private readonly array $terms,
     ) {
         parent::__construct([
             ConditionType::FILTER->value => [
-                'terms' => [
-                    $this->field => $this->terms,
+                QueryType::BOOL->value => [
+                    ConditionType::SHOULD->value => [
+                        (new BoolExistsQuery($this->field))->toArrayAsSubQuery(),
+                        (new TermsFilter($this->field, $this->terms))->toArrayAsSubQuery(),
+                    ],
+                    'minimum_should_match' => 1,
                 ],
             ],
         ]);
@@ -36,7 +41,7 @@ final class TermsFilter extends BoolQuery implements AsSubQueryInterface
         return $this->field;
     }
 
-    /** @return (int|string|bool)[] */
+    /** @return (bool)[] */
     public function getTerms(): array
     {
         return $this->terms;
@@ -45,8 +50,12 @@ final class TermsFilter extends BoolQuery implements AsSubQueryInterface
     public function toArrayAsSubQuery(): array
     {
         return [
-            'terms' => [
-                $this->field => $this->terms,
+            QueryType::BOOL->value => [
+                ConditionType::SHOULD->value => [
+                    (new BoolExistsQuery($this->field))->toArrayAsSubQuery(),
+                    (new TermsFilter($this->field, $this->terms))->toArrayAsSubQuery(),
+                ],
+                'minimum_should_match' => 1,
             ],
         ];
     }
