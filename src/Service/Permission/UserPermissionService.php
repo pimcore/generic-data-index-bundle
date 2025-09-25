@@ -35,11 +35,7 @@ final class UserPermissionService implements UserPermissionServiceInterface
         if ($user->isAdmin()) {
             return true;
         }
-        $permissions = $user->getPermissions();
-        if (in_array($permission, $permissions)) {
-            return true;
-        }
 
-        return false;
+        return $user->isAllowed($permission);
     }
 }
