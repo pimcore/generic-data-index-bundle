@@ -18,14 +18,12 @@ use Pimcore\ValueObject\Collection\ArrayOfStrings;
 
 final readonly class MultiSelectFilter implements SearchModifierInterface
 {
-    private ArrayOfStrings $values;
 
     public function __construct(
         private string $field,
-        array $values,
+        private array $values,
         private bool $enablePqlFieldNameResolution = true,
     ) {
-        $this->values = new ArrayOfStrings($values);
     }
 
     public function getField(): string
@@ -35,7 +33,7 @@ final readonly class MultiSelectFilter implements SearchModifierInterface
 
     public function getValues(): array
     {
-        return $this->values->getValue();
+        return $this->values;
     }
 
     public function isPqlFieldNameResolutionEnabled(): bool
