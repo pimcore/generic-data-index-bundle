@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
+use ValueError;
 
 final readonly class MultiSelectFilter implements SearchModifierInterface
 {
@@ -22,6 +23,7 @@ final readonly class MultiSelectFilter implements SearchModifierInterface
         private array $values,
         private bool $enablePqlFieldNameResolution = true,
     ) {
+        $this->validate();
     }
 
     public function getField(): string
@@ -37,5 +39,19 @@ final readonly class MultiSelectFilter implements SearchModifierInterface
     public function isPqlFieldNameResolutionEnabled(): bool
     {
         return $this->enablePqlFieldNameResolution;
+    }
+
+    private function validate(): void
+    {
+        foreach ($this->values as $value) {
+            if (!is_string($value) && !is_int($value) && !is_float($value)) {
+                throw new ValueError(
+                    sprintf(
+                        'Provided array must contain only string, int or float values. (%s given)',
+                        gettype($value)
+                    ),
+                );
+            }
+        }
     }
 }
