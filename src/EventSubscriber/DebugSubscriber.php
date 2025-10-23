@@ -17,6 +17,7 @@ use Pimcore;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Debug\SearchInformation;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Helper\ParameterBagHelper;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpKernel\Event\ResponseEvent;
@@ -48,7 +49,7 @@ final class DebugSubscriber implements EventSubscriberInterface
         if (!Pimcore::inDebugMode() || empty($event->getRequest()->query->get(self::DEBUG_SEARCH_PARAM))) {
             return;
         }
-        $verbosity = $event->getRequest()->query->getInt(self::DEBUG_SEARCH_PARAM);
+        $verbosity = ParameterBagHelper::getInt($event->getRequest()->query, self::DEBUG_SEARCH_PARAM);
         $event->setResponse(new JsonResponse($this->getNormalizedSearches($verbosity)));
     }
 
