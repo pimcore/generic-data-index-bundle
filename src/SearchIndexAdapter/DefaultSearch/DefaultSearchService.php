@@ -118,7 +118,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         try {
             $this->client->reIndex(['body' => $body]);
         } catch (Exception $e) {
-            $this->logger->error('Reindexing failed due to following error: ' . $e);
+            throw $e;
         }
 
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);

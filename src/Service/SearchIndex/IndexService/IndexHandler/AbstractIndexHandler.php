@@ -54,7 +54,15 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         } catch (Exception $e) {
             $this->logger->info($e);
             //try recreating index
-            $this->reindexMapping($context, $mappingProperties);
+            try {
+                $this->reindexMapping($context, $mappingProperties);
+            } catch (Exception $e) {
+                if(!$forceCreateIndex) {
+                    $this->updateMapping($context, true, $mappingProperties);
+                } else {
+                    $this->logger->error('Reindexing failed due to following error: ' . $e);
+                }
+            }
         }
     }
 
