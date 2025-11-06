@@ -53,18 +53,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             $this->doUpdateMapping($context);
         } catch (Exception $e) {
             $this->logger->info($e);
-
             //try recreating index
-            try {
-                $this->reindexMapping($context, $mappingProperties);
-            } catch (Exception $e) {
-                if (!$forceCreateIndex) {
-                    $this->logger->warning('Retrying with force creating index because reindexing failed due to following error: ' . $e);
-                    $this->updateMapping($context, true, $mappingProperties);
-                } else {
-                    $this->logger->error('Reindexing failed due to following error: ' . $e);
-                }
-            }
+            $this->reindexMapping($context, $mappingProperties);
         }
     }
 
@@ -84,10 +74,18 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                 mappingProperties: $mappingProperties
             );
         } else {
-            $this->searchIndexService->reindex(
-                $alias,
-                $mappingProperties
-            );
+            try { 
+                $this->searchIndexService->reindex(
+                    $alias,
+                    $mappingProperties
+                );
+            } catch (Exception $e) {
+                try {
+                    $this->updateMapping($context, true, $mappingProperties);
+                } catch (Exception $e) {
+                    $this->logger->error('Reindexing failed due to following error: ' . $e);
+                }
+            }
         }
 
         $this->createGlobalIndexAliases($context);
