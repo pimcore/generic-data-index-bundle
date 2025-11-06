@@ -74,7 +74,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                 mappingProperties: $mappingProperties
             );
         } else {
-            try { 
+            try {
                 $this->searchIndexService->reindex(
                     $alias,
                     $mappingProperties
