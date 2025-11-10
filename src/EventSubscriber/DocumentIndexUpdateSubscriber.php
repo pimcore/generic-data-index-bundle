@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexElementIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
@@ -30,6 +31,7 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
 {
     public function __construct(
         private IndexQueueServiceInterface $indexQueueService,
+        private IndexElementIndexServiceInterface $indexElementIndexService,
         private Installer $installer,
         private QueueMessagesDispatcher $queueMessagesDispatcher,
         private SynchronousProcessingServiceInterface $synchronousProcessing,
@@ -51,7 +53,7 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
         if (!$this->installer->isInstalled()) {
             return;
         }
-
+        $document = $event->getDocument();
         $this->indexQueueService
             ->updateIndexQueue(
                 element: $event->getDocument(),
@@ -62,6 +64,7 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
             ->commit();
 
         $this->queueMessagesDispatcher->dispatchQueueMessages();
+        $this->indexElementIndexService->updateSiblings($document);
     }
 
     public function deleteDocument(DocumentEvent $event): void

@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexElementIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
@@ -35,6 +36,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
     public function __construct(
         private readonly Installer $installer,
         private readonly IndexQueueServiceInterface $indexQueueService,
+        private readonly IndexElementIndexServiceInterface $indexElementIndexService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
         private readonly SynchronousProcessingServiceInterface $synchronousProcessing,
         private readonly SynchronousProcessingRelatedIdsServiceInterface $synchronousProcessingRelatedIds
@@ -78,6 +80,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         );
 
         $this->queueMessagesDispatcher->dispatchQueueMessages();
+        $this->indexElementIndexService->updateSiblings($dataObject);
     }
 
     public function deleteDataObject(DataObjectEvent $event): void
