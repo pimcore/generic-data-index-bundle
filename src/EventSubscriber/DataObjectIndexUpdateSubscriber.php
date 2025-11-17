@@ -59,10 +59,8 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
 
     public function updateDataObject(DataObjectEvent $event): void
     {
+        $this->indexElementIndexService->updateSiblings($event->getObject());
         $this->updateData($event);
-        if ($this->synchronousProcessing->isEnabled()) {
-            $this->indexElementIndexService->updateSiblings($event->getObject());
-        }
     }
 
     public function deleteDataObject(DataObjectEvent $event): void
