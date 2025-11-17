@@ -105,6 +105,9 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
 
         try {
             $searchResult = $this->runtimeCacheResolver->load($cacheKey);
+            if ($searchResult === null) {
+                $searchResult = $this->searchAssetById($id, $user);
+            }
         } catch (Exception) {
             $searchResult = $this->searchAssetById($id, $user);
         }

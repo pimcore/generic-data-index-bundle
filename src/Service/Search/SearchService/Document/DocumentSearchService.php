@@ -105,6 +105,9 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
 
         try {
             $searchResult = $this->runtimeCacheResolver->load($cacheKey);
+            if ($searchResult === null) {
+                $searchResult = $this->searchDocumentById($id, $user);
+            }
         } catch (Exception) {
             $searchResult = $this->searchDocumentById($id, $user);
         }

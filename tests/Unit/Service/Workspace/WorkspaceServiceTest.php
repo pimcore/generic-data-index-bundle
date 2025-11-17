@@ -20,7 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspa
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceService;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Helper\WorkspaceHelper;
-use Pimcore\Bundle\StaticResolverBundle\Models\User\UserResolverInterface;
+use Pimcore\Bundle\StaticResolverBundle\Models\User\UserRoleResolverInterface;
 use Pimcore\Model\User;
 use Pimcore\Model\User\Workspace;
 
@@ -233,7 +233,7 @@ final class WorkspaceServiceTest extends Unit
     private function getWorkspaceService(): WorkspaceService
     {
         return new WorkspaceService(
-            $this->makeEmpty(UserResolverInterface::class, [
+            $this->makeEmpty(UserRoleResolverInterface::class, [
                 'getUserRoleById' => $this->role,
             ])
         );

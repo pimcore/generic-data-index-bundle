@@ -163,9 +163,12 @@ final class SortModifierTest extends Unit
 
     public function testOrderByIndex(): void
     {
-        $object = TestHelper::createEmptyObject()->setIndex(1)->save();
-        $object2 = TestHelper::createEmptyObject()->setIndex(2)->save();
-        $object3 = TestHelper::createEmptyObject()->setIndex(0)->save();
+        // Fill object, default Index is 0
+        $object = TestHelper::createEmptyObject();
+        $object2 = TestHelper::createEmptyObject();
+        $object3 = TestHelper::createEmptyObject();
+        $object->setIndex(1)->save();
+        $object2->setIndex(2)->save();
         $sortedIds = [$object3->getId(), $object->getId(), $object2->getId()];
 
         $dataObjectSearch = $this->searchProvider

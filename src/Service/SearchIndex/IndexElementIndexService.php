@@ -34,7 +34,6 @@ final readonly class IndexElementIndexService implements IndexElementIndexServic
     private const string DOCUMENT_TABLE = 'documents';
 
     public function __construct(
-
         private BulkOperationServiceInterface $bulkOperationService,
         private DbResolverInterface $dbResolver,
         private DataObjectSearchServiceInterface $dataObjectSearchService,
@@ -46,14 +45,20 @@ final readonly class IndexElementIndexService implements IndexElementIndexServic
     /**
      * @throws Exception
      */
-    public function updateSiblings(AbstractObject|Document $element): void
+    public function updateSiblings(AbstractObject|Document $element, string $elementType): void
     {
         $newIndex = $element->getIndex();
-        if ($newIndex === $this->getIndexedIndex($element)) {
+        if ($newIndex === $this->getIndexedIndex($element)
+        ) {
             return;
         }
 
-        $elementType = $element instanceof Document ? ElementType::DOCUMENT->value : ElementType::DATA_OBJECT->value;
+        if ($elementType === ElementType::DATA_OBJECT->value &&
+            $element->getParent()?->getChildrenSortBy() !== AbstractObject::OBJECT_CHILDREN_SORT_BY_INDEX
+        ) {
+            return;
+        }
+
         $index = 0;
         foreach ($this->getSiblings($element) as $sibling) {
             if ($index === $newIndex) {
@@ -72,6 +77,24 @@ final readonly class IndexElementIndexService implements IndexElementIndexServic
         $this->bulkOperationService->commit();
     }
 
+    /**
+     * @throws Exception
+     */
+    public function resetChildrenIndexBy(AbstractObject $element): void
+    {
+        if (!$element->hasChildren() || $this->getIndexedSortBy($element) === $element->getChildrenSortBy()) {
+            return;
+        }
+
+        foreach ($this->getDataObjectChildren($element->getId()) as $child) {
+            $this->bulkOperationService->addUpdate(
+                $this->getIndexName($child, ElementType::DATA_OBJECT->value),
+                $child['id'],
+                [FieldCategory::SYSTEM_FIELDS->value => ['index' => $child['modificationDate']]],
+            );
+        }
+    }
+
     private function getIndexedIndex(AbstractObject|Document $element): ?int
     {
         if ($element instanceof Document) {
@@ -79,6 +102,11 @@ final readonly class IndexElementIndexService implements IndexElementIndexServic
         }
 
         return $this->dataObjectSearchService->byId($element->getId())?->getIndex();
+    }
+
+    private function getIndexedSortBy(AbstractObject $element): ?string
+    {
+        return $this->dataObjectSearchService->byId($element->getId())?->getChildrenSortBy();
     }
 
     /**
@@ -101,6 +129,18 @@ final readonly class IndexElementIndexService implements IndexElementIndexServic
     {
         return 'SELECT id, `type`, `className` FROM ' . self::DATA_OBJECT_TABLE
             . ' WHERE parentId = ? AND id != ? ORDER BY `index` ASC';
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function getDataObjectChildren(int $parentId): array
+    {
+        return $this->dbResolver->get()->fetchAllAssociative(
+            'SELECT id, `modificationDate`, `type`, `className` FROM ' . self::DATA_OBJECT_TABLE
+            . ' WHERE parentId = ? ORDER BY `index` ASC',
+            [$parentId]
+        );
     }
 
     private function getIndexName(array $siblingData, string $elementType): string

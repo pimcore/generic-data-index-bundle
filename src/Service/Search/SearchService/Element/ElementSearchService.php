@@ -72,13 +72,17 @@ final readonly class ElementSearchService implements ElementSearchServiceInterfa
         }
     }
 
-    public function byId(ElementType $elementType, int $id, ?User $user = null): ?ElementSearchResultItemInterface
-    {
+    public function byId(
+        ElementType $elementType,
+        int $id,
+        ?User $user = null,
+        bool $forceReload = false
+    ): ?ElementSearchResultItemInterface {
         try {
             return match ($elementType) {
-                ElementType::DOCUMENT => $this->documentSearchService->byId($id, $user),
-                ElementType::ASSET => $this->assetSearchService->byId($id, $user),
-                ElementType::DATA_OBJECT => $this->dataObjectSearchService->byId($id, $user),
+                ElementType::DOCUMENT => $this->documentSearchService->byId($id, $user, $forceReload),
+                ElementType::ASSET => $this->assetSearchService->byId($id, $user, $forceReload),
+                ElementType::DATA_OBJECT => $this->dataObjectSearchService->byId($id, $user, $forceReload),
             };
         } catch (Exception $e) {
             throw new ElementSearchException($e->getMessage(), 0, $e);

@@ -18,5 +18,7 @@ use Pimcore\Model\Document;
 
 interface IndexElementIndexServiceInterface
 {
-    public function updateSiblings(AbstractObject|Document $element): void;
+    public function updateSiblings(AbstractObject|Document $element, string $elementType): void;
+
+    public function resetChildrenIndexBy(AbstractObject $element): void;
 }
