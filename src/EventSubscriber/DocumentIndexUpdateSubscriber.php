@@ -42,29 +42,23 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
     public static function getSubscribedEvents(): array
     {
         return [
+            DocumentEvents::POST_ADD => 'addDocument',
             DocumentEvents::POST_UPDATE=> 'updateDocument',
-            DocumentEvents::POST_ADD => 'updateDocument',
             DocumentEvents::POST_DELETE => 'deleteDocument',
         ];
     }
 
+    public function addDocument(DocumentEvent $event): void
+    {
+        $this->updateData($event);
+    }
+
     public function updateDocument(DocumentEvent $event): void
     {
-        if (!$this->installer->isInstalled()) {
-            return;
+        $this->updateData($event);
+        if ($this->synchronousProcessing->isEnabled()) {
+            $this->indexElementIndexService->updateSiblings($event->getDocument());
         }
-        $document = $event->getDocument();
-        $this->indexQueueService
-            ->updateIndexQueue(
-                element: $event->getDocument(),
-                operation: IndexQueueOperation::UPDATE->value,
-                processSynchronously: $this->synchronousProcessing->isEnabled(),
-                enqueueRelatedItemsAsync: $this->synchronousProcessingRelatedIds->isEnabled() === false
-            )
-            ->commit();
-
-        $this->queueMessagesDispatcher->dispatchQueueMessages();
-        $this->indexElementIndexService->updateSiblings($document);
     }
 
     public function deleteDocument(DocumentEvent $event): void
@@ -80,6 +74,23 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
                 processSynchronously: $this->synchronousProcessing->isEnabled()
             )
             ->commit();
+        $this->queueMessagesDispatcher->dispatchQueueMessages();
+    }
+
+    private function updateData(DocumentEvent $event): void
+    {
+        if (!$this->installer->isInstalled()) {
+            return;
+        }
+        $this->indexQueueService
+            ->updateIndexQueue(
+                element: $event->getDocument(),
+                operation: IndexQueueOperation::UPDATE->value,
+                processSynchronously: $this->synchronousProcessing->isEnabled(),
+                enqueueRelatedItemsAsync: $this->synchronousProcessingRelatedIds->isEnabled() === false
+            )
+            ->commit();
+
         $this->queueMessagesDispatcher->dispatchQueueMessages();
     }
 }

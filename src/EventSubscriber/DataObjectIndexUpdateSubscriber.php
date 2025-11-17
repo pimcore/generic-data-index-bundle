@@ -46,41 +46,23 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
     public static function getSubscribedEvents(): array
     {
         return [
+            DataObjectEvents::POST_ADD => 'addDataObject',
             DataObjectEvents::POST_UPDATE => 'updateDataObject',
-            DataObjectEvents::POST_ADD => 'updateDataObject',
             DataObjectEvents::POST_DELETE => 'deleteDataObject',
         ];
     }
 
+    public function addDataObject(DataObjectEvent $event): void
+    {
+        $this->updateData($event);
+    }
+
     public function updateDataObject(DataObjectEvent $event): void
     {
-        if (!$this->installer->isInstalled()) {
-            return;
+        $this->updateData($event);
+        if ($this->synchronousProcessing->isEnabled()) {
+            $this->indexElementIndexService->updateSiblings($event->getObject());
         }
-
-        //do not update index when auto save or only saving version
-        if (
-            ($event->hasArgument('isAutoSave') && $event->getArgument('isAutoSave')) ||
-            ($event->hasArgument('saveVersionOnly') && $event->getArgument('saveVersionOnly'))
-        ) {
-            return;
-        }
-
-        $dataObject = $event->getObject();
-        Service::useInheritedValues(true, fn () =>
-            $this->indexQueueService
-                ->updateIndexQueue(
-                    $dataObject,
-                    IndexQueueOperation::UPDATE->value,
-                    $this->synchronousProcessing->isEnabled(),
-                    $dataObject->hasChildren(includingUnpublished: true),
-                    $this->synchronousProcessingRelatedIds->isEnabled() === false
-                )
-                ->commit()
-        );
-
-        $this->queueMessagesDispatcher->dispatchQueueMessages();
-        $this->indexElementIndexService->updateSiblings($dataObject);
     }
 
     public function deleteDataObject(DataObjectEvent $event): void
@@ -98,6 +80,36 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
                 $dataObject->hasChildren(includingUnpublished: true)
             )
             ->commit();
+        $this->queueMessagesDispatcher->dispatchQueueMessages();
+    }
+
+    private function updateData(DataObjectEvent $event): void
+    {
+        if (!$this->installer->isInstalled()) {
+            return;
+        }
+
+        //do not update index when auto save or only saving version
+        if (
+            ($event->hasArgument('isAutoSave') && $event->getArgument('isAutoSave')) ||
+            ($event->hasArgument('saveVersionOnly') && $event->getArgument('saveVersionOnly'))
+        ) {
+            return;
+        }
+
+        $dataObject = $event->getObject();
+        Service::useInheritedValues(true, fn () =>
+        $this->indexQueueService
+            ->updateIndexQueue(
+                $dataObject,
+                IndexQueueOperation::UPDATE->value,
+                $this->synchronousProcessing->isEnabled(),
+                $dataObject->hasChildren(includingUnpublished: true),
+                $this->synchronousProcessingRelatedIds->isEnabled() === false
+            )
+            ->commit()
+        );
+
         $this->queueMessagesDispatcher->dispatchQueueMessages();
     }
 }
