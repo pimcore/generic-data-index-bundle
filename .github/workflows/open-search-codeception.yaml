@@ -58,16 +58,12 @@ jobs:
                     OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
                     discovery.type: "single-node"
                     DISABLE_SECURITY_PLUGIN: true
-                    
+
         steps:
             -   name: "Checkout code"
                 uses: "actions/checkout@v4"
                 with:
                     path: "bundles/pimcore/generic-data-index-bundle"
-
-            - name: "Debug composer.json"
-              run: |
-                  cat bundles/pimcore/generic-data-index-bundle/composer.json
 
             - name: "Copy .github directory"
               env:

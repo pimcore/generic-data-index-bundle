@@ -62,10 +62,6 @@ jobs:
                 with:
                     path: "bundles/pimcore/generic-data-index-bundle"
 
-            - name: "Debug composer.json"
-              run: |
-                  cat bundles/pimcore/generic-data-index-bundle/composer.json
-
             - name: "Copy .github directory"
               env:
                   REQUIRE_ADMIN_BUNDLE: "${{ matrix.require_admin_bundle }}"
