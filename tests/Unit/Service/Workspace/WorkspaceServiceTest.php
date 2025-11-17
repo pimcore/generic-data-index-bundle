@@ -234,7 +234,7 @@ final class WorkspaceServiceTest extends Unit
     {
         return new WorkspaceService(
             $this->makeEmpty(UserRoleResolverInterface::class, [
-                'getUserRoleById' => $this->role,
+                'getById' => $this->role,
             ])
         );
     }

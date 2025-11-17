@@ -26,8 +26,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\EventService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceService;
-use Pimcore\Bundle\StaticResolverBundle\Models\User\UserResolver;
-use Pimcore\Bundle\StaticResolverBundle\Models\User\UserResolverInterface;
+use Pimcore\Bundle\StaticResolverBundle\Models\User\UserRoleResolver;
+use Pimcore\Bundle\StaticResolverBundle\Models\User\UserRoleResolverInterface;
 use Pimcore\Model\User;
 use Pimcore\Model\User\Workspace;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -473,8 +473,8 @@ final class PermissionServiceTest extends Unit
             $this->getEventService(),
             $this->makeEmpty(LanguageServiceInterface::class),
             new WorkspaceService(
-                $this->makeEmpty(UserResolverInterface::class, [
-                    'getUserRoleById' => $this->role,
+                $this->makeEmpty(UserRoleResolverInterface::class, [
+                    'getById' => $this->role,
                 ])
             )
         );
@@ -486,7 +486,7 @@ final class PermissionServiceTest extends Unit
             $this->getEventService(),
             $this->makeEmpty(LanguageServiceInterface::class),
             new WorkspaceService(
-                new UserResolver()
+                new UserRoleResolver()
             )
         );
     }
