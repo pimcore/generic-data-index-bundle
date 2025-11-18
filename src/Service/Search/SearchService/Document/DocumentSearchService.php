@@ -41,10 +41,6 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
         private SearchProviderInterface $searchProvider
     ) {
     }
-
-    /**
-     * @throws DocumentSearchException
-     */
     public function search(
         DocumentSearchInterface $documentSearch,
         PermissionTypes $permissionType = PermissionTypes::LIST
