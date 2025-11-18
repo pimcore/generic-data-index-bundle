@@ -43,9 +43,6 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
     ) {
     }
 
-    /**
-     * @throws DataObjectSearchException
-     */
     public function search(
         DataObjectSearchInterface $dataObjectSearch,
         PermissionTypes $permissionType = PermissionTypes::LIST

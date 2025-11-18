@@ -42,9 +42,6 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
     ) {
     }
 
-    /**
-     * @throws AssetSearchException
-     */
     public function search(
         AssetSearchInterface $assetSearch,
         PermissionTypes $permissionType = PermissionTypes::LIST
