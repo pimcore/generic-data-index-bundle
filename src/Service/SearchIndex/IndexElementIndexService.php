@@ -86,12 +86,15 @@ final readonly class IndexElementIndexService implements IndexElementIndexServic
             return;
         }
 
-        foreach ($this->getDataObjectChildren($element->getId()) as $child) {
+        $index = 0;
+        foreach ($this->getDataObjectChildren($element) as $child) {
             $this->bulkOperationService->addUpdate(
                 $this->getIndexName($child, ElementType::DATA_OBJECT->value),
                 $child['id'],
-                [FieldCategory::SYSTEM_FIELDS->value => ['index' => $child['modificationDate']]],
+                [FieldCategory::SYSTEM_FIELDS->value => ['index' => $index]],
             );
+
+            $index++;
         }
     }
 
@@ -134,12 +137,12 @@ final readonly class IndexElementIndexService implements IndexElementIndexServic
     /**
      * @throws Exception
      */
-    private function getDataObjectChildren(int $parentId): array
+    private function getDataObjectChildren(AbstractObject $parent): array
     {
         return $this->dbResolver->get()->fetchAllAssociative(
             'SELECT id, `modificationDate`, `type`, `className` FROM ' . self::DATA_OBJECT_TABLE
-            . ' WHERE parentId = ? ORDER BY `index` ASC',
-            [$parentId]
+            . ' WHERE parentId = ? ORDER BY `key` ' . $parent->getChildrenSortOrder(),
+            [$parent->getId()]
         );
     }
 
