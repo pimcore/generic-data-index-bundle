@@ -29,9 +29,9 @@ use Pimcore\Model\Document;
  */
 final readonly class IndexElementIndexService implements IndexElementIndexServiceInterface
 {
-    private const string DATA_OBJECT_TABLE = 'objects';
+    private const DATA_OBJECT_TABLE = 'objects';
 
-    private const string DOCUMENT_TABLE = 'documents';
+    private const DOCUMENT_TABLE = 'documents';
 
     public function __construct(
         private BulkOperationServiceInterface $bulkOperationService,
