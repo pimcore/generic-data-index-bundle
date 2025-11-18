@@ -53,6 +53,23 @@ final class BulkOperationService implements BulkOperationServiceInterface
         $this->bulkOperationData[] = $indexData;
     }
 
+    public function addUpdate(
+        string $indexName,
+        int $id,
+        array $updateData
+    ): void {
+        $this->bulkOperationData[] = [
+            'update' => [
+                '_index' => $indexName,
+                '_id' => $id,
+            ],
+        ];
+
+        $this->bulkOperationData[] = [
+            'doc' => $updateData,
+        ];
+    }
+
     public function addDeletion(
         string $indexName,
         int $id

@@ -13,12 +13,16 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\SearchHelper;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexElementIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
+use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Event\DocumentEvents;
 use Pimcore\Event\Model\DocumentEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -30,8 +34,10 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
 {
     public function __construct(
         private IndexQueueServiceInterface $indexQueueService,
+        private IndexElementIndexServiceInterface $indexElementIndexService,
         private Installer $installer,
         private QueueMessagesDispatcher $queueMessagesDispatcher,
+        private RuntimeCacheResolverInterface $runtimeCacheResolver,
         private SynchronousProcessingServiceInterface $synchronousProcessing,
         private SynchronousProcessingRelatedIdsServiceInterface $synchronousProcessingRelatedIds
     ) {
@@ -40,28 +46,21 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
     public static function getSubscribedEvents(): array
     {
         return [
+            DocumentEvents::POST_ADD => 'addDocument',
             DocumentEvents::POST_UPDATE=> 'updateDocument',
-            DocumentEvents::POST_ADD => 'updateDocument',
             DocumentEvents::POST_DELETE => 'deleteDocument',
         ];
     }
 
+    public function addDocument(DocumentEvent $event): void
+    {
+        $this->updateData($event);
+    }
+
     public function updateDocument(DocumentEvent $event): void
     {
-        if (!$this->installer->isInstalled()) {
-            return;
-        }
-
-        $this->indexQueueService
-            ->updateIndexQueue(
-                element: $event->getDocument(),
-                operation: IndexQueueOperation::UPDATE->value,
-                processSynchronously: $this->synchronousProcessing->isEnabled(),
-                enqueueRelatedItemsAsync: $this->synchronousProcessingRelatedIds->isEnabled() === false
-            )
-            ->commit();
-
-        $this->queueMessagesDispatcher->dispatchQueueMessages();
+        $this->indexElementIndexService->updateSiblings($event->getDocument(), ElementType::DOCUMENT->value);
+        $this->updateData($event);
     }
 
     public function deleteDocument(DocumentEvent $event): void
@@ -78,5 +77,28 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
             )
             ->commit();
         $this->queueMessagesDispatcher->dispatchQueueMessages();
+    }
+
+    private function updateData(DocumentEvent $event): void
+    {
+        if (!$this->installer->isInstalled()) {
+            return;
+        }
+        $this->indexQueueService
+            ->updateIndexQueue(
+                element: $event->getDocument(),
+                operation: IndexQueueOperation::UPDATE->value,
+                processSynchronously: $this->synchronousProcessing->isEnabled(),
+                enqueueRelatedItemsAsync: $this->synchronousProcessingRelatedIds->isEnabled() === false
+            )
+            ->commit();
+
+        $this->queueMessagesDispatcher->dispatchQueueMessages();
+
+        //clear runtime cache for this object
+        $cacheKey = SearchHelper::DOCUMENT_SEARCH . '_' . $event->getDocument()->getId();
+        if ($this->runtimeCacheResolver->isRegistered($cacheKey)) {
+            $this->runtimeCacheResolver->set($cacheKey, null);
+        }
     }
 }

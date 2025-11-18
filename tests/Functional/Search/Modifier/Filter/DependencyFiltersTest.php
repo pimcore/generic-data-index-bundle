@@ -15,7 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiredByFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiresFilter;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Model\DataObject\Unittest;
 use Pimcore\Tests\Support\Util\TestHelper;
@@ -61,7 +61,7 @@ class DependencyFiltersTest extends \Codeception\Test\Unit
 
         $object4->setObjects([$object1])->save();
 
-        /** @var AssetSearchServiceInterface $searchService */
+        /** @var ElementSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.element-search-service');
         /** @var SearchProviderInterface $searchProvider */
         $searchProvider = $this->tester->grabService(SearchProviderInterface::class);

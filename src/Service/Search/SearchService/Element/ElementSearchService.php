@@ -72,8 +72,11 @@ final readonly class ElementSearchService implements ElementSearchServiceInterfa
         }
     }
 
-    public function byId(ElementType $elementType, int $id, ?User $user = null): ?ElementSearchResultItemInterface
-    {
+    public function byId(
+        ElementType $elementType,
+        int $id,
+        ?User $user = null
+    ): ?ElementSearchResultItemInterface {
         try {
             return match ($elementType) {
                 ElementType::DOCUMENT => $this->documentSearchService->byId($id, $user),

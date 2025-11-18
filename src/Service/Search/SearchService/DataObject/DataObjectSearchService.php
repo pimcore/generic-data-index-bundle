@@ -108,6 +108,9 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
 
         try {
             $searchResult = $this->runtimeCacheResolver->load($cacheKey);
+            if ($searchResult === null) {
+                $searchResult = $this->searchObjectById($id, $user);
+            }
         } catch (Exception) {
             $searchResult = $this->searchObjectById($id, $user);
         }

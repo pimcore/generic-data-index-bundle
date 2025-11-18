@@ -18,7 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\WorkspaceInterface;
-use Pimcore\Bundle\StaticResolverBundle\Models\User\UserResolverInterface;
+use Pimcore\Bundle\StaticResolverBundle\Models\User\UserRoleResolverInterface;
 use Pimcore\Model\User;
 use Pimcore\Model\User\Workspace;
 
@@ -28,7 +28,7 @@ use Pimcore\Model\User\Workspace;
 final readonly class WorkspaceService implements WorkspaceServiceInterface
 {
     public function __construct(
-        private UserResolverInterface $userResolver
+        private UserRoleResolverInterface $userRoleResolver
     ) {
     }
 
@@ -74,7 +74,7 @@ final readonly class WorkspaceService implements WorkspaceServiceInterface
         $workspaces = [];
 
         $getter = 'getWorkspaces' . ucfirst($type);
-        $roleWorkspaces = $this->userResolver->getUserRoleById($roleId)?->$getter() ?? [];
+        $roleWorkspaces = $this->userRoleResolver->getById($roleId)?->$getter() ?? [];
         foreach ($roleWorkspaces as $roleWorkspace) {
             $workspaces[] = $roleWorkspace;
         }

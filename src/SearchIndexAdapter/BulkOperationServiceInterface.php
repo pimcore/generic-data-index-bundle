@@ -27,6 +27,12 @@ interface BulkOperationServiceInterface
         bool $upsert = true
     ): void;
 
+    public function addUpdate(
+        string $indexName,
+        int $id,
+        array $updateData
+    ): void;
+
     public function addDeletion(
         string $indexName,
         int $id
