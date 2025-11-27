@@ -17,10 +17,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Attribute\Search\AsSearchModifierHandl
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\BoolExistsQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\DateFilter as DateFilterQuery;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TimeFilter as TimeFilterQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\MultiBoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\Query as QueryFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter as TermsFilterQuery;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TimeFilter as TimeFilterQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\BooleanMultiSelectFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\DateFilter;

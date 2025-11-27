@@ -21,7 +21,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TimeFilter;
  */
 final class TimeFilterTest extends Unit
 {
-
     public function testToArray(): void
     {
         $timeFilter = new TimeFilter('datefield', '12:15', '13:15');
@@ -69,7 +68,7 @@ final class TimeFilterTest extends Unit
 
     public function testGetType(): void
     {
-        $dateFilter = new TimeFilter('datefield', "12:30", "12:45");
+        $dateFilter = new TimeFilter('datefield', '12:30', '12:45');
 
         self::assertSame('range', $dateFilter->getType());
     }

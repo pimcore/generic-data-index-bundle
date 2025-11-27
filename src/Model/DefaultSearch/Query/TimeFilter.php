@@ -13,10 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query;
 
-use Carbon\Carbon;
-use DateTimeInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\QueryType;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 
 final readonly class TimeFilter implements QueryInterface
 {
