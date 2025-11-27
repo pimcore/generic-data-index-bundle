@@ -89,7 +89,7 @@ final class TimeFilterTest extends Unit
 
         self::assertSame([
             'datefield' => [
-                'gte' => '"12:45',
+                'gte' => '12:45',
             ],
         ], $timeFilter->getParams());
 
