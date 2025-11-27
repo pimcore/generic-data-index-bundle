@@ -17,6 +17,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Attribute\Search\AsSearchModifierHandl
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\BoolExistsQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\DateFilter as DateFilterQuery;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TimeFilter as TimeFilterQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\MultiBoolQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\Query as QueryFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter as TermsFilterQuery;
@@ -25,6 +26,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\DateFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\MultiSelectFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\NumberRangeFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\TimeFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationServiceInterface;
 
 /**
@@ -68,6 +70,39 @@ final readonly class FieldTypeFilters
             $dateFilter->getEndDate(),
             $dateFilter->getOnDate(),
             $dateFilter->isRoundToDay()
+        );
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleTimeFilter(
+        TimeFilter $timeFilter,
+        SearchModifierContextInterface $context
+    ): void {
+        $context->getSearch()->addQuery($this->getTimeFilterQuery(
+            $timeFilter,
+            null,
+            $context->getOriginalSearch())
+        );
+    }
+
+    public function getTimeFilterQuery(
+        TimeFilter $timeFilter,
+        ?string $prefix = null,
+        ?SearchInterface $search = null
+    ): TimeFilterQuery {
+        $fieldName = $timeFilter->getField();
+        if ($prefix) {
+            $fieldName = $prefix . '.' . $fieldName;
+        }
+        if ($search && $timeFilter->isPqlFieldNameResolutionEnabled()) {
+            $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch($search, $fieldName);
+        }
+
+        return new TimeFilterQuery(
+            $fieldName,
+            $timeFilter->getStartTime(),
+            $timeFilter->getEndTime(),
+            $timeFilter->getOnTime(),
         );
     }
 

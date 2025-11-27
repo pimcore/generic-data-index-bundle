@@ -27,7 +27,7 @@ final readonly class ClassificationStoreFilter implements SearchModifierInterfac
         private string $fieldName,
         private string $group,
         private BooleanFilter|DateFilter|FullTextSearch|IntegerFilter|MultiSelectFilter|BooleanMultiSelectFilter|
-        NumberFilter|NumberRangeFilter|WildcardSearch $subModifier,
+        NumberFilter|NumberRangeFilter|WildcardSearch|TimeFilter $subModifier,
         private string $locale = MappingProperty::NOT_LOCALIZED_KEY,
     ) {
     }
@@ -43,7 +43,7 @@ final readonly class ClassificationStoreFilter implements SearchModifierInterfac
     }
 
     public function getSubModifier(): BooleanFilter|DateFilter|FullTextSearch|IntegerFilter|
-    MultiSelectFilter|BooleanMultiSelectFilter|NumberFilter|NumberRangeFilter|WildcardSearch
+    MultiSelectFilter|BooleanMultiSelectFilter|NumberFilter|NumberRangeFilter|WildcardSearch|TimeFilter
     {
         return $this->subModifier;
     }

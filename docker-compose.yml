@@ -1,4 +1,3 @@
-version: '3.0'
 services:
     php-generic-data-index-bundle:
         image: pimcore/pimcore:php8.3-latest
