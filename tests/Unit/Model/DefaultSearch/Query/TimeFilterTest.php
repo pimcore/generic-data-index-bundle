@@ -24,7 +24,7 @@ final class TimeFilterTest extends Unit
 
     public function testToArray(): void
     {
-        $timeFilter = new TimeFilter('datefield', '12:15', "13:15");
+        $timeFilter = new TimeFilter('datefield', '12:15', '13:15');
 
         self::assertSame([
             'range' => [
@@ -35,7 +35,7 @@ final class TimeFilterTest extends Unit
             ],
         ], $timeFilter->toArray(true));
 
-        $timeFilter = new TimeFilter('datefield', "12:45");
+        $timeFilter = new TimeFilter('datefield', '12:45');
 
         self::assertSame([
             'range' => [
@@ -45,7 +45,7 @@ final class TimeFilterTest extends Unit
             ],
         ], $timeFilter->toArray(true));
 
-        $timeFilter = new TimeFilter('datefield', null, "13:00");
+        $timeFilter = new TimeFilter('datefield', null, '13:00');
 
         self::assertSame([
             'range' => [
@@ -55,7 +55,7 @@ final class TimeFilterTest extends Unit
             ],
         ], $timeFilter->toArray(true));
 
-        $timeFilter = new TimeFilter('datefield', null, null, "12:30");
+        $timeFilter = new TimeFilter('datefield', null, null, '12:30');
 
         self::assertSame([
             'range' => [
@@ -76,7 +76,7 @@ final class TimeFilterTest extends Unit
 
     public function testGetParams(): void
     {
-        $timeFilter = new TimeFilter('datefield', '12:15', "13:15");
+        $timeFilter = new TimeFilter('datefield', '12:15', '13:15');
 
         self::assertSame([
             'datefield' => [
@@ -85,7 +85,7 @@ final class TimeFilterTest extends Unit
             ],
         ], $timeFilter->getParams());
 
-        $timeFilter = new TimeFilter('datefield', "12:45");
+        $timeFilter = new TimeFilter('datefield', '12:45');
 
         self::assertSame([
             'datefield' => [
@@ -93,7 +93,7 @@ final class TimeFilterTest extends Unit
             ],
         ], $timeFilter->getParams());
 
-        $timeFilter = new TimeFilter('datefield', null, "13:00");
+        $timeFilter = new TimeFilter('datefield', null, '13:00');
 
         self::assertSame([
             'datefield' => [
@@ -101,7 +101,7 @@ final class TimeFilterTest extends Unit
             ],
         ], $timeFilter->getParams());
 
-        $timeFilter = new TimeFilter('datefield', null, null, "12:30");
+        $timeFilter = new TimeFilter('datefield', null, null, '12:30');
 
         self::assertSame([
             'datefield' => [
