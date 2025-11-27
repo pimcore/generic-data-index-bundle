@@ -28,6 +28,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\MultiSelectFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\NestedFilter as NestedFilterParam;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\NumberRangeFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\TimeFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\FullTextSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\WildcardSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\FullTextSearch\FullTextSearchHandlers;
@@ -91,6 +92,9 @@ final readonly class NestedTypeFilters
 
             $modifier instanceof DateFilter =>
             $this->fieldTypeFilters->getDateFilterQuery($modifier, $fieldName, $search)->toArray(true),
+
+            $modifier instanceof TimeFilter =>
+            $this->fieldTypeFilters->getTimeFilterQuery($modifier, $fieldName, $search)->toArray(true),
 
             $modifier instanceof MultiSelectFilter =>
             $this->fieldTypeFilters->getMultiSelectQuery($modifier, $fieldName, $search)->toArrayAsSubQuery(),
