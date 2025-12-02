@@ -67,6 +67,7 @@ final class BulkOperationService implements BulkOperationServiceInterface
 
         $this->bulkOperationData[] = [
             'doc' => $updateData,
+            'doc_as_upsert' => true
         ];
     }
 
