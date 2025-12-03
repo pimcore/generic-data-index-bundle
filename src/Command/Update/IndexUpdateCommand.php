@@ -38,6 +38,8 @@ final class IndexUpdateCommand extends AbstractCommand
 
     private const OPTION_UPDATE_ASSET_INDEX = 'update-asset-index';
 
+    private const OPTION_UPDATE_DOCUMENT_INDEX = 'update-document-index';
+
     private const OPTION_RECREATE_INDEX = 'recreate_index';
 
     private const UPDATE_GLOBAL_ALIASES_ONLY = 'update-global-aliases-only';
@@ -82,6 +84,13 @@ final class IndexUpdateCommand extends AbstractCommand
                 'a',
                 InputOption::VALUE_NONE,
                 'Update mapping and data for asset index',
+                null
+            )
+            ->addOption(
+                self::OPTION_UPDATE_DOCUMENT_INDEX,
+                'd',
+                InputOption::VALUE_NONE,
+                'Update mapping and data for document index',
                 null
             )
             ->addOption(
@@ -173,10 +182,27 @@ final class IndexUpdateCommand extends AbstractCommand
             }
         }
 
+        if ($input->getOption(self::OPTION_UPDATE_DOCUMENT_INDEX)) {
+            $updateAll = false;
+
+            try {
+                $output->writeln(
+                    '<info>Update document index</info>',
+                    OutputInterface::VERBOSITY_NORMAL
+                );
+
+                $this
+                    ->indexUpdateService
+                    ->updateDocuments();
+            } catch (Exception $e) {
+                $this->output->writeln($e->getMessage());
+            }
+        }
+
         if ($updateAll) {
             try {
                 $this->output->writeln(
-                    '<info>Update all mappings and indices for objects/assets</info>',
+                    '<info>Update all mappings and indices for objects/assets/documents</info>',
                     OutputInterface::VERBOSITY_NORMAL
                 );
 
