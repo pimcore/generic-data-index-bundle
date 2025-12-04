@@ -29,6 +29,7 @@ class IndexQueue
     public const TABLE = 'generic_data_index_queue';
 
     #[ORM\Id]
+    #[ORM\GeneratedValue]
     #[ORM\Column(type: 'bigint')]
     private int $id;
 
