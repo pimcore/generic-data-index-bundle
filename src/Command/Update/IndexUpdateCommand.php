@@ -140,63 +140,17 @@ final class IndexUpdateCommand extends AbstractCommand
 
         if ($classDefinitionId) {
             $updateAll = false;
-
-            try {
-                $classDefinition = ClassDefinition::getById($classDefinitionId);
-                if (!$classDefinition) {
-                    throw new IdNotFoundException(
-                        sprintf('ClassDefinition with id %s not found', $classDefinitionId)
-                    );
-                }
-
-                $this->output->writeln(
-                    sprintf(
-                        '<info>Update index and indices for ClassDefinition with id %s</info>',
-                        $classDefinitionId
-                    ),
-                    OutputInterface::VERBOSITY_NORMAL
-                );
-
-                $this
-                    ->indexUpdateService
-                    ->updateClassDefinition($classDefinition);
-            } catch (Exception $e) {
-                $this->output->writeln('<error>' . $e->getMessage() . '</error>');
-            }
+            $this->updateClassDefinition($classDefinitionId);
         }
 
         if ($input->getOption(self::OPTION_UPDATE_ASSET_INDEX)) {
             $updateAll = false;
-
-            try {
-                $output->writeln(
-                    '<info>Update asset index</info>',
-                    OutputInterface::VERBOSITY_NORMAL
-                );
-
-                $this
-                    ->indexUpdateService
-                    ->updateAssets();
-            } catch (Exception $e) {
-                $this->output->writeln($e->getMessage());
-            }
+            $this->updateAssets();
         }
 
         if ($input->getOption(self::OPTION_UPDATE_DOCUMENT_INDEX)) {
             $updateAll = false;
-
-            try {
-                $output->writeln(
-                    '<info>Update document index</info>',
-                    OutputInterface::VERBOSITY_NORMAL
-                );
-
-                $this
-                    ->indexUpdateService
-                    ->updateDocuments();
-            } catch (Exception $e) {
-                $this->output->writeln($e->getMessage());
-            }
+            $this->updateDocuments();
         }
 
         if ($updateAll) {
@@ -227,6 +181,62 @@ final class IndexUpdateCommand extends AbstractCommand
         $this->output->writeln('<info>Finished</info>', OutputInterface::VERBOSITY_NORMAL);
 
         return self::SUCCESS;
+    }
+
+    private function updateClassDefinition(string $classDefinitionId)
+    {
+        try {
+            $classDefinition = ClassDefinition::getById($classDefinitionId);
+            if (!$classDefinition) {
+                throw new IdNotFoundException(
+                    sprintf('ClassDefinition with id %s not found', $classDefinitionId)
+                );
+            }
+
+            $this->output->writeln(
+                sprintf(
+                    '<info>Update index and indices for ClassDefinition with id %s</info>',
+                    $classDefinitionId
+                ),
+                OutputInterface::VERBOSITY_NORMAL
+            );
+
+            $this
+                ->indexUpdateService
+                ->updateClassDefinition($classDefinition);
+        } catch (Exception $e) {
+            $this->output->writeln('<error>' . $e->getMessage() . '</error>');
+        }
+    }
+
+    private function updateAssets() : void  {
+        try {
+            $this->output->writeln(
+                '<info>Update asset index</info>',
+                OutputInterface::VERBOSITY_NORMAL
+            );
+
+            $this
+                ->indexUpdateService
+                ->updateAssets();
+        } catch (Exception $e) {
+            $this->output->writeln($e->getMessage());
+        }
+    }
+
+    private function updateDocuments() : void  {
+        try {
+            $this->output->writeln(
+                '<info>Update document index</info>',
+                OutputInterface::VERBOSITY_NORMAL
+            );
+
+            $this
+                ->indexUpdateService
+                ->updateDocuments();
+        } catch (Exception $e) {
+            $this->output->writeln($e->getMessage());
+        }
     }
 
     private function updateGlobalIndexAliases(): void
