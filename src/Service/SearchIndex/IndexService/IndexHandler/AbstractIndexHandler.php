@@ -71,10 +71,18 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                 mappingProperties: $mappingProperties
             );
         } else {
-            $this->searchIndexService->reindex(
-                $alias,
-                $mappingProperties
-            );
+            try {
+                $this->searchIndexService->reindex(
+                    $alias,
+                    $mappingProperties
+                );
+            } catch (Exception $e) {
+                try {
+                    $this->updateMapping($context, true, $mappingProperties);
+                } catch (Exception $e) {
+                    $this->logger->error('Reindexing failed due to following error: ' . $e);
+                }
+            }
         }
 
         $this->createGlobalIndexAliases($context);
