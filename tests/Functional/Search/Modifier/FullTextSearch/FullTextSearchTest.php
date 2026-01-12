@@ -245,7 +245,7 @@ final class FullTextSearchTest extends \Codeception\Test\Unit
                 $asset2->getKey() . ' ' . $asset->getKey(),
                 [],
                 'cross_fields',
-                'and')
+                'or')
             )
         ;
         $this->assertEquals([$asset->getId(), $asset2->getId()], $searchService->search($assetSearch)->getIds());
