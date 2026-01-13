@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\ElementKeySearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\FullTextSearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\MultiMatchSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\WildcardSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
@@ -210,6 +211,54 @@ final class FullTextSearchTest extends \Codeception\Test\Unit
         $assetSearch = $searchProvider
             ->createAssetSearch()
             ->addModifier(new FullTextSearch($asset2->getFilename()))
+        ;
+        $this->assertEquals([$asset2->getId()], $searchService->search($assetSearch)->getIds());
+    }
+
+    public function testMultiMatchSearch(): void
+    {
+        $asset = TestHelper::createImageAsset();
+        $asset->setFilename('Asset 1.jpg')->setKey('123')->save();
+        $asset2 = TestHelper::createImageAsset();
+        $asset2->setFilename('Asset 2.jpg')->setKey('456')->save();
+
+        /** @var AssetSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new MultiMatchSearch($asset->getKey()))
+        ;
+        $this->assertEquals([$asset->getId()], $searchService->search($assetSearch)->getIds());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new MultiMatchSearch($asset2->getKey()))
+        ;
+        $this->assertEquals([$asset2->getId()], $searchService->search($assetSearch)->getIds());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new MultiMatchSearch(
+                $asset2->getKey() . ' ' . $asset->getKey(),
+                [],
+                'cross_fields',
+                'or')
+            )
+        ;
+        $this->assertEquals([$asset->getId(), $asset2->getId()], $searchService->search($assetSearch)->getIds());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new MultiMatchSearch('asset'))
+        ;
+        $this->assertIdArrayEquals([$asset->getId(), $asset2->getId()], $searchService->search($assetSearch)->getIds());
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new MultiMatchSearch($asset2->getFilename()))
         ;
         $this->assertEquals([$asset2->getId()], $searchService->search($assetSearch)->getIds());
     }

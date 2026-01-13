@@ -17,11 +17,13 @@ use Pimcore\Bundle\GenericDataIndexBundle\Attribute\Search\AsSearchModifierHandl
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\WildcardFilterMode;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchModifierContextInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\MultiMatchFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\SimpleQueryStringFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\WildcardFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\ElementKeySearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\FullTextSearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\MultiMatchSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\WildcardSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationServiceInterface;
 
@@ -90,7 +92,7 @@ final readonly class FullTextSearchHandlers
     }
 
     #[AsSearchModifierHandler]
-    public function handleMultiMatchSearch(
+    public function handleFullTextSearch(
         FullTextSearch $fullValueSearch,
         SearchModifierContextInterface $context
     ): void {
@@ -99,5 +101,24 @@ final readonly class FullTextSearchHandlers
         }
 
         $context->getSearch()->addQuery(new SimpleQueryStringFilter($fullValueSearch->getSearchTerm()));
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleMultiMatchSearch(
+        MultiMatchSearch $multiMatchSearch,
+        SearchModifierContextInterface $context
+    ): void {
+        if (empty($multiMatchSearch->getSearchTerm())) {
+            return;
+        }
+
+        $context->getSearch()->addQuery(
+            new MultiMatchFilter(
+                $multiMatchSearch->getSearchTerm(),
+                $multiMatchSearch->getFields(),
+                $multiMatchSearch->getMatchType(),
+                $multiMatchSearch->getOperator()
+            )
+        );
     }
 }
