@@ -83,4 +83,3 @@ final class MultiMatchFilter extends BoolQuery implements AsSubQueryInterface
         ];
     }
 }
-

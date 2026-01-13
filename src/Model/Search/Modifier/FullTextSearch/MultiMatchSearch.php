@@ -51,4 +51,3 @@ final readonly class MultiMatchSearch implements SearchModifierInterface
         return $this->operator;
     }
 }
-
