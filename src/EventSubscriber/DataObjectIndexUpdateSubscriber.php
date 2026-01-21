@@ -28,7 +28,6 @@ use Pimcore\Event\DataObjectEvents;
 use Pimcore\Event\Model\DataObjectEvent;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\Service;
-use Pimcore\Model\DataObject\ClassDefinition\Data\Time;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
@@ -105,18 +104,6 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         }
 
         $dataObject = $event->getObject();
-        $fields = $dataObject->getClass()->getFieldDefinitions();
-        foreach ($fields as $field) {
-            if ($field instanceof Time) {
-                $getter = 'get' . $field->getName();
-                $value = $dataObject->$getter();
-                if ($value === '') {
-                    $setter = 'set' . $field->getName();
-                    $dataObject->$setter(null);
-                }
-            }
-        }
-
         Service::useInheritedValues(true, fn () =>
         $this->indexQueueService
             ->updateIndexQueue(
