@@ -40,12 +40,12 @@ final class TextKeywordAdapter extends AbstractAdapter
         );
     }
 
-    public function normalize(mixed $value): ?string
+    public function normalize(mixed $value): mixed
     {
-        if ($value) {
-            return preg_replace("/src=['\"]data:[^;]+;base64,.+?['\"]/", '', $value);
+        if (is_string($value) && $value !== '') {
+            return preg_replace("/src=(['\"])data:[^;]+;base64,.+?\\1/", '', $value);
         }
 
-        return null;
+        return parent::normalize($value);
     }
 }
