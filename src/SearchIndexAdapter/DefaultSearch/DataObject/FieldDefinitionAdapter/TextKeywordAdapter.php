@@ -43,7 +43,7 @@ final class TextKeywordAdapter extends AbstractAdapter
     public function normalize(mixed $value): ?string
     {
         if ($value) {
-            return preg_replace("/src=['\"]data:[^;]+;base64,.+?['\"]/", '', $value);
+            return preg_replace("/src=(['\"])data:[^;]+;base64,.+?\\1/", '', $value);
         }
 
         return null;
