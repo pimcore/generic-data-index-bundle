@@ -154,14 +154,63 @@ final class PathService implements PathServiceInterface
                     String subFullPath = ctx._source.system_fields.fullPath.substring(params.currentPath.length());
                     ctx._source.system_fields.fullPath = params.newPath + subFullPath;
 
-                    for (int i = 0; i < ctx._source.system_fields.pathLevels.length; i++) {
+                    if(ctx._source.system_fields.thumbnail != null && 
+                       ctx._source.system_fields.thumbnail.length() >= params.currentPath.length()) {
+                        String thumbnailPrefix = ctx._source.system_fields.thumbnail.substring(
+                            0, 
+                            params.currentPath.length()
+                        );
+                        if(thumbnailPrefix == params.currentPath) {
+                            String thumbnailSubPath = ctx._source.system_fields.thumbnail.substring(
+                                params.currentPath.length()
+                            );
+                            ctx._source.system_fields.thumbnail = params.newPath + thumbnailSubPath;
+                        }   
+                    }
 
+                    if(ctx._source.containsKey("custom_fields") && 
+                       ctx._source.custom_fields.containsKey("PortalEngineBundle") && 
+                       ctx._source.custom_fields.PortalEngineBundle.containsKey("system_fields") && 
+                       ctx._source.custom_fields.PortalEngineBundle.system_fields.containsKey("thumbnail")) {
+                        def customFields = ctx._source.custom_fields.PortalEngineBundle.system_fields;
+                        if(customFields.thumbnail != null && customFields.thumbnail instanceof String) {
+                            String thumb = customFields.thumbnail;
+                            String prefix = "";
+                            int pathStart = 0;
+                            
+                            if(thumb.startsWith("/cache-buster-")) {
+                                int slashPos = thumb.indexOf("/", 1);
+                                if(slashPos > 0) {
+                                    prefix = thumb.substring(0, slashPos);
+                                    pathStart = slashPos;
+                                }
+                            }
+                            
+                            String encodedCurrentPath = params.currentPath.replace(" ", "%20");
+                            String thumbPath = thumb.substring(pathStart);
+                            
+                            if(thumbPath.startsWith(encodedCurrentPath) || thumbPath.startsWith(params.currentPath)) {
+                                String matchedPath = thumbPath.startsWith(encodedCurrentPath) ? 
+                                    encodedCurrentPath : params.currentPath;
+                                String remainingPath = thumbPath.substring(matchedPath.length());
+                                String encodedNewPath = params.newPath.replace(" ", "%20");
+                                customFields.thumbnail = prefix + encodedNewPath + remainingPath;
+                            }
 
-                      if(ctx._source.system_fields.pathLevels[i].level == params.changePathLevel) {
+                        }
+                    }
 
-                        ctx._source.system_fields.pathLevels[i].name = params.newPathLevelName;
+                    String[] newPathParts = ctx._source.system_fields.path.splitOnToken("/");
+                    
+                    def newLevels = [];
+                    int levelCounter = 1;
+                    for (int i = 0; i < newPathParts.length; i++) {
+                      if(newPathParts[i].length() > 0) {
+                        newLevels.add(["level": levelCounter, "name": newPathParts[i]]);
+                        levelCounter++;
                       }
                     }
+                    ctx._source.system_fields.pathLevels = newLevels;
                 }
                 ctx._source.system_fields.checksum = 0';
     }
