@@ -33,7 +33,7 @@ final class TimeAdapter extends AbstractAdapter
         if ($value === '') {
             return null;
         }
-        
+
         return parent::normalize($value);
     }
 }
