@@ -212,6 +212,9 @@ final class PathService implements PathServiceInterface
                     }
                     ctx._source.system_fields.pathLevels = newLevels;
                 }
+                def sdf = new SimpleDateFormat("yyyy-MM-dd\'T\'HH:mm:ssXXX");
+                sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+                ctx._source.system_fields.modificationDate = sdf.format(new Date());
                 ctx._source.system_fields.checksum = 0';
     }
 
