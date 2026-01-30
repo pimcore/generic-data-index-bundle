@@ -27,4 +27,13 @@ final class TimeAdapter extends AbstractAdapter
             'format' => 'strict_hour_minute',
         ];
     }
+
+    public function normalize(mixed $value): mixed
+    {
+        if ($value === '') {
+            return null;
+        }
+        
+        return parent::normalize($value);
+    }
 }
