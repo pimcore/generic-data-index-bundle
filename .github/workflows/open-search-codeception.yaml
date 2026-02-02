@@ -71,7 +71,7 @@ jobs:
         with:
             APP_ENV: test
             PIMCORE_TEST: "1"
-            PRIVATE_REPO: "false"
+            PRIVATE_REPO: ${{ needs.setup-matrix.outputs.private_repo }}
             PHP_VERSION: ${{ matrix.matrix.php-version }}
             DATABASE: "mariadb:10.11"
             DEPENDENCIES: ${{ matrix.matrix.dependencies }}
@@ -81,8 +81,10 @@ jobs:
             PIMCORE_OPEN_SEARCH_HOST: "39200"
             PIMCORE_OPENSEARCH_VERSION: "2"
             ENABLE_ELASTICSEARCH: false
-            COVERAGE: "xdebug"
+            COVERAGE: "none"
         secrets:
-            PIMCORE_INSTANCE_IDENTIFIER: ${{ secrets.PIMCORE_CI_INSTANCE_IDENTIFIER }}
-            PIMCORE_ENCRYPTION_SECRET: ${{ secrets.PIMCORE_CI_ENCRYPTION_SECRET }}
-            PIMCORE_PRODUCT_KEY: ${{ secrets.PIMCORE_CI_PRODUCT_KEY }}
+            SSH_PRIVATE_KEY_PIMCORE_DEPLOYMENTS_USER: ${{ secrets.SSH_PRIVATE_KEY_PIMCORE_DEPLOYMENTS_USER }}
+            COMPOSER_PIMCORE_REPO_PACKAGIST_TOKEN: ${{ secrets.COMPOSER_PIMCORE_REPO_PACKAGIST_TOKEN }}
+            PIMCORE_CI_INSTANCE_IDENTIFIER: ${{ secrets.PIMCORE_CI_INSTANCE_IDENTIFIER }}
+            PIMCORE_CI_ENCRYPTION_SECRET: ${{ secrets.PIMCORE_CI_ENCRYPTION_SECRET }}
+            PIMCORE_CI_PRODUCT_KEY: ${{ secrets.PIMCORE_CI_PRODUCT_KEY }}
