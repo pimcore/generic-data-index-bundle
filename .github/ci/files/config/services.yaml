@@ -180,6 +180,19 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer:
         public: true
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer:
+        public: true
+
+    # Normalizers
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\AssetNormalizer:
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\DataObjectNormalizer:
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\DocumentNormalizer:
+        public: true
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProvider
         public: true
