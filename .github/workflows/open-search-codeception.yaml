@@ -14,6 +14,14 @@ on:
             - "[0-9]+.[0-9]+"
             - "[0-9]+.x"
 
+env:
+    PIMCORE_PROJECT_ROOT: ${{ github.workspace }}
+    PRIVATE_REPO: ${{ github.event.repository.private }}
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+    cancel-in-progress: true
+
 jobs:
     setup-matrix:
         runs-on: ubuntu-latest
@@ -82,7 +90,7 @@ jobs:
     codeception-tests:
         needs: setup-matrix
         strategy:
-            matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix).matrix }}
+            matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
         uses: pimcore/workflows-collection-public/.github/workflows/reusable-codeception-tests-centralized.yaml@main
         with:
             APP_ENV: test
