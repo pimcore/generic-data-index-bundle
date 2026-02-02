@@ -170,6 +170,10 @@ services:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProvider
         public: true
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\IndexNameResolverInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\IndexNameResolver
+        public: true
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingService
         public: true
