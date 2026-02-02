@@ -63,4 +63,47 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessageServiceInterface:
         public: true
 
+    # Service locators for field definitions
+    pimcore.generic_data_index.object.search_index_field_definition_locator:
+        class: Symfony\Component\DependencyInjection\ServiceLocator
+        tags: [ 'container.service_locator' ]
+        arguments:
+            - [ ]
+        public: true
+
+    pimcore.generic_data_index.asset.search_index_field_definition_locator:
+        class: Symfony\Component\DependencyInjection\ServiceLocator
+        tags: [ 'container.service_locator' ]
+        arguments:
+            - [ ]
+        public: true
+
+    pimcore.generic_data_index.asset.type_serialization_handler_locator:
+        class: Symfony\Component\DependencyInjection\ServiceLocator
+        tags: [ 'container.service_locator' ]
+        arguments:
+            - [ ]
+        public: true
+
+    pimcore.generic_data_index.data_object.type_serialization_handler_locator:
+        class: Symfony\Component\DependencyInjection\ServiceLocator
+        tags: [ 'container.service_locator' ]
+        arguments:
+            - [ ]
+        public: true
+
+    pimcore.generic_data_index.asset.mapping_provider_locator:
+        class: Symfony\Component\DependencyInjection\ServiceLocator
+        tags: [ 'container.service_locator' ]
+        arguments:
+            - [ ]
+        public: true
+
+    pimcore.generic_data_index.document.type_serialization_handler_locator:
+        class: Symfony\Component\DependencyInjection\ServiceLocator
+        tags: [ 'container.service_locator' ]
+        arguments:
+            - [ ]
+        public: true
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\Middleware\CollectGarbageMiddleware: ~
