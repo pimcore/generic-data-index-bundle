@@ -29,15 +29,8 @@ jobs:
             matrix: ${{ steps.set-matrix.outputs.matrix }}
             private_repo: ${{ env.PRIVATE_REPO }}
         steps:
-            - name: Checkout PR head (only for pull_request_target)
-              if: github.event_name == 'pull_request_target'
-              uses: "actions/checkout@v4"
-              with:
-                  ref: "refs/pull/${{ github.event.pull_request.number }}/merge"
-
-            - name: Checkout PR head (for push or other events)
-              if: github.event_name != 'pull_request_target'
-              uses: "actions/checkout@v4"
+            - name: Checkout code
+              uses: actions/checkout@v4
 
             - name: Checkout reusable workflow repo
               uses: actions/checkout@v4
@@ -52,39 +45,22 @@ jobs:
                   if [ -f composer.json ]; then
                     php_versions=$(jq -r '.require.php' composer.json | grep -oP '\d+\.\d+' | tr '\n' ',' | sed 's/,$//')
                     if [ -z "$php_versions" ]; then
-                      echo "No PHP versions found in composer.json"
-                      echo "Setting default PHP value"
-                      echo "php_versions=default" >> $GITHUB_OUTPUT
+                      echo "php_versions=default" >> "$GITHUB_OUTPUT"
                     else
-                      echo "php_versions=$php_versions" >> $GITHUB_OUTPUT
-                      echo "#### php versions #### : $php_versions"
+                      echo "php_versions=$php_versions" >> "$GITHUB_OUTPUT"
                     fi
                   else
-                    echo "composer.json not found"
                     exit 1
                   fi
 
-            - name: Set up matrix
+            - name: Set up matrix JSON
               id: set-matrix
               run: |
                   php_versions="${{ steps.parse-php-versions.outputs.php_versions }}"
-
                   MATRIX_JSON=$(cat reusable-workflows/codeception-tests-configuration/matrix-config.json)
-
-                  IFS=',' read -ra VERSIONS_ARRAY <<< "$php_versions"
-
-                  FILTERED_MATRIX_JSON=$(echo $MATRIX_JSON | jq --arg php_versions "$php_versions" '
-                  {
-                    matrix: [
-                      .configs[] |
-                      select(.php_version == $php_versions) |
-                      .matrix[]
-                    ]
-                  }')
-
-                  ENCODED_MATRIX_JSON=$(echo $FILTERED_MATRIX_JSON | jq -c .)
-
-                  echo "matrix=${ENCODED_MATRIX_JSON}" >> $GITHUB_OUTPUT
+                  FILTERED_MATRIX_JSON=$(echo "$MATRIX_JSON" | jq --arg php_versions "$php_versions" '{ matrix: [ .configs[] | select(.php_version == $php_versions) | .matrix[] ] }')
+                  ENCODED_MATRIX_JSON=$(echo "$FILTERED_MATRIX_JSON" | jq -c .)
+                  echo "matrix=$ENCODED_MATRIX_JSON" >> "$GITHUB_OUTPUT"
 
     codeception-tests:
         needs: setup-matrix
