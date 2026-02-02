@@ -106,4 +106,8 @@ services:
             - [ ]
         public: true
 
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\SearchModifierServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\SearchModifierService
+        public: true
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\Middleware\CollectGarbageMiddleware: ~
