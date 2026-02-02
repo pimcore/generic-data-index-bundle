@@ -80,6 +80,7 @@ jobs:
                   echo "matrix=${ENCODED_MATRIX_JSON}" >> $GITHUB_OUTPUT
 
     codeception-tests:
+        needs: setup-matrix
         strategy:
             matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
         uses: pimcore/workflows-collection-public/.github/workflows/reusable-codeception-tests-centralized.yaml@main
@@ -87,11 +88,11 @@ jobs:
             APP_ENV: test
             PIMCORE_TEST: "1"
             PRIVATE_REPO: "false"
-            PHP_VERSION: ${{ matrix.php-version }}
+            PHP_VERSION: ${{ matrix.matrix.php-version }}
             DATABASE: "mariadb:10.11"
-            DEPENDENCIES: ${{ matrix.dependencies }}
-            EXPERIMENTAL: ${{ matrix.experimental }}
-            PIMCORE_VERSION: ${{ matrix.pimcore_version }}
+            DEPENDENCIES: ${{ matrix.matrix.dependencies }}
+            EXPERIMENTAL: ${{ matrix.matrix.experimental }}
+            PIMCORE_VERSION: ${{ matrix.matrix.pimcore_version }}
             REQUIRE_ADMIN_BUNDLE: "false"
             PIMCORE_ELASTIC_SEARCH_HOST: "39201"
             PIMCORE_ELASTIC_SEARCH_VERSION: "8.5.3"
