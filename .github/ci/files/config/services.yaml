@@ -53,3 +53,14 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\DispatchQueueMessagesHandler:
         public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository:
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher:
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessageServiceInterface:
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\Middleware\CollectGarbageMiddleware: ~
