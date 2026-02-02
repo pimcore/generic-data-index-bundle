@@ -174,6 +174,48 @@ services:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\IndexNameResolver
         public: true
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\TransformToAdapterSearchServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\TransformToAdapterSearchService
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchResultIdListServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchResultIdListService
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\RequiredByElementListServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\RequiredByElementListService
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationService
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\AssetLazyLoadingHandlerInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\AssetLazyLoadingHandler
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DataObjectLazyLoadingHandlerInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DataObjectLazyLoadingHandler
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DocumentLazyLoadingHandlerInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DocumentLazyLoadingHandler
+        public: true
+
+    # Search helpers
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\SearchHelper:
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\SearchHelper:
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\SearchHelper:
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchHelperInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\SearchHelper
+        public: true
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingService
         public: true
