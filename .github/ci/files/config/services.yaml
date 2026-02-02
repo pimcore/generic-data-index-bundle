@@ -110,4 +110,92 @@ services:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\SearchModifierService
         public: true
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchService
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchService
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchService
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchService
+        public: true
+
+    # Permission Services
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\ElementPermissionServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\ElementPermissionService
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionService
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\UserPermissionServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\UserPermissionService
+        public: true
+
+    # SearchIndexAdapter Services
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService
+        public: true
+        arguments:
+            $client: "@generic-data-index.search-client"
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\IndexAliasService
+        public: true
+        arguments:
+            $client: "@generic-data-index.search-client"
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\BulkOperationService
+        public: true
+        arguments:
+            $client: "@generic-data-index.search-client"
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Pagination\PaginationInfoService
+        public: true
+
+    # Search helpers and denormalizers
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer:
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProvider
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingService
+        public: true
+
+    # Data Object field definition service
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionService
+        public: true
+        arguments:
+            - '@pimcore.generic_data_index.object.search_index_field_definition_locator'
+
+    # Asset field definition service
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefinitionServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Asset\FieldDefinitionService
+        public: true
+        arguments:
+            - '@pimcore.generic_data_index.asset.search_index_field_definition_locator'
+
+    # Type adapters for index service
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter:
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter:
+        public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter:
+        public: true
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\Middleware\CollectGarbageMiddleware: ~
