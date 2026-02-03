@@ -43,6 +43,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\PathServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\PathService
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasService
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\DocumentSearchResultDenormalizer: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\DataObjectSearchResultDenormalizer: ~
