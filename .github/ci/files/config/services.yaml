@@ -77,6 +77,11 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\DispatchQueueMessagesHandler:
         public: true
+        arguments:
+            $queueSettings:
+                worker_count: 1
+                min_batch_size: 5
+                max_batch_size: 400
 
     Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository:
         public: true
