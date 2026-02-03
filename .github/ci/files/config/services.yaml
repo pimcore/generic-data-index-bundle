@@ -40,42 +40,22 @@ services:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchResultIdListService
         public: true
 
-    # Serializer services for Assets
+    # Serializer services
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandlerService:
         arguments:
             - '@pimcore.generic_data_index.asset.type_serialization_handler_locator'
 
-    pimcore.generic_data_index.asset.type_serialization_handler_locator:
-        class: Symfony\Component\DependencyInjection\ServiceLocator
-        tags: [ 'container.service_locator' ]
-        arguments:
-            - [ ]
-
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer: ~
 
-    # Serializer services for Documents
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandlerService:
         arguments:
             - '@pimcore.generic_data_index.document.type_serialization_handler_locator'
 
-    pimcore.generic_data_index.document.type_serialization_handler_locator:
-        class: Symfony\Component\DependencyInjection\ServiceLocator
-        tags: [ 'container.service_locator' ]
-        arguments:
-            - [ ]
-
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\DocumentSearchResultDenormalizer: ~
 
-    # Serializer services for DataObjects
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DataObjectTypeSerializationHandlerService:
         arguments:
             - '@pimcore.generic_data_index.data_object.type_serialization_handler_locator'
-
-    pimcore.generic_data_index.data_object.type_serialization_handler_locator:
-        class: Symfony\Component\DependencyInjection\ServiceLocator
-        tags: [ 'container.service_locator' ]
-        arguments:
-            - [ ]
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\DataObjectSearchResultDenormalizer: ~
 
