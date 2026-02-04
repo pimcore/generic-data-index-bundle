@@ -49,6 +49,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace\WorkspaceService
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\AssetSearchResultDenormalizer: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\DocumentSearchResultDenormalizer: ~
     Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\DataObjectSearchResultDenormalizer: ~
