@@ -1,0 +1,194 @@
+imports:
+  - { resource: messenger.yaml }
+
+pimcore_generic_data_index:
+  index_service:
+    search_settings:
+      list_page_size: 60
+      list_max_filter_options: 500
+      search_analyzer_attributes:
+        text:
+          fields:
+            analyzed_ngram:
+              type: text
+              analyzer: generic_data_index_ngram_analyzer
+              search_analyzer: generic_data_index_whitespace_analyzer
+            analyzed:
+              type: text
+              analyzer: standard
+              search_analyzer: generic_data_index_whitespace_analyzer
+    system_fields_settings:
+      general:
+        id:
+          type: long
+        elementType:
+          type: keyword
+        parentId:
+          type: long
+        creationDate:
+          type: date
+        modificationDate:
+          type: date
+        type:
+          type: keyword
+        key:
+          type: keyword
+          fields:
+            analyzed_ngram:
+              type: text
+              analyzer: generic_data_index_ngram_analyzer
+              search_analyzer: generic_data_index_whitespace_analyzer
+            analyzed:
+              type: text
+              analyzer: standard
+              search_analyzer: generic_data_index_whitespace_analyzer
+            sort:
+              type: keyword
+              normalizer: generic_data_index_sort_normalizer
+        path:
+          type: text
+          analyzer: generic_data_index_path_analyzer
+          fields:
+            keyword:
+              type: keyword
+            sort:
+              type: keyword
+              normalizer: generic_data_index_sort_normalizer
+        fullPath:
+          type: text
+          analyzer: generic_data_index_path_analyzer
+          fields:
+            keyword:
+              type: keyword
+            sort:
+              type: keyword
+              normalizer: generic_data_index_sort_normalizer
+        pathLevels:
+          type: nested
+          properties:
+            level:
+              type: integer
+            name:
+              type: keyword
+        pathLevel:
+          type: integer
+        tags:
+          type: integer
+        parentTags:
+          type: integer
+        thumbnail:
+          type: keyword
+        userOwner:
+          type: integer
+        userModification:
+          type: integer
+        lock:
+          type: keyword
+        hasWorkflowWithPermissions:
+          type: boolean
+        dependencies:
+          type: object
+          properties:
+            asset:
+              type: long
+            document:
+              type: long
+            object:
+              type: long
+      document:
+        published:
+          type: boolean
+        index:
+          type: integer
+        controller:
+          type: keyword
+        template:
+          type: keyword
+        contentMainDocumentId:
+          type: integer
+        supportsContentMain:
+          type: boolean
+        missingRequiredEditable:
+          type: boolean
+        staticGeneratorEnabled:
+          type: boolean
+        staticGeneratorLifetime:
+          type: integer
+        title:
+          type: keyword
+        description:
+          type: keyword
+        prettyUrl:
+          type: keyword
+        sourceId:
+          type: integer
+        propertiesFromSource:
+          type: boolean
+        childrenFromSource:
+          type: boolean
+        subject:
+          type: keyword
+        from:
+          type: keyword
+        replyTo:
+          type: keyword
+        to:
+          type: keyword
+        cc:
+          type: keyword
+        bcc:
+          type: keyword
+        internal:
+          type: integer
+        internalType:
+          type: keyword
+        direct:
+          type: keyword
+        linktype:
+          type: keyword
+        href:
+          type: keyword
+      data_object:
+        published:
+          type: boolean
+        classname:
+          type: keyword
+          fields:
+            sort:
+              type: keyword
+              normalizer: generic_data_index_sort_normalizer
+        classDefinitionIcon:
+          type: keyword
+        index:
+          type: integer
+        childrenSortBy:
+          type: keyword
+        childrenSortOrder:
+          type: keyword
+      asset:
+        mimetype:
+          type: keyword
+        fileSize:
+          type: long
+        thumbnail:
+          type: keyword
+        imageThumbnail:
+          type: keyword
+        width:
+          type: integer
+        height:
+          type: integer
+        duration:
+          type: float
+        text:
+          type: keyword
+          ignore_above: 256
+          fields:
+            analyzed_ngram:
+              type: text
+              analyzer: generic_data_index_ngram_analyzer
+              search_analyzer: generic_data_index_whitespace_analyzer
+            analyzed:
+              type: text
+              analyzer: standard
+              search_analyzer: generic_data_index_whitespace_analyzer

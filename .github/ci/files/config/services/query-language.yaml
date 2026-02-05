@@ -1,0 +1,14 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: false
+        public: false
+
+    Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\LexerInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\Pql\Lexer
+
+    Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ParserInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\Pql\Parser
+
+    Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\Pql\Processor

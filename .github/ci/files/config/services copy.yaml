@@ -1,0 +1,53 @@
+imports:
+    - { resource: 'services/search/*' }
+    - { resource: 'services/search-index-adapter/*' }
+    - { resource: 'services/search/data-object/*' }
+    - { resource: 'services/search/asset/*' }
+    - { resource: 'services/*' }
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    # controllers are imported separately to make sure they're public
+    # and have a tag that allows actions to type-hint services
+    Pimcore\Bundle\GenericDataIndexBundle\Controller\:
+        resource: '../src/Controller'
+        public: true
+        tags: ['controller.service_arguments']
+
+    Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber\:
+        resource: '../src/EventSubscriber/*'
+
+    Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\:
+        resource: '../src/MessageHandler'
+        tags: [ { name: messenger.message_handler, bus: messenger.bus.pimcore-generic-data-index } ]
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\EventServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\EventService
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\ElementService
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\TimeService
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreService
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\PathServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\PathService
+
+    Pimcore\Bundle\GenericDataIndexBundle\Scheduler\GenericDataIndexScheduleProvider: ~
+    Pimcore\Bundle\GenericDataIndexBundle\Installer:
+        public: true
+        arguments:
+            $bundle: "@=service('kernel').getBundle('PimcoreGenericDataIndexBundle')"
+
+# add more services, or override services that need manual wiring
+#    Pimcore\_generic-data-index-bundle\ExampleClass:
+#        arguments:
+#            - "@service_id"
+#            - "plain_value"
+#            - "%parameter%"

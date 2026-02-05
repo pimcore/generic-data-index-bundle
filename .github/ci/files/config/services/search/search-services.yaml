@@ -1,0 +1,53 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    public: false
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface:
+      class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchService
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface:
+      class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchService
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface:
+      class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchService
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface:
+      class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchService
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\SearchHelper: ~
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\SearchHelper: ~
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\SearchHelper: ~
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchHelperInterface:
+      class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\SearchHelper
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\Aggregation\FileSizeAggregationServiceInterface:
+      class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\Aggregation\FileSizeAggregationService
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface:
+      class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProvider
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\IndexNameResolverInterface:
+      class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\IndexNameResolver
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\TransformToAdapterSearchServiceInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\TransformToAdapterSearchService
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchResultIdListServiceInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchResultIdListService
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\AssetLazyLoadingHandlerInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\AssetLazyLoadingHandler
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\RequiredByElementListServiceInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\RequiredByElementListService
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DataObjectLazyLoadingHandlerInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DataObjectLazyLoadingHandler
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DocumentLazyLoadingHandlerInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DocumentLazyLoadingHandler
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationServiceInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationService

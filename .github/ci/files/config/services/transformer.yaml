@@ -1,0 +1,14 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: false
+        public: false
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\AssetToSearchResultItemTransformerInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\AssetToSearchResultItemTransformer
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\DataObjectToSearchResultItemTransformerInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\DataObjectToSearchResultItemTransformer
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\DocumentToSearchResultItemTransformerInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Transformer\SearchResultItem\DocumentToSearchResultItemTransformer

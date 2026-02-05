@@ -1,0 +1,10 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    # auto-register all commands as services
+    Pimcore\Bundle\GenericDataIndexBundle\Command\:
+        resource: '../../src/Command/*'
+        tags: ['console.command']
