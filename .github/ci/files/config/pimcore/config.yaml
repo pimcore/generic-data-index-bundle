@@ -5,7 +5,7 @@ pimcore_generic_data_index:
   index_service:
     client_params:
       client_name: default
-      client_type: opensearch
+      client_type: openSearch
       index_prefix: pimcore_
     search_settings:
       list_page_size: 60
