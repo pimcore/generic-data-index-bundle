@@ -190,3 +190,22 @@ bin/console generic-data-index:deployment:reindex
 
 This updates the index structure for all class definitions modified since the last
 deployment and reindexes data objects for affected classes.
+
+### Cleaning Up Unused Indices
+
+To clean up managed indices with the configured index prefix and `-odd`/`-even` suffix
+that are not referenced by any alias, use the following command:
+
+```
+php bin/console generic-data-index:cleanup:unused-indices
+```
+
+Note: This command only targets indices that use the configured index prefix and end
+with `-odd` or `-even`. Other unaliased indices (e.g. custom indices under the same
+prefix without this suffix) will not be removed.
+
+To preview what would be deleted without performing any changes, run:
+
+```
+php bin/console generic-data-index:cleanup:unused-indices --dry-run
+```
