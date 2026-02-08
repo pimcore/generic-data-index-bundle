@@ -21,6 +21,7 @@ use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Component\Console\Command\LockableTrait;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -29,6 +30,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class DeploymentReindexCommand extends AbstractCommand
 {
     use LockableTrait;
+
+    private const OPTION_ALL_CLASSES = 'all-classes';
 
     public function __construct(
         private readonly EnqueueServiceInterface $enqueueService,
@@ -42,6 +45,12 @@ final class DeploymentReindexCommand extends AbstractCommand
     {
         $this
             ->setName('generic-data-index:deployment:reindex')
+            ->addOption(
+                self::OPTION_ALL_CLASSES,
+                null,
+                InputOption::VALUE_NONE,
+                'Reindex all class definitions, even if the mapping checksum has not changed.'
+            )
             ->setDescription(
                 'Updates index/mapping for all classDefinitions which changed without' .
                 'deleting them. Afterwards are affected items added into the index queue.'
@@ -62,12 +71,13 @@ final class DeploymentReindexCommand extends AbstractCommand
 
         try {
             $updatedIds = [];
+            $forceAllClasses = (bool) $input->getOption(self::OPTION_ALL_CLASSES);
             $classesList = new ClassDefinition\Listing();
             $classes = $classesList->load();
 
             foreach ($classes as $classDefinition) {
                 $updated = $this->classDefinitionReindexService
-                    ->reindexClassDefinition($classDefinition, true, true)
+                    ->reindexClassDefinition($classDefinition, !$forceAllClasses, true)
                 ;
 
                 if ($updated) {

@@ -180,3 +180,18 @@ php bin/console generic-data-index:deployment:reindex
 ```
 
 This command will update the index structure for all data object classes which were created/updated since the last deployment and reindex all data objects for relevant classes.
+
+If you need to force reindexing of all class definitions, use:
+
+```
+php bin/console generic-data-index:deployment:reindex --all-classes
+```
+
+Use `--all-classes` as a recovery/consistency option when checksum-based change detection may be out of sync and you want a full class-level pass without recreating indices.
+
+Compared to `php bin/console generic-data-index:update:index -r`:
+
+- `deployment:reindex --all-classes` keeps existing indices and forces reindexing for all class definitions.
+- `update:index -r` deletes and recreates indices before reindexing.
+
+Prefer `deployment:reindex --all-classes` first when a forced class-level refresh is needed. Use `update:index -r` when a hard rebuild is required (for example after incompatible mapping/state issues).
