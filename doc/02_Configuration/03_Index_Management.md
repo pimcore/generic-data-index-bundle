@@ -180,3 +180,17 @@ php bin/console generic-data-index:deployment:reindex
 ```
 
 This command will update the index structure for all data object classes which were created/updated since the last deployment and reindex all data objects for relevant classes.
+
+### Cleaning Up Unused Indices
+
+To clean up old indices that are not referenced by any alias, use the following command:
+
+```
+php bin/console generic-data-index:cleanup:unused-indices
+```
+
+To preview what would be deleted without performing any changes, run:
+
+```
+php bin/console generic-data-index:cleanup:unused-indices --dry-run
+```
