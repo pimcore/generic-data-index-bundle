@@ -17,6 +17,7 @@
   },
   "require-dev": {
     "codeception/codeception": "^5.3.4",
+    "codeception/stub": "^4.3.0",
     "codeception/phpunit-wrapper": "^9.0.9",
     "codeception/module-asserts": "^2",
     "codeception/module-symfony": "^3.8.0",
