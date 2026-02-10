@@ -3,7 +3,7 @@
 Following steps are necessary during updating to newer versions.
 
 ## Upgrade to 3.0.0
-- [Searching] Added `forceReload` parameter to element `byId()`.
+- [Searching] Added `forceReload` parameter to element search service interface `byId()`.
 
 ## Upgrade to 2.2.0
 - [Indexing] Added `id` column as new primary key to `generic_data_index_queue`. Please make sure to execute migrations.
