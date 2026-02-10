@@ -2,6 +2,9 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 3.0.0
+- [Searching] Added `forceReload` parameter to element `byId()`.
+
 ## Upgrade to 2.2.0
 - [Indexing] Added `id` column as new primary key to `generic_data_index_queue`. Please make sure to execute migrations.
 - [Searching] Added `trackTotalHits` parameter to `DefaultSearchService` and `SearchExecutionService`. The default value is true,       which means that total hits will always be computed accurately, even if they exceed the search engines threshold for accurate hit calculation. Change this parameter to `null`, to use the default threshold, pass an integer value to set a specific one.
