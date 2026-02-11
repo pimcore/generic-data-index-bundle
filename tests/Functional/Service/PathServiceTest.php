@@ -99,22 +99,102 @@ class PathServiceTest extends \Codeception\Test\Unit
             )
         );
 
-        // DIAGNOSTIC: Check asset indexed path after rename (the actual test)
+        // DIAGNOSTIC: Check asset indexed path after rename
         $assetIndexedPathAfter = $pathService->getCurrentIndexFullPath($asset);
-        $this->assertEquals(
-            '/test-folder/test-asset',
-            $assetIndexedPathAfter,
-            sprintf(
-                'DIAGNOSTIC: Asset indexed path after rename is "%s" (expected "/test-folder/test-asset"). '
-                . 'Asset path before rename was "%s". '
-                . 'Folder path before rename was "%s". '
-                . 'maxSynchronousChildrenRenameLimit=%d',
+
+        // If the path rewrite didn't work during save, try calling it manually
+        // to see if it throws an exception or if the conditions aren't met
+        if ($assetIndexedPathAfter !== '/test-folder/test-asset') {
+            // Check what getCurrentIndexFullPath returns for the folder NOW
+            // (after commit - should be /test-folder)
+            $folderPathNow = $pathService->getCurrentIndexFullPath($folder);
+
+            // Manually attempt the rewrite and capture any exception
+            // Note: this will likely return early because folder's indexed path
+            // now matches getRealFullPath() after commit
+            $rewriteException = null;
+            try {
+                $pathService->rewriteChildrenIndexPaths($folder);
+            } catch (\Exception $e) {
+                $rewriteException = $e->getMessage();
+            }
+
+            // Now try a direct updateByQuery using the old path to see if OpenSearch can do it
+            /** @var \Pimcore\SearchClient\SearchClientInterface $client */
+            $client = $this->tester->getIndexSearchClient();
+
+            // First, search for docs with the old folder path to understand the index state
+            $oldPath = $folderIndexedPath; // the path before rename e.g. /698c7043453b912
+            $configService2 = $this->tester->grabService(SearchIndexConfigServiceInterface::class);
+            $indexName = $configService2->getIndexName('asset');
+
+            // Count docs matching old path via term query on fullPath
+            $countOldPath = $client->search([
+                'index' => $indexName,
+                'track_total_hits' => true,
+                'rest_total_hits_as_int' => true,
+                'body' => [
+                    'query' => ['term' => ['system_fields.fullPath' => $oldPath]],
+                    'size' => 0,
+                ],
+            ]);
+            $countOld = $countOldPath['hits']['total'] ?? 'N/A';
+
+            // Count docs matching new path
+            $countNewPath = $client->search([
+                'index' => $indexName,
+                'track_total_hits' => true,
+                'rest_total_hits_as_int' => true,
+                'body' => [
+                    'query' => ['term' => ['system_fields.fullPath' => '/test-folder']],
+                    'size' => 0,
+                ],
+            ]);
+            $countNew = $countNewPath['hits']['total'] ?? 'N/A';
+
+            // Get the asset document directly by ID to see its actual data
+            $assetDoc = $client->get([
+                'index' => $indexName,
+                'id' => $asset->getId(),
+            ]);
+            $assetDocPath = $assetDoc['_source']['system_fields']['fullPath'] ?? 'N/A';
+            $assetDocSysPath = $assetDoc['_source']['system_fields']['path'] ?? 'N/A';
+
+            // Flush to ensure visibility
+            $this->tester->flushIndex();
+
+            // Check asset path after manual rewrite attempt
+            $assetPathAfterManualRewrite = $pathService->getCurrentIndexFullPath($asset);
+
+            $this->fail(sprintf(
+                'DIAGNOSTIC: Asset path not rewritten during save. '
+                . 'Asset indexed path after save: "%s". '
+                . 'Asset indexed path after manual rewrite: "%s". '
+                . 'Folder indexed path after save: "%s". '
+                . 'Folder realFullPath: "%s". '
+                . 'Folder indexed path before rename: "%s". '
+                . 'Rewrite exception: %s. '
+                . 'maxSynchronousChildrenRenameLimit=%d. '
+                . 'Docs matching old path "%s": %s. '
+                . 'Docs matching new path "/test-folder": %s. '
+                . 'Asset doc fullPath (direct GET): "%s". '
+                . 'Asset doc path (direct GET): "%s". '
+                . 'Index name: "%s"',
                 $assetIndexedPathAfter,
-                $assetIndexedPathBefore,
+                $assetPathAfterManualRewrite,
+                $folderPathNow,
+                $folder->getRealFullPath(),
                 $folderIndexedPath,
-                $renameLimit
-            )
-        );
+                $rewriteException ?? 'none',
+                $renameLimit,
+                $oldPath,
+                $countOld,
+                $countNew,
+                $assetDocPath,
+                $assetDocSysPath,
+                $indexName
+            ));
+        }
 
         /** @var AssetSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
