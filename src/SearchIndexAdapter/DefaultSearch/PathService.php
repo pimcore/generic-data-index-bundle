@@ -124,6 +124,7 @@ final class PathService implements PathServiceInterface
                     'params' => [
                         'currentPath' => $currentPath . '/',
                         'newPath' => $newPath . '/',
+                        'now' => date('c'),
                     ],
                 ],
 
@@ -210,7 +211,7 @@ final class PathService implements PathServiceInterface
                     }
                     ctx._source.system_fields.pathLevels = newLevels;
                 }
-                ctx._source.system_fields.modificationDate = Instant.now().toString();
+                ctx._source.system_fields.modificationDate = params.now;
                 ctx._source.system_fields.checksum = 0';
     }
 
