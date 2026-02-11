@@ -12,10 +12,13 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Service;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+use Pimcore\Bundle\GenericDataIndexBundle\Message\EnqueueRelatedIdsMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Tests\Support\Util\TestHelper;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 class PathServiceTest extends \Codeception\Test\Unit
 {
@@ -63,14 +66,12 @@ class PathServiceTest extends \Codeception\Test\Unit
         $folderPathBefore = $pathService->getCurrentIndexFullPath($folder);
         $assetPathBefore = $pathService->getCurrentIndexFullPath($asset);
 
-        // Get document versions before rename (to detect if updateByQuery touched them)
+        // Get document versions before rename
         $assetDocBefore = $client->get([
             'index' => $indexName,
             'id' => $asset->getId(),
         ]);
         $assetVersionBefore = $assetDocBefore['_version'] ?? 'N/A';
-        $assetSeqNoBefore = $assetDocBefore['_seq_no'] ?? 'N/A';
-        $assetPrimaryTermBefore = $assetDocBefore['_primary_term'] ?? 'N/A';
 
         $folderDocBefore = $client->get([
             'index' => $indexName,
@@ -78,23 +79,24 @@ class PathServiceTest extends \Codeception\Test\Unit
         ]);
         $folderVersionBefore = $folderDocBefore['_version'] ?? 'N/A';
 
-        // Replicate the countDocumentsByPath query that rewriteChildrenIndexPaths uses
-        $countBeforeRename = $client->search([
-            'index' => $indexName,
-            'track_total_hits' => true,
-            'rest_total_hits_as_int' => true,
-            'body' => [
-                'query' => [
-                    'term' => [
-                        'system_fields.fullPath' => $folderPathBefore,
-                    ],
-                ],
-                'size' => 0,
-            ],
-        ]);
-        $countBeforeRenameTotal = $countBeforeRename['hits']['total'] ?? 'N/A';
+        // Step 2b: Test if message bus dispatch works (theory: this throws and prevents rewriteChildrenIndexPaths)
+        $messageBusError = 'none';
+        try {
+            /** @var MessageBusInterface $messageBus */
+            $messageBus = $this->tester->grabService(MessageBusInterface::class);
+            $messageBus->dispatch(
+                new EnqueueRelatedIdsMessage(
+                    $folder->getId(),
+                    ElementType::ASSET,
+                    'update',
+                    false
+                )
+            );
+        } catch (\Exception $e) {
+            $messageBusError = get_class($e) . ': ' . $e->getMessage();
+        }
 
-        // Step 3: Rename folder (triggers subscriber -> updateIndexQueue -> rewriteChildrenIndexPaths -> commit)
+        // Step 3: Rename folder
         $folder->setKey('test-folder')->save();
 
         // Step 4: Capture post-rename state
@@ -106,7 +108,6 @@ class PathServiceTest extends \Codeception\Test\Unit
             'id' => $asset->getId(),
         ]);
         $assetVersionAfter = $assetDocAfter['_version'] ?? 'N/A';
-        $assetSeqNoAfter = $assetDocAfter['_seq_no'] ?? 'N/A';
         $assetSourceAfter = $assetDocAfter['_source']['system_fields'] ?? [];
 
         $folderDocAfter = $client->get([
@@ -115,23 +116,30 @@ class PathServiceTest extends \Codeception\Test\Unit
         ]);
         $folderVersionAfter = $folderDocAfter['_version'] ?? 'N/A';
 
-        // Step 5: Check rename limit config
+        // Step 5: If test would fail, try manual rewriteChildrenIndexPaths to prove it works
+        $manualRewriteResult = 'not attempted';
+        if ($assetPathAfter !== '/test-folder/test-asset') {
+            try {
+                $pathService->rewriteChildrenIndexPaths($folder);
+                $assetPathAfterManualRewrite = $pathService->getCurrentIndexFullPath($asset);
+                $manualRewriteResult = sprintf('success, assetPath=%s', $assetPathAfterManualRewrite);
+            } catch (\Exception $e) {
+                $manualRewriteResult = get_class($e) . ': ' . $e->getMessage();
+            }
+        }
+
         $renameLimit = $configService->getMaxSynchronousChildrenRenameLimit();
 
-        // Collect all diagnostics into one message
-        $assetDocBeforeKeys = implode(',', array_keys($assetDocBefore));
         $diagnostics = sprintf(
             "DIAGNOSTICS:\n"
             . "  renameLimit=%d\n"
             . "  folderPath: before='%s' after='%s'\n"
             . "  assetPath: before='%s' after='%s'\n"
             . "  assetVersion: before=%s after=%s (delta=%s)\n"
-            . "  assetSeqNo: before=%s after=%s\n"
-            . "  assetPrimaryTerm: before=%s\n"
             . "  folderVersion: before=%s after=%s (delta=%s)\n"
-            . "  countDocsByPath('%s') before rename=%s\n"
+            . "  messageBusDispatchTest: %s\n"
+            . "  manualRewriteChildrenIndexPaths: %s\n"
             . "  assetSystemFieldsAfter: path='%s' fullPath='%s' key='%s' checksum=%s\n"
-            . "  assetDocBeforeKeys=[%s]\n"
             . "  indexName='%s'\n"
             . "  folder.getRealFullPath()='%s' asset.getRealFullPath()='%s'",
             $renameLimit,
@@ -140,23 +148,21 @@ class PathServiceTest extends \Codeception\Test\Unit
             $assetVersionBefore, $assetVersionAfter,
             (is_numeric($assetVersionBefore) && is_numeric($assetVersionAfter))
                 ? ($assetVersionAfter - $assetVersionBefore) : '?',
-            $assetSeqNoBefore, $assetSeqNoAfter,
-            $assetPrimaryTermBefore,
             $folderVersionBefore, $folderVersionAfter,
             (is_numeric($folderVersionBefore) && is_numeric($folderVersionAfter))
                 ? ($folderVersionAfter - $folderVersionBefore) : '?',
-            $folderPathBefore, $countBeforeRenameTotal,
+            $messageBusError,
+            $manualRewriteResult,
             $assetSourceAfter['path'] ?? 'N/A',
             $assetSourceAfter['fullPath'] ?? 'N/A',
             $assetSourceAfter['key'] ?? 'N/A',
             $assetSourceAfter['checksum'] ?? 'N/A',
-            $assetDocBeforeKeys,
             $indexName,
             $folder->getRealFullPath(),
             $asset->getRealFullPath()
         );
 
-        // Assert the result — include diagnostics in failure message
+        // Assert the result
         $this->assertEquals(
             '/test-folder/test-asset',
             $assetPathAfter,
