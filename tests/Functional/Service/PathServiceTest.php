@@ -41,7 +41,17 @@ class PathServiceTest extends \Codeception\Test\Unit
 
     public function testAssetPathRewrite()
     {
+        /** @var \Pimcore\SearchClient\SearchClientInterface $client */
+        $client = $this->tester->getIndexSearchClient();
 
+        /** @var SearchIndexConfigServiceInterface $configService */
+        $configService = $this->tester->grabService(SearchIndexConfigServiceInterface::class);
+        $indexName = $configService->getIndexName('asset');
+
+        /** @var PathServiceInterface $pathService */
+        $pathService = $this->tester->grabService(PathServiceInterface::class);
+
+        // Step 1: Create asset and folder, save asset under folder
         $asset = TestHelper::createImageAsset();
         $folder = TestHelper::createAssetFolder();
         $asset
@@ -49,162 +59,114 @@ class PathServiceTest extends \Codeception\Test\Unit
             ->setKey('test-asset')
             ->save();
 
-        // DIAGNOSTIC: Check maxSynchronousChildrenRenameLimit before rename
-        /** @var SearchIndexConfigServiceInterface $configService */
-        $configService = $this->tester->grabService(SearchIndexConfigServiceInterface::class);
-        $renameLimit = $configService->getMaxSynchronousChildrenRenameLimit();
-        $searchSettings = $configService->getSearchSettings();
-        $this->assertGreaterThan(
-            0,
-            $renameLimit,
-            sprintf(
-                'DIAGNOSTIC: maxSynchronousChildrenRenameLimit is %d (expected 500). searchSettings keys: [%s]. searchSettings dump: %s',
-                $renameLimit,
-                implode(', ', array_keys($searchSettings)),
-                json_encode($searchSettings)
-            )
-        );
+        // Step 2: Capture pre-rename state from OpenSearch
+        $folderPathBefore = $pathService->getCurrentIndexFullPath($folder);
+        $assetPathBefore = $pathService->getCurrentIndexFullPath($asset);
 
-        // DIAGNOSTIC: Check folder is indexed before rename
-        /** @var PathServiceInterface $pathService */
-        $pathService = $this->tester->grabService(PathServiceInterface::class);
-        $folderIndexedPath = $pathService->getCurrentIndexFullPath($folder);
-        $this->assertNotNull(
-            $folderIndexedPath,
-            'DIAGNOSTIC: Folder is NOT indexed in OpenSearch before rename'
-        );
-        $this->assertNotEmpty(
-            $folderIndexedPath,
-            'DIAGNOSTIC: Folder indexed path is empty before rename'
-        );
+        // Get document versions before rename (to detect if updateByQuery touched them)
+        $assetDocBefore = $client->get([
+            'index' => $indexName,
+            'id' => $asset->getId(),
+        ]);
+        $assetVersionBefore = $assetDocBefore['_version'] ?? 'N/A';
+        $assetSeqNoBefore = $assetDocBefore['_seq_no'] ?? 'N/A';
+        $assetPrimaryTermBefore = $assetDocBefore['_primary_term'] ?? 'N/A';
 
-        // DIAGNOSTIC: Check asset is indexed before rename
-        $assetIndexedPathBefore = $pathService->getCurrentIndexFullPath($asset);
-        $this->assertNotNull(
-            $assetIndexedPathBefore,
-            'DIAGNOSTIC: Asset is NOT indexed in OpenSearch before rename'
-        );
+        $folderDocBefore = $client->get([
+            'index' => $indexName,
+            'id' => $folder->getId(),
+        ]);
+        $folderVersionBefore = $folderDocBefore['_version'] ?? 'N/A';
 
+        // Replicate the countDocumentsByPath query that rewriteChildrenIndexPaths uses
+        $countBeforeRename = $client->search([
+            'index' => $indexName,
+            'track_total_hits' => true,
+            'rest_total_hits_as_int' => true,
+            'body' => [
+                'query' => [
+                    'term' => [
+                        'system_fields.fullPath' => $folderPathBefore,
+                    ],
+                ],
+                'size' => 0,
+            ],
+        ]);
+        $countBeforeRenameTotal = $countBeforeRename['hits']['total'] ?? 'N/A';
+
+        // Step 3: Rename folder (triggers subscriber -> updateIndexQueue -> rewriteChildrenIndexPaths -> commit)
         $folder->setKey('test-folder')->save();
 
-        // DIAGNOSTIC: Check folder indexed path after rename (should be /test-folder)
-        $folderIndexedPathAfter = $pathService->getCurrentIndexFullPath($folder);
-        $this->assertEquals(
-            '/test-folder',
-            $folderIndexedPathAfter,
-            sprintf(
-                'DIAGNOSTIC: Folder indexed path after rename is "%s" (expected "/test-folder"). Path before rename was "%s"',
-                $folderIndexedPathAfter,
-                $folderIndexedPath
-            )
+        // Step 4: Capture post-rename state
+        $assetPathAfter = $pathService->getCurrentIndexFullPath($asset);
+        $folderPathAfter = $pathService->getCurrentIndexFullPath($folder);
+
+        $assetDocAfter = $client->get([
+            'index' => $indexName,
+            'id' => $asset->getId(),
+        ]);
+        $assetVersionAfter = $assetDocAfter['_version'] ?? 'N/A';
+        $assetSeqNoAfter = $assetDocAfter['_seq_no'] ?? 'N/A';
+        $assetSourceAfter = $assetDocAfter['_source']['system_fields'] ?? [];
+
+        $folderDocAfter = $client->get([
+            'index' => $indexName,
+            'id' => $folder->getId(),
+        ]);
+        $folderVersionAfter = $folderDocAfter['_version'] ?? 'N/A';
+
+        // Step 5: Check rename limit config
+        $renameLimit = $configService->getMaxSynchronousChildrenRenameLimit();
+
+        // Collect all diagnostics into one message
+        $assetDocBeforeKeys = implode(',', array_keys($assetDocBefore));
+        $diagnostics = sprintf(
+            "DIAGNOSTICS:\n"
+            . "  renameLimit=%d\n"
+            . "  folderPath: before='%s' after='%s'\n"
+            . "  assetPath: before='%s' after='%s'\n"
+            . "  assetVersion: before=%s after=%s (delta=%s)\n"
+            . "  assetSeqNo: before=%s after=%s\n"
+            . "  assetPrimaryTerm: before=%s\n"
+            . "  folderVersion: before=%s after=%s (delta=%s)\n"
+            . "  countDocsByPath('%s') before rename=%s\n"
+            . "  assetSystemFieldsAfter: path='%s' fullPath='%s' key='%s' checksum=%s\n"
+            . "  assetDocBeforeKeys=[%s]\n"
+            . "  indexName='%s'\n"
+            . "  folder.getRealFullPath()='%s' asset.getRealFullPath()='%s'",
+            $renameLimit,
+            $folderPathBefore, $folderPathAfter,
+            $assetPathBefore, $assetPathAfter,
+            $assetVersionBefore, $assetVersionAfter,
+            (is_numeric($assetVersionBefore) && is_numeric($assetVersionAfter))
+                ? ($assetVersionAfter - $assetVersionBefore) : '?',
+            $assetSeqNoBefore, $assetSeqNoAfter,
+            $assetPrimaryTermBefore,
+            $folderVersionBefore, $folderVersionAfter,
+            (is_numeric($folderVersionBefore) && is_numeric($folderVersionAfter))
+                ? ($folderVersionAfter - $folderVersionBefore) : '?',
+            $folderPathBefore, $countBeforeRenameTotal,
+            $assetSourceAfter['path'] ?? 'N/A',
+            $assetSourceAfter['fullPath'] ?? 'N/A',
+            $assetSourceAfter['key'] ?? 'N/A',
+            $assetSourceAfter['checksum'] ?? 'N/A',
+            $assetDocBeforeKeys,
+            $indexName,
+            $folder->getRealFullPath(),
+            $asset->getRealFullPath()
         );
 
-        // DIAGNOSTIC: Check asset indexed path after rename
-        $assetIndexedPathAfter = $pathService->getCurrentIndexFullPath($asset);
+        // Assert the result — include diagnostics in failure message
+        $this->assertEquals(
+            '/test-folder/test-asset',
+            $assetPathAfter,
+            $diagnostics
+        );
 
-        // If the path rewrite didn't work during save, capture detailed diagnostics
-        if ($assetIndexedPathAfter !== '/test-folder/test-asset') {
-            /** @var \Pimcore\SearchClient\SearchClientInterface $client */
-            $client = $this->tester->getIndexSearchClient();
-            $oldPath = $folderIndexedPath;
-            $configService2 = $this->tester->grabService(SearchIndexConfigServiceInterface::class);
-            $indexName = $configService2->getIndexName('asset');
-
-            // Try running the exact same updateByQuery that PathService would run
-            // using the OLD path (which is still on the asset)
-            $updateByQueryResult = null;
-            $updateByQueryError = null;
-            try {
-                $updateByQueryResult = $client->updateByQuery([
-                    'index' => $indexName,
-                    'refresh' => true,
-                    'conflicts' => 'proceed',
-                    'body' => [
-                        'script' => [
-                            'lang' => 'painless',
-                            'source' => 'ctx._source.system_fields.fullPath = params.newPath + ctx._source.system_fields.key; ctx._source.system_fields.path = params.newPath;',
-                            'params' => [
-                                'newPath' => '/test-folder/',
-                            ],
-                        ],
-                        'query' => [
-                            'term' => [
-                                'system_fields.fullPath' => $oldPath,
-                            ],
-                        ],
-                    ],
-                ]);
-            } catch (\Exception $e) {
-                $updateByQueryError = $e->getMessage();
-            }
-
-            // Check asset after our manual updateByQuery
-            $assetPathAfterManualUBQ = $pathService->getCurrentIndexFullPath($asset);
-
-            // Also try a match query instead of term to see if analysis difference matters
-            $matchResult = $client->search([
-                'index' => $indexName,
-                'body' => [
-                    'query' => ['match' => ['system_fields.fullPath' => $oldPath]],
-                ],
-            ]);
-            $matchCount = $matchResult['hits']['total']['value'] ?? ($matchResult['hits']['total'] ?? 'N/A');
-
-            // Also try with keyword subfield
-            $keywordResult = $client->search([
-                'index' => $indexName,
-                'body' => [
-                    'query' => ['wildcard' => ['system_fields.fullPath.keyword' => $oldPath . '/*']],
-                ],
-            ]);
-            $keywordCount = $keywordResult['hits']['total']['value'] ?? ($keywordResult['hits']['total'] ?? 'N/A');
-
-            // Get all docs to see what's in the index
-            $allDocs = $client->search([
-                'index' => $indexName,
-                'body' => [
-                    'query' => ['match_all' => (object)[]],
-                    '_source' => ['system_fields.fullPath', 'system_fields.path', 'system_fields.key'],
-                    'size' => 20,
-                ],
-            ]);
-            $allDocsSummary = [];
-            foreach ($allDocs['hits']['hits'] as $hit) {
-                $allDocsSummary[] = sprintf(
-                    'id=%s fullPath=%s',
-                    $hit['_id'],
-                    $hit['_source']['system_fields']['fullPath'] ?? 'N/A'
-                );
-            }
-
-            $this->fail(sprintf(
-                'DIAGNOSTIC: Asset path not rewritten. '
-                . 'Asset path after save: "%s". '
-                . 'Asset path after manual updateByQuery: "%s". '
-                . 'updateByQuery result: %s. '
-                . 'updateByQuery error: %s. '
-                . 'match query count for old path: %s. '
-                . 'keyword wildcard count for old path children: %s. '
-                . 'All docs in index: [%s]. '
-                . 'Folder path before rename: "%s". '
-                . 'Index name: "%s"',
-                $assetIndexedPathAfter,
-                $assetPathAfterManualUBQ,
-                json_encode($updateByQueryResult),
-                $updateByQueryError ?? 'none',
-                $matchCount,
-                $keywordCount,
-                implode(' | ', $allDocsSummary),
-                $folderIndexedPath,
-                $indexName
-            ));
-        }
-
+        // Also verify via the search service
         /** @var AssetSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
-
         $searchResultItem = $searchService->byId($asset->getId());
-
         $this->assertEquals('/test-folder/test-asset', $searchResultItem->getFullPath());
     }
 }
