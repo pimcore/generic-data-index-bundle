@@ -102,96 +102,100 @@ class PathServiceTest extends \Codeception\Test\Unit
         // DIAGNOSTIC: Check asset indexed path after rename
         $assetIndexedPathAfter = $pathService->getCurrentIndexFullPath($asset);
 
-        // If the path rewrite didn't work during save, try calling it manually
-        // to see if it throws an exception or if the conditions aren't met
+        // If the path rewrite didn't work during save, capture detailed diagnostics
         if ($assetIndexedPathAfter !== '/test-folder/test-asset') {
-            // Check what getCurrentIndexFullPath returns for the folder NOW
-            // (after commit - should be /test-folder)
-            $folderPathNow = $pathService->getCurrentIndexFullPath($folder);
-
-            // Manually attempt the rewrite and capture any exception
-            // Note: this will likely return early because folder's indexed path
-            // now matches getRealFullPath() after commit
-            $rewriteException = null;
-            try {
-                $pathService->rewriteChildrenIndexPaths($folder);
-            } catch (\Exception $e) {
-                $rewriteException = $e->getMessage();
-            }
-
-            // Now try a direct updateByQuery using the old path to see if OpenSearch can do it
             /** @var \Pimcore\SearchClient\SearchClientInterface $client */
             $client = $this->tester->getIndexSearchClient();
-
-            // First, search for docs with the old folder path to understand the index state
-            $oldPath = $folderIndexedPath; // the path before rename e.g. /698c7043453b912
+            $oldPath = $folderIndexedPath;
             $configService2 = $this->tester->grabService(SearchIndexConfigServiceInterface::class);
             $indexName = $configService2->getIndexName('asset');
 
-            // Count docs matching old path via term query on fullPath
-            $countOldPath = $client->search([
+            // Try running the exact same updateByQuery that PathService would run
+            // using the OLD path (which is still on the asset)
+            $updateByQueryResult = null;
+            $updateByQueryError = null;
+            try {
+                $updateByQueryResult = $client->updateByQuery([
+                    'index' => $indexName,
+                    'refresh' => true,
+                    'conflicts' => 'proceed',
+                    'body' => [
+                        'script' => [
+                            'lang' => 'painless',
+                            'source' => 'ctx._source.system_fields.fullPath = params.newPath + ctx._source.system_fields.key; ctx._source.system_fields.path = params.newPath;',
+                            'params' => [
+                                'newPath' => '/test-folder/',
+                            ],
+                        ],
+                        'query' => [
+                            'term' => [
+                                'system_fields.fullPath' => $oldPath,
+                            ],
+                        ],
+                    ],
+                ]);
+            } catch (\Exception $e) {
+                $updateByQueryError = $e->getMessage();
+            }
+
+            // Check asset after our manual updateByQuery
+            $assetPathAfterManualUBQ = $pathService->getCurrentIndexFullPath($asset);
+
+            // Also try a match query instead of term to see if analysis difference matters
+            $matchResult = $client->search([
                 'index' => $indexName,
-                'track_total_hits' => true,
-                'rest_total_hits_as_int' => true,
                 'body' => [
-                    'query' => ['term' => ['system_fields.fullPath' => $oldPath]],
-                    'size' => 0,
+                    'query' => ['match' => ['system_fields.fullPath' => $oldPath]],
                 ],
             ]);
-            $countOld = $countOldPath['hits']['total'] ?? 'N/A';
+            $matchCount = $matchResult['hits']['total']['value'] ?? ($matchResult['hits']['total'] ?? 'N/A');
 
-            // Count docs matching new path
-            $countNewPath = $client->search([
+            // Also try with keyword subfield
+            $keywordResult = $client->search([
                 'index' => $indexName,
-                'track_total_hits' => true,
-                'rest_total_hits_as_int' => true,
                 'body' => [
-                    'query' => ['term' => ['system_fields.fullPath' => '/test-folder']],
-                    'size' => 0,
+                    'query' => ['wildcard' => ['system_fields.fullPath.keyword' => $oldPath . '/*']],
                 ],
             ]);
-            $countNew = $countNewPath['hits']['total'] ?? 'N/A';
+            $keywordCount = $keywordResult['hits']['total']['value'] ?? ($keywordResult['hits']['total'] ?? 'N/A');
 
-            // Get the asset document directly by ID to see its actual data
-            $assetDoc = $client->get([
+            // Get all docs to see what's in the index
+            $allDocs = $client->search([
                 'index' => $indexName,
-                'id' => $asset->getId(),
+                'body' => [
+                    'query' => ['match_all' => (object)[]],
+                    '_source' => ['system_fields.fullPath', 'system_fields.path', 'system_fields.key'],
+                    'size' => 20,
+                ],
             ]);
-            $assetDocPath = $assetDoc['_source']['system_fields']['fullPath'] ?? 'N/A';
-            $assetDocSysPath = $assetDoc['_source']['system_fields']['path'] ?? 'N/A';
-
-            // Flush to ensure visibility
-            $this->tester->flushIndex();
-
-            // Check asset path after manual rewrite attempt
-            $assetPathAfterManualRewrite = $pathService->getCurrentIndexFullPath($asset);
+            $allDocsSummary = [];
+            foreach ($allDocs['hits']['hits'] as $hit) {
+                $allDocsSummary[] = sprintf(
+                    'id=%s fullPath=%s',
+                    $hit['_id'],
+                    $hit['_source']['system_fields']['fullPath'] ?? 'N/A'
+                );
+            }
 
             $this->fail(sprintf(
-                'DIAGNOSTIC: Asset path not rewritten during save. '
-                . 'Asset indexed path after save: "%s". '
-                . 'Asset indexed path after manual rewrite: "%s". '
-                . 'Folder indexed path after save: "%s". '
-                . 'Folder realFullPath: "%s". '
-                . 'Folder indexed path before rename: "%s". '
-                . 'Rewrite exception: %s. '
-                . 'maxSynchronousChildrenRenameLimit=%d. '
-                . 'Docs matching old path "%s": %s. '
-                . 'Docs matching new path "/test-folder": %s. '
-                . 'Asset doc fullPath (direct GET): "%s". '
-                . 'Asset doc path (direct GET): "%s". '
+                'DIAGNOSTIC: Asset path not rewritten. '
+                . 'Asset path after save: "%s". '
+                . 'Asset path after manual updateByQuery: "%s". '
+                . 'updateByQuery result: %s. '
+                . 'updateByQuery error: %s. '
+                . 'match query count for old path: %s. '
+                . 'keyword wildcard count for old path children: %s. '
+                . 'All docs in index: [%s]. '
+                . 'Folder path before rename: "%s". '
                 . 'Index name: "%s"',
                 $assetIndexedPathAfter,
-                $assetPathAfterManualRewrite,
-                $folderPathNow,
-                $folder->getRealFullPath(),
+                $assetPathAfterManualUBQ,
+                json_encode($updateByQueryResult),
+                $updateByQueryError ?? 'none',
+                $matchCount,
+                $keywordCount,
+                implode(' | ', $allDocsSummary),
                 $folderIndexedPath,
-                $rewriteException ?? 'none',
-                $renameLimit,
-                $oldPath,
-                $countOld,
-                $countNew,
-                $assetDocPath,
-                $assetDocSysPath,
                 $indexName
             ));
         }
