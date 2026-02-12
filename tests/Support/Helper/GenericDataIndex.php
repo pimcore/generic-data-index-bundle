@@ -74,7 +74,7 @@ class GenericDataIndex extends \Codeception\Module
             $this->debug('[Generic Data Index] Running bundle installer');
 
             $genericDataIndexInstaller = $pimcoreModule->getContainer()->get(
-                GenericDataIndexInstaller::class
+                Installer::class
             );
             $genericDataIndexInstaller->install();
 
