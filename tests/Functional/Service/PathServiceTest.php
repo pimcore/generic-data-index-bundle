@@ -179,14 +179,10 @@ class PathServiceTest extends \Codeception\Test\Unit
         $folderDocFinal = $client->get(['index' => $indexName, 'id' => $folder->getId()]);
         $folderVersionFinal = $folderDocFinal['_version'] ?? 'N/A';
 
-        // Also query OpenSearch server info to confirm which engine we're on
-        $serverInfo = 'N/A';
-        try {
-            $info = $client->info();
-            $serverInfo = ($info['version']['distribution'] ?? 'elasticsearch') . ' ' . ($info['version']['number'] ?? '?');
-        } catch (\Exception $e) {
-            $serverInfo = 'error: ' . $e->getMessage();
-        }
+        // Detect engine from env vars
+        $esHost = getenv('PIMCORE_ELASTIC_SEARCH_HOST');
+        $osHost = getenv('PIMCORE_OPEN_SEARCH_HOST');
+        $serverInfo = sprintf('OS_HOST=%s ES_HOST=%s client=%s', $osHost ?: 'unset', $esHost ?: 'unset', get_class($client));
 
         $diagnostics = sprintf(
             "STEP-BY-STEP DIAGNOSTICS (engine: %s):\n"
