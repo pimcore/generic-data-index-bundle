@@ -168,8 +168,11 @@ final class PathService implements PathServiceInterface
                     }
 
                     if(ctx._source.containsKey("custom_fields") && 
+                       ctx._source.custom_fields instanceof Map &&
                        ctx._source.custom_fields.containsKey("PortalEngineBundle") && 
+                       ctx._source.custom_fields.PortalEngineBundle instanceof Map &&
                        ctx._source.custom_fields.PortalEngineBundle.containsKey("system_fields") && 
+                       ctx._source.custom_fields.PortalEngineBundle.system_fields instanceof Map &&
                        ctx._source.custom_fields.PortalEngineBundle.system_fields.containsKey("thumbnail")) {
                         def customFields = ctx._source.custom_fields.PortalEngineBundle.system_fields;
                         if(customFields.thumbnail != null && customFields.thumbnail instanceof String) {
