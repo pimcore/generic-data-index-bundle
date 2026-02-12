@@ -17,7 +17,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper;
 
 use Codeception\Lib\ModuleContainer;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
-use Pimcore\Bundle\GenericDataIndexBundle\Installer as GenericDataIndexInstaller;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\Sort\TreeSortHandlers;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
@@ -175,8 +174,13 @@ class GenericDataIndex extends \Codeception\Module
     {
         /** @var SearchClientInterface $client */
         $client = $this->getIndexSearchClient();
+
+        /** @var SearchIndexConfigServiceInterface $configService */
+        $configService = $this->grabService(SearchIndexConfigServiceInterface::class);
+        $indexPrefix = $configService->getIndexPrefix();
+
         $client->deleteByQuery([
-            'index' => '*',
+            'index' => $indexPrefix . '*',
             'body' => [
                 'query' => [
                     'match_all' => (object)[],
