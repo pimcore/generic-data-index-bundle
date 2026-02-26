@@ -1,4 +1,4 @@
-# Pimcore Query Language
+# Pimcore Query Language (PQL)
 
 Pimcore Query Language (PQL) is a query language that allows you to search for data in the Pimcore Generic Data Index. It is a simple and powerful query language that allows you to search for data using a wide range of search criteria.
 
