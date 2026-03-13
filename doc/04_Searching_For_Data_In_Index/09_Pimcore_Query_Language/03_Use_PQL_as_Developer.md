@@ -27,7 +27,7 @@ $query = $queryLanguageProcessor->process(
 
 ## Exception Handling
 
-In both cases, the PQL processor will throw an exception if the PQL query is invalid. The exception message will contain detailed information about the error. Especially when you would like to allow users to enter PQL queries, you should catch the exception and provide a user-friendly error feedback. 
+In both cases, the PQL processor will throw an exception if the PQL query is invalid. The exception message will contain detailed information about the error. Especially when you would like to allow users to enter PQL queries, you should catch the exception and provide user-friendly error feedback. 
 
 ##### Example
 

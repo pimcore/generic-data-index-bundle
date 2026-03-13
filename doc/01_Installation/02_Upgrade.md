@@ -1,10 +1,10 @@
 # Upgrade Information
 
-Following steps are necessary during updating to newer versions.
+The following steps are necessary when updating to newer versions.
 
 ## Upgrade to 2026.1.0
-- Added support to `PHP` `8.5`.
-- Removed support to `PHP` `8.3` and Symfony `v6`.
+- Added support for `PHP` `8.5`.
+- Removed support for `PHP` `8.3` and Symfony `v6`.
 - 
 ## Upgrade to 2.2.0
 - [Indexing] Added `id` column as new primary key to `generic_data_index_queue`. Please make sure to execute migrations.
@@ -55,9 +55,9 @@ Following steps are necessary during updating to newer versions.
   - `DocumentSearch` now implements `DocumentSearchInterface`
   - `ElementSearch` now implements `ElementSearchInterface`
 - Search services now require the specific search type for the search
-  - `AssetSearchServiceInterface::search` now requires a `AssetSearchInterface`
+  - `AssetSearchServiceInterface::search` now requires an `AssetSearchInterface`
   - `DocumentSearchServiceInterface::search`  now requires a `DocumentSearchInterface`
-  - `ElementSearchServiceInterface::search`  now requires a `ElementSearchInterface`
+  - `ElementSearchServiceInterface::search`  now requires an `ElementSearchInterface`
 - `SearchProviderInterface` now returns type specific search interfaces
 
 

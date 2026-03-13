@@ -120,7 +120,7 @@ $termFilter = new TermFilter('field', 'value');
 
 ### TermsFilter
 
-The terms filter combines a boolean query with a terms query. It can be used to filter the search results by multiple term.
+The terms filter combines a boolean query with a terms query. It can be used to filter the search results by multiple terms.
 
 ### WildcardFilter
 

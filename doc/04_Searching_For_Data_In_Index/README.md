@@ -17,7 +17,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\Ass
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 
-public function searchAction(SearchProviderInterface $searchProvider, AssetSearchServiceInterface $asserSearchService)
+public function searchAction(SearchProviderInterface $searchProvider, AssetSearchServiceInterface $assetSearchService)
 {
     $assetSearch = $searchProvider->createAssetSearch()
                 ->addModifier(new ParentIdFilter(1))
@@ -25,7 +25,7 @@ public function searchAction(SearchProviderInterface $searchProvider, AssetSearc
                 ->setPageSize(50)
                 ->setPage(1);
 
-   $searchResult = $asserSearchService->search($assetSearch);
+   $searchResult = $assetSearchService->search($assetSearch);
 }
 ```
 
@@ -101,7 +101,7 @@ public function searchAction(SearchProviderInterface $searchProvider, ElementSea
 
 ## Search Modifiers
 
-To influence the data which gets fetched its possible to use so-called search modifiers.
+To influence the data which gets fetched it's possible to use so-called search modifiers.
 Find out details about search modifiers in the [search modifiers documentation](05_Search_Modifiers/README.md). There you will also find information on how to create your own custom search modifiers.
 
 ## Retrieve IDs only instead of full objects
@@ -133,7 +133,7 @@ The search services mentioned above offer a flexible and structured way to searc
 Take a look at the dedicated [Default search models documentation](06_Default_Search_Models/README.md) to find out more.
 
 ## Permissions
-The search service respects the user permissions and user workspaces in connection to his roles.
+The search service respects the user permissions and user workspaces in connection to their roles.
 
 Details about permissions and workspaces can be found in the [permissions and workspaces documentation](08_Permissions_Workspaces/README.md).
 

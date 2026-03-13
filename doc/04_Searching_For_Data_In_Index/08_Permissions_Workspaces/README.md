@@ -1,5 +1,5 @@
 # Permissions and Workspaces
-The Generic Data Index bundle respects the user permissions and user workspaces in connection to his roles.
+The Generic Data Index bundle respects the user permissions and user workspaces in connection to their roles.
 
 User workspace permissions are respected by the search service and are attached by using the search modifier to the search query. 
 These permissions are then returned as a part of the search result item.
@@ -45,5 +45,5 @@ class AssetPermissionSubscriber implements EventSubscriberInterface
 ```
 
 ## User Permissions
-Additionally, to the workspace permissions, the user permissions are also respected by the search service. 
+In addition to the workspace permissions, the user permissions are also respected by the search service. 
 The user permissions (assets, objects, documents) are checked before the search query is constructed.

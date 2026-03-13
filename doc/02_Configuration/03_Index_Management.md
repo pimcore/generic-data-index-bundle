@@ -1,6 +1,6 @@
 # Index Management
 
-It is important to index all assets and data object in Pimcore in order to be able to use the search and listing features powered by the Generic Data Index bundle.
+It is important to index all assets and data objects in Pimcore in order to be able to use the search and listing features powered by the Generic Data Index bundle.
 
 ## Define Index Prefix
 
@@ -41,7 +41,7 @@ The command will create the indices and add all assets and data objects to the i
 ### Refreshing of the index
 
 By default, the index queue is refreshed after each bulk operation as the items are processed asynchronously with the Symfony messenger.
-If you want to perform index refresh immediately you can use enable synchronous processing by injecting the `SynchronousProcessingServiceInterface` and calling `enable()` method.
+If you want to perform index refresh immediately you can enable synchronous processing by injecting the `SynchronousProcessingServiceInterface` and calling `enable()` method.
 
 Available methods:
 - `enable()`: enable synchronous processing
@@ -133,7 +133,7 @@ For the further commands please refer to the [Symfony Messenger documentation](h
 You can configure different options to use with your indices. The available options can differ depending on which 
 engine you are using. Make sure to check the corresponding documentation, before using any options.
 
-See the `Maxium Item Limit` and `Total fields limit` section for examples.
+See the `Maximum Item Limit` and `Total fields limit` section for examples.
 
 ### Maximum Item limit
 
@@ -149,7 +149,7 @@ pimcore_generic_data_index:
 
 ### Total fields limit
 
-A maximum of 1000 fields can be used with your indces. 
+A maximum of 1000 fields can be used with your indices. 
 To increase this limit, configuration can be adjusted as follows:
 
 ```yaml

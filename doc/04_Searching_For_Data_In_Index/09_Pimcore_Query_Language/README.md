@@ -28,10 +28,10 @@ QUERY_STRING_QUERY = "QUERY('" STRING "')"
 |------------|-------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
 | `=`        | equal (case-sensitive)                                                                                                                    | `field = "value"`                                    |
 | `!=`       | not equal (case-sensitive)                                                                                                                | `field != "value"`                                   |
-| `<`        | smaller than                                                                                                                              | `field < 100`                                        |
-| `<=`       | smaller or equal than                                                                                                                     | `field <= 100`                                       |
-| `=>`       | bigger or equal than                                                                                                                      | `field >= 100`                                       |
-| `>`        | bigger than                                                                                                                               | `field > 100`                                        |
+| `<`        | less than                                                                                                                              | `field < 100`                                        |
+| `<=`       | less than or equal to                                                                                                                     | `field <= 100`                                       |
+| `>=`       | greater than or equal to                                                                                                                      | `field >= 100`                                       |
+| `>`        | greater than                                                                                                                               | `field > 100`                                        |
 | `LIKE`     | equal with wildcard support (case-insensitive)<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em> | `field like "val*"`<br/>`field like "val?e"`         |
 | `NOT LIKE` | not equal with wildcard support (case-insensitive)<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em>                | `field not like "val*"`<br/>`field not like "val?e"` |
 

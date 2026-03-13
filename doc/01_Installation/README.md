@@ -60,7 +60,7 @@ doctrine:
 
 ## Commands after Installation
 
-It is needed to run following command after installation (at least) once to create the indices and add all assets and data objects to the index queue:
+You need to run the following command after installation (at least) once to create the indices and add all assets and data objects to the index queue:
 ```bash
 ./bin/console generic-data-index:update:index -r
 ```

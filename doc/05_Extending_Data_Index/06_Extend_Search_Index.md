@@ -3,7 +3,7 @@
 ## Extending Search Index via Events
 
 The regular index update process stores a defined set of standard data types in the data index which makes it
-possible to find, filter, sort and list them..
+possible to find, filter, sort and list them.
 
 It is possible to extend the index with custom attributes if needed. For this purpose the following events exist. You
 will find code examples below.
@@ -216,7 +216,7 @@ class CarOwnerSubscriber implements EventSubscriberInterface
 
 #### Update index mapping and data
 
-Call the following console command as soon as the event subscriber is set up in the symfony container configuration.
+Call the following console command as soon as the event subscriber is set up in the Symfony container configuration.
 
 ```bash
 ./bin/console generic-data-index:update:index -r
