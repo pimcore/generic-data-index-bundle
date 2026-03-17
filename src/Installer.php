@@ -22,6 +22,8 @@ use Doctrine\DBAL\Schema\SchemaException;
 use Pimcore;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Migrations\Version20251009110653;
+use Pimcore\Bundle\InstallBundle\Profile\PostInstallCommand;
+use Pimcore\Bundle\InstallBundle\Profile\PostInstallCommandsProviderInterface;
 use Pimcore\Extension\Bundle\Installer\Exception\InstallationException;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 
@@ -29,6 +31,7 @@ use Symfony\Component\HttpKernel\Bundle\BundleInterface;
  * @internal
  */
 final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller
+    implements PostInstallCommandsProviderInterface
 {
     public function __construct(
         private readonly Connection $db,
@@ -36,6 +39,17 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
 
     ) {
         parent::__construct($bundle);
+    }
+
+    public function getPostInstallCommands(): array
+    {
+        return [
+            new PostInstallCommand(
+                command: 'generic-data-index:update:index -r',
+                label: 'Creating search index',
+                priority: 100,
+            ),
+        ];
     }
 
     public function getLastMigrationVersionClassName(): ?string

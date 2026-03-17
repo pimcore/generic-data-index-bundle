@@ -3,10 +3,10 @@ framework:
         enabled: true
         transports:
             pimcore_generic_data_index_queue:
-                dsn: 'doctrine://default?queue_name=pimcore_generic_data_index_queue'
+                dsn: '%pimcore.messenger.transport_dsn%?queue_name=pimcore_generic_data_index_queue'
                 failure_transport: pimcore_generic_data_index_failed
             pimcore_generic_data_index_sync: 'sync://'
-            pimcore_generic_data_index_failed: 'doctrine://default?queue_name=pimcore_generic_data_index_failed'
+            pimcore_generic_data_index_failed: '%pimcore.messenger.transport_dsn%?queue_name=pimcore_generic_data_index_failed'
         routing:
             Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage: pimcore_generic_data_index_queue
             Pimcore\Bundle\GenericDataIndexBundle\Message\DispatchQueueMessagesMessage: pimcore_generic_data_index_queue
