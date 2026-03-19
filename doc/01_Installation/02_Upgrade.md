@@ -3,9 +3,11 @@
 Following steps are necessary during updating to newer versions.
 
 ## Upgrade to 2026.1.0
+- The bundle installer now implements `PostInstallCommandsProviderInterface` from Pimcore's InstallBundle. This means the post-install command `generic-data-index:update:index -r` is automatically executed during `pimcore:install` when using Install Profiles. Manual execution of this command after `pimcore:bundle:install` is still required as before.
+- The messenger transport DSN is now configurable via the `%pimcore.messenger.transport_dsn%` container parameter instead of being hardcoded to `doctrine://default`. This allows the installer to wire the transport DSN from environment variables (e.g. `PIMCORE_MESSENGER_TRANSPORT_DSN`).
 - Added support to `PHP` `8.5`.
 - Removed support to `PHP` `8.3` and Symfony `v6`.
-- 
+
 ## Upgrade to 2.2.0
 - [Indexing] Added `id` column as new primary key to `generic_data_index_queue`. Please make sure to execute migrations.
 - [Searching] Added `trackTotalHits` parameter to `DefaultSearchService` and `SearchExecutionService`. The default value is true,       which means that total hits will always be computed accurately, even if they exceed the search engines threshold for accurate hit calculation. Change this parameter to `null`, to use the default threshold, pass an integer value to set a specific one.
