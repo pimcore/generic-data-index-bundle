@@ -6,3 +6,6 @@ For guidance on indexing data and ensuring it stays up to date, refer to the [In
 ## Further Reading
 - [Extending Search Index](./06_Extend_Search_Index.md):
   Describes how to add additional data attributes to the data index.
+- [Custom Field Definition Adapters](./07_Custom_Field_Definition_Adapters.md):
+  Describes how to register a field definition adapter for a custom data object
+  field type so that the Generic Data Index can index and filter on it.
