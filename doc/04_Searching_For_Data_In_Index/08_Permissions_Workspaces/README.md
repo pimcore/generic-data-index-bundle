@@ -1,21 +1,28 @@
 # Permissions and Workspaces
-The Generic Data Index bundle respects the user permissions and user workspaces in connection to their roles.
 
-User workspace permissions are respected by the search service and are attached by using the search modifier to the search query. 
-These permissions are then returned as a part of the search result item.
+The Generic Data Index search services respect user permissions and workspace
+configurations associated with their roles.
+
+The search services attach workspace permissions to queries via search modifiers
+and include them in each result item.
 
 ## Permission Manipulation
-If there is a need to manipulate the workspace permissions, e.g. for specific asset path, it is possible to do so via events:
-- `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\PermisisonEvent` for data objects
-- `Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\PermisisonEvent` for assets
-- `Pimcore\Bundle\GenericDataIndexBundle\Event\Document\PermisisonEvent` for documents
 
-You can define your event listener and adapt the permissions as needed. In this example we want to restrict `view` and `list` permissions for a specific asset path:
+Override workspace permissions for specific elements via events:
+
+- `Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\PermissionEvent` (assets)
+- `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\PermissionEvent` (data objects)
+- `Pimcore\Bundle\GenericDataIndexBundle\Event\Document\PermissionEvent` (documents)
+
+### Example: Restrict Asset Permissions by Path
+
+This event subscriber restricts `view` and `list` permissions for a specific asset path:
+
 ```php
 <?php
 declare(strict_types=1);
 
-namespace AppBundle\EventSubscriber;
+namespace App\EventSubscriber;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\PermissionEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -32,8 +39,8 @@ class AssetPermissionSubscriber implements EventSubscriberInterface
     public function adaptPermissions(PermissionEvent $event): void
     {
         $permissions = $event->getPermissions();
-
         $asset = $event->getElement();
+
         if ($asset->getFullPath() === '/path/to/your/asset') {
             $permissions->setView(false);
             $permissions->setList(false);
@@ -45,5 +52,6 @@ class AssetPermissionSubscriber implements EventSubscriberInterface
 ```
 
 ## User Permissions
-In addition to the workspace permissions, the user permissions are also respected by the search service. 
-The user permissions (assets, objects, documents) are checked before the search query is constructed.
+
+In addition to workspace permissions, the search services check user-level permissions
+(assets, objects, documents) before constructing the search query.

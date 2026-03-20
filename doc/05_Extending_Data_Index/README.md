@@ -1,11 +1,13 @@
-# Extending Data Index
+# Extending the Data Index
 
-Generic Data Index bundle provides the possibility to use data indices to handle search, listings, and filters. Consequently, it's crucial to store data from Pimcore elements into data indices.
-For guidance on indexing data and ensuring it stays up to date, refer to the [Index Management](../02_Configuration/03_Index_Management.md) section.
+The Generic Data Index stores Pimcore element data in search indices to power
+search, listings, and filters. For guidance on index creation and maintenance, see
+[Index Management](../02_Configuration/03_Index_Management.md).
 
 ## Further Reading
-- [Extending Search Index](./06_Extend_Search_Index.md):
-  Describes how to add additional data attributes to the data index.
-- [Custom Field Definition Adapters](./07_Custom_Field_Definition_Adapters.md):
-  Describes how to register a field definition adapter for a custom data object
-  field type so that the Generic Data Index can index and filter on it.
+
+- [Extending Search Index](./06_Extend_Search_Index.md) -
+  Add custom data attributes to the search index.
+- [Custom Field Definition Adapters](./07_Custom_Field_Definition_Adapters.md) -
+  Register adapters for custom data object field types so the Generic Data Index
+  can index and filter them.
