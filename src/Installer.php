@@ -45,9 +45,10 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
     {
         return [
             new PostInstallCommand(
-                command: 'generic-data-index:update:index -r',
+                command: 'generic-data-index:update:index',
                 label: 'Creating search index',
                 priority: 100,
+                arguments: ['-r'],
             ),
         ];
     }
