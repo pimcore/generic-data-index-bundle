@@ -41,7 +41,7 @@ The `type` attribute must match the value returned by your field definition's
 - `BooleanAdapter` - boolean fields
 
 See all adapters in
-`vendor/pimcore/generic-data-index-bundle/config/services/search/data-object/field-definition-adapters.yml`.
+`config/services/search/data-object/field-definition-adapters.yml`.
 
 ## Creating Custom Adapters
 
