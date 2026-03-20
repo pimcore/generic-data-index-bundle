@@ -14,7 +14,7 @@ keywords:
 ### Option 1: PqlFilter Search Modifier
 
 Use the
-[PqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/QueryLanguage/PqlFilter.php)
+[PqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/QueryLanguage/PqlFilter.php)
 search modifier with the Generic Data Index search services.
 See the [Search Services](../README.md) documentation.
 

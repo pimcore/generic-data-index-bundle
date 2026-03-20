@@ -10,7 +10,7 @@ assets, data objects, and documents from the search indices.
 
 Each search uses a type-specific search service and a search model that defines the query.
 Create search models with the
-[SearchProviderInterface](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Service/Search/SearchService/SearchProviderInterface.php).
+[SearchProviderInterface](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Service/Search/SearchService/SearchProviderInterface.php).
 
 ## Asset Search
 
