@@ -1,3 +1,8 @@
+---
+title: Extending the Data Index
+description: Extend the Generic Data Index with custom fields, mappings, and field definition adapters.
+---
+
 # Extending the Data Index
 
 The Generic Data Index stores Pimcore element data in search indices to power

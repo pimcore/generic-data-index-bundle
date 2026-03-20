@@ -1,3 +1,8 @@
+---
+title: Upgrade Information
+description: Version-specific upgrade instructions and breaking changes for the Generic Data Index bundle.
+---
+
 # Upgrade Information
 
 ## Upgrade to 2026.1.0

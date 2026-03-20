@@ -1,3 +1,16 @@
+---
+title: Pimcore Query Language (PQL)
+description: PQL syntax reference for querying data objects, assets, and documents in the Generic Data Index.
+keywords:
+    - PQL
+    - Pimcore Query Language
+    - query language
+    - search syntax
+    - filter
+    - relation filter
+    - query string
+---
+
 # Pimcore Query Language (PQL)
 
 Pimcore Query Language (PQL) defines a query syntax for searching data objects, assets,

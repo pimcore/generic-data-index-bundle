@@ -1,3 +1,12 @@
+---
+title: Use PQL as a Developer
+description: Execute PQL queries programmatically using search modifiers or the PQL processor.
+keywords:
+    - PqlFilter
+    - query processor
+    - developer
+---
+
 # Use PQL as a Developer
 
 ## Execute Searches with PQL

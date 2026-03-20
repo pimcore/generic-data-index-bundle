@@ -1,3 +1,8 @@
+---
+title: Search Modifiers
+description: Filter, sort, and aggregate search results using built-in and custom search modifiers.
+---
+
 # Search Modifiers
 
 Search modifiers filter, sort, and aggregate search results by altering the

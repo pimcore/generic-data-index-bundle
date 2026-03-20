@@ -1,3 +1,8 @@
+---
+title: Configuration
+description: Configure the Generic Data Index bundle, including search client, index prefix, queue settings, and index options.
+---
+
 # Configuration
 
 The Generic Data Index Bundle indexes and searches Pimcore elements (assets, data objects,

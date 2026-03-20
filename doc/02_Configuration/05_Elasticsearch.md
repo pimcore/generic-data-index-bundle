@@ -1,3 +1,8 @@
+---
+title: Elasticsearch Client Setup
+description: Configure Elasticsearch as the search engine for the Generic Data Index bundle.
+---
+
 # Elasticsearch Client Setup
 
 :::info

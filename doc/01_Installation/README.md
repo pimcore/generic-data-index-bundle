@@ -1,3 +1,8 @@
+---
+title: Installation
+description: Install and configure the Generic Data Index bundle with OpenSearch or Elasticsearch.
+---
+
 # Installation
 
 :::info

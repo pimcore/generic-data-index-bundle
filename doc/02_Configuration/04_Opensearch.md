@@ -1,3 +1,8 @@
+---
+title: OpenSearch Client Setup
+description: Configure OpenSearch as the search engine for the Generic Data Index bundle.
+---
+
 # OpenSearch Client Setup
 
 :::info

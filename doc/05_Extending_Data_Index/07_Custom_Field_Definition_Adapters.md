@@ -1,3 +1,8 @@
+---
+title: Custom Field Definition Adapters
+description: Register field definition adapters for custom data object field types in the Generic Data Index.
+---
+
 # Custom Field Definition Adapters
 
 When adding a custom data object field type (e.g. via a bundle), the Generic Data Index

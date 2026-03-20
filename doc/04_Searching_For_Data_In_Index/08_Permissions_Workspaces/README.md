@@ -1,3 +1,8 @@
+---
+title: Permissions and Workspaces
+description: How the Generic Data Index search services enforce user permissions and workspace restrictions.
+---
+
 # Permissions and Workspaces
 
 The Generic Data Index search services respect user permissions and workspace

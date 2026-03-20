@@ -1,3 +1,8 @@
+---
+title: Index Management
+description: Manage search indices for the Generic Data Index, including creation, updates, queue processing, and deployment.
+---
+
 # Index Management
 
 The Generic Data Index must index all assets, data objects, and documents

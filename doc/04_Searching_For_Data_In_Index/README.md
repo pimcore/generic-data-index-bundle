@@ -1,3 +1,8 @@
+---
+title: Searching For Data In Index
+description: Search assets, data objects, and documents using the Generic Data Index search services.
+---
+
 # Searching For Data In Index
 
 The Generic Data Index bundle provides standardized search services for querying

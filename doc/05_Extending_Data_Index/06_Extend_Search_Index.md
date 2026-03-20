@@ -1,3 +1,8 @@
+---
+title: Extending the Search Index
+description: Add custom data attributes to the search index using UpdateIndexDataEvent and ExtractMappingEvent.
+---
+
 # Extending the Search Index
 
 ## Adding Custom Fields via Events

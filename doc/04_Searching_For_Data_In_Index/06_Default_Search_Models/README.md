@@ -1,3 +1,8 @@
+---
+title: Default Search Models
+description: Build custom OpenSearch and Elasticsearch queries using default search models for the Generic Data Index.
+---
+
 # Default Search Models
 
 Default search models build OpenSearch/Elasticsearch query JSON programmatically.
