@@ -82,7 +82,7 @@ final class DocumentTypeAdapter extends AbstractElementTypeAdapter
         string $operation,
         int $operationTime,
         bool $includeElement = false
-    ): ?QueryBuilder {
+    ): QueryBuilder {
         $selects = [
             (string)$element->getId(),
             "'" . ElementType::DOCUMENT->value . "'",

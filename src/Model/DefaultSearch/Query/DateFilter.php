@@ -15,7 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query;
 
 use Carbon\Carbon;
 use DateTimeInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\QueryType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\InvalidArgumentException;
 
 final readonly class DateFilter implements QueryInterface
@@ -86,7 +85,7 @@ final readonly class DateFilter implements QueryInterface
         );
     }
 
-    public function getType(): QueryType|string
+    public function getType(): string
     {
         return 'range';
     }
@@ -127,17 +126,17 @@ final readonly class DateFilter implements QueryInterface
         return $this->field;
     }
 
-    public function getEndTimestamp(): ?int
+    public function getEndTimestamp(): int
     {
         return $this->endDate->getTimestamp();
     }
 
-    public function getStartTimestamp(): ?int
+    public function getStartTimestamp(): int
     {
         return $this->startDate->getTimestamp();
     }
 
-    public function getOnTimestamp(): ?int
+    public function getOnTimestamp(): int
     {
         return $this->onDate->getTimestamp();
     }
