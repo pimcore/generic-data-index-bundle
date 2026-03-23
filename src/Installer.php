@@ -15,14 +15,12 @@ namespace Pimcore\Bundle\GenericDataIndexBundle;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception;
-use Doctrine\DBAL\Platforms\AbstractPlatform;
 use Doctrine\DBAL\Schema\Comparator;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\Schema\SchemaException;
 use Pimcore;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Migrations\Version20251009110653;
-use Pimcore\Extension\Bundle\Installer\Exception\InstallationException;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 
 /**
@@ -38,7 +36,7 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
         parent::__construct($bundle);
     }
 
-    public function getLastMigrationVersionClassName(): ?string
+    public function getLastMigrationVersionClassName(): string
     {
         return Version20251009110653::class;
     }
@@ -127,9 +125,6 @@ final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAw
         $schemaComparator = new Comparator($this->db->getDatabasePlatform());
         $schemaDiff = $schemaComparator->compareSchemas($currentSchema, $newSchema);
         $dbPlatform = $this->db->getDatabasePlatform();
-        if (!$dbPlatform instanceof AbstractPlatform) {
-            throw new InstallationException('Could not get database platform.');
-        }
 
         $sqlStatements = $dbPlatform->getAlterSchemaSQL($schemaDiff);
 

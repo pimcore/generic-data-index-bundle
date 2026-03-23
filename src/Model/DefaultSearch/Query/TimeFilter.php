@@ -13,8 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\QueryType;
-
 final readonly class TimeFilter implements QueryInterface
 {
     public function __construct(
@@ -25,7 +23,7 @@ final readonly class TimeFilter implements QueryInterface
     ) {
     }
 
-    public function getType(): QueryType|string
+    public function getType(): string
     {
         return 'range';
     }
