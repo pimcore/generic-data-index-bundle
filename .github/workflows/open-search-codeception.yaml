@@ -34,9 +34,9 @@ jobs:
         strategy:
             matrix:
                 include:
-                    - { php-version: "8.3", dependencies: "lowest", pimcore_version: "", experimental: false, search_engine: "openSearch" }
-                    - { php-version: "8.4", dependencies: "highest", pimcore_version: "", experimental: false, search_engine: "openSearch"}
-                    - { php-version: "8.4", dependencies: "highest", pimcore_version: "12.x-dev as 12.99.9", experimental: true, search_engine: "openSearch"}
+                    - { php-version: "8.4", dependencies: "lowest", pimcore_version: "", experimental: false, search_engine: "openSearch" }
+                    - { php-version: "8.5", dependencies: "highest", pimcore_version: "", experimental: false, search_engine: "openSearch"}
+                    - { php-version: "8.5", dependencies: "highest", pimcore_version: "2026.x-dev as 2026.1.9", experimental: true, search_engine: "openSearch"}
 
         services:
             mariadb:
