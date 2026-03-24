@@ -28,8 +28,7 @@ use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 /**
  * @internal
  */
-final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller
-    implements PostInstallCommandsProviderInterface
+final class Installer extends Pimcore\Extension\Bundle\Installer\SettingsStoreAwareInstaller implements PostInstallCommandsProviderInterface
 {
     public function __construct(
         private readonly Connection $db,
