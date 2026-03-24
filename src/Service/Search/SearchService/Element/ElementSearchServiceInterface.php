@@ -37,6 +37,7 @@ interface ElementSearchServiceInterface
     public function byId(
         ElementType $elementType,
         int $id,
-        ?User $user = null
+        ?User $user = null,
+        bool $forceReload = false
     ): ?ElementSearchResultItemInterface;
 }
