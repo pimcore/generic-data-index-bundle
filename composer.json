@@ -17,27 +17,25 @@
   "prefer-stable": true,
   "minimum-stability": "dev",
   "require": {
-    "php": "~8.3.0 || ~8.4.0 ",
+    "php": "~8.4.0 || ~8.5.0 ",
     "nesbot/carbon": "^3.8.4",
-    "pimcore/pimcore": "^12.3",
-    "pimcore/static-resolver-bundle": "^3.0",
-    "pimcore/opensearch-client": "^2.0",
-    "pimcore/elasticsearch-client": "^2.0",
+    "pimcore/pimcore": "^2026.1",
+    "pimcore/static-resolver-bundle": "^2026.1",
+    "pimcore/opensearch-client": "^2026.1",
+    "pimcore/elasticsearch-client": "^2026.1",
     "doctrine/orm": "^3.0",
-    "symfony/scheduler": "^6.4 || ^7.2"
+    "symfony/scheduler": "^7.2"
   },
   "require-dev": {
     "roave/security-advisories": "dev-latest",
-    "codeception/codeception": "^5.3.2",
-    "codeception/stub": "^4.3.0",
-    "codeception/phpunit-wrapper": "^9",
-    "codeception/module-asserts": "^2",
-    "codeception/module-symfony": "^3.1.1",
-    "phpstan/phpstan": "1.12.15",
-    "phpstan/phpstan-symfony": "^1.2.20",
-    "phpunit/phpunit": "^10.5.63",
+    "codeception/codeception": "^5.3.4",
+    "codeception/module-asserts": "^3.0",
+    "codeception/module-symfony": "^3.7.1",
+    "phpstan/phpstan": "2.1.40",
+    "phpstan/phpstan-symfony": "^2.0",
+    "phpunit/phpunit": "^11.0",
     "nyholm/psr7": "^1",
-    "symfony/phpunit-bridge": "^6",
+    "symfony/phpunit-bridge": "^7",
     "fakerphp/faker": "^1.23",
     "friendsofphp/php-cs-fixer": "^3.4"
   },
@@ -53,7 +51,7 @@
   },
   "extra": {
     "branch-alias": {
-      "dev-2.x": "2.4.x-dev"
+      "dev-2026.x": "2026.1.x-dev"
     },
     "pimcore": {
       "bundles": [

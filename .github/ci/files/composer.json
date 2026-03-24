@@ -20,8 +20,8 @@
     "codeception/stub": "^4.3.0",
     "codeception/phpunit-wrapper": "^9",
     "codeception/module-asserts": "^2",
-    "codeception/module-symfony": "^3.1.1",
-    "phpunit/phpunit": "^10.5.63"
+    "codeception/module-symfony": "^3.7",
+    "phpunit/phpunit": "^11"
   },
   "autoload": {
     "psr-4": {
