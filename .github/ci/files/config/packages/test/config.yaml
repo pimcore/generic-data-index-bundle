@@ -26,7 +26,7 @@ doctrine:
                 user: ~
                 password: ~
                 mapping_types:
-                    enum: string
+#                    enum: string
                     bit: boolean
 
 parameters:
