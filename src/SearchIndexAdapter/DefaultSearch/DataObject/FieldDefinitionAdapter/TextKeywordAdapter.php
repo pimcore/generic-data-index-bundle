@@ -39,4 +39,13 @@ final class TextKeywordAdapter extends AbstractAdapter
             $this->searchIndexConfigService->getSearchAnalyzerAttributes()
         );
     }
+
+    public function normalize(mixed $value): mixed
+    {
+        if (is_string($value) && $value !== '') {
+            return preg_replace("/src=(['\"])data:[^;]+;base64,.+?\\1/", '', $value);
+        }
+
+        return parent::normalize($value);
+    }
 }
