@@ -92,11 +92,12 @@ class IndexQueueTest extends Unit
 
         $indexQueueRepository->enqueueBySelectQuery(
             $indexQueueRepository->generateSelectQuery('assets', [
-                ElementType::ASSET->value,
-                IndexName::ASSET->value,
-                IndexQueueOperation::UPDATE->value,
-                '1234',
-                '0',
+                'elementId' => 'id',
+                'elementType' => "'" . ElementType::ASSET->value . "'",
+                'elementIndexName' => "'" . IndexName::ASSET->value . "'",
+                'operation' => "'" . IndexQueueOperation::UPDATE->value . "'",
+                'operationTime' => "'1234'",
+                'dispatched' => '0',
             ])
         );
         $this->assertEquals(

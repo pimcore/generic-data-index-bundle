@@ -124,27 +124,19 @@ final class IndexQueueRepository
     {
         $chunks = array_chunk($entries, self::BATCH_SIZE);
         foreach ($chunks as $chunk) {
-            $condition = [];
-
-            /** @var IndexQueue $entry */
-            foreach ($chunk as $entry) {
-                $condition[] = sprintf(
-                    '(%s, %s)',
-                    $this->connection->quote((string)$entry->getId()),
-                    $this->connection->quote($entry->getOperationTime())
-                );
-            }
-
-            $condition = sprintf('(%s, %s) IN (%s) ORDER BY %s ASC LIMIT %s',
-                $this->connection->quoteIdentifier('id'),
-                $this->connection->quoteIdentifier('operationTime'),
-                implode(',', $condition),
-                $this->connection->quoteIdentifier('id'),
-                self::BATCH_SIZE
+            $ids = array_map(
+                fn (IndexQueue $entry) => $this->connection->quote((string)$entry->getId()),
+                $chunk
             );
 
-            //delete handled entry from queue table
-            $this->connection->executeQuery('DELETE FROM ' . IndexQueue::TABLE . ' WHERE ' . $condition);
+            $this->connection->executeQuery(
+                sprintf(
+                    'DELETE FROM %s WHERE %s IN (%s)',
+                    $this->connection->quoteIdentifier(IndexQueue::TABLE),
+                    $this->connection->quoteIdentifier('id'),
+                    implode(',', $ids)
+                )
+            );
         }
     }
 
@@ -161,24 +153,29 @@ final class IndexQueueRepository
         return $this->denormalizer->denormalize($entry, IndexQueue::class);
     }
 
+    /**
+     * @param array<string, string> $columnAliases Associative array mapping alias names to SQL expressions
+     * @param array<string, mixed>  $params        Query parameters for setParameters()
+     * @param array<string>         $whereParameters Column names for WHERE clauses
+     */
     public function generateSelectQuery(
         string $tableName,
-        array $fields,
-        string $idField = 'id',
+        array $columnAliases,
         array $params = [],
         array $whereParameters = []
     ): DBALQueryBuilder {
-        $fields = $this->quoteParameters($fields);
-        array_unshift($fields, $idField);
+        $selectExpressions = [];
+        foreach ($columnAliases as $alias => $expression) {
+            $selectExpressions[] = $expression . ' AS ' . $alias;
+        }
 
         $qb = $this->connection->createQueryBuilder()
-            ->addSelect(...$fields)
+            ->addSelect(...$selectExpressions)
             ->from($tableName);
 
         $this->addWhereStatements($qb, $whereParameters);
 
         if (!empty($params)) {
-            $params = $this->quoteParameters($params);
             $qb->setParameters($params);
         }
 
@@ -315,20 +312,6 @@ final class IndexQueueRepository
             ->createQueryBuilder($alias);
     }
 
-    private function quoteParameters(array $parameters): array
-    {
-        return array_map(
-            function ($parameter) {
-                if (is_string($parameter)) {
-                    return $this->connection->quote($parameter);
-                }
-
-                return $parameter;
-            },
-            $parameters
-        );
-    }
-
     private function addWhereStatements(DBALQueryBuilder $queryBuilder, array $whereParameters): DBALQueryBuilder
     {
         foreach ($whereParameters as $operator => $parameter) {
@@ -412,10 +395,10 @@ final class IndexQueueRepository
         return $this->connection->executeStatement($insertSql, $insertParams);
     }
 
-    /*
-    * @TODO: Refactor to avoid that all values have to be in a specific order. Either use aliases or pass the keys as parameters.
-    * Both things can be considered breaking changes.
-    */
+    /**
+     * Extracts values from SQL result rows that use named column aliases.
+     * Expected aliases: elementId, elementType, elementIndexName, operation, operationTime.
+     */
     private function getValuesFromSqlResult(array $result): array
     {
         if (empty($result)) {
@@ -423,40 +406,13 @@ final class IndexQueueRepository
         }
 
         $firstRow = $result[0];
-        $keys = array_keys($firstRow);
-        $columnCount = count($keys);
-
-        $ids = array_column($result, $keys[0]);
-        $elementType = $firstRow[$keys[1]];
-
-        $elementIndexName = match ($elementType) {
-            ElementType::ASSET->value, ElementType::DOCUMENT->value => $elementType,
-            ElementType::DATA_OBJECT->value => $firstRow['className'] ??
-            $firstRow[
-                $keys[2]
-            ] ??
-            null,
-            default => null,
-        };
-
-        $operation = $firstRow[
-            $keys[
-                    $columnCount > 5 ? 3 : 2
-            ]
-        ];
-
-        $operationTime = (int)$firstRow[
-            $keys[
-                $columnCount > 5 ? 4 : 3
-            ]
-        ];
 
         return [
-            $ids,
-            $elementType,
-            $operation,
-            $operationTime,
-            $elementIndexName,
+            array_column($result, 'elementId'),
+            $firstRow['elementType'],
+            $firstRow['operation'],
+            (int)$firstRow['operationTime'],
+            $firstRow['elementIndexName'],
         ];
     }
 }

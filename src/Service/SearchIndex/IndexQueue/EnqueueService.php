@@ -49,8 +49,9 @@ final readonly class EnqueueService implements EnqueueServiceInterface
     {
         $tagCondition = $this->indexQueueRepository->generateSelectQuery(
             'tags_assignment',
-            [],
-            'cid',
+            [
+                'elementId' => 'cid',
+            ],
             [],
             ['ctype', IndexQueueRepository::AND_OPERATOR => 'tagid']
         );
@@ -59,13 +60,13 @@ final readonly class EnqueueService implements EnqueueServiceInterface
         $assetQuery = $this->indexQueueRepository->generateSelectQuery(
             'assets',
             [
-                ElementType::ASSET->value,
-                IndexName::ASSET->value,
-                IndexQueueOperation::UPDATE->value,
-                (string)$this->timeService->getCurrentMillisecondTimestamp(),
-                '0',
+                'elementId' => 'id',
+                'elementType' => "'" . ElementType::ASSET->value . "'",
+                'elementIndexName' => "'" . IndexName::ASSET->value . "'",
+                'operation' => "'" . IndexQueueOperation::UPDATE->value . "'",
+                'operationTime' => "'" . (string)$this->timeService->getCurrentMillisecondTimestamp() . "'",
+                'dispatched' => '0',
             ],
-            'id',
             ['ctype' => ElementType::ASSET->value, 'tagid' => $tag->getId()],
         );
         $assetQuery->where($assetQuery->expr()->in('id', $tagCondition->getSQL()));
@@ -75,12 +76,13 @@ final readonly class EnqueueService implements EnqueueServiceInterface
         $dataObjectQuery = $this->indexQueueRepository->generateSelectQuery(
             'objects',
             [
-                ElementType::DATA_OBJECT->value,
-                IndexQueueOperation::UPDATE->value,
-                (string)$this->timeService->getCurrentMillisecondTimestamp(),
-                '0',
+                'elementId' => 'id',
+                'elementType' => "'" . ElementType::DATA_OBJECT->value . "'",
+                'elementIndexName' => 'className',
+                'operation' => "'" . IndexQueueOperation::UPDATE->value . "'",
+                'operationTime' => "'" . (string)$this->timeService->getCurrentMillisecondTimestamp() . "'",
+                'dispatched' => '0',
             ],
-            'id, className',
             ['ctype' => ElementType::DATA_OBJECT->value, 'tagid' => $tag->getId()],
         );
         $dataObjectQuery->where($dataObjectQuery->expr()->in('id', $tagCondition->getSQL()));
@@ -98,13 +100,13 @@ final readonly class EnqueueService implements EnqueueServiceInterface
         $selectQuery = $this->indexQueueRepository->generateSelectQuery(
             $dataObjectTableName,
             [
-                ElementType::DATA_OBJECT->value,
-                $classDefinition->getName(),
-                IndexQueueOperation::UPDATE->value,
-                (string)$this->timeService->getCurrentMillisecondTimestamp(),
-                '0',
-            ],
-            'oo_id'
+                'elementId' => 'oo_id',
+                'elementType' => "'" . ElementType::DATA_OBJECT->value . "'",
+                'elementIndexName' => "'" . $classDefinition->getName() . "'",
+                'operation' => "'" . IndexQueueOperation::UPDATE->value . "'",
+                'operationTime' => "'" . (string)$this->timeService->getCurrentMillisecondTimestamp() . "'",
+                'dispatched' => '0',
+            ]
         );
         $this->indexQueueRepository->enqueueBySelectQuery(
             $selectQuery
@@ -119,11 +121,12 @@ final readonly class EnqueueService implements EnqueueServiceInterface
             $selectQuery = $this->indexQueueRepository->generateSelectQuery(
                 'objects',
                 [
-                    ElementType::DATA_OBJECT->value,
-                    IndexName::DATA_OBJECT_FOLDER->value,
-                    IndexQueueOperation::UPDATE->value,
-                    (string)$this->timeService->getCurrentMillisecondTimestamp(),
-                    '0',
+                    'elementId' => 'id',
+                    'elementType' => "'" . ElementType::DATA_OBJECT->value . "'",
+                    'elementIndexName' => "'" . IndexName::DATA_OBJECT_FOLDER->value . "'",
+                    'operation' => "'" . IndexQueueOperation::UPDATE->value . "'",
+                    'operationTime' => "'" . (string)$this->timeService->getCurrentMillisecondTimestamp() . "'",
+                    'dispatched' => '0',
                 ],
             )->where('type = "folder"');
             $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
@@ -145,11 +148,12 @@ final readonly class EnqueueService implements EnqueueServiceInterface
             $selectQuery = $this->indexQueueRepository->generateSelectQuery(
                 'assets',
                 [
-                    ElementType::ASSET->value,
-                    IndexName::ASSET->value,
-                    IndexQueueOperation::UPDATE->value,
-                    (string)$this->timeService->getCurrentMillisecondTimestamp(),
-                    '0',
+                    'elementId' => 'id',
+                    'elementType' => "'" . ElementType::ASSET->value . "'",
+                    'elementIndexName' => "'" . IndexName::ASSET->value . "'",
+                    'operation' => "'" . IndexQueueOperation::UPDATE->value . "'",
+                    'operationTime' => "'" . (string)$this->timeService->getCurrentMillisecondTimestamp() . "'",
+                    'dispatched' => '0',
                 ]
             );
             $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
@@ -171,11 +175,12 @@ final readonly class EnqueueService implements EnqueueServiceInterface
             $selectQuery = $this->indexQueueRepository->generateSelectQuery(
                 'documents',
                 [
-                    ElementType::DOCUMENT->value,
-                    IndexName::DOCUMENT->value,
-                    IndexQueueOperation::UPDATE->value,
-                    (string)$this->timeService->getCurrentMillisecondTimestamp(),
-                    '0',
+                    'elementId' => 'id',
+                    'elementType' => "'" . ElementType::DOCUMENT->value . "'",
+                    'elementIndexName' => "'" . IndexName::DOCUMENT->value . "'",
+                    'operation' => "'" . IndexQueueOperation::UPDATE->value . "'",
+                    'operationTime' => "'" . (string)$this->timeService->getCurrentMillisecondTimestamp() . "'",
+                    'dispatched' => '0',
                 ]
             );
             $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
