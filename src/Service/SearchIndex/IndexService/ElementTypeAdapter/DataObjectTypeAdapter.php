@@ -115,12 +115,12 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         }
 
         $selects = [
-            'id',
-            "'" . ElementType::DATA_OBJECT->value . "'",
-            'className',
-            "'$operation'",
-            "'$operationTime'",
-            '0',
+            'id AS elementId',
+            "'" . ElementType::DATA_OBJECT->value . "' AS elementType",
+            'className AS elementIndexName',
+            "'$operation' AS operation",
+            "'$operationTime' AS operationTime",
+            '0 AS dispatched',
         ];
 
         $select = $this->dbConnection->createQueryBuilder()
@@ -188,12 +188,12 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
         int $operationTime
     ): array {
         return [
-            (string)$element->getId(),
-            "'" . ElementType::DATA_OBJECT->value . "'",
-            $this->getIndexName($element, $operation),
-            "'$operation'",
-            "'$operationTime'",
-            '0',
+            (string)$element->getId() . ' AS elementId',
+            "'" . ElementType::DATA_OBJECT->value . "' AS elementType",
+            $this->getIndexName($element, $operation) . ' AS elementIndexName',
+            "'$operation' AS operation",
+            "'$operationTime' AS operationTime",
+            '0 AS dispatched',
         ];
     }
 
