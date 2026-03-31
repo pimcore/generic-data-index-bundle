@@ -6,11 +6,33 @@ description: Version-specific upgrade instructions and breaking changes for the 
 # Upgrade Information
 
 ## Upgrade to 2026.1.0
-- [Searching] Added `forceReload` parameter to element search service interface `byId()`.
-- The bundle installer now implements `PostInstallCommandsProviderInterface` from Pimcore's InstallBundle. This means the post-install command `generic-data-index:update:index -r` is automatically executed during `pimcore:install` when using Install Profiles. Manual execution of this command after `pimcore:bundle:install` is still required as before.
-- The messenger transport DSN is now configurable via the `%pimcore.messenger.transport_dsn_prefix%` container parameter instead of being hardcoded to `doctrine://default`. This allows the installer to wire the transport DSN from environment variables (e.g. `PIMCORE_MESSENGER_TRANSPORT_DSN_PREFIX`).
+
+### PHP and Dependency Requirements
+
 - Added support for `PHP` `8.5`.
 - Removed support for `PHP` `8.3` and Symfony `v6`.
+
+### Removed ExtJS / Admin Classic
+
+- `PimcoreGenericDataIndexBundle` no longer implements `PimcoreBundleAdminClassicInterface`.
+- Removed `BundleAdminClassicTrait`.
+
+### Interface Changes
+
+- Added optional `bool $forceReload = false` parameter to the `byId()` method on the following interfaces:
+  - `AssetSearchServiceInterface::byId(int $id, ?User $user = null, bool $forceReload = false)`
+  - `DataObjectSearchServiceInterface::byId(int $id, ?User $user = null, bool $forceReload = false)`
+  - `DocumentSearchServiceInterface::byId(int $id, ?User $user = null, bool $forceReload = false)`
+  - `ElementSearchServiceInterface::byId(ElementType $elementType, int $id, ?User $user = null, bool $forceReload = false)`
+
+### Installer / Messenger Transport Changes
+
+- The bundle installer now implements `PostInstallCommandsProviderInterface`. The post-install command
+  `generic-data-index:update:index -r` is automatically executed during `pimcore:install` when using
+  Install Profiles. Manual execution after `pimcore:bundle:install` is still required.
+- The messenger transport DSN is now configurable via the `%pimcore.messenger.transport_dsn_prefix%`
+  container parameter (env: `PIMCORE_MESSENGER_TRANSPORT_DSN_PREFIX`) instead of being hardcoded to
+  `doctrine://default`.
 
 ## Upgrade to 2.2.0
 
