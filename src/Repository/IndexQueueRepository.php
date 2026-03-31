@@ -163,7 +163,8 @@ final class IndexQueueRepository
     /**
      * @param array<string, string> $columnAliases Associative array mapping alias names to SQL expressions
      * @param array<string, mixed>  $params        Query parameters for setParameters()
-     * @param array<string>         $whereParameters Column names for WHERE clauses
+     * @param array<int|string, string> $whereParameters Column names for WHERE clauses; keys may be numeric
+     *                                                   or operator constants (AND_OPERATOR, OR_OPERATOR)
      */
     public function generateSelectQuery(
         string $tableName,
