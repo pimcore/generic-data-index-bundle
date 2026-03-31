@@ -174,7 +174,7 @@ final class IndexQueueRepository
     ): DBALQueryBuilder {
         $selectExpressions = [];
         foreach ($columnAliases as $alias => $expression) {
-            if (is_int($alias)) {
+            if (is_int($alias)) { // @phpstan-ignore function.impossibleType (runtime guard for callers without static analysis)
                 throw new \InvalidArgumentException(
                     sprintf(
                         'Column aliases must be an associative array with string keys (alias => expression), got numeric key %d for expression "%s".',
