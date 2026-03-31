@@ -3,6 +3,9 @@ imports:
 
 # this cache is used during tests when setting up pimcore
 framework:
+    profiler:
+        enabled: true
+        collect: false
     cache:
         pools:
             pimcore.cache.pool:
@@ -23,7 +26,7 @@ doctrine:
                 user: ~
                 password: ~
                 mapping_types:
-                    enum: string
+#                    enum: string
                     bit: boolean
 
 parameters:

@@ -82,7 +82,7 @@ final class AssetTypeAdapter extends AbstractElementTypeAdapter
         string $operation,
         int $operationTime,
         bool $includeElement = false
-    ): ?QueryBuilder {
+    ): QueryBuilder {
 
         $selects = [
             (string)$element->getId(),

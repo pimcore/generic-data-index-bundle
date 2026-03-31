@@ -37,7 +37,7 @@ final class KeywordAdapter extends AbstractAdapter
         ];
     }
 
-    public function getSearchFilterAggregation(AssetMetaDataAggregation $aggregation): ?Aggregation
+    public function getSearchFilterAggregation(AssetMetaDataAggregation $aggregation): Aggregation
     {
         return new Aggregation($aggregation->getAggregationName(), [
             'terms' => [

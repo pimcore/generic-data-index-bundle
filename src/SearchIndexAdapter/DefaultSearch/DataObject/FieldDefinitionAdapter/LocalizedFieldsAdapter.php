@@ -184,7 +184,7 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
      * @throws Exception
      */
     private function getInheritedDataForAdapter(
-        concrete $dataObject,
+        Concrete $dataObject,
         Localizedfield $value,
         string $key,
         string $language,
