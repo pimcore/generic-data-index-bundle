@@ -8,8 +8,7 @@ Following steps are necessary during updating to newer versions.
 - The messenger transport DSN is now configurable via the `%pimcore.messenger.transport_dsn_prefix%` container parameter instead of being hardcoded to `doctrine://default`. This allows the installer to wire the transport DSN from environment variables (e.g. `PIMCORE_MESSENGER_TRANSPORT_DSN_PREFIX`).
 - Added support to `PHP` `8.5`.
 - Removed support to `PHP` `8.3` and Symfony `v6`.
-- [Indexing] Refactored `IndexQueueRepository::generateSelectQuery()` to use named column aliases instead of positional field arrays. The method now accepts an associative `$columnAliases` array (`alias => expression`) instead of the previous positional `$fields` array with a separate `$idField` parameter. All enqueue methods in `EnqueueService` and the element type adapters (`AssetTypeAdapter`, `DocumentTypeAdapter`, `DataObjectTypeAdapter`) have been updated accordingly. The `quoteParameters()` helper method has been removed.
-- [Indexing] Refactored `IndexQueueRepository::getValuesFromSqlResult()` to extract values by named column alias (`elementId`, `elementType`, `elementIndexName`, `operation`, `operationTime`) instead of fragile positional index access.
+- [Indexing] **BC Break**: `IndexQueueRepository::generateSelectQuery()` signature changed. The method now accepts an associative `$columnAliases` array (`alias => expression`) instead of the previous positional `$fields` array with a separate `$idField` parameter. Passing a numerically-indexed array will throw an `InvalidArgumentException`. All enqueue methods in `EnqueueService` and the element type adapters (`AssetTypeAdapter`, `DocumentTypeAdapter`, `DataObjectTypeAdapter`) have been updated accordingly. The `quoteParameters()` helper method has been removed.
 
 ## Upgrade to 2.2.0
 - [Indexing] Added `id` column as new primary key to `generic_data_index_queue`. Please make sure to execute migrations.
