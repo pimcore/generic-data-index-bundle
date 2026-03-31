@@ -17,6 +17,7 @@ use Codeception\Test\Unit;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\EntityManagerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
@@ -290,6 +291,88 @@ final class IndexQueueRepositoryTest extends Unit
 
         // Verify element type
         $this->assertContains('data_object', $insertParams);
+    }
+
+    public function testDeleteQueueEntriesMatchesOnIdAndOperationTime(): void
+    {
+        $executedQueries = [];
+
+        $connection = $this->makeEmpty(Connection::class, [
+            'quote' => function (string $value) {
+                return "'" . $value . "'";
+            },
+            'quoteIdentifier' => function (string $identifier) {
+                return '`' . $identifier . '`';
+            },
+            'executeQuery' => function (string $sql) use (&$executedQueries) {
+                $executedQueries[] = $sql;
+
+                return $this->makeEmpty(\Doctrine\DBAL\Result::class);
+            },
+        ]);
+
+        $repository = $this->createRepository($connection);
+
+        $entry1 = new IndexQueue();
+        $entry1->setId(42);
+        $entry1->setOperationTime('1711800000000');
+
+        $entry2 = new IndexQueue();
+        $entry2->setId(99);
+        $entry2->setOperationTime('1711800001000');
+
+        $repository->deleteQueueEntries([$entry1, $entry2]);
+
+        $this->assertCount(1, $executedQueries);
+        $sql = $executedQueries[0];
+
+        // Must match on BOTH id AND operationTime to prevent race condition
+        $this->assertStringContainsString('(`id`, `operationTime`) IN', $sql);
+        $this->assertStringContainsString("('42', '1711800000000')", $sql);
+        $this->assertStringContainsString("('99', '1711800001000')", $sql);
+    }
+
+    public function testDeleteQueueEntriesDoesNotDeleteRequeuedEntries(): void
+    {
+        // This test documents WHY the operationTime guard exists:
+        // If an element is re-queued (e.g., saved again) while being processed,
+        // the ON DUPLICATE KEY UPDATE changes the operationTime on the existing row.
+        // The DELETE must NOT match the re-queued entry because the operationTime
+        // no longer matches what was fetched during processing.
+
+        $executedQueries = [];
+
+        $connection = $this->makeEmpty(Connection::class, [
+            'quote' => function (string $value) {
+                return "'" . $value . "'";
+            },
+            'quoteIdentifier' => function (string $identifier) {
+                return '`' . $identifier . '`';
+            },
+            'executeQuery' => function (string $sql) use (&$executedQueries) {
+                $executedQueries[] = $sql;
+
+                return $this->makeEmpty(\Doctrine\DBAL\Result::class);
+            },
+        ]);
+
+        $repository = $this->createRepository($connection);
+
+        // Simulate an entry that was fetched with operationTime=1000
+        // but has since been re-queued with operationTime=2000
+        $entry = new IndexQueue();
+        $entry->setId(42);
+        $entry->setOperationTime('1000'); // original time when fetched
+
+        $repository->deleteQueueEntries([$entry]);
+
+        $sql = $executedQueries[0];
+
+        // The DELETE uses the ORIGINAL operationTime ('1000'), not the new one ('2000').
+        // In the database, the row now has operationTime=2000, so the tuple (42, '1000')
+        // will NOT match, and the re-queued entry will survive.
+        $this->assertStringContainsString("('42', '1000')", $sql);
+        $this->assertStringNotContainsString('WHERE `id` IN', $sql, 'Must not use id-only matching');
     }
 
     private function createRepository(Connection $connection): IndexQueueRepository

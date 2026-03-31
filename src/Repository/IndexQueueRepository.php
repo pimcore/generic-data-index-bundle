@@ -124,17 +124,24 @@ final class IndexQueueRepository
     {
         $chunks = array_chunk($entries, self::BATCH_SIZE);
         foreach ($chunks as $chunk) {
-            $ids = array_map(
-                fn (IndexQueue $entry) => $this->connection->quote((string)$entry->getId()),
+            $tuples = array_map(
+                fn (IndexQueue $entry) => sprintf(
+                    '(%s, %s)',
+                    $this->connection->quote((string)$entry->getId()),
+                    $this->connection->quote($entry->getOperationTime())
+                ),
                 $chunk
             );
 
             $this->connection->executeQuery(
                 sprintf(
-                    'DELETE FROM %s WHERE %s IN (%s)',
+                    'DELETE FROM %s WHERE (%s, %s) IN (%s) ORDER BY %s ASC LIMIT %d',
                     $this->connection->quoteIdentifier(IndexQueue::TABLE),
                     $this->connection->quoteIdentifier('id'),
-                    implode(',', $ids)
+                    $this->connection->quoteIdentifier('operationTime'),
+                    implode(',', $tuples),
+                    $this->connection->quoteIdentifier('id'),
+                    self::BATCH_SIZE
                 )
             );
         }
