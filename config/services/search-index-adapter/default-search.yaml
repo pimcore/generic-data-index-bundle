@@ -1,6 +1,6 @@
 imports:
-    - { resource: 'services/search-index-adapter/default-search/modifiers/*' }
-    - { resource: 'services/search-index-adapter/default-search/pql-field-name-transformers.yaml' }
+    - { resource: "default-search/modifiers/*" }
+    - { resource: "default-search/pql-field-name-transformers.yaml" }
 
 services:
     _defaults:
@@ -11,32 +11,32 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService
         arguments:
-            $client: '@generic-data-index.search-client'
+            $client: "@generic-data-index.search-client"
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\IndexAliasService
         arguments:
-            $client: '@generic-data-index.search-client'
+            $client: "@generic-data-index.search-client"
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionService
         arguments:
-            $client: '@generic-data-index.search-client'
+            $client: "@generic-data-index.search-client"
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\BulkOperationService
         arguments:
-            $client: '@generic-data-index.search-client'
+            $client: "@generic-data-index.search-client"
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\PathService
         arguments:
-            $client: '@generic-data-index.search-client'
+            $client: "@generic-data-index.search-client"
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\ElementLockServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\ElementLockService
         arguments:
-            $client: '@generic-data-index.search-client'
+            $client: "@generic-data-index.search-client"
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Pagination\PaginationInfoService
@@ -56,7 +56,7 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\IndexStatsService
         arguments:
-            $client: '@generic-data-index.search-client'
+            $client: "@generic-data-index.search-client"
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\IndexMappingService
@@ -73,12 +73,11 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\QueryLanguage\SubQueriesProcessorInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\QueryLanguage\SubQueriesProcessor
 
-
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\QueryLanguage\FieldNameValidator\:
-        resource: '../../../src/SearchIndexAdapter/DefaultSearch/QueryLanguage/FieldNameValidator'
-        tags: ['pimcore.generic_data_index.pql_field_name_validator']
+        resource: "../../../src/SearchIndexAdapter/DefaultSearch/QueryLanguage/FieldNameValidator"
+        tags: ["pimcore.generic_data_index.pql_field_name_validator"]
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\IndexIconUpdateService
         arguments:
-            $client: '@generic-data-index.search-client'
+            $client: "@generic-data-index.search-client"
