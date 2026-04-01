@@ -27,6 +27,7 @@ doctrine:
                     bit: boolean
 
 parameters:
+    secret: ThisTokenIsNotSoSecretChangeIt
     pimcore_test.db.dsn: '%env(PIMCORE_TEST_DB_DSN)%'
     env(PIMCORE_TEST_DB_DSN): ~
     pimcore.encryption.secret: '%env(PIMCORE_ENCRYPTION_SECRET)%'
@@ -40,9 +41,7 @@ pimcore_elasticsearch_client:
     es_clients:
         default:
             hosts: ['%env(PIMCORE_ELASTIC_SEARCH_HOST)%']
-            username: 'elastic'
-            password: 'somethingsecret'
-            logger_channel: 'pimcore.elasicsearch'
+            logger_channel: 'pimcore.elasticsearch'
             ssl_verification: false
 
 pimcore:
