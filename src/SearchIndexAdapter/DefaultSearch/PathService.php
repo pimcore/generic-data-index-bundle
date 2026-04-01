@@ -124,6 +124,7 @@ final class PathService implements PathServiceInterface
                     'params' => [
                         'currentPath' => $currentPath . '/',
                         'newPath' => $newPath . '/',
+                        'now' => date('c'),
                     ],
                 ],
 
@@ -167,8 +168,11 @@ final class PathService implements PathServiceInterface
                     }
 
                     if(ctx._source.containsKey("custom_fields") && 
+                       ctx._source.custom_fields instanceof Map &&
                        ctx._source.custom_fields.containsKey("PortalEngineBundle") && 
+                       ctx._source.custom_fields.PortalEngineBundle instanceof Map &&
                        ctx._source.custom_fields.PortalEngineBundle.containsKey("system_fields") && 
+                       ctx._source.custom_fields.PortalEngineBundle.system_fields instanceof Map &&
                        ctx._source.custom_fields.PortalEngineBundle.system_fields.containsKey("thumbnail")) {
                         def customFields = ctx._source.custom_fields.PortalEngineBundle.system_fields;
                         if(customFields.thumbnail != null && customFields.thumbnail instanceof String) {
@@ -210,7 +214,7 @@ final class PathService implements PathServiceInterface
                     }
                     ctx._source.system_fields.pathLevels = newLevels;
                 }
-                ctx._source.system_fields.modificationDate = Instant.now().toString();
+                ctx._source.system_fields.modificationDate = params.now;
                 ctx._source.system_fields.checksum = 0';
     }
 
