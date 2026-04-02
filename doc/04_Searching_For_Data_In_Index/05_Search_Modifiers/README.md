@@ -54,9 +54,10 @@ $search->addModifier(new ParentIdFilter(1))
 
 ### Query Language
 
-| Modifier                                                                                                                         | Modifier Category | Description                                                                               |
-|----------------------------------------------------------------------------------------------------------------------------------|-------------------|-------------------------------------------------------------------------------------------|
-| [PqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/QueryLanguage/PqlFilter.php) | Query Language    | Apply a [Pimcore Query Language (PQL)](../09_Pimcore_Query_Language/README.md) condition. |
+| Modifier                                                                                                                                 | Modifier Category | Description                                                                               |
+|------------------------------------------------------------------------------------------------------------------------------------------|-------------------|-------------------------------------------------------------------------------------------|
+| [PqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/QueryLanguage/PqlFilter.php)         | Query Language    | Apply a [Pimcore Query Language (PQL)](../09_Pimcore_Query_Language/README.md) condition. |
+| [TreePqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.5/src/Model/Search/Modifier/QueryLanguage/TreePqlFilter.php) | Query Language    | Apply a [Pimcore Query Language (PQL)](../09_Pimcore_Query_Language/README.md) condition in a tree context: shows folders containing matching descendants and non-folder items matching the PQL query. Requires pre-computed relevant folder keys. |
 
 ### Sort Modifiers
 
@@ -75,8 +76,9 @@ If multiple sort modifiers are added to the search, the order of the modifiers i
 | Modifier                                                                                                                                                           | Modifier Category        | Description                                                                                                                                                                                         |
 |--------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [ChildrenCountAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Aggregation/Tree/ChildrenCountAggregation.php)  | Tree related aggregation | Get children counts for given element IDs.                                                                                                                                                          |
+| [ChildFolderAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2.5/src/Model/Search/Modifier/Aggregation/Tree/ChildFolderAggregation.php)      | Tree related aggregation | Get the keys (names) of child folders at a specific tree level that contain descendants matching a search. Used internally by TreePqlFilter to determine which folders to display in filtered trees. |
 | [AssetMetaDataAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Aggregation/Asset/AssetMetaDataAggregation.php) | Assets                   | Used for the filters in the asset grid to aggregate the filter options for supported meta data types.                                                                                               |
-| [FileSizeSumAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Aggregation/Asset/FileSizeSumAggregation.php) | Assets                   | Aggregates the sum of file sizes for all assets for a given search. The `FileSizeAggregationServiceInterface` internally uses this aggregation and provides an easy way to use this functionality. |
+| [FileSizeSumAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Aggregation/Asset/FileSizeSumAggregation.php)     | Assets                   | Aggregates the sum of file sizes for all assets for a given search. The `FileSizeAggregationServiceInterface` internally uses this aggregation and provides an easy way to use this functionality. |
 
 ## Search Modifier Implementation Details
 
