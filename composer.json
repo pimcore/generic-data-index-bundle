@@ -56,7 +56,7 @@
   },
   "extra": {
     "branch-alias": {
-      "dev-2.x": "2.4.x-dev"
+      "dev-2.x": "2.5.x-dev"
     },
     "pimcore": {
       "bundles": [
