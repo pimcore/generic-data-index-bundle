@@ -59,6 +59,7 @@ $search->addModifier(new ParentIdFilter(1));
 | Modifier | Description |
 |----------|-------------|
 | [PqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/QueryLanguage/PqlFilter.php) | Apply a [Pimcore Query Language (PQL)](../09_Pimcore_Query_Language/README.md) condition |
+| [TreePqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.5/src/Model/Search/Modifier/QueryLanguage/TreePqlFilter.php) | Query Language    | Apply a [Pimcore Query Language (PQL)](../09_Pimcore_Query_Language/README.md) condition in a tree context: shows folders containing matching descendants and non-folder items matching the PQL query. Requires pre-computed relevant folder keys. |
 
 ### Sort Modifiers
 
@@ -77,6 +78,7 @@ is the primary sort, the second is the secondary sort, and so on.
 | Modifier | Category | Description |
 |----------|----------|-------------|
 | [ChildrenCountAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Aggregation/Tree/ChildrenCountAggregation.php) | Tree | Get children counts for given element IDs |
+| [ChildFolderAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2.5/src/Model/Search/Modifier/Aggregation/Tree/ChildFolderAggregation.php)      | Tree related aggregation | Get the keys (names) of child folders at a specific tree level that contain descendants matching a search. Used internally by TreePqlFilter to determine which folders to display in filtered trees. |
 | [AssetMetaDataAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Aggregation/Asset/AssetMetaDataAggregation.php) | Asset | Aggregate filter options for supported metadata types (used in asset grid filters) |
 | [FileSizeSumAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Aggregation/Asset/FileSizeSumAggregation.php) | Asset | Sum file sizes across assets for a search. Use `FileSizeAggregationServiceInterface` for a simplified API. |
 

@@ -48,7 +48,10 @@
   "autoload-dev": {
     "psr-4": {
       "Pimcore\\Bundle\\GenericDataIndexBundle\\Tests\\": "tests/"
-    }
+    },
+    "files": [
+      "kernel/Kernel.php"
+    ]
   },
   "extra": {
     "branch-alias": {

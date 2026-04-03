@@ -24,6 +24,7 @@ description: Version-specific upgrade instructions and breaking changes for the 
   - `DataObjectSearchServiceInterface::byId(int $id, ?User $user = null, bool $forceReload = false)`
   - `DocumentSearchServiceInterface::byId(int $id, ?User $user = null, bool $forceReload = false)`
   - `ElementSearchServiceInterface::byId(ElementType $elementType, int $id, ?User $user = null, bool $forceReload = false)`
+- [Indexing] **BC Break**: `IndexQueueRepository::generateSelectQuery()` signature changed. The method now accepts an associative `$columnAliases` array (`alias => expression`) instead of the previous positional `$fields` array with a separate `$idField` parameter. Passing a numerically-indexed array will throw an `InvalidArgumentException`. All enqueue methods in `EnqueueService` and the element type adapters (`AssetTypeAdapter`, `DocumentTypeAdapter`, `DataObjectTypeAdapter`) have been updated accordingly. The `quoteParameters()` helper method has been removed.
 
 ### Installer / Messenger Transport Changes
 
