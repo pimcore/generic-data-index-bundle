@@ -1,64 +1,83 @@
+---
+title: Index Management
+description: Manage search indices for the Generic Data Index, including creation, updates, queue processing, and deployment.
+---
+
 # Index Management
 
-It is important to index all assets and data object in Pimcore in order to be able to use the search and listing features powered by the Generic Data Index bundle.
+The Generic Data Index must index all assets, data objects, and documents
+to power search and listing features in Pimcore.
 
-## Define Index Prefix
+## Console Commands Overview
 
-To avoid duplicate names or index interferences in your search engine, it is necessary to define an index name prefix, which is added to all indices created by Generic Data Index. 
-Default one is `pimcore_`.
+| Command | Description |
+|---------|-------------|
+| `generic-data-index:update:index` | Update index mappings and queue all elements for reindex from the database |
+| `generic-data-index:update:index -r` | Delete and recreate indices, then queue all elements |
+| `generic-data-index:reindex` | Native search engine reindex (reorganizes data within existing indices, no database read) |
+| `generic-data-index:deployment:reindex` | Update indices only for class definitions changed since the last deployment |
 
-This can be done by defining following configuration:
+## Index Prefix
 
-```yaml 
+Define an index name prefix to avoid naming collisions in shared search engine clusters.
+The default prefix is `pimcore_`.
+
+```yaml
 pimcore_generic_data_index:
     index_service:
         client_params:
-            index_prefix: 'my_prefix' # Prefix for all index names created by Generic Data Index
+            index_prefix: 'my_prefix'
 ```
 
 ## Created Indices
 
-The Generic Data Index generates indices for the following entities:
+The Generic Data Index creates the following indices:
 
-* Assets search index (one alias and one index)
-* Data objects search index (one alias and one index per class definition)
+- **Assets** - one alias and one index
+- **Data objects** - one alias and one index per class definition
 
-For the asset and data object indices the Generic Data Index uses an alias (e.g. `<index_prefix>_asset`) that points to the
-most current index (e.g. `<index_prefix>_asset-odd`). The alias name always stays the same, the index names alternate
-between `-odd` and `-even` suffix. For more details also see 'Updating index structure for data indices' in the next section.
+Each index uses an alias (e.g. `<prefix>_asset`) pointing to the current index
+(e.g. `<prefix>_asset-odd`). The alias name stays constant; the backing index alternates
+between `-odd` and `-even` suffixes during reindexing (see
+[Updating index structure](#updating-index-structure) below).
 
 ## Keeping Indices Up to Date
 
-The element search indices need to be created via the following console commands:
+Create and update indices with:
 
-```
-# create/update all indices + their mappings and add all items to the index queue
+```bash
 bin/console generic-data-index:update:index
 ```
 
-The command will create the indices and add all assets and data objects to the index queue. The queue will be processed by Symfony messenger workers (`pimcore_generic_data_index_queue` queue).
+This command creates the indices and queues all assets and data objects for indexing.
+The Symfony Messenger `pimcore_generic_data_index_queue` transport processes the queue.
 
-### Refreshing of the index
+### Index Refresh
 
-By default, the index queue is refreshed after each bulk operation as the items are processed asynchronously with the Symfony messenger.
-If you want to perform index refresh immediately you can use enable synchronous processing by injecting the `SynchronousProcessingServiceInterface` and calling `enable()` method.
+By default, the index refreshes after each bulk operation since items are processed
+asynchronously via Symfony Messenger.
 
-Available methods:
-- `enable()`: enable synchronous processing
-- `disable()`: disable synchronous processing
-- `isEnabled()`: check if synchronous processing is enabled
+To force synchronous processing (immediate refresh), inject
+`SynchronousProcessingServiceInterface` and call `enable()`:
 
-### Index Queue Options
+| Method | Description |
+|--------|-------------|
+| `enable()` | Enable synchronous processing |
+| `disable()` | Disable synchronous processing |
+| `isEnabled()` | Check current mode |
 
-The indexing queue considers the following options:
+### Queue Options
 
-- **worker_count** (default 1): number of messenger workers to process the queue. Set this to the actual used parallel number of `messenger:consume` workers to improve the calculation of items per batch.
-- **min_batch_size** (default 5): minimum number of items to process in one batch (when using multiple workers) 
-- **max_batch_size** (default 400): maximum number of items to process in one batch
+Configure the indexing queue batch behavior:
 
-Based on this configuration, the queue will be processed in batches of `min_batch_size` to `max_batch_size` items. The number of items per batch is calculated based on the number of workers and the number of items in the queue.
+| Option | Default | Description |
+|--------|---------|-------------|
+| `worker_count` | 1 | Number of parallel `messenger:consume` workers. Improves batch size calculation. |
+| `min_batch_size` | 5 | Minimum items per batch (relevant with multiple workers) |
+| `max_batch_size` | 400 | Maximum items per batch |
 
-Sample configuration:
+The queue calculates batch sizes dynamically between `min_batch_size` and `max_batch_size`
+based on the number of workers and queue depth.
 
 ```yaml
 pimcore_generic_data_index:
@@ -69,76 +88,67 @@ pimcore_generic_data_index:
             max_batch_size: 400
 ```
 
-#### Related elements
+### Related Elements
 
-The indexing queue is automatically populated whenever an element undergoes an update operation. This process includes not only the modified element itself but also any related elements. By default, this indexing occurs asynchronously through Symfony Messenger.
+Updating an element automatically enqueues its related elements for reindexing.
+By default, this runs asynchronously through Symfony Messenger.
 
-For scenarios requiring immediate processing, you can temporarily switch to synchronous mode by utilizing the `SynchronousProcessingRelatedIdsServiceInterface`.
-
-Available methods are:
+For immediate processing, use `SynchronousProcessingRelatedIdsServiceInterface`:
 
 | Method | Description |
 |--------|-------------|
-| `enable()` | Activates synchronous processing mode |
-| `disable()` | Reverts to asynchronous processing mode |
-| `isEnabled()` | Returns the current processing mode status |
+| `enable()` | Activate synchronous processing |
+| `disable()` | Revert to asynchronous processing |
+| `isEnabled()` | Return current processing mode |
 
 :::info
 
-Currently the `SynchronousProcessingRelatedIdsServiceInterface` interface does not influence the behavior of delete operations. They are always processed synchronously.
+`SynchronousProcessingRelatedIdsServiceInterface` does not affect delete operations.
+Deletes always process synchronously.
 
 :::
 
-
 ### Repairing Indices
 
-Sometimes it might be needed to delete and recreate the index from the Pimcore database
-(for example if the mapping changed and cannot be updated).
+To delete and recreate an index from the Pimcore database (e.g. after an incompatible
+mapping change), pass the `-r` option:
 
-Do this with the index update command and pass `-r` option (which deletes and recreates the index).
-```
-# delete index and recreate it
+```bash
 bin/console generic-data-index:update:index -r
 ```
-Without the `-r` option, the index mapping is just updated and all items are added into the queue
-for a reindex from the Pimcore database. 
 
+Without `-r`, the command only updates the index mapping and queues all items for reindex.
 
-### Updating Index Structure for Data Indices
+### Updating Index Structure
 
-Index mapping is updated automatically e.g. when adding system languages or new fields to the class definition. 
-Sometimes it might be necessary to update the index structure manually.
+Index mappings update automatically when system languages or class definition fields change.
+For manual updates, run the reindex command. This performs a native OpenSearch/Elasticsearch
+reindex within the search indices (no database read):
 
-Do this with the reindex command. This command does native opensearch/elasticsearch re-indexing. So it does not 
-index data from the database but reindexes data within the search indices.
-
-```
-# updates index mapping with native reindexing
+```bash
 bin/console generic-data-index:reindex
 ```
 
 ### Handling Failed Messages
 
-By default, the messenger will retry failed messages 3 times and then send them into the failed queue `pimcore_generic_data_index_failed`.
-If you want to retry failed messages, you can use the following command:
+The messenger retries failed messages 3 times, then routes them to the
+`pimcore_generic_data_index_failed` transport. Retry failed messages with:
 
+```bash
+bin/console messenger:failed:retry -vv
 ```
-php bin/console messenger:failed:retry -vv
-```
 
-For the further commands please refer to the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html#saving-retrying-failed-messages).
+See the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html#saving-retrying-failed-messages)
+for additional commands.
 
-## Configuring index options (Maximum Item Limit, ...)
+## Index Options
 
-You can configure different options to use with your indices. The available options can differ depending on which 
-engine you are using. Make sure to check the corresponding documentation, before using any options.
+Configure search engine-specific index options. Check your engine's documentation
+for available settings.
 
-See the `Maxium Item Limit` and `Total fields limit` section for examples.
+### Maximum Result Window
 
-### Maximum Item limit
-
-A maximum of 10000 items can be retrieved and viewed, because of the maximum default item limit.
-To increase this limit, configuration can be adjusted as follows:
+The default limit of retrievable items is 10,000. Increase it with:
 
 ```yaml
 pimcore_generic_data_index:
@@ -147,10 +157,9 @@ pimcore_generic_data_index:
             max_result_window: 20000
 ```
 
-### Total fields limit
+### Total Fields Limit
 
-A maximum of 1000 fields can be used with your indces. 
-To increase this limit, configuration can be adjusted as follows:
+The default field limit per index is 1,000. Increase it with:
 
 ```yaml
 pimcore_generic_data_index:
@@ -161,9 +170,9 @@ pimcore_generic_data_index:
 
 :::info
 
-If an index was already created before setting this parameter, the index needs to be recreated.
+If the index already exists, recreate it after changing this setting:
 
-```
+```bash
 bin/console generic-data-index:update:index -r
 ```
 
@@ -171,12 +180,13 @@ bin/console generic-data-index:update:index -r
 
 ## Deployment and Index Management
 
-### Pimcore Class Definitions
+### Class Definition Changes
 
-After every class definition update you should run the following command to update the index structure:
+After updating class definitions during deployment, run:
 
+```bash
+bin/console generic-data-index:deployment:reindex
 ```
-php bin/console generic-data-index:deployment:reindex
-```
 
-This command will update the index structure for all data object classes which were created/updated since the last deployment and reindex all data objects for relevant classes.
+This updates the index structure for all class definitions modified since the last
+deployment and reindexes data objects for affected classes.

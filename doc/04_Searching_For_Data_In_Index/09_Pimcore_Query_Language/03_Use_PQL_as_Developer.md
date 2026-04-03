@@ -1,42 +1,54 @@
-# Use Pimcore Query Language (PQL) as a Developer
+---
+title: Use PQL as a Developer
+description: Execute PQL queries programmatically using search modifiers or the PQL processor.
+keywords:
+    - PqlFilter
+    - query processor
+    - developer
+---
 
-## Execute searches based on PQL queries
+# Use PQL as a Developer
 
-If you want to use the Pimcore Query Language (PQL) as a developer to search for data in the Pimcore Generic Data Index, you can use one of the following methods:
+## Execute Searches with PQL
 
-#### 1. Search Modifier for the Generic Data Index search services
+### Option 1: PqlFilter Search Modifier
 
-You can use the [PqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/QueryLanguage/PqlFilter.php) search modifier to filter search results based on a PQL query. The `PqlFilter` search modifier can be used with the search services provided by the Generic Data Index bundle. Take a look at the [Search Services](../README.md) documentation for details.
+Use the
+[PqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/QueryLanguage/PqlFilter.php)
+search modifier with the Generic Data Index search services.
+See the [Search Services](../README.md) documentation.
 
-#### 2. Direct use of the PQL processor to get the search query
+### Option 2: PQL Processor (Direct Query)
 
-Use the `Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface` together with the `Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityServiceInterface` to process a PQL query.
+Use `ProcessorInterface` together with `IndexEntityServiceInterface`
+to process a PQL query directly:
 
 ```php
-// inject both services via Symfony dependency injection
 /** @var \Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface $queryLanguageProcessor */
 /** @var \Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityServiceInterface $indexEntityService */
 
 $query = $queryLanguageProcessor->process(
-    'color = "red" or color = "blue"', // The PQL query
-    $indexEntityService->getByEntityName('Car') // 'Asset', 'Document' or the name of the data object class
+    'color = "red" or color = "blue"',
+    $indexEntityService->getByEntityName('Car') // 'Asset', 'Document', or data object class name
 );
 
-// $query is now a valid search index query array which can be used to search in the index
+// $query is a valid search index query array
 ```
 
 ## Exception Handling
 
-In both cases, the PQL processor will throw an exception if the PQL query is invalid. The exception message will contain detailed information about the error. Especially when you would like to allow users to enter PQL queries, you should catch the exception and provide a user-friendly error feedback. 
+The PQL processor throws a `ParsingException` for invalid queries.
+The exception contains the error details and the position of the syntax error.
+Catch this exception to provide user-friendly error feedback, especially when
+allowing end users to enter PQL queries.
 
-##### Example
+### Example
 
-This example will produce a error message like this:
+This invalid query produces a syntax error:
 
 ![PQL Syntax Error](../../img/pql-syntax-error.png)
 
 ```php
-## Catching the exception
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\QueryLanguage\ParsingException;
 
 try {
@@ -44,11 +56,10 @@ try {
         and color "red"';
 
     $query = $queryLanguageProcessor->process(
-        $pqlQuery, // The PQL query
-        $indexEntityService->getByEntityName('Car') // 'Asset', 'Document' or the name of the data object class
+        $pqlQuery,
+        $indexEntityService->getByEntityName('Car')
     );
 } catch (ParsingException $e) {
-    // Provide user-friendly error feedback
     return $twig->render('pql-syntax-error.html.twig', [
         'error' => $e->getMessage(),
         'syntaxBeforeError' => substr($e->getQuery(), 0, $e->getPosition()),
@@ -57,15 +68,16 @@ try {
 }
 ```
 
-
 ```twig
 {# pql-syntax-error.html.twig #}
 
 <!doctype html>
 <html lang="en">
 <head>
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+          crossorigin="anonymous">
 
     <style>
         .pql-syntax-error {
@@ -83,7 +95,6 @@ try {
             color: #f44336;
         }
     </style>
-
 </head>
 <body>
     <div class="container pt-5">
@@ -92,7 +103,7 @@ try {
             <div class="alert alert-light">
                 <div class="pql-syntax-error">
                     {{ syntaxBeforeError|nl2br }}
-                    <span class="pql-syntax-error-location"><span>⇧</span></span>
+                    <span class="pql-syntax-error-location"><span>&#8679;</span></span>
                     {{ syntaxAfterError|nl2br }}
                 </div>
             </div>

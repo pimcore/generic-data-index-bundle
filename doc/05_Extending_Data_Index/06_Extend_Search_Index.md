@@ -1,78 +1,68 @@
-# Extending Search Index
+---
+title: Extending the Search Index
+description: Add custom data attributes to the search index using UpdateIndexDataEvent and ExtractMappingEvent.
+---
 
-## Extending Search Index via Events
+# Extending the Search Index
 
-The regular index update process stores a defined set of standard data types in the data index which makes it
-possible to find, filter, sort and list them..
+## Adding Custom Fields via Events
 
-It is possible to extend the index with custom attributes if needed. For this purpose the following events exist. You
-will find code examples below.
+The index update process stores system fields and supported data object/asset field types
+by default. Extend the index with custom attributes using the following events.
 
 ### UpdateIndexDataEvent
 
-This event can be used to store additional fields in the search index. Depending on if you would like to index additional
-data for assets or data objects use one of the following two events.
+Store additional fields in the search index. Use the event matching your element type:
 
-* `Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\UpdateIndexDataEvent` (assets)
-* `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent` (concrete data object classes)
-* `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateFolderIndexDataEvent` (data object folders)
-* `Pimcore\Bundle\GenericDataIndexBundle\Event\Document\UpdateIndexDataEvent` (documents)
+- `Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\UpdateIndexDataEvent` (assets)
+- `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent` (concrete data objects)
+- `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateFolderIndexDataEvent` (data object folders)
+- `Pimcore\Bundle\GenericDataIndexBundle\Event\Document\UpdateIndexDataEvent` (documents)
 
-If you take a look at the source of an indexed document within search index you will find a structure like this:
+An indexed document in the search index has this structure:
 
 ```json
 {
-          "system_fields" : {
-            "id" : 145,
-            "creationDate" : "2019-05-24T15:42:20+0200",
-            "modificationDate" : "2019-08-23T15:15:54+0200",
-            "type" : "image",
-            "key" : "abandoned-automobile-automotive-1082654.jpg",
-            ...
-          },
-          "standard_fields" : [ ... ],
-          "custom_fields" : [ ]
+    "system_fields": {
+        "id": 145,
+        "creationDate": "2019-05-24T15:42:20+0200",
+        "modificationDate": "2019-08-23T15:15:54+0200",
+        "type": "image",
+        "key": "abandoned-automobile-automotive-1082654.jpg"
+    },
+    "standard_fields": [ ... ],
+    "custom_fields": [ ]
 }
 ```
 
-This is used to separate the data into three sections:
+The three sections are:
 
-###### system_fields
-
-Base system fields which are the same for all assets or data objects (like id, creationDate, fullPath...).
-
-###### standard_fields
-
-All data object or asset metadata types which are supported out of the box depending on your data model.
-
-###### custom_fields
-
-This is the place where you are able to add data via the `UpdateIndexDataEvent`. As soon as additional fields are added
-they are searchable through the full text search (depending on the mapping of the fields).
+- **system_fields** - Base fields common to all elements (id, creationDate, fullPath, etc.)
+- **standard_fields** - Data object fields or asset metadata supported out of the box
+- **custom_fields** - Custom data added via `UpdateIndexDataEvent`.
+  Added fields are automatically included in full text search (depending on mapping).
 
 ### ExtractMappingEvent
 
-With this event it's possible to define the mapping (for elasticsearch see [this mapping](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-types.html) and for openSearch please refer to [mapping](https://opensearch.org/docs/latest/field-types/)) 
-of the additional custom fields. Again there are separate events for assets and data objects.
+Define the search engine mapping for custom fields (see
+[Elasticsearch mapping types](https://www.elastic.co/guide/en/elasticsearch/reference/current/mapping-types.html)
+or [OpenSearch field types](https://opensearch.org/docs/latest/field-types/)).
+Use the event matching your element type:
 
-* `Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent` (assets)
-* `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractMappingEvent` (concrete data object classes)
-* `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractFolderMappingEvent` (data object folders)
-* `Pimcore\Bundle\GenericDataIndexBundle\Event\Document\ExtractMappingEvent` (documents)
+- `Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent` (assets)
+- `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractMappingEvent` (concrete data objects)
+- `Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractFolderMappingEvent` (data object folders)
+- `Pimcore\Bundle\GenericDataIndexBundle\Event\Document\ExtractMappingEvent` (documents)
 
+## Example 1: Asset File Size Category
 
-### Example 1: Assets
-
-The following example creates an EventSubscriber which adds another custom field. The logic applies to assets and divides the assets into file size groups:
-
-* small: < 300KB
-* medium: 300KB - 3MB
-* big: > 3MB
+This event subscriber categorizes assets by file size into `small` (< 300 KB),
+`medium` (300 KB - 3 MB), and `big` (> 3 MB):
 
 ```php
 <?php
 
-namespace AppBundle\EventListener;
+namespace App\EventListener;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\UpdateIndexDataEvent;
@@ -81,50 +71,38 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 class FileSizeIndexSubscriber implements EventSubscriberInterface
 {
-    
-    public static function getSubscribedEvents()
+    public static function getSubscribedEvents(): array
     {
         return [
-            UpdateIndexDataEvent::class  => 'onUpdateIndexData',
-            ExtractMappingEvent::class   => 'onExtractMapping',
+            UpdateIndexDataEvent::class => 'onUpdateIndexData',
+            ExtractMappingEvent::class  => 'onExtractMapping',
         ];
     }
 
-    public function onUpdateIndexData(UpdateIndexDataEvent $event)
+    public function onUpdateIndexData(UpdateIndexDataEvent $event): void
     {
-        $asset = $event->getAsset();
+        $asset = $event->getElement();
         if ($asset instanceof Folder) {
             return;
         }
 
-        // Ensure that you take the original array and extend it.
         $customFields = $event->getCustomFields();
 
-        $fileSize = $event->getAsset()->getFileSize();
-        $fileSizeSelection = null;
-        if ($fileSize < 3*1000) {
-            $fileSizeSelection = 'small';
-        } elseif ($fileSize <= 3*1000*1000) {
-            $fileSizeSelection = 'medium';
-        } else {
-            $fileSizeSelection = 'big';
-        }
-
-        $customFields['fileSizeSelection'] = $fileSizeSelection;
+        $fileSize = $asset->getFileSize();
+        $customFields['fileSizeSelection'] = match (true) {
+            $fileSize < 300_000      => 'small',
+            $fileSize <= 3_000_000   => 'medium',
+            default                  => 'big',
+        };
 
         $event->setCustomFields($customFields);
     }
 
-    public function onExtractMapping(ExtractMappingEvent $event)
+    public function onExtractMapping(ExtractMappingEvent $event): void
     {
-        // Ensure that you take the original array and extend it.
         $customFieldsMapping = $event->getCustomFieldsMapping();
 
-        /**
-         * Take a look at the docs how mapping works.
-         * A 'keyword' field would be best for regular select and multi select filters.
-         * For full text search it is possible to define sub-fields with special search index analyzers too.
-         */
+        // 'keyword' works well for select and multi-select filters
         $customFieldsMapping['fileSizeSelection'] = [
             'type' => 'keyword'
         ];
@@ -132,92 +110,75 @@ class FileSizeIndexSubscriber implements EventSubscriberInterface
         $event->setCustomFieldsMapping($customFieldsMapping);
     }
 }
-
-
 ```
 
 ```yaml
-# service definition
-
+# config/services.yaml
 services:
     _defaults:
         autowire: true
 
-    AppBundle\EventListener\FileSizeIndexSubscriber:
+    App\EventListener\FileSizeIndexSubscriber:
         tags:
             - { name: kernel.event_subscriber }
 ```
 
+## Example 2: Data Object Variant Count
 
-### Example 2: Data Objects
-
-In this example a "User Owner" field will be provided for car documents. 
-"Owner" is defined as Pimcore username of the creator of the car data object.
+This event subscriber adds a `numberOfVariants` field to `Car` data objects,
+counting direct children (variants) of each car:
 
 ```php
 <?php
 
-namespace AppBundle\EventListener;
+namespace App\EventListener;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent;
-use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\UpdateIndexDataEvent;
+use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\ExtractMappingEvent;
+use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent;
 use Pimcore\Model\DataObject\Car;
-use Pimcore\Model\User;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
-class CarOwnerSubscriber implements EventSubscriberInterface
+class CarVariantCountSubscriber implements EventSubscriberInterface
 {
-    public static function getSubscribedEvents()
+    public static function getSubscribedEvents(): array
     {
         return [
-            UpdateIndexDataEvent::class  => 'onUpdateIndexData',
-            ExtractMappingEvent::class   => 'onExtractMapping',
+            UpdateIndexDataEvent::class => 'onUpdateIndexData',
+            ExtractMappingEvent::class  => 'onExtractMapping',
         ];
     }
 
-    public function onUpdateIndexData(UpdateIndexDataEvent $event)
+    public function onUpdateIndexData(UpdateIndexDataEvent $event): void
     {
-        $car = $event->getDataObject();
+        $car = $event->getElement();
         if (!$car instanceof Car) {
             return;
         }
 
-        // Ensure that you take the original array and extend it.
         $customFields = $event->getCustomFields();
-
         $customFields['numberOfVariants'] = count($car->getChildren() ?? []);
-
         $event->setCustomFields($customFields);
     }
 
-    public function onExtractMapping(ExtractMappingEvent $event)
+    public function onExtractMapping(ExtractMappingEvent $event): void
     {
         if ($event->getClassDefinition()->getId() !== 'CAR') {
             return;
         }
 
-        // Ensure that you take the original array and extend it.
         $customFieldsMapping = $event->getCustomFieldsMapping();
-
-        /**
-         * Take a look at the docs how mapping works.
-         * A 'keyword' field would be best for regular select and multi select filters.
-         * For full text search it is possible to define sub-fields with special search index analyzers too.
-         */
         $customFieldsMapping['numberOfVariants'] = [
             'type' => 'integer'
         ];
-
         $event->setCustomFieldsMapping($customFieldsMapping);
     }
 }
-
 ```
 
-#### Update index mapping and data
+## Rebuild Index After Changes
 
-Call the following console command as soon as the event subscriber is set up in the symfony container configuration.
+After registering an event subscriber, rebuild the search index:
 
 ```bash
-./bin/console generic-data-index:update:index -r
+bin/console generic-data-index:update:index -r
 ```

@@ -4,7 +4,7 @@ title: Generic Data Index
 
 # Pimcore Generic Data Index
 
-The Pimcore Generic Data Index Bundle provides a centralized way to index and search elements (assets, data objects and documents) in Pimcore via indices (e.g OpenSearch, Elasticsearch).
+The Pimcore Generic Data Index Bundle provides a centralized way to index and search elements (assets, data objects and documents) in Pimcore via indices (e.g. OpenSearch, Elasticsearch).
 It is shipped with the OpenSearch and Elasticsearch clients and provides a central configuration for them in order to be used in other bundles.
 This bundle can be extended and customized to fit your specific needs, for example if you would like to extend the search indices with custom attributes.
 
