@@ -190,18 +190,21 @@ final class IndexQueueRepository
      */
     public function enqueueBySelectQuery(DBALQueryBuilder $queryBuilder): void
     {
+        $firstRow = null;
+        $idKey = null;
+        $chunk = [];
+
         $iterator = $this->connection->iterateAssociative(
             $queryBuilder->getSQL(),
             $queryBuilder->getParameters()
         );
 
-        $firstRow = null;
-        $chunk = [];
         foreach ($iterator as $row) {
             if ($firstRow === null) {
                 $firstRow = $row;
+                $idKey = array_key_first($row);
             }
-            $chunk[] = $row['elementId'];
+            $chunk[] = $row[$idKey];
             if (count($chunk) === self::BATCH_SIZE) {
                 $this->flushChunk($chunk, $firstRow);
                 $chunk = [];
