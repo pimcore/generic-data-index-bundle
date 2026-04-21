@@ -21,7 +21,7 @@
         "nesbot/carbon": "^3.8.4",
         "pimcore/pimcore": "^12.3",
         "pimcore/static-resolver-bundle": "^3.0",
-        "pimcore/opensearch-client": "dev-850-update-react-promise-bundle",
+        "pimcore/opensearch-client": "^2.0",
         "pimcore/elasticsearch-client": "^2.0",
         "doctrine/orm": "^3.0",
         "symfony/scheduler": "^6.4 || ^7.2"
