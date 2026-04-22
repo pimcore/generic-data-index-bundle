@@ -13,48 +13,21 @@ on:
         branches:
             - "[0-9]+.[0-9]+"
             - "[0-9]+.x"
-
 env:
     PIMCORE_PROJECT_ROOT: ${{ github.workspace }}
-    APP_ENV: test
-    PIMCORE_TEST: 1
-    PIMCORE_TEST_DB_DSN: "mysql://root@127.0.0.1:33006/pimcore_test"
-    PIMCORE_ELASTIC_SEARCH_HOST: "localhost:5300"
-    CODECEPTION_BUNDLE_PATH: "bundles/pimcore/generic-data-index-bundle/"
-    PIMCORE_INSTANCE_IDENTIFIER: ${{ secrets.PIMCORE_CI_INSTANCE_IDENTIFIER }}
-    PIMCORE_ENCRYPTION_SECRET: ${{ secrets.PIMCORE_CI_ENCRYPTION_SECRET }}
-    PIMCORE_PRODUCT_KEY: ${{ secrets.PIMCORE_CI_PRODUCT_KEY }}    
+    PRIVATE_REPO: ${{ github.event.repository.private }}
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+    cancel-in-progress: true
 
 jobs:
-    codeception-tests:
-        name: "Codeception tests"
-        runs-on: "ubuntu-latest"
-        continue-on-error: ${{ matrix.experimental }}
-        strategy:
-            matrix:
-                include:
-                    - { php-version: "8.4", dependencies: "highest", pimcore_version: "2026.x-dev as 2026.99.9", experimental: true, search_engine: "elasticsearch"}
-
-        services:
-            mariadb:
-                image: "mariadb:10.11"
-                ports:
-                    - 33006:3306
-                env:
-                    MYSQL_ALLOW_EMPTY_PASSWORD: yes
-
-            elastic:
-                image: elasticsearch:8.5.3
-                ports:
-                    - 5300:9200
-                env:
-                    discovery.type: "single-node"
-                    ES_JAVA_OPTS: "-Xms1g -Xmx1g"
-                    xpack.security.enabled: "true"
-                    xpack.security.authc.anonymous.roles: "superuser,kibana_admin,kibana_system,kibana_user"
-                    ELASTIC_USERNAME: "elastic"
-                    ELASTIC_PASSWORD: "somethingsecret"
-
+    setup-matrix:
+        runs-on: ubuntu-latest
+        outputs:
+            php_versions: ${{ steps.parse-php-versions.outputs.php_versions }}
+            matrix: ${{ steps.set-matrix.outputs.matrix }}
+            private_repo: ${{ env.PRIVATE_REPO }}
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
