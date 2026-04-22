@@ -23,38 +23,12 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
-    codeception-tests:
-        name: "Codeception tests"
-        runs-on: "ubuntu-latest"
-        continue-on-error: ${{ matrix.experimental }}
-        strategy:
-            matrix:
-                include:
-                    - { php-version: "8.4", dependencies: "lowest", pimcore_version: "", experimental: false, search_engine: "openSearch" }
-                    - { php-version: "8.5", dependencies: "highest", pimcore_version: "", experimental: false, search_engine: "openSearch"}
-                    - { php-version: "8.5", dependencies: "highest", pimcore_version: "2026.x-dev as 2026.1.9", experimental: true, search_engine: "openSearch"}
-
-        services:
-            mariadb:
-                image: "mariadb:10.11"
-                ports:
-                    - 33006:3306
-                env:
-                    MYSQL_ALLOW_EMPTY_PASSWORD: yes
-
-            opensearch:
-                image: opensearchproject/opensearch:2
-                ports:
-                    - 39200:9200
-                env:
-                    cluster.name: "opensearch-cluster"
-                    node.name: "opensearch-node"
-                    discovery.seed_hosts: "opensearch-node"
-                    bootstrap.memory_lock: true
-                    OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
-                    discovery.type: "single-node"
-                    DISABLE_SECURITY_PLUGIN: true
-
+    setup-matrix:
+        runs-on: ubuntu-latest
+        outputs:
+            php_versions: ${{ steps.parse-php-versions.outputs.php_versions }}
+            matrix: ${{ steps.set-matrix.outputs.matrix }}
+            private_repo: ${{ env.PRIVATE_REPO }}
         steps:
             - name: Checkout code
               uses: actions/checkout@v4
