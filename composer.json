@@ -25,7 +25,8 @@
     "pimcore/elasticsearch-client": "^2026.1",
     "doctrine/orm": "^3.0",
     "doctrine/dbal": "^4.4",
-    "symfony/scheduler": "^7.2"
+    "symfony/scheduler": "^7.2",
+    "react/promise": "^2.11"
   },
   "require-dev": {
     "roave/security-advisories": "dev-latest",
