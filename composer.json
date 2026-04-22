@@ -21,12 +21,11 @@
     "nesbot/carbon": "^3.8.4",
     "pimcore/pimcore": "^2026.1",
     "pimcore/static-resolver-bundle": "^2026.1",
-    "pimcore/opensearch-client": "^2026.1",
+    "pimcore/opensearch-client": "dev-2026.1",
     "pimcore/elasticsearch-client": "^2026.1",
     "doctrine/orm": "^3.0",
     "doctrine/dbal": "^4.4",
-    "symfony/scheduler": "^7.2",
-    "react/promise": "^2.11"
+    "symfony/scheduler": "^7.2"
   },
   "require-dev": {
     "roave/security-advisories": "dev-latest",
