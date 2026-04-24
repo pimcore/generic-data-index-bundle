@@ -245,13 +245,8 @@ class DefaultSearchServiceTest extends \Codeception\Test\Unit
         $this->assertEquals(3, $result->getTotalHits());
         $this->assertCount(2, $result->getHits());
 
-        $this->assertCount(1, $searchIndexService->getExecutedSearches());
-        $searchInformation = $searchIndexService->getExecutedSearches()[0];
-        $this->assertEquals($search, $searchInformation->getSearch());
-        $this->assertTrue($searchInformation->isSuccess());
-        $this->assertEquals($searchInformation->getResponse()['hits']['total']['value'], $result->getTotalHits());
-        $this->assertIsNumeric($searchInformation->getExecutionTime());
-        $this->assertNotEmpty($searchInformation->getStackTrace());
+        // executed searches are only collected in debug mode (kernel.debug) —
+        // covered by the unit test Tests\Unit\...\Search\SearchExecutionServiceTest
 
         $searchIndexService->deleteIndex('test_index');
     }
