@@ -11,6 +11,7 @@
 
 namespace App;
 
+use Pimcore\Config\BundleConfigLocator;
 use Pimcore\Kernel as BaseKernel;
 use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -34,8 +35,11 @@ class Kernel extends BaseKernel
      * instead avoids this coupling and remains stable across Symfony 6.4, 7.x and
      * future versions.
      *
-     * We still load packages and environment-specific service files
-     * (services_test.yaml) which provide test-only service overrides.
+     * This implementation mirrors Pimcore\Kernel::registerContainerConfiguration()
+     * (BundleConfigLocator + packages + env services) but intentionally skips the
+     * MicroKernelTrait services.yaml auto-load and the dynamic Pimcore config
+     * directories (image_thumbnails, document_types, etc.) which are not used in
+     * this bundle's CI.
      */
     public function registerContainerConfiguration(LoaderInterface $loader): void
     {
@@ -51,6 +55,14 @@ class Kernel extends BaseKernel
                     ->setPublic(true);
             }
         });
+
+        // Load bundle-provided config files from <bundle>/Resources/config/pimcore
+        // or <bundle>/config/pimcore (e.g. config.yaml -> messenger.yaml).
+        // This mirrors Pimcore\Kernel::registerContainerConfiguration().
+        $bundleConfigLocator = new BundleConfigLocator($this);
+        foreach ($bundleConfigLocator->locate('config') as $bundleConfig) {
+            $loader->load($bundleConfig);
+        }
 
         $configDir = $this->getProjectDir() . '/config';
 
