@@ -43,10 +43,21 @@ class Kernel extends BaseKernel
      */
     public function registerContainerConfiguration(LoaderInterface $loader): void
     {
-        // Register the synthetic "kernel" service. This is normally done by
-        // MicroKernelTrait::registerContainerConfiguration() and is required so
-        // that other services may depend on the kernel via DI.
+        // Register the synthetic "kernel" service and configure the framework
+        // router to load its routes from kernel::loadRoutes(). This is normally
+        // done by MicroKernelTrait::registerContainerConfiguration(); we
+        // replicate the relevant bits here so the kernel may be depended on via
+        // DI and so framework.router.resource is configured (otherwise the
+        // FrameworkBundle config validation fails with "The child config
+        // 'resource' under 'framework.router' must be configured.").
         $loader->load(function (ContainerBuilder $container): void {
+            $container->loadFromExtension('framework', [
+                'router' => [
+                    'resource' => 'kernel::loadRoutes',
+                    'type' => 'service',
+                ],
+            ]);
+
             if (!$container->hasDefinition('kernel')) {
                 $container->register('kernel', static::class)
                     ->addTag('controller.service_arguments')
@@ -54,6 +65,8 @@ class Kernel extends BaseKernel
                     ->setSynthetic(true)
                     ->setPublic(true);
             }
+
+            $container->getDefinition('kernel')->addTag('routing.route_loader');
         });
 
         // Load bundle-provided config files from <bundle>/Resources/config/pimcore
