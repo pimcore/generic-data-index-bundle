@@ -16,8 +16,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
+use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateSiblingsMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\SearchHelper;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexElementIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
@@ -26,6 +26,7 @@ use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Event\DocumentEvents;
 use Pimcore\Event\Model\DocumentEvent;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * @internal
@@ -34,12 +35,12 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
 {
     public function __construct(
         private IndexQueueServiceInterface $indexQueueService,
-        private IndexElementIndexServiceInterface $indexElementIndexService,
         private Installer $installer,
         private QueueMessagesDispatcher $queueMessagesDispatcher,
         private RuntimeCacheResolverInterface $runtimeCacheResolver,
         private SynchronousProcessingServiceInterface $synchronousProcessing,
-        private SynchronousProcessingRelatedIdsServiceInterface $synchronousProcessingRelatedIds
+        private SynchronousProcessingRelatedIdsServiceInterface $synchronousProcessingRelatedIds,
+        private MessageBusInterface $messageBus
     ) {
     }
 
@@ -59,7 +60,13 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
 
     public function updateDocument(DocumentEvent $event): void
     {
-        $this->indexElementIndexService->updateSiblings($event->getDocument(), ElementType::DOCUMENT->value);
+        $this->messageBus->dispatch(
+            new UpdateSiblingsMessage(
+                $event->getDocument()->getId(),
+                ElementType::DOCUMENT->value,
+                false
+            )
+        );
         $this->updateData($event);
     }
 

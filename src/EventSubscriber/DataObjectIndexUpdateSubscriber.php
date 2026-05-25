@@ -16,8 +16,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
+use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateSiblingsMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\SearchHelper;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexElementIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
@@ -26,9 +26,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Event\DataObjectEvents;
 use Pimcore\Event\Model\DataObjectEvent;
-use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\Service;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 /**
  * @internal
@@ -40,11 +40,11 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
     public function __construct(
         private readonly Installer $installer,
         private readonly IndexQueueServiceInterface $indexQueueService,
-        private readonly IndexElementIndexServiceInterface $indexElementIndexService,
         private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
         private readonly RuntimeCacheResolverInterface $runtimeCacheResolver,
         private readonly SynchronousProcessingServiceInterface $synchronousProcessing,
-        private readonly SynchronousProcessingRelatedIdsServiceInterface $synchronousProcessingRelatedIds
+        private readonly SynchronousProcessingRelatedIdsServiceInterface $synchronousProcessingRelatedIds,
+        private readonly MessageBusInterface $messageBus
     ) {
     }
 
@@ -64,10 +64,13 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
 
     public function updateDataObject(DataObjectEvent $event): void
     {
-        $this->indexElementIndexService->updateSiblings($event->getObject(), ElementType::DATA_OBJECT->value);
-        if ($event->getObject()->getChildrenSortBy() === AbstractObject::OBJECT_CHILDREN_SORT_BY_INDEX) {
-            $this->indexElementIndexService->resetChildrenIndexBy($event->getObject());
-        }
+        $this->messageBus->dispatch(
+            new UpdateSiblingsMessage(
+                $event->getObject()->getId(),
+                ElementType::DATA_OBJECT->value,
+                true
+            )
+        );
         $this->updateData($event);
     }
 
