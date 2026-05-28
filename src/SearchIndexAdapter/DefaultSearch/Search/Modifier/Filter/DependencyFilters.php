@@ -23,6 +23,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiredByFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiresFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\UnreferencedFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface;
 
 /**
@@ -99,6 +100,19 @@ final readonly class DependencyFilters
             new BoolQuery([
                 ConditionType::FILTER->value => $boolQuery->toArray(true),
             ])
+        );
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleUnreferencedFilter(
+        UnreferencedFilter $unreferencedFilter,
+        SearchModifierContextInterface $context
+    ): void {
+        $context->getSearch()->addQuery(
+            new TermFilter(
+                field: SystemField::IS_REFERENCED->getPath(),
+                term: false,
+            )
         );
     }
 }
