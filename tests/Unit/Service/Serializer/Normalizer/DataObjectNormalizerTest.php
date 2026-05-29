@@ -36,30 +36,7 @@ final class DataObjectNormalizerTest extends Unit
         AbstractObject::setHideUnpublished(true);
         Localizedfield::setGetFallbackValues(false);
 
-        $classDefinition = new ClassDefinition();
-        $classDefinition->setFieldDefinitions([]);
-        $classDefinition->setAllowInherit(false);
-
-        $dataObject = $this->makeEmpty(Concrete::class, [
-            'getClass' => $classDefinition,
-            'getId' => 1,
-            'getParentId' => 0,
-            'getCreationDate' => null,
-            'getModificationDate' => null,
-            'getType' => 'object',
-            'getKey' => 'test',
-            'getIndex' => 0,
-            'getChildrenSortBy' => null,
-            'getChildrenSortOrder' => null,
-            'getPath' => '/',
-            'getRealFullPath' => '/test',
-            'getUserOwner' => 1,
-            'getUserModification' => 1,
-            'getLocked' => null,
-            'getClassId' => '1',
-            'getClassName' => 'Test',
-            'getPublished' => true,
-        ]);
+        $dataObject = $this->createConcreteObjectMock();
 
         $normalizer = $this->createNormalizer();
         $normalizer->normalize($dataObject);
@@ -84,11 +61,9 @@ final class DataObjectNormalizerTest extends Unit
         AbstractObject::setHideUnpublished(true);
         Localizedfield::setGetFallbackValues(false);
 
-        $classDefinition = new ClassDefinition();
-        $classDefinition->setFieldDefinitions([
+        $classDefinition = $this->createClassDefinition([
             'broken_field' => new ClassDefinition\Data\Input(),
         ]);
-        $classDefinition->setAllowInherit(false);
 
         $fieldDefinitionService = $this->makeEmpty(FieldDefinitionServiceInterface::class, [
             'normalizeValue' => function () {
@@ -96,10 +71,7 @@ final class DataObjectNormalizerTest extends Unit
             },
         ]);
 
-        $dataObject = $this->makeEmpty(Concrete::class, [
-            'getClass' => $classDefinition,
-            'get' => 'some_value',
-        ]);
+        $dataObject = $this->createConcreteObjectMock($classDefinition);
 
         $normalizer = $this->createNormalizer(fieldDefinitionService: $fieldDefinitionService);
 
@@ -128,11 +100,9 @@ final class DataObjectNormalizerTest extends Unit
     {
         AbstractObject::setHideUnpublished(true);
 
-        $classDefinition = new ClassDefinition();
-        $classDefinition->setFieldDefinitions([
+        $classDefinition = $this->createClassDefinition([
             'test_field' => new ClassDefinition\Data\Input(),
         ]);
-        $classDefinition->setAllowInherit(false);
 
         $hideUnpublishedDuringNormalization = null;
 
@@ -144,10 +114,7 @@ final class DataObjectNormalizerTest extends Unit
             },
         ]);
 
-        $dataObject = $this->makeEmpty(Concrete::class, [
-            'getClass' => $classDefinition,
-            'get' => 'some_value',
-        ]);
+        $dataObject = $this->createConcreteObjectMock($classDefinition);
 
         $normalizer = $this->createNormalizer(fieldDefinitionService: $fieldDefinitionService);
         $normalizer->normalize($dataObject);
@@ -166,11 +133,9 @@ final class DataObjectNormalizerTest extends Unit
     {
         $this->expectException(DataObjectNormalizerException::class);
 
-        $classDefinition = new ClassDefinition();
-        $classDefinition->setFieldDefinitions([
+        $classDefinition = $this->createClassDefinition([
             'broken_field' => new ClassDefinition\Data\Input(),
         ]);
-        $classDefinition->setAllowInherit(false);
 
         $fieldDefinitionService = $this->makeEmpty(FieldDefinitionServiceInterface::class, [
             'normalizeValue' => function () {
@@ -178,13 +143,44 @@ final class DataObjectNormalizerTest extends Unit
             },
         ]);
 
-        $dataObject = $this->makeEmpty(Concrete::class, [
-            'getClass' => $classDefinition,
-            'get' => 'value',
-        ]);
+        $dataObject = $this->createConcreteObjectMock($classDefinition);
 
         $normalizer = $this->createNormalizer(fieldDefinitionService: $fieldDefinitionService);
         $normalizer->normalize($dataObject);
+    }
+
+    private function createClassDefinition(array $fieldDefinitions = []): ClassDefinition
+    {
+        $classDefinition = new ClassDefinition();
+        $classDefinition->setFieldDefinitions($fieldDefinitions);
+        $classDefinition->setAllowInherit(false);
+
+        return $classDefinition;
+    }
+
+    private function createConcreteObjectMock(?ClassDefinition $classDefinition = null): Concrete
+    {
+        return $this->makeEmpty(Concrete::class, [
+            'getClass' => $classDefinition ?? $this->createClassDefinition(),
+            'getId' => 1,
+            'getParentId' => 0,
+            'getCreationDate' => null,
+            'getModificationDate' => null,
+            'getType' => 'object',
+            'getKey' => 'test',
+            'getIndex' => 0,
+            'getChildrenSortBy' => 'key',
+            'getChildrenSortOrder' => 'asc',
+            'getPath' => '/',
+            'getRealFullPath' => '/test',
+            'getUserOwner' => 1,
+            'getUserModification' => 1,
+            'getLocked' => null,
+            'getClassId' => '1',
+            'getClassName' => 'Test',
+            'getPublished' => true,
+            'get' => 'some_value',
+        ]);
     }
 
     private function createNormalizer(
