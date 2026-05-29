@@ -2,9 +2,18 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 2.5.3
+- [Indexing] Fixed: Unpublished data objects are now correctly indexed in relation fields (ManyToOne, ManyToMany, AdvancedManyToMany)
+
+### Re-indexing required
+After upgrading, execute the following command to re-index elements to include new fixes:
+```
+bin/console generic-data-index:update:index -r
+```
+
 ## Upgrade to 2.2.0
 - [Indexing] Added `id` column as new primary key to `generic_data_index_queue`. Please make sure to execute migrations.
-- [Searching] Added `trackTotalHits` parameter to `DefaultSearchService` and `SearchExecutionService`. The default value is true,       which means that total hits will always be computed accurately, even if they exceed the search engines threshold for accurate hit calculation. Change this parameter to `null`, to use the default threshold, pass an integer value to set a specific one.
+- [Searching] Added `trackTotalHits` parameter to `DefaultSearchService` and `SearchExecutionService`. The default value is true, which means that total hits will always be computed accurately, even if they exceed the search engines threshold for accurate hit calculation. Change this parameter to `null`, to use the default threshold, pass an integer value to set a specific one.
 
 ## Upgrade to 2.1.0
 - Added support for Symfony 7
