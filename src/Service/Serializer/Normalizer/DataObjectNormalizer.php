@@ -151,13 +151,16 @@ final class DataObjectNormalizer implements NormalizerInterface
      */
     private function normalizeStandardFields(Concrete $dataObject): array
     {
+        $inheritedValuesBackup = AbstractObject::doGetInheritedValues();
+        $fallbackLanguagesBackup = Localizedfield::doGetFallbackValues();
+        $hideUnpublishedBackup = AbstractObject::getHideUnpublished();
+
         try {
             $class = $dataObject->getClass();
             $fieldDefinitions = $class->getFieldDefinitions();
             $result[FieldCategory::INHERITED_FIELDS->value] = [];
-            $inheritedValuesBackup = AbstractObject::doGetInheritedValues();
-            $fallbackLanguagesBackup = Localizedfield::doGetFallbackValues();
             Localizedfield::setGetFallbackValues(true);
+            AbstractObject::setHideUnpublished(false);
             if ($class->getAllowInherit()) {
                 AbstractObject::setGetInheritedValues(false);
                 $result = $this->getInheritedFields($fieldDefinitions, $dataObject, $result);
@@ -172,9 +175,6 @@ final class DataObjectNormalizer implements NormalizerInterface
                 $result[$key] = $normalizedValue;
             }
 
-            AbstractObject::setGetInheritedValues($inheritedValuesBackup);
-            Localizedfield::setGetFallbackValues($fallbackLanguagesBackup);
-
             if (isset($result[StandardField::LOCALIZED_FIELDS->value])) {
                 $result = array_merge($result[StandardField::LOCALIZED_FIELDS->value], $result);
                 unset($result[StandardField::LOCALIZED_FIELDS->value]);
@@ -183,6 +183,10 @@ final class DataObjectNormalizer implements NormalizerInterface
             return $result;
         } catch (Exception $e) {
             throw new DataObjectNormalizerException($e->getMessage());
+        } finally {
+            AbstractObject::setGetInheritedValues($inheritedValuesBackup);
+            Localizedfield::setGetFallbackValues($fallbackLanguagesBackup);
+            AbstractObject::setHideUnpublished($hideUnpublishedBackup);
         }
     }
 
