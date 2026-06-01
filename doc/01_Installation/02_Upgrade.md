@@ -37,8 +37,13 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 ## Upgrade to 2.5.3
 - [Indexing] Added `isReferenced` field to asset index to support filtering for unreferenced assets.
-- Execute the following command to reindex all assets to populate the new field:
-  ```bin/console generic-data-index:update:index -r```
+- [Indexing] Fixed: Unpublished data objects are now correctly indexed in relation fields (ManyToOne, ManyToMany, AdvancedManyToMany)
+
+### Re-indexing required
+After upgrading, execute the following command to re-index elements to include all modifications:
+```
+bin/console generic-data-index:update:index -r
+```
 
 ## Upgrade to 2.2.0
 
