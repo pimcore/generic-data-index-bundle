@@ -42,4 +42,12 @@ final readonly class DependencyService implements DependencyServiceInterface
 
         return $result;
     }
+
+    public function isReferencedByAny(ElementInterface $element): bool
+    {
+        return (bool) $this->connection->fetchOne(
+            'SELECT 1 FROM dependencies WHERE targetid = ? AND targettype = ? LIMIT 1',
+            [$element->getId(), Service::getElementType($element)]
+        );
+    }
 }

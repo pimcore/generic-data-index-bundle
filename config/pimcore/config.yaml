@@ -192,3 +192,5 @@ pimcore_generic_data_index:
               type: text
               analyzer: standard
               search_analyzer: generic_data_index_whitespace_analyzer
+        isReferenced:
+          type: boolean
