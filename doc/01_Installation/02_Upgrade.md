@@ -2,6 +2,11 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 2.5.3
+- [Indexing] Added `isReferenced` field to asset index to support filtering for unreferenced assets.
+- Execute the following command to reindex all assets to populate the new field:
+  ```bin/console generic-data-index:update:index -r```
+
 ## Upgrade to 2.2.0
 - [Indexing] Added `id` column as new primary key to `generic_data_index_queue`. Please make sure to execute migrations.
 - [Searching] Added `trackTotalHits` parameter to `DefaultSearchService` and `SearchExecutionService`. The default value is true,       which means that total hits will always be computed accurately, even if they exceed the search engines threshold for accurate hit calculation. Change this parameter to `null`, to use the default threshold, pass an integer value to set a specific one.
