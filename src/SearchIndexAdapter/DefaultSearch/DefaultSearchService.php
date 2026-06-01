@@ -293,7 +293,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             'body' => $body,
         ]);
 
-        return $result['count'];
+        return $result['count'] ?? 0;
     }
 
     /**
