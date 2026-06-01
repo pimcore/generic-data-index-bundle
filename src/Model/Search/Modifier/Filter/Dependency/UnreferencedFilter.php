@@ -11,16 +11,13 @@ declare(strict_types=1);
  *  @license    Pimcore Open Core License (POCL)
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency;
 
-use Pimcore\Model\Element\ElementInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 
 /**
  * @internal
  */
-interface DependencyServiceInterface
+final readonly class UnreferencedFilter implements SearchModifierInterface
 {
-    public function getRequiresDependencies(ElementInterface $element): array;
-
-    public function isReferencedByAny(ElementInterface $element): bool;
 }

@@ -35,6 +35,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
   container parameter (env: `PIMCORE_MESSENGER_TRANSPORT_DSN_PREFIX`) instead of being hardcoded to
   `doctrine://default`.
 
+## Upgrade to 2.5.3
+- [Indexing] Added `isReferenced` field to asset index to support filtering for unreferenced assets.
+- Execute the following command to reindex all assets to populate the new field:
+  ```bin/console generic-data-index:update:index -r```
+
 ## Upgrade to 2.2.0
 
 - **[Indexing]** Added `id` column as new primary key to `generic_data_index_queue`.

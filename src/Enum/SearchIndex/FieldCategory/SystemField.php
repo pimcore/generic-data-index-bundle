@@ -48,6 +48,7 @@ enum SystemField: string
     case HAS_WORKFLOW_WITH_PERMISSIONS = 'hasWorkflowWithPermissions';
     case FILE_SIZE = 'fileSize';
     case DEPENDENCIES = 'dependencies';
+    case IS_REFERENCED = 'isReferenced';
     case CHILDREN_SORT_BY = 'childrenSortBy';
     case CHILDREN_SORT_ORDER = 'childrenSortOrder';
 
