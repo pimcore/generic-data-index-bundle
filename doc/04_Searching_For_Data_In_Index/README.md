@@ -123,6 +123,30 @@ public function searchAction(
 }
 ```
 
+## Full-Text Search
+
+Use the `FullTextSearch` modifier for full-text queries. It supports the following options:
+
+```php
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\FullTextSearch;
+
+new FullTextSearch(
+    $term,
+    defaultOperator: 'AND',          // 'AND' (default) requires all terms, 'OR' matches any
+    fields: [],                      // limit to specific fields (with optional boosts), e.g. ['system_fields.key^3']
+    flags: 'PHRASE|WHITESPACE',      // enabled simple_query_string operators; null/'ALL' enables all of them
+);
+```
+
+By default, characters like `-` and `.` are treated as literal text (not as operators), and double quotes
+enable phrase search.
+
+> **Note on partial matches of values containing punctuation** (e.g. version numbers or SKUs like `1.1.1`):
+> partial matching is powered by an n-gram analyzer whose tokenizer only keeps letters and digits by default,
+> so punctuation splits the value. As a result, searching `1.1` does not match `1.1.1`. To enable this, extend
+> the n-gram tokenizer's `token_chars` (e.g. add `punctuation` and `symbol`) via `index_service.index_settings`
+> and re-index. See [Index Management](../02_Configuration/03_Index_Management.md).
+
 ## Search Modifiers
 
 Search modifiers filter, sort, and aggregate search results. See the

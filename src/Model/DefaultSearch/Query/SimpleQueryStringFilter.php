@@ -17,14 +17,18 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\Conditi
 
 final class SimpleQueryStringFilter extends BoolQuery implements AsSubQueryInterface
 {
+    /**
+     * @param string[] $fields
+     */
     public function __construct(
-        private readonly string $term
+        private readonly string $term,
+        private readonly string $defaultOperator = 'AND',
+        private readonly array $fields = [],
+        private readonly ?string $flags = 'PHRASE|WHITESPACE',
     ) {
         parent::__construct([
             ConditionType::FILTER->value => [
-                'simple_query_string' => [
-                    'query' => $this->term,
-                ],
+                'simple_query_string' => $this->buildSimpleQueryString(),
             ],
         ]);
     }
@@ -37,9 +41,28 @@ final class SimpleQueryStringFilter extends BoolQuery implements AsSubQueryInter
     public function toArrayAsSubQuery(): array
     {
         return [
-            'simple_query_string' => [
-                'query' => $this->term,
-            ],
+            'simple_query_string' => $this->buildSimpleQueryString(),
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildSimpleQueryString(): array
+    {
+        $simpleQueryString = [
+            'query' => $this->term,
+            'default_operator' => $this->defaultOperator,
+        ];
+
+        if ($this->fields !== []) {
+            $simpleQueryString['fields'] = $this->fields;
+        }
+
+        if ($this->flags !== null) {
+            $simpleQueryString['flags'] = $this->flags;
+        }
+
+        return $simpleQueryString;
     }
 }
