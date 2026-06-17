@@ -26,4 +26,9 @@ final class BooleanAdapter extends AbstractAdapter
             'type' => AttributeType::BOOLEAN->value,
         ];
     }
+
+    public function normalize(mixed $value): mixed
+    {
+        return $value !== null ? (bool) $value : null;
+    }
 }
