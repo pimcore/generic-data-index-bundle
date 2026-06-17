@@ -202,53 +202,34 @@ final class IndexQueueRepository
     }
 
     /**
-     * @throws DBALException
+     * @throws DBALException|Throwable
      */
-    public function enqueueBySelectQuery(
-        DBALQueryBuilder $queryBuilder
-    ): void {
-        $result = $this->connection->fetchAllAssociative($queryBuilder->getSQL(), $queryBuilder->getParameters());
-        if (empty($result)) {
-            return;
+    public function enqueueBySelectQuery(DBALQueryBuilder $queryBuilder): void
+    {
+        $firstRow = null;
+        $idKey = null;
+        $chunk = [];
+
+        $iterator = $this->connection->iterateAssociative(
+            $queryBuilder->getSQL(),
+            $queryBuilder->getParameters()
+        );
+
+        foreach ($iterator as $row) {
+            if ($firstRow === null) {
+                $firstRow = $row;
+                $idKey = array_key_first($row);
+            }
+            $chunk[] = $row[$idKey];
+            if (count($chunk) === self::BATCH_SIZE) {
+                $this->flushChunk($chunk, $firstRow);
+                $chunk = [];
+            }
         }
 
-        [
-            $ids,
-            $elementType,
-            $operation,
-            $operationTime,
-            $elementIndexName
-        ] = $this->getValuesFromSqlResult($result);
-
-        foreach (array_chunk($ids, self::BATCH_SIZE) as $chunk) {
-            $effectiveChunkSize = count($chunk);
-
-            try {
-                $this->connection->beginTransaction();
-
-                $affectedRows = $this->insertFromChunk(
-                    $chunk,
-                    $elementType,
-                    $operation,
-                    $operationTime,
-                    $elementIndexName
-                );
-
-                if ($affectedRows < $effectiveChunkSize) {
-                    $this->updateFromChunk(
-                        $chunk,
-                        $elementType,
-                        $operation,
-                        $operationTime
-                    );
-                }
-
-                $this->connection->commit();
-            } catch (Throwable $e) {
-                $this->connection->rollBack();
-
-                throw $e;
-            }
+        // flush remaining
+        if (!empty($chunk) && $firstRow !== null) {
+            $this->flushChunk($chunk, $firstRow);
         }
     }
 
@@ -274,20 +255,23 @@ final class IndexQueueRepository
                     dispatched = VALUES(dispatched)
         SQL;
 
-        $values = [];
-        foreach ($enqueueItemList as $item) {
-            $values[] = sprintf(
-                '(%s, %s, %s, %s, %s, 0)',
-                $this->connection->quote($item->getId()),
-                $this->connection->quote($item->getElementType()),
-                $this->connection->quote($item->getIndex()),
-                $this->connection->quote($operation->value),
-                $operationTime
+        $chunks = array_chunk($enqueueItemList, self::BATCH_SIZE);
+        foreach ($chunks as $chunk) {
+            $values = [];
+            foreach ($chunk as $item) {
+                $values[] = sprintf(
+                    '(%s, %s, %s, %s, %s, 0)',
+                    $this->connection->quote($item->getId()),
+                    $this->connection->quote($item->getElementType()),
+                    $this->connection->quote($item->getIndex()),
+                    $this->connection->quote($operation->value),
+                    $operationTime
+                );
+            }
+            $this->connection->executeQuery(
+                sprintf($sql, IndexQueue::TABLE, implode(',', $values))
             );
         }
-        $this->connection->executeQuery(
-            sprintf($sql, IndexQueue::TABLE, implode(',', $values))
-        );
     }
 
     /**
@@ -402,36 +386,88 @@ final class IndexQueueRepository
 
         $insertParams = [];
         foreach ($chunk as $id) {
-            $insertParams = array_merge($insertParams, [
-                $id,
-                $elementType,
-                $elementIndexName,
-                $operation,
-                $operationTime,
-            ]);
+            array_push($insertParams, $id, $elementType, $elementIndexName, $operation, $operationTime);
         }
 
         return $this->connection->executeStatement($insertSql, $insertParams);
     }
 
     /**
-     * Extracts values from SQL result rows that use named column aliases.
+     * Extracts values from a result chunk that uses named column aliases.
      * Expected aliases: elementId, elementType, elementIndexName, operation, operationTime.
+     *
+     * @param list<string|int>     $ids      Element IDs (flat list) for the current chunk
+     * @param array<string, mixed> $metaData First row of the query result, providing element type, operation, etc.
+     *
+     * @return array{0: list<string|int>, 1: string, 2: string, 3: int, 4: string|null}|array{}
      */
-    private function getValuesFromSqlResult(array $result): array
+    private function getValuesFromSqlResult(array $ids, array $metaData): array
     {
-        if (empty($result)) {
+        if (empty($ids)) {
             return [];
         }
 
-        $firstRow = $result[0];
-
         return [
-            array_column($result, 'elementId'),
-            $firstRow['elementType'],
-            $firstRow['operation'],
-            (int)$firstRow['operationTime'],
-            $firstRow['elementIndexName'],
+            $ids,
+            $metaData['elementType'],
+            $metaData['operation'],
+            (int)$metaData['operationTime'],
+            $metaData['elementIndexName'] ?? null,
         ];
+    }
+
+    /**
+     * @param list<string|int> $chunk Element IDs
+     * @param array{elementType: string, elementId: string, operation: string, operationTime: string|int, elementIndexName: string} $metaData
+     *
+     * @throws Throwable
+     * @throws DBALException
+     */
+    private function flushChunk(array $chunk, array $metaData): void
+    {
+        if (empty($chunk)) {
+            return;
+        }
+
+        [
+            $ids,
+            $elementType,
+            $operation,
+            $operationTime,
+            $elementIndexName,
+
+        ] = $this->getValuesFromSqlResult(
+            $chunk,
+            $metaData
+        );
+
+        $effectiveChunkSize = count($chunk);
+
+        try {
+            $this->connection->beginTransaction();
+
+            $affectedRows = $this->insertFromChunk(
+                $ids,
+                $elementType,
+                $operation,
+                $operationTime,
+                $elementIndexName
+            );
+
+            if ($affectedRows < $effectiveChunkSize) {
+                $this->updateFromChunk(
+                    $ids,
+                    $elementType,
+                    $operation,
+                    $operationTime
+                );
+            }
+
+            $this->connection->commit();
+        } catch (Throwable $e) {
+            $this->connection->rollBack();
+
+            throw $e;
+        }
     }
 }
