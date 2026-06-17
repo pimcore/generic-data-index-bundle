@@ -159,7 +159,7 @@ final class IndexQueueRepositoryTest extends Unit
     public function testEnqueueBySelectQueryWithEmptyResult(): void
     {
         $connection = $this->makeEmpty(Connection::class, [
-            'fetchAllAssociative' => [],
+            'iterateAssociative' => [],
         ]);
 
         $repository = $this->createRepository($connection);
@@ -181,7 +181,7 @@ final class IndexQueueRepositoryTest extends Unit
         $insertStatements = [];
 
         $connection = $this->makeEmpty(Connection::class, [
-            'fetchAllAssociative' => [
+            'iterateAssociative' => [
                 [
                     'elementId' => '10',
                     'elementType' => 'asset',
@@ -248,7 +248,7 @@ final class IndexQueueRepositoryTest extends Unit
         $insertStatements = [];
 
         $connection = $this->makeEmpty(Connection::class, [
-            'fetchAllAssociative' => [
+            'iterateAssociative' => [
                 [
                     'elementId' => '100',
                     'elementType' => 'data_object',
