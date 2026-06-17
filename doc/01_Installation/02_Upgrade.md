@@ -2,6 +2,10 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 2.5.4
+- [Searching] The full-text search (`FullTextSearch` modifier) now defaults to `default_operator: AND` and
+  `flags: PHRASE|WHITESPACE` for better relevance and to treat characters like `-` and `.` as literal text.
+
 ## Upgrade to 2.5.3
 - [Indexing] Added `isReferenced` field to asset index to support filtering for unreferenced assets.
 - [Indexing] Fixed: Unpublished data objects are now correctly indexed in relation fields (ManyToOne, ManyToMany, AdvancedManyToMany)
