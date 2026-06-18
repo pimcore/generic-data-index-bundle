@@ -196,10 +196,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $client = $this->client;
 
         if ($client instanceof OpenSearchClientInterface) {
-            // OpenSearch PHP client returns a plain array
-            $raw = $client->getOriginalClient()->tasks()->get(['task_id' => $taskId]);
-
-            return \is_array($raw) ? $raw : $raw->asArray();
+            return $client->getOriginalClient()->tasks()->get(['task_id' => $taskId]);
         }
 
         if ($client instanceof ElasticsearchClientInterface) {
