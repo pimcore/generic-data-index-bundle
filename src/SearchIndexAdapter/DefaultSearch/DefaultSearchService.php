@@ -134,6 +134,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             $this->deleteIndex($newIndexName, true);
             throw $e;
         }
+    }
 
     /**
      * @throws ReindexFailedException
