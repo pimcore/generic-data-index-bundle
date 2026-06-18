@@ -215,6 +215,67 @@ class IndexQueueTest extends Unit
         $this->assertNull($this->getImageValueFromIndex($searchService, $dataObjectSearch));
     }
 
+    /**
+     * Regression test: when a queue entry exists with a full ES index name (e.g. stored by enqueueByItemList
+     * from HitData), a subsequent enqueue for the same element must overwrite elementIndexName so the
+     * DELETE handler receives the short class name and not the already-prefixed full index name.
+     *
+     * Without the fix in updateFromChunk, the operation field was updated to 'delete' but
+     * elementIndexName stayed as 'pimcore_data-object_card-odd', causing getIndexName() to
+     * double-prefix it into 'pimcore_data-object_pimcore_data-object_card-odd'.
+     */
+    public function testEnqueueBySelectQueryUpdatesElementIndexName(): void
+    {
+        /** @var IndexQueueRepository $repo */
+        $repo = $this->tester->grabService(IndexQueueRepository::class);
+
+        $object = TestHelper::createEmptyObject();
+        $elementId = $object->getId();
+        $elementType = ElementType::DATA_OBJECT->value;
+        $fullIndexName = 'pimcore_data-object_card-odd';
+        $shortIndexName = 'Card';
+
+        Db::get()->executeStatement(
+            'INSERT INTO generic_data_index_queue'
+            . ' (elementId, elementType, elementIndexName, operation, operationTime, dispatched)'
+            . ' VALUES (?, ?, ?, ?, ?, 0)',
+            [$elementId, $elementType, $fullIndexName, IndexQueueOperation::UPDATE->value, time() * 1000]
+        );
+
+        $this->assertEquals(
+            $fullIndexName,
+            Db::get()->fetchOne(
+                'SELECT elementIndexName FROM generic_data_index_queue WHERE elementId = ? AND elementType = ?',
+                [$elementId, $elementType]
+            )
+        );
+
+        $repo->enqueueBySelectQuery(
+            $repo->generateSelectQuery(
+                'objects',
+                [
+                    'elementId' => 'id',
+                    'elementType' => "'" . $elementType . "'",
+                    'elementIndexName' => "'" . $shortIndexName . "'",
+                    'operation' => "'" . IndexQueueOperation::DELETE->value . "'",
+                    'operationTime' => "'" . (string)(time() * 1000 + 1) . "'",
+                    'dispatched' => '0',
+                ],
+                ['id' => $elementId],
+                ['id']
+            )
+        );
+
+        $this->assertEquals(
+            $shortIndexName,
+            Db::get()->fetchOne(
+                'SELECT elementIndexName FROM generic_data_index_queue WHERE elementId = ? AND elementType = ?',
+                [$elementId, $elementType]
+            ),
+            'elementIndexName must be overwritten when an existing queue entry is updated via the INSERT IGNORE + UPDATE fallback path'
+        );
+    }
+
     private function checkAndDeleteElement(ElementInterface $element, string $indexName): void
     {
         $this->tester->checkIndexEntry($element->getId(), $indexName);
