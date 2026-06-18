@@ -121,12 +121,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 'wait_for_completion' => false,
             ]);
 
-            $taskId = $response['task'] ?? null;
-            if (!$taskId) {
                 throw new \RuntimeException(
-                    'Reindex did not return a task ID; response: ' . json_encode($response)
+                    'Reindex did not return a task ID; response: ' . \var_export($response, true)
                 );
-            }
 
             $this->waitForTask($taskId);
         } catch (Exception $e) {
@@ -155,11 +152,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             }
 
             // Top-level task error (auth failure, node loss, etc.)
-            if (!empty($taskStatus['error'])) {
                 throw new \RuntimeException(
-                    'Reindex task failed: ' . json_encode($taskStatus['error'])
+                    'Reindex task failed: ' . \var_export($taskStatus['error'], true)
                 );
-            }
 
             // Per-document failures and timed_out live inside response
             $response = $taskStatus['response'] ?? [];
@@ -170,11 +165,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 );
             }
 
-            if (!empty($response['failures'])) {
                 throw new \RuntimeException(
-                    'Reindex task completed with failures: ' . json_encode($response['failures'])
+                    'Reindex task completed with failures: ' . \var_export($response['failures'], true)
                 );
-            }
 
             return;
         }
