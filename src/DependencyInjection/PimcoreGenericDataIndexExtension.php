@@ -96,8 +96,10 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $definition->setArgument('$queueSettings', $indexSettings['queue_settings']);
 
         $definition = $container->getDefinition(SearchIndexServiceInterface::class);
-        $definition->setArgument('$reindexMaxPolls', $indexSettings['reindex_settings']['max_polls']);
-        $definition->setArgument('$reindexPollIntervalSeconds', $indexSettings['reindex_settings']['poll_interval']);
+        if ($definition->getClass() === \Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService::class) {
+            $definition->setArgument('$reindexMaxPolls', $indexSettings['reindex_settings']['max_polls']);
+            $definition->setArgument('$reindexPollIntervalSeconds', $indexSettings['reindex_settings']['poll_interval']);
+        }
     }
 
     private function getIndexSettings(array $indexSettings): array

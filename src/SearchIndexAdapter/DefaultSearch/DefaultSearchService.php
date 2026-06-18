@@ -129,10 +129,13 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             );
         }
 
-        $this->waitForTask($taskId);
-
-        $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
-    }
+        try {
+            $this->waitForTask($taskId);
+            $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
+        } catch (\Throwable $e) {
+            $this->deleteIndex($newIndexName, true);
+            throw $e;
+        }
 
     /**
      * @throws ReindexFailedException
@@ -151,7 +154,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             // Top-level task error (auth failure, node loss, etc.)
             if (!empty($taskStatus['error'])) {
                 throw new ReindexFailedException(
-                    'Reindex task failed: ' . json_encode($taskStatus['error'], JSON_THROW_ON_ERROR)
+                    'Reindex task failed: ' . json_encode($taskStatus['error'], JSON_PARTIAL_OUTPUT_ON_ERROR)
                 );
             }
 
@@ -166,7 +169,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
             if (!empty($response['failures'])) {
                 throw new ReindexFailedException(
-                    'Reindex task completed with failures: ' . json_encode($response['failures'], JSON_THROW_ON_ERROR)
+                    'Reindex task completed with failures: ' . json_encode($response['failures'], JSON_PARTIAL_OUTPUT_ON_ERROR)
                 );
             }
 
@@ -185,24 +188,34 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     /**
      * @throws ReindexFailedException
      */
-private function fetchTaskStatus(string $taskId): array
-{
-    $client = $this->client;
+    private function fetchTaskStatus(string $taskId): array
+    {
+        $client = $this->client;
 
-    if (!\method_exists($client, 'getOriginalClient')) {
-        throw new ReindexFailedException(
-            'Task polling requires a client exposing getOriginalClient(); got ' . \get_class($client)
-        );
+        if (!\is_callable([$client, 'getOriginalClient'])) {
+            throw new ReindexFailedException(
+                'Task polling requires a client exposing getOriginalClient(); got ' . \get_class($client)
+            );
+        }
+
+        try {
+            $response = $client->getOriginalClient()->tasks()->get(['task_id' => $taskId]);
+        } catch (\Throwable $e) {
+            throw new ReindexFailedException(\sprintf('Failed to fetch status for reindex task %s', $taskId), 0, $e);
+        }
+
+        if (\is_object($response) && \method_exists($response, 'asArray')) {
+            $response = $response->asArray();
+        }
+
+        if (!\is_array($response)) {
+            throw new ReindexFailedException(
+                'Unexpected task status response type: ' . (\is_object($response) ? \get_class($response) : \gettype($response))
+            );
+        }
+
+        return $response;
     }
-
-    $originalClient = $client->getOriginalClient();
-    $response = $originalClient->tasks()->get(['task_id' => $taskId]);
-
-    // Elasticsearch PHP 8.x client returns a response object
-    return \is_object($response) && \method_exists($response, 'asArray')
-        ? $response->asArray()
-        : $response;
-}
 
     public function createIndex(string $indexName, ?array $mappings = null): DefaultSearchService
     {
