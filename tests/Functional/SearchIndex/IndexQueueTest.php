@@ -235,11 +235,11 @@ class IndexQueueTest extends Unit
         $fullIndexName = 'pimcore_data-object_card-odd';
         $shortIndexName = 'Card';
 
+        // createEmptyObject() enqueues the element automatically; overwrite elementIndexName with the
+        // stale full ES index name to reproduce the state set by enqueueByItemList (via HitData::getIndex()).
         Db::get()->executeStatement(
-            'INSERT INTO generic_data_index_queue'
-            . ' (elementId, elementType, elementIndexName, operation, operationTime, dispatched)'
-            . ' VALUES (?, ?, ?, ?, ?, 0)',
-            [$elementId, $elementType, $fullIndexName, IndexQueueOperation::UPDATE->value, time() * 1000]
+            'UPDATE generic_data_index_queue SET elementIndexName = ? WHERE elementId = ? AND elementType = ?',
+            [$fullIndexName, $elementId, $elementType]
         );
 
         $this->assertEquals(
