@@ -189,24 +189,24 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     /**
      * @throws ReindexFailedException
      */
-    private function fetchTaskStatus(string $taskId): array
-    {
-        $client = $this->client;
+private function fetchTaskStatus(string $taskId): array
+{
+    $client = $this->client;
 
-        if ($client instanceof OpenSearchClientInterface) {
-            return $client->getOriginalClient()->tasks()->get(['task_id' => $taskId]);
-        }
-
-        if ($client instanceof ElasticsearchClientInterface) {
-            // Elasticsearch PHP 8.x client returns a response object
-            return $client->getOriginalClient()->tasks()->get(['task_id' => $taskId])->asArray();
-        }
-
+    if (!\method_exists($client, 'getOriginalClient')) {
         throw new ReindexFailedException(
-            'Task polling requires OpenSearchClientInterface or ElasticsearchClientInterface; got ' .
-            \get_class($client)
+            'Task polling requires a client exposing getOriginalClient(); got ' . \get_class($client)
         );
     }
+
+    $originalClient = $client->getOriginalClient();
+    $response = $originalClient->tasks()->get(['task_id' => $taskId]);
+
+    // Elasticsearch PHP 8.x client returns a response object
+    return \is_object($response) && \method_exists($response, 'asArray')
+        ? $response->asArray()
+        : $response;
+}
 
     public function createIndex(string $indexName, ?array $mappings = null): DefaultSearchService
     {
