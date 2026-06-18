@@ -48,7 +48,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly SearchExecutionServiceInterface $searchExecutionService,
         private readonly IndexAliasServiceInterface $indexAliasService,
-        private readonly SearchClientInterface $client
+        private readonly SearchClientInterface $client,
+        private readonly int $reindexMaxPolls,
+        private readonly int $reindexPollIntervalSeconds,
     ) {}
 
     public function refreshIndex(string $indexName): array
@@ -132,22 +134,16 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
     }
 
-    private const TASK_POLL_INTERVAL_SECONDS = 5;
-
-    private const TASK_MAX_POLLS = 720;
-
-    // 720 × 5 s = 1 hour
-
     /**
      * @throws ReindexFailedException
      */
     private function waitForTask(string $taskId): void
     {
-        for ($poll = 0; $poll < self::TASK_MAX_POLLS; $poll++) {
+        for ($poll = 0; $poll < $this->reindexMaxPolls; $poll++) {
             $taskStatus = $this->fetchTaskStatus($taskId);
 
             if (empty($taskStatus['completed'])) {
-                sleep(self::TASK_POLL_INTERVAL_SECONDS);
+                sleep($this->reindexPollIntervalSeconds);
 
                 continue;
             }
@@ -181,7 +177,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             \sprintf(
                 'Reindex task %s did not complete within %d seconds',
                 $taskId,
-                self::TASK_MAX_POLLS * self::TASK_POLL_INTERVAL_SECONDS
+                $this->reindexMaxPolls * $this->reindexPollIntervalSeconds
             )
         );
     }
