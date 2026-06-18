@@ -26,7 +26,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Searc
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\ElasticsearchClientBundle\SearchClient\ElasticsearchClientInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Pimcore\Bundle\OpenSearchClientBundle\SearchClient\OpenSearchClientInterface;
 use Pimcore\SearchClient\SearchClientInterface;
 use Psr\Log\LogLevel;
 
@@ -120,9 +122,13 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             ]);
 
             $taskId = $response['task'] ?? null;
-            if ($taskId) {
-                $this->waitForTask($taskId);
+            if (!$taskId) {
+                throw new \RuntimeException(
+                    'Reindex did not return a task ID; response: ' . json_encode($response)
+                );
             }
+
+            $this->waitForTask($taskId);
         } catch (Exception $e) {
             throw $e;
         }
@@ -130,27 +136,80 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
     }
 
+    private const int TASK_POLL_INTERVAL_SECONDS = 5;
+
+    private const int TASK_MAX_POLLS = 720; // 720 × 5 s = 1 hour
+
     /**
      * @throws \RuntimeException
      */
     private function waitForTask(string $taskId): void
     {
-        while (true) {
-            $taskStatus = $this->client->getOriginalClient()->tasks()->get([
-                'task_id' => $taskId,
-            ])->asArray();
+        for ($poll = 0; $poll < self::TASK_MAX_POLLS; $poll++) {
+            $taskStatus = $this->fetchTaskStatus($taskId);
 
-            if (!empty($taskStatus['completed'])) {
-                if (!empty($taskStatus['error'])) {
-                    throw new \RuntimeException(
-                        'Reindex task failed: ' . json_encode($taskStatus['error'])
-                    );
-                }
-                break;
+            if (empty($taskStatus['completed'])) {
+                sleep(self::TASK_POLL_INTERVAL_SECONDS);
+
+                continue;
             }
 
-            sleep(5);
+            // Top-level task error (auth failure, node loss, etc.)
+            if (!empty($taskStatus['error'])) {
+                throw new \RuntimeException(
+                    'Reindex task failed: ' . json_encode($taskStatus['error'])
+                );
+            }
+
+            // Per-document failures and timed_out live inside response
+            $response = $taskStatus['response'] ?? [];
+
+            if (!empty($response['timed_out'])) {
+                throw new \RuntimeException(
+                    'Reindex task timed out server-side for task ' . $taskId
+                );
+            }
+
+            if (!empty($response['failures'])) {
+                throw new \RuntimeException(
+                    'Reindex task completed with failures: ' . json_encode($response['failures'])
+                );
+            }
+
+            return;
         }
+
+        throw new \RuntimeException(
+            \sprintf(
+                'Reindex task %s did not complete within %d seconds',
+                $taskId,
+                self::TASK_MAX_POLLS * self::TASK_POLL_INTERVAL_SECONDS
+            )
+        );
+    }
+
+    /**
+     * @throws \RuntimeException
+     */
+    private function fetchTaskStatus(string $taskId): array
+    {
+        $client = $this->client;
+
+        if ($client instanceof OpenSearchClientInterface) {
+            // OpenSearch PHP client returns a plain array
+            $raw = $client->getOriginalClient()->tasks()->get(['task_id' => $taskId]);
+
+            return \is_array($raw) ? $raw : $raw->asArray();
+        }
+
+        if ($client instanceof ElasticsearchClientInterface) {
+            // Elasticsearch PHP 8.x client returns a response object
+            return $client->getOriginalClient()->tasks()->get(['task_id' => $taskId])->asArray();
+        }
+
+        throw new \RuntimeException(
+            'Task polling requires OpenSearchClientInterface or ElasticsearchClientInterface; got ' . \get_class($client)
+        );
     }
 
     public function createIndex(string $indexName, ?array $mappings = null): DefaultSearchService
