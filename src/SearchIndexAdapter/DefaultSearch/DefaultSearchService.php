@@ -114,24 +114,20 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             ],
         ];
 
-        try {
-            // Submit reindex as async task to avoid HTTP timeout on large indices
-            $response = $this->client->reIndex([
-                'body' => $body,
-                'wait_for_completion' => false,
-            ]);
+        // Submit reindex as async task to avoid HTTP timeout on large indices
+        $response = $this->client->reIndex([
+            'body' => $body,
+            'wait_for_completion' => false,
+        ]);
 
-            $taskId = $response['task'] ?? null;
-            if (!$taskId) {
-                throw new \RuntimeException(
-                    'Reindex did not return a task ID; response: ' . json_encode($response, JSON_THROW_ON_ERROR)
-                );
-            }
-
-            $this->waitForTask($taskId);
-        } catch (Exception $e) {
-            throw $e;
+        $taskId = $response['task'] ?? null;
+        if (!$taskId) {
+            throw new \RuntimeException(
+                'Reindex did not return a task ID; response: ' . json_encode($response, JSON_THROW_ON_ERROR)
+            );
         }
+
+        $this->waitForTask($taskId);
 
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
     }
@@ -155,6 +151,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             }
 
             // Top-level task error (auth failure, node loss, etc.)
+            if (!empty($taskStatus['error'])) {
                 throw new \RuntimeException(
                     'Reindex task failed: ' . json_encode($taskStatus['error'], JSON_THROW_ON_ERROR)
                 );
@@ -165,7 +162,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
             if (!empty($response['timed_out'])) {
                 throw new \RuntimeException(
-                    'Reindex task timed out server-side for task ' . $taskId
+                    "Reindex task timed out server-side for task $taskId"
                 );
             }
 
