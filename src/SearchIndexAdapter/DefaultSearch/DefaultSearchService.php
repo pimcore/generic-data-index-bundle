@@ -114,20 +114,20 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             ],
         ];
 
-        // Submit reindex as async task to avoid HTTP timeout on large indices
-        $response = $this->client->reIndex([
-            'body' => $body,
-            'wait_for_completion' => false,
-        ]);
-
-        $taskId = $response['task'] ?? null;
-        if (!$taskId) {
-            throw new ReindexFailedException(
-                'Reindex did not return a task ID; response: ' . json_encode($response, JSON_THROW_ON_ERROR)
-            );
-        }
-
         try {
+            // Submit reindex as async task to avoid HTTP timeout on large indices
+            $response = $this->client->reIndex([
+                'body' => $body,
+                'wait_for_completion' => false,
+            ]);
+
+            $taskId = $response['task'] ?? null;
+            if (!$taskId) {
+                throw new ReindexFailedException(
+                    'Reindex did not return a task ID; response: ' . json_encode($response, JSON_PARTIAL_OUTPUT_ON_ERROR)
+                );
+            }
+
             $this->waitForTask($taskId);
             $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
         } catch (\Throwable $e) {
