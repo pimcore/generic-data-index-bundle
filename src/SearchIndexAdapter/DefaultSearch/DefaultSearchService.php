@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 
 use Exception;
 use JsonException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Debug\SearchInformation;
@@ -48,8 +49,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         private readonly SearchExecutionServiceInterface $searchExecutionService,
         private readonly IndexAliasServiceInterface $indexAliasService,
         private readonly SearchClientInterface $client
-    ) {
-    }
+    ) {}
 
     public function refreshIndex(string $indexName): array
     {
@@ -122,8 +122,8 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
         $taskId = $response['task'] ?? null;
         if (!$taskId) {
-            throw new \RuntimeException(
-                'Reindex did not return a task ID; response: ' . (json_encode($response) ?: ('json_encode error: ' . json_last_error_msg()))
+            throw new ReindexFailedException(
+                'Reindex did not return a task ID; response: ' . json_encode($response, JSON_THROW_ON_ERROR)
             );
         }
 
@@ -134,10 +134,12 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
     private const TASK_POLL_INTERVAL_SECONDS = 5;
 
-    private const TASK_MAX_POLLS = 720; // 720 × 5 s = 1 hour
+    private const TASK_MAX_POLLS = 720;
+
+    // 720 × 5 s = 1 hour
 
     /**
-     * @throws \RuntimeException
+     * @throws ReindexFailedException
      */
     private function waitForTask(string $taskId): void
     {
@@ -152,7 +154,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
             // Top-level task error (auth failure, node loss, etc.)
             if (!empty($taskStatus['error'])) {
-                throw new \RuntimeException(
+                throw new ReindexFailedException(
                     'Reindex task failed: ' . json_encode($taskStatus['error'], JSON_THROW_ON_ERROR)
                 );
             }
@@ -161,13 +163,13 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             $response = $taskStatus['response'] ?? [];
 
             if (!empty($response['timed_out'])) {
-                throw new \RuntimeException(
+                throw new ReindexFailedException(
                     "Reindex task timed out server-side for task $taskId"
                 );
             }
 
             if (!empty($response['failures'])) {
-                throw new \RuntimeException(
+                throw new ReindexFailedException(
                     'Reindex task completed with failures: ' . json_encode($response['failures'], JSON_THROW_ON_ERROR)
                 );
             }
@@ -175,7 +177,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             return;
         }
 
-        throw new \RuntimeException(
+        throw new ReindexFailedException(
             \sprintf(
                 'Reindex task %s did not complete within %d seconds',
                 $taskId,
@@ -185,7 +187,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     }
 
     /**
-     * @throws \RuntimeException
+     * @throws ReindexFailedException
      */
     private function fetchTaskStatus(string $taskId): array
     {
@@ -200,8 +202,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             return $client->getOriginalClient()->tasks()->get(['task_id' => $taskId])->asArray();
         }
 
-        throw new \RuntimeException(
-            'Task polling requires OpenSearchClientInterface or ElasticsearchClientInterface; got ' . \get_class($client)
+        throw new ReindexFailedException(
+            'Task polling requires OpenSearchClientInterface or ElasticsearchClientInterface; got ' .
+            \get_class($client)
         );
     }
 
