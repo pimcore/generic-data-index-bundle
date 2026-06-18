@@ -232,9 +232,8 @@ class IndexQueueTest extends Unit
         $object = TestHelper::createEmptyObject();
         $elementId = $object->getId();
         $elementType = ElementType::DATA_OBJECT->value;
-        $fullIndexName = 'pimcore_data-object_card-odd';
-        $shortIndexName = 'Card';
-
+        $shortIndexName = $object->getClassName();
+        $fullIndexName = $this->searchIndexConfigService->getIndexName($shortIndexName, true) . '-odd';
         // createEmptyObject() enqueues the element automatically; overwrite elementIndexName with the
         // stale full ES index name to reproduce the state set by enqueueByItemList (via HitData::getIndex()).
         Db::get()->executeStatement(
