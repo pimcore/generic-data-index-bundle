@@ -106,7 +106,6 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $body = [
             'source' => [
                 'index' => $oldIndexName,
-
             ],
             'dest' => [
                 'index' => $newIndexName,
@@ -114,12 +113,44 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         ];
 
         try {
-            $this->client->reIndex(['body' => $body]);
+            // Submit reindex as async task to avoid HTTP timeout on large indices
+            $response = $this->client->reIndex([
+                'body' => $body,
+                'wait_for_completion' => false,
+            ]);
+
+            $taskId = $response['task'] ?? null;
+            if ($taskId) {
+                $this->waitForTask($taskId);
+            }
         } catch (Exception $e) {
             throw $e;
         }
 
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
+    }
+
+    /**
+     * @throws \RuntimeException
+     */
+    private function waitForTask(string $taskId): void
+    {
+        while (true) {
+            $taskStatus = $this->client->getOriginalClient()->tasks()->get([
+                'task_id' => $taskId,
+            ])->asArray();
+
+            if (!empty($taskStatus['completed'])) {
+                if (!empty($taskStatus['error'])) {
+                    throw new \RuntimeException(
+                        'Reindex task failed: ' . json_encode($taskStatus['error'])
+                    );
+                }
+                break;
+            }
+
+            sleep(5);
+        }
     }
 
     public function createIndex(string $indexName, ?array $mappings = null): DefaultSearchService
