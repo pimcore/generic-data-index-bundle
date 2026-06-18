@@ -331,29 +331,40 @@ final class IndexQueueRepository
         array $chunk,
         string $elementType,
         string $operation,
-        int $operationTime
+        int $operationTime,
+        ?string $elementIndexName = null,
     ): int {
         if (empty($chunk)) {
             return 0;
         }
 
         $placeholders = str_repeat('?,', count($chunk) - 1) . '?';
-        $updateSql = sprintf(
-            'UPDATE %s SET %s = ?, %s = ?, %s = 0 WHERE %s IN (%s) AND %s = ?',
-            $this->connection->quoteIdentifier(IndexQueue::TABLE),
+
+        $setClauses = sprintf(
+            '%s = ?, %s = ?, %s = 0',
             $this->connection->quoteIdentifier('operation'),
             $this->connection->quoteIdentifier('operationTime'),
             $this->connection->quoteIdentifier('dispatched'),
+        );
+
+        if ($elementIndexName !== null) {
+            $setClauses .= sprintf(', %s = ?', $this->connection->quoteIdentifier('elementIndexName'));
+        }
+
+        $updateSql = sprintf(
+            'UPDATE %s SET %s WHERE %s IN (%s) AND %s = ?',
+            $this->connection->quoteIdentifier(IndexQueue::TABLE),
+            $setClauses,
             $this->connection->quoteIdentifier('elementId'),
             $placeholders,
             $this->connection->quoteIdentifier('elementType')
         );
 
-        $updateParams = array_merge(
-            [$operation, $operationTime],
-            $chunk,
-            [$elementType]
-        );
+        $updateParams = [$operation, $operationTime];
+        if ($elementIndexName !== null) {
+            $updateParams[] = $elementIndexName;
+        }
+        $updateParams = array_merge($updateParams, $chunk, [$elementType]);
 
         return $this->connection->executeStatement($updateSql, $updateParams);
     }
@@ -484,7 +495,8 @@ final class IndexQueueRepository
                     $ids,
                     $elementType,
                     $operation,
-                    $operationTime
+                    $operationTime,
+                    $elementIndexName,
                 );
             }
 
