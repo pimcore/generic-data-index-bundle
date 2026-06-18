@@ -229,6 +229,7 @@ final class DefaultSearchServiceReindexTest extends Unit
         } catch (ReindexFailedException) {
             // new index (test_index-even, because no existing alias → currentVersion='' → newVersion=even)
             $this->assertContains('test_index-even', $deletedIndices, 'New index must be cleaned up on failure');
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -237,12 +238,12 @@ final class DefaultSearchServiceReindexTest extends Unit
 
     public function testReindexNormalisesObjectTaskResponseViaAsArray(): void
     {
-        $responseObject = new class {
-            public function asArray(): array
-            {
-                return ['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]];
-            }
-        };
+        $responseObject = $this->getMockBuilder(\stdClass::class)
+            ->addMethods(['asArray'])
+            ->getMock();
+        $responseObject->method('asArray')->willReturn(
+            ['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]]
+        );
 
         $tasksNamespace = $this->getMockBuilder(\stdClass::class)
             ->addMethods(['get'])
@@ -310,7 +311,7 @@ final class DefaultSearchServiceReindexTest extends Unit
         $client->method('reIndex')->willReturn(['task' => $taskId]);
         $client->method('getOriginalClient')->willReturn($originalClient);
         $client->method('deleteIndex')->willReturnCallback(
-            $onDeleteIndex ?? static fn (array $params): array => []
+            $onDeleteIndex ?? static fn(array $params): array => []
         );
 
         if ($withAliasSwitchSupport) {
