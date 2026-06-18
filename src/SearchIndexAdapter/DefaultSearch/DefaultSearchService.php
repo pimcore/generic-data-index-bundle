@@ -142,7 +142,15 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     private function waitForTask(string $taskId): void
     {
         for ($poll = 0; $poll < self::TASK_MAX_POLLS; $poll++) {
-            $taskStatus = $this->fetchTaskStatus($taskId);
+            try {
+                $taskStatus = $this->fetchTaskStatus($taskId);
+            } catch (\Throwable $e) {
+                throw new \RuntimeException(
+                    \sprintf('Failed to fetch reindex task status for task %s: %s', $taskId, $e->getMessage()),
+                    0,
+                    $e
+                );
+            }
 
             if (empty($taskStatus['completed'])) {
                 sleep(self::TASK_POLL_INTERVAL_SECONDS);
