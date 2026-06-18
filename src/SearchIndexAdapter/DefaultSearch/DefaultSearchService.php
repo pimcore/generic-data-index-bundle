@@ -142,15 +142,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     private function waitForTask(string $taskId): void
     {
         for ($poll = 0; $poll < self::TASK_MAX_POLLS; $poll++) {
-            try {
-                $taskStatus = $this->fetchTaskStatus($taskId);
-            } catch (\Throwable $e) {
-                throw new \RuntimeException(
-                    \sprintf('Failed to fetch reindex task status for task %s: %s', $taskId, $e->getMessage()),
-                    0,
-                    $e
-                );
-            }
+            $taskStatus = $this->fetchTaskStatus($taskId);
 
             if (empty($taskStatus['completed'])) {
                 sleep(self::TASK_POLL_INTERVAL_SECONDS);
@@ -161,7 +153,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             // Top-level task error (auth failure, node loss, etc.)
             if (!empty($taskStatus['error'])) {
                 throw new \RuntimeException(
-                    'Reindex task failed: ' . (json_encode($taskStatus['error']) ?: ('json_encode error: ' . json_last_error_msg()))
+                    'Reindex task failed: ' . json_encode($taskStatus['error'], JSON_THROW_ON_ERROR)
                 );
             }
 
@@ -176,7 +168,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
             if (!empty($response['failures'])) {
                 throw new \RuntimeException(
-                    'Reindex task completed with failures: ' . (json_encode($response['failures']) ?: ('json_encode error: ' . json_last_error_msg()))
+                    'Reindex task completed with failures: ' . json_encode($response['failures'], JSON_THROW_ON_ERROR)
                 );
             }
 
