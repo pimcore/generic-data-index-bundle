@@ -123,7 +123,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $taskId = $response['task'] ?? null;
         if (!$taskId) {
             throw new \RuntimeException(
-                'Reindex did not return a task ID; response: ' . json_encode($response, JSON_THROW_ON_ERROR)
+                'Reindex did not return a task ID; response: ' . (json_encode($response) ?: ('json_encode error: ' . json_last_error_msg()))
             );
         }
 
@@ -132,9 +132,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
     }
 
-    private const int TASK_POLL_INTERVAL_SECONDS = 5;
+    private const TASK_POLL_INTERVAL_SECONDS = 5;
 
-    private const int TASK_MAX_POLLS = 720; // 720 × 5 s = 1 hour
+    private const TASK_MAX_POLLS = 720; // 720 × 5 s = 1 hour
 
     /**
      * @throws \RuntimeException
@@ -153,7 +153,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             // Top-level task error (auth failure, node loss, etc.)
             if (!empty($taskStatus['error'])) {
                 throw new \RuntimeException(
-                    'Reindex task failed: ' . json_encode($taskStatus['error'], JSON_THROW_ON_ERROR)
+                    'Reindex task failed: ' . (json_encode($taskStatus['error']) ?: ('json_encode error: ' . json_last_error_msg()))
                 );
             }
 
@@ -168,7 +168,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
             if (!empty($response['failures'])) {
                 throw new \RuntimeException(
-                    'Reindex task completed with failures: ' . json_encode($response['failures'], JSON_THROW_ON_ERROR)
+                    'Reindex task completed with failures: ' . (json_encode($response['failures']) ?: ('json_encode error: ' . json_last_error_msg()))
                 );
             }
 
