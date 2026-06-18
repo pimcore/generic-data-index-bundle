@@ -227,9 +227,8 @@ final class DefaultSearchServiceReindexTest extends Unit
             $this->createService(client: $client)->reindex('test_index', []);
             $this->fail('Expected ReindexFailedException');
         } catch (ReindexFailedException) {
-            // new index (test_index-odd, because no existing alias → newVersion=odd)
-            $this->assertContains('test_index-odd', $deletedIndices, 'New index must be cleaned up on failure');
-        }
+            // new index (test_index-even, because no existing alias → currentVersion='' → newVersion=even)
+            $this->assertContains('test_index-even', $deletedIndices, 'New index must be cleaned up on failure');
     }
 
     // -------------------------------------------------------------------------
@@ -290,7 +289,7 @@ final class DefaultSearchServiceReindexTest extends Unit
             ->addMethods(['get'])
             ->getMock();
         $tasksNamespace->method('get')
-            ->willReturnCallback(function () use ($taskResponses, &$callCount) {
+            ->willReturnCallback(function (array $params) use ($taskResponses, &$callCount) {
                 $response = $taskResponses[$callCount] ?? end($taskResponses);
                 $callCount++;
 
@@ -306,12 +305,12 @@ final class DefaultSearchServiceReindexTest extends Unit
             ->addMethods(['getOriginalClient'])
             ->getMock();
 
-        $client->method('existsIndex')->willReturn(false);
+        $client->method('existsIndex')->willReturn(true);
         $client->method('createIndex')->willReturn([]);
         $client->method('reIndex')->willReturn(['task' => $taskId]);
         $client->method('getOriginalClient')->willReturn($originalClient);
         $client->method('deleteIndex')->willReturnCallback(
-            $onDeleteIndex ?? static fn() => []
+            $onDeleteIndex ?? static fn (array $params): array => []
         );
 
         if ($withAliasSwitchSupport) {
