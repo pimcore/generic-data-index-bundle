@@ -19,7 +19,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Defau
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
-use Pimcore\Bundle\OpenSearchClientBundle\SearchClient\OpenSearchClientInterface;
 use Pimcore\SearchClient\SearchClientInterface;
 use Psr\Log\NullLogger;
 
@@ -239,24 +238,20 @@ final class DefaultSearchServiceReindexTest extends Unit
 
     public function testReindexNormalisesObjectTaskResponseViaAsArray(): void
     {
-        $responseObject = new ReindexTestAsArrayResponseStub(
-            ['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]]
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub(
+                new ReindexTestTasksStub([
+                    new ReindexTestAsArrayResponseStub(
+                        ['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]]
+                    ),
+                ])
+            ),
+            taskId: 'node:99',
+            withAliasSwitchSupport: true,
+            existsIndexValue: false,
         );
 
-        $originalClientStub = new ReindexTestOriginalClientStub(
-            new ReindexTestTasksStub([$responseObject])
-        );
-
-        $client = $this->getMockBuilder(OpenSearchClientInterface::class)->getMock();
-        $client->method('existsIndex')->willReturn(false);
-        $client->method('createIndex')->willReturn([]);
-        $client->method('reIndex')->willReturn(['task' => 'node:99']);
-        $client->method('getOriginalClient')->willReturn($originalClientStub);
-        $client->method('updateIndexAliases')->willReturn(['acknowledged' => true]);
-        $client->method('deleteIndex')->willReturn([]);
-
-        $service = $this->createService(client: $client);
-        $service->reindex('test_index', []);
+        $this->createService(client: $client)->reindex('test_index', []);
         $this->assertTrue(true);
     }
 
@@ -265,10 +260,8 @@ final class DefaultSearchServiceReindexTest extends Unit
     // -------------------------------------------------------------------------
 
     /**
-     * Builds a client mock that sequences through $taskResponses on each tasks()->get() call,
-     * and optionally supports alias switching for happy-path tests.
-     *
-     * Uses OpenSearchClientInterface (which declares getOriginalClient()) so no addMethods() is needed.
+     * Builds a client stub that sequences through $taskResponses on each tasks()->get() call.
+     * Uses a concrete stub (not a PHPUnit mock) to avoid return-type enforcement on getOriginalClient().
      */
     private function buildClientWithTaskResponses(
         string $taskId,
@@ -276,24 +269,14 @@ final class DefaultSearchServiceReindexTest extends Unit
         bool $withAliasSwitchSupport = false,
         ?\Closure $onDeleteIndex = null
     ): SearchClientInterface {
-        $originalClientStub = new ReindexTestOriginalClientStub(
-            new ReindexTestTasksStub($taskResponses)
+        return new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub(
+                new ReindexTestTasksStub($taskResponses)
+            ),
+            taskId: $taskId,
+            withAliasSwitchSupport: $withAliasSwitchSupport,
+            onDeleteIndex: $onDeleteIndex,
         );
-
-        $client = $this->getMockBuilder(OpenSearchClientInterface::class)->getMock();
-        $client->method('existsIndex')->willReturn(true);
-        $client->method('createIndex')->willReturn([]);
-        $client->method('reIndex')->willReturn(['task' => $taskId]);
-        $client->method('getOriginalClient')->willReturn($originalClientStub);
-        $client->method('deleteIndex')->willReturnCallback(
-            $onDeleteIndex ?? static fn (array $params): array => []
-        );
-
-        if ($withAliasSwitchSupport) {
-            $client->method('updateIndexAliases')->willReturn(['acknowledged' => true]);
-        }
-
-        return $client;
     }
 
     private function createService(
@@ -317,16 +300,80 @@ final class DefaultSearchServiceReindexTest extends Unit
 }
 
 /**
- * Stubs for the task polling chain: client->getOriginalClient()->tasks()->get()
- * These replace addMethods()-based anonymous mocks that are not available in all PHPUnit versions.
+ * Concrete stub implementing SearchClientInterface with an extra getOriginalClient() method.
+ * Because getOriginalClient() is not declared in SearchClientInterface, PHPUnit's return-type
+ * enforcement never applies — the method can return any object needed by the test.
  */
+final class ReindexTestSearchClientStub implements SearchClientInterface
+{
+    public function __construct(
+        private readonly object $originalClient,
+        private readonly string $taskId,
+        private readonly bool $withAliasSwitchSupport = false,
+        private readonly ?\Closure $onDeleteIndex = null,
+        private readonly bool $existsIndexValue = true,
+    ) {}
+
+    /** Duck-typed: not in SearchClientInterface, so no PHPUnit return-type check */
+    public function getOriginalClient(): object
+    {
+        return $this->originalClient;
+    }
+
+    public function existsIndex(array $_params): bool
+    {
+        return $this->existsIndexValue;
+    }
+
+    public function reIndex(array $_params): array
+    {
+        return ['task' => $this->taskId];
+    }
+
+    public function deleteIndex(array $params): array
+    {
+        return $this->onDeleteIndex !== null ? ($this->onDeleteIndex)($params) : [];
+    }
+
+    public function updateIndexAliases(array $_params): array
+    {
+        return $this->withAliasSwitchSupport ? ['acknowledged' => true] : [];
+    }
+
+    public function create(array $_params): array { return []; }
+    public function search(array $_params): array { return []; }
+    public function get(array $_params): array { return []; }
+    public function exists(array $_params): bool { return false; }
+    public function count(array $_params): array { return []; }
+    public function index(array $_params): array { return []; }
+    public function bulk(array $_params): array { return []; }
+    public function delete(array $_params): array { return []; }
+    public function updateByQuery(array $_params): array { return []; }
+    public function deleteByQuery(array $_params): array { return []; }
+    public function createIndex(array $_params): array { return []; }
+    public function openIndex(array $_params): array { return []; }
+    public function closeIndex(array $_params): array { return []; }
+    public function getAllIndices(array $_params): array { return []; }
+    public function refreshIndex(array $_params = []): array { return []; }
+    public function flushIndex(array $_params = []): array { return []; }
+    public function existsIndexAlias(array $_params): bool { return false; }
+    public function getIndexAlias(array $_params): array { return []; }
+    public function deleteIndexAlias(array $_params): array { return []; }
+    public function getAllIndexAliases(array $_params): array { return []; }
+    public function putIndexMapping(array $_params): array { return []; }
+    public function getIndexMapping(array $_params): array { return []; }
+    public function getIndexSettings(array $_params): array { return []; }
+    public function putIndexSettings(array $_params): array { return []; }
+    public function getIndexStats(array $_params): array { return []; }
+}
+
+/** Stubs for the task polling chain: getOriginalClient()->tasks()->get() */
 final class ReindexTestTasksStub
 {
     private int $callCount = 0;
 
     public function __construct(private readonly array $responses) {}
 
-    /** @return array|object */
     public function get(array $params): mixed
     {
         $response = $this->responses[$this->callCount] ?? end($this->responses);
