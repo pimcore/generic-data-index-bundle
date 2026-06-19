@@ -49,7 +49,8 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         private readonly SearchClientInterface $client,
         private readonly int $reindexMaxPolls,
         private readonly int $reindexPollIntervalSeconds,
-    ) {}
+    ) {
+    }
 
     public function refreshIndex(string $indexName): array
     {
@@ -132,6 +133,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
         } catch (\Throwable $e) {
             $this->deleteIndex($newIndexName, true);
+
             throw $e;
         }
     }

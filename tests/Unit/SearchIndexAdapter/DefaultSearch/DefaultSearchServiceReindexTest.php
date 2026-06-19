@@ -312,7 +312,8 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
         private readonly bool $withAliasSwitchSupport = false,
         private readonly ?\Closure $onDeleteIndex = null,
         private readonly bool $existsIndexValue = true,
-    ) {}
+    ) {
+    }
 
     /** Duck-typed: not in SearchClientInterface, so no PHPUnit return-type check */
     public function getOriginalClient(): object
@@ -340,31 +341,130 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
         return $this->withAliasSwitchSupport ? ['acknowledged' => true] : [];
     }
 
-    public function create(array $_params): array { return []; }
-    public function search(array $_params): array { return []; }
-    public function get(array $_params): array { return []; }
-    public function exists(array $_params): bool { return false; }
-    public function count(array $_params): array { return []; }
-    public function index(array $_params): array { return []; }
-    public function bulk(array $_params): array { return []; }
-    public function delete(array $_params): array { return []; }
-    public function updateByQuery(array $_params): array { return []; }
-    public function deleteByQuery(array $_params): array { return []; }
-    public function createIndex(array $_params): array { return []; }
-    public function openIndex(array $_params): array { return []; }
-    public function closeIndex(array $_params): array { return []; }
-    public function getAllIndices(array $_params): array { return []; }
-    public function refreshIndex(array $_params = []): array { return []; }
-    public function flushIndex(array $_params = []): array { return []; }
-    public function existsIndexAlias(array $_params): bool { return false; }
-    public function getIndexAlias(array $_params): array { return []; }
-    public function deleteIndexAlias(array $_params): array { return []; }
-    public function getAllIndexAliases(array $_params): array { return []; }
-    public function putIndexMapping(array $_params): array { return []; }
-    public function getIndexMapping(array $_params): array { return []; }
-    public function getIndexSettings(array $_params): array { return []; }
-    public function putIndexSettings(array $_params): array { return []; }
-    public function getIndexStats(array $_params): array { return []; }
+    public function create(array $_params): array
+    {
+        return [];
+    }
+
+    public function search(array $_params): array
+    {
+        return [];
+    }
+
+    public function get(array $_params): array
+    {
+        return [];
+    }
+
+    public function exists(array $_params): bool
+    {
+        return false;
+    }
+
+    public function count(array $_params): array
+    {
+        return [];
+    }
+
+    public function index(array $_params): array
+    {
+        return [];
+    }
+
+    public function bulk(array $_params): array
+    {
+        return [];
+    }
+
+    public function delete(array $_params): array
+    {
+        return [];
+    }
+
+    public function updateByQuery(array $_params): array
+    {
+        return [];
+    }
+
+    public function deleteByQuery(array $_params): array
+    {
+        return [];
+    }
+
+    public function createIndex(array $_params): array
+    {
+        return [];
+    }
+
+    public function openIndex(array $_params): array
+    {
+        return [];
+    }
+
+    public function closeIndex(array $_params): array
+    {
+        return [];
+    }
+
+    public function getAllIndices(array $_params): array
+    {
+        return [];
+    }
+
+    public function refreshIndex(array $_params = []): array
+    {
+        return [];
+    }
+
+    public function flushIndex(array $_params = []): array
+    {
+        return [];
+    }
+
+    public function existsIndexAlias(array $_params): bool
+    {
+        return false;
+    }
+
+    public function getIndexAlias(array $_params): array
+    {
+        return [];
+    }
+
+    public function deleteIndexAlias(array $_params): array
+    {
+        return [];
+    }
+
+    public function getAllIndexAliases(array $_params): array
+    {
+        return [];
+    }
+
+    public function putIndexMapping(array $_params): array
+    {
+        return [];
+    }
+
+    public function getIndexMapping(array $_params): array
+    {
+        return [];
+    }
+
+    public function getIndexSettings(array $_params): array
+    {
+        return [];
+    }
+
+    public function putIndexSettings(array $_params): array
+    {
+        return [];
+    }
+
+    public function getIndexStats(array $_params): array
+    {
+        return [];
+    }
 }
 
 /** Stubs for the task polling chain: getOriginalClient()->tasks()->get() */
@@ -372,7 +472,9 @@ final class ReindexTestTasksStub
 {
     private int $callCount = 0;
 
-    public function __construct(private readonly array $responses) {}
+    public function __construct(private readonly array $responses)
+    {
+    }
 
     public function get(array $params): mixed
     {
@@ -385,7 +487,9 @@ final class ReindexTestTasksStub
 
 final class ReindexTestOriginalClientStub
 {
-    public function __construct(private readonly ReindexTestTasksStub $tasksStub) {}
+    public function __construct(private readonly ReindexTestTasksStub $tasksStub)
+    {
+    }
 
     public function tasks(): ReindexTestTasksStub
     {
@@ -395,7 +499,9 @@ final class ReindexTestOriginalClientStub
 
 final class ReindexTestAsArrayResponseStub
 {
-    public function __construct(private readonly array $data) {}
+    public function __construct(private readonly array $data)
+    {
+    }
 
     public function asArray(): array
     {
