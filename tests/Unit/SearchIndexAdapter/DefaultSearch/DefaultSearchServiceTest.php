@@ -109,12 +109,16 @@ final class DefaultSearchServiceTest extends Unit
         ?SearchExecutionServiceInterface $searchExecutionService = null,
         ?IndexAliasServiceInterface $indexAliasService = null,
         ?SearchClientInterface $client = null,
+        int $reindexMaxPolls = 10,
+        int $reindexPollIntervalSeconds = 5,
     ): DefaultSearchService {
         return new DefaultSearchService(
             $configService ?? $this->makeEmpty(SearchIndexConfigServiceInterface::class),
             $searchExecutionService ?? $this->makeEmpty(SearchExecutionServiceInterface::class),
             $indexAliasService ?? $this->makeEmpty(IndexAliasServiceInterface::class),
             $client ?? $this->makeEmpty(SearchClientInterface::class),
+            $reindexMaxPolls,
+            $reindexPollIntervalSeconds,
         );
     }
 }
