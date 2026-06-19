@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Defau
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\OpenSearchClientBundle\SearchClient\OpenSearchClientInterface;
 use Pimcore\SearchClient\SearchClientInterface;
 use Psr\Log\NullLogger;
 
@@ -238,30 +239,19 @@ final class DefaultSearchServiceReindexTest extends Unit
 
     public function testReindexNormalisesObjectTaskResponseViaAsArray(): void
     {
-        $responseObject = $this->getMockBuilder(\stdClass::class)
-            ->addMethods(['asArray'])
-            ->getMock();
-        $responseObject->method('asArray')->willReturn(
+        $responseObject = new ReindexTestAsArrayResponseStub(
             ['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]]
         );
 
-        $tasksNamespace = $this->getMockBuilder(\stdClass::class)
-            ->addMethods(['get'])
-            ->getMock();
-        $tasksNamespace->method('get')->willReturn($responseObject);
+        $originalClientStub = new ReindexTestOriginalClientStub(
+            new ReindexTestTasksStub([$responseObject])
+        );
 
-        $originalClient = $this->getMockBuilder(\stdClass::class)
-            ->addMethods(['tasks'])
-            ->getMock();
-        $originalClient->method('tasks')->willReturn($tasksNamespace);
-
-        $client = $this->getMockBuilder(SearchClientInterface::class)
-            ->addMethods(['getOriginalClient'])
-            ->getMock();
+        $client = $this->getMockBuilder(OpenSearchClientInterface::class)->getMock();
         $client->method('existsIndex')->willReturn(false);
         $client->method('createIndex')->willReturn([]);
         $client->method('reIndex')->willReturn(['task' => 'node:99']);
-        $client->method('getOriginalClient')->willReturn($originalClient);
+        $client->method('getOriginalClient')->willReturn($originalClientStub);
         $client->method('updateIndexAliases')->willReturn(['acknowledged' => true]);
         $client->method('deleteIndex')->willReturn([]);
 
@@ -277,6 +267,8 @@ final class DefaultSearchServiceReindexTest extends Unit
     /**
      * Builds a client mock that sequences through $taskResponses on each tasks()->get() call,
      * and optionally supports alias switching for happy-path tests.
+     *
+     * Uses OpenSearchClientInterface (which declares getOriginalClient()) so no addMethods() is needed.
      */
     private function buildClientWithTaskResponses(
         string $taskId,
@@ -284,34 +276,17 @@ final class DefaultSearchServiceReindexTest extends Unit
         bool $withAliasSwitchSupport = false,
         ?\Closure $onDeleteIndex = null
     ): SearchClientInterface {
-        $callCount = 0;
+        $originalClientStub = new ReindexTestOriginalClientStub(
+            new ReindexTestTasksStub($taskResponses)
+        );
 
-        $tasksNamespace = $this->getMockBuilder(\stdClass::class)
-            ->addMethods(['get'])
-            ->getMock();
-        $tasksNamespace->method('get')
-            ->willReturnCallback(function (array $params) use ($taskResponses, &$callCount) {
-                $response = $taskResponses[$callCount] ?? end($taskResponses);
-                $callCount++;
-
-                return $response;
-            });
-
-        $originalClient = $this->getMockBuilder(\stdClass::class)
-            ->addMethods(['tasks'])
-            ->getMock();
-        $originalClient->method('tasks')->willReturn($tasksNamespace);
-
-        $client = $this->getMockBuilder(SearchClientInterface::class)
-            ->addMethods(['getOriginalClient'])
-            ->getMock();
-
+        $client = $this->getMockBuilder(OpenSearchClientInterface::class)->getMock();
         $client->method('existsIndex')->willReturn(true);
         $client->method('createIndex')->willReturn([]);
         $client->method('reIndex')->willReturn(['task' => $taskId]);
-        $client->method('getOriginalClient')->willReturn($originalClient);
+        $client->method('getOriginalClient')->willReturn($originalClientStub);
         $client->method('deleteIndex')->willReturnCallback(
-            $onDeleteIndex ?? static fn(array $params): array => []
+            $onDeleteIndex ?? static fn (array $params): array => []
         );
 
         if ($withAliasSwitchSupport) {
@@ -338,5 +313,45 @@ final class DefaultSearchServiceReindexTest extends Unit
         $service->setLogger(new NullLogger());
 
         return $service;
+    }
+}
+
+/**
+ * Stubs for the task polling chain: client->getOriginalClient()->tasks()->get()
+ * These replace addMethods()-based anonymous mocks that are not available in all PHPUnit versions.
+ */
+final class ReindexTestTasksStub
+{
+    private int $callCount = 0;
+
+    public function __construct(private readonly array $responses) {}
+
+    /** @return array|object */
+    public function get(array $params): mixed
+    {
+        $response = $this->responses[$this->callCount] ?? end($this->responses);
+        $this->callCount++;
+
+        return $response;
+    }
+}
+
+final class ReindexTestOriginalClientStub
+{
+    public function __construct(private readonly ReindexTestTasksStub $tasksStub) {}
+
+    public function tasks(): ReindexTestTasksStub
+    {
+        return $this->tasksStub;
+    }
+}
+
+final class ReindexTestAsArrayResponseStub
+{
+    public function __construct(private readonly array $data) {}
+
+    public function asArray(): array
+    {
+        return $this->data;
     }
 }
