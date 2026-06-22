@@ -104,6 +104,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $oldIndexName = $indexName . '-' . $currentIndexVersion;
         $newIndexName = $indexName . '-' . $newIndexVersion;
 
+        // Clean up stale target index from a previous failed run before creating to avoid conflicts
+        $this->deleteIndex($newIndexName, true);
+
         $this->createIndex($newIndexName, $mapping);
 
         $body = [
@@ -419,6 +422,17 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             throw new SwitchIndexAliasException('Switching Alias failed for ' . $newIndexName);
         }
 
-        $this->deleteIndex($oldIndexName);
+        // Delete both suffixes to avoid orphaned indices — skip only the newly aliased index
+        foreach (['-' . self::INDEX_VERSION_EVEN, '-' . self::INDEX_VERSION_ODD] as $suffix) {
+            $candidate = $aliasName . $suffix;
+            if ($candidate !== $newIndexName) {
+                $this->deleteIndex($candidate, true);
+            }
+        }
+
+        // Also delete the explicit old index name in case it differs (e.g. legacy naming)
+        if ($oldIndexName !== $newIndexName) {
+            $this->deleteIndex($oldIndexName, true);
+        }
     }
 }
