@@ -44,11 +44,11 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
 
         if ($forceCreateIndex || !$this->searchIndexService->existsAlias($aliasName)) {
             // Recover from corrupted state: both -even and -odd may exist without an alias
-            // (e.g. after a failed reindex). Keep -even as canonical; silently delete -odd.
-            // deleteIndex() is a no-op when the index does not exist, so this is always safe.
+            // (e.g. after a failed reindex). Delete both and recreate cleanly.
             if (!$this->searchIndexService->existsAlias($aliasName)) {
-                $oddIndex = $aliasName . '-' . DefaultSearchService::INDEX_VERSION_ODD;
-                $this->searchIndexService->deleteIndex($oddIndex, true);
+                foreach ([DefaultSearchService::INDEX_VERSION_EVEN, DefaultSearchService::INDEX_VERSION_ODD] as $version) {
+                    $this->searchIndexService->deleteIndex($aliasName . '-' . $version, true);
+                }
             }
 
             $this->createIndex($context, $aliasName);

@@ -104,9 +104,6 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $oldIndexName = $indexName . '-' . $currentIndexVersion;
         $newIndexName = $indexName . '-' . $newIndexVersion;
 
-        // Clean up stale target index from a previous failed run before creating to avoid conflicts
-        $this->deleteIndex($newIndexName, true);
-
         $this->createIndex($newIndexName, $mapping);
 
         $body = [
