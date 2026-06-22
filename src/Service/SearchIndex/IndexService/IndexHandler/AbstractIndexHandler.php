@@ -43,22 +43,12 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         $aliasName = $this->getAliasIndexName($context);
 
         if ($forceCreateIndex || !$this->searchIndexService->existsAlias($aliasName)) {
-            // Recover from corrupted state: both -even and -odd exist without an alias.
-            // Keep -even as canonical, delete -odd to restore consistency.
+            // Recover from corrupted state: both -even and -odd may exist without an alias
+            // (e.g. after a failed reindex). Keep -even as canonical; silently delete -odd.
+            // deleteIndex() is a no-op when the index does not exist, so this is always safe.
             if (!$this->searchIndexService->existsAlias($aliasName)) {
-                $evenIndex = $aliasName . '-' . DefaultSearchService::INDEX_VERSION_EVEN;
-                $oddIndex  = $aliasName . '-' . DefaultSearchService::INDEX_VERSION_ODD;
-                $evenExists = $this->searchIndexService->existsIndex($evenIndex);
-                $oddExists  = $this->searchIndexService->existsIndex($oddIndex);
-
-                if ($evenExists && $oddExists) {
-                    // Both exist without alias — corrupted state. Keep -even, delete -odd.
-                    $this->logger->warning(
-                        "Both $evenIndex and $oddIndex exist without an alias. " .
-                        "Deleting $oddIndex to restore consistency."
-                    );
-                    $this->searchIndexService->deleteIndex($oddIndex, true);
-                }
+                $oddIndex = $aliasName . '-' . DefaultSearchService::INDEX_VERSION_ODD;
+                $this->searchIndexService->deleteIndex($oddIndex, true);
             }
 
             $this->createIndex($context, $aliasName);
