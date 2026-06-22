@@ -187,7 +187,11 @@ final class DefaultSearchServiceReindexTest extends Unit
 
         // Must not throw
         $this->createService(client: $client)->reindex('test_index', []);
-        $this->assertSame(['test_index-odd', 'test_index-'], $deletedIndices);
+
+        // No alias exists → currentVersion='', newIndexName='test_index-even'.
+        // createIndex() silently deletes test_index-even before recreating it.
+        // switchIndexAliasAndCleanup() then deletes the orphaned test_index-odd suffix.
+        $this->assertSame(['test_index-even', 'test_index-odd'], $deletedIndices);
     }
 
     // -------------------------------------------------------------------------
