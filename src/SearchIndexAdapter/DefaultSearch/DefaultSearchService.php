@@ -427,9 +427,5 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             }
         }
 
-        // Also delete the explicit old index name in case it differs (e.g. legacy naming)
-        if ($oldIndexName !== $newIndexName) {
-            $this->deleteIndex($oldIndexName, true);
-        }
     }
 }
