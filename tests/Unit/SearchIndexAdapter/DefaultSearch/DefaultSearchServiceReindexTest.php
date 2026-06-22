@@ -170,17 +170,28 @@ final class DefaultSearchServiceReindexTest extends Unit
 
     public function testReindexSucceedsOnCleanCompletion(): void
     {
+        $deletedIndices = [];
+
         $client = $this->buildClientWithTaskResponses(
             taskId: 'node:1',
             taskResponses: [
                 ['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]],
             ],
-            withAliasSwitchSupport: true
+            withAliasSwitchSupport: true,
+            onDeleteIndex: static function (array $params) use (&$deletedIndices): array {
+                $deletedIndices[] = $params['index'];
+
+                return [];
+            }
         );
 
         // Must not throw
         $this->createService(client: $client)->reindex('test_index', []);
-        $this->assertTrue(true); // reached without exception
+
+        // No alias exists → currentVersion='', newIndexName='test_index-even'.
+        // createIndex() silently deletes test_index-even before recreating it.
+        // switchIndexAliasAndCleanup() then deletes the orphaned test_index-odd suffix.
+        $this->assertSame(['test_index-even', 'test_index-odd'], $deletedIndices);
     }
 
     // -------------------------------------------------------------------------

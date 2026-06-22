@@ -419,6 +419,13 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             throw new SwitchIndexAliasException('Switching Alias failed for ' . $newIndexName);
         }
 
-        $this->deleteIndex($oldIndexName);
+        // Delete both suffixes to avoid orphaned indices — skip only the newly aliased index
+        foreach (['-' . self::INDEX_VERSION_EVEN, '-' . self::INDEX_VERSION_ODD] as $suffix) {
+            $candidate = $aliasName . $suffix;
+            if ($candidate !== $newIndexName) {
+                $this->deleteIndex($candidate, true);
+            }
+        }
+
     }
 }

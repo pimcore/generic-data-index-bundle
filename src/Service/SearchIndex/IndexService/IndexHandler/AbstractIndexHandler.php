@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Exception;
 use JsonException;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -42,6 +43,15 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         $aliasName = $this->getAliasIndexName($context);
 
         if ($forceCreateIndex || !$this->searchIndexService->existsAlias($aliasName)) {
+            // Recover from corrupted state: both -even and -odd may exist without an alias
+            // (e.g. after a failed reindex). Delete both and recreate cleanly.
+            if (!$this->searchIndexService->existsAlias($aliasName)) {
+                $versions = [DefaultSearchService::INDEX_VERSION_EVEN, DefaultSearchService::INDEX_VERSION_ODD];
+                foreach ($versions as $version) {
+                    $this->searchIndexService->deleteIndex($aliasName . '-' . $version, true);
+                }
+            }
+
             $this->createIndex($context, $aliasName);
         }
 
