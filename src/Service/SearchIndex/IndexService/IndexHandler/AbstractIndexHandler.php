@@ -46,7 +46,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             // Recover from corrupted state: both -even and -odd may exist without an alias
             // (e.g. after a failed reindex). Delete both and recreate cleanly.
             if (!$this->searchIndexService->existsAlias($aliasName)) {
-                foreach ([DefaultSearchService::INDEX_VERSION_EVEN, DefaultSearchService::INDEX_VERSION_ODD] as $version) {
+                $versions = [DefaultSearchService::INDEX_VERSION_EVEN, DefaultSearchService::INDEX_VERSION_ODD];
+                foreach ($versions as $version) {
                     $this->searchIndexService->deleteIndex($aliasName . '-' . $version, true);
                 }
             }
