@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 use Exception;
 use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\SearchFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Debug\SearchInformation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
@@ -29,6 +30,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\SearchClient\SearchClientInterface;
 use Psr\Log\LogLevel;
+use Throwable;
 
 /**
  * @internal
@@ -89,7 +91,16 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     }
 
     /**
-     * @throws Exception
+     * Reindex from the current live index version into a freshly-created opposite version,
+     * then swap the alias.
+     *
+     * Uses the async `_reindex` API (`wait_for_completion=false`) and polls the tasks API,
+     * because synchronous `_reindex` is the canonical cause of HTTP 5xx timeouts at gateways
+     * for large indices. Any failure (kickoff error, task error, document-level failures,
+     * timeout) triggers cleanup of the orphaned target index and a thrown
+     * {@see ReindexFailedException} whose `previous` carries the original cause.
+     *
+     * @throws ReindexFailedException
      */
     public function reindex(string $indexName, array $mapping): void
     {
@@ -103,23 +114,167 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
         $this->createIndex($newIndexName, $mapping);
 
-        $body = [
-            'source' => [
-                'index' => $oldIndexName,
-
-            ],
-            'dest' => [
-                'index' => $newIndexName,
-            ],
-        ];
-
         try {
-            $this->client->reIndex(['body' => $body]);
-        } catch (Exception $e) {
-            throw $e;
+            $taskId = $this->startReindexTask($oldIndexName, $newIndexName);
+            $this->waitForReindexTask($taskId, $oldIndexName, $newIndexName);
+        } catch (Throwable $e) {
+            // Orphan cleanup so a failed run does not leave behind an empty alternate index.
+            $this->deleteIndex($newIndexName, true);
+
+            if ($e instanceof ReindexFailedException) {
+                throw $e;
+            }
+
+            throw new ReindexFailedException(
+                sprintf(
+                    'Reindex from "%s" to "%s" failed: %s',
+                    $oldIndexName,
+                    $newIndexName,
+                    $e->getMessage()
+                ),
+                0,
+                $e
+            );
         }
 
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
+    }
+
+    /**
+     * Kicks off an asynchronous _reindex and returns the OpenSearch / Elasticsearch task id.
+     *
+     * @throws ReindexFailedException
+     */
+    private function startReindexTask(string $oldIndexName, string $newIndexName): string
+    {
+        $body = [
+            'source' => ['index' => $oldIndexName],
+            'dest' => ['index' => $newIndexName],
+        ];
+
+        $response = $this->client->reIndex([
+            'body' => $body,
+            'wait_for_completion' => false,
+        ]);
+
+        if (!isset($response['task']) || !is_string($response['task']) || $response['task'] === '') {
+            throw new ReindexFailedException(
+                'Async _reindex did not return a task id. Response: '
+                . $this->safeJsonEncode($response)
+            );
+        }
+
+        return $response['task'];
+    }
+
+    /**
+     * Polls the tasks API until the reindex task completes, or until the configured
+     * max wait elapses. Translates task-level errors and document-level failures into
+     * a ReindexFailedException so the caller can react and clean up.
+     *
+     * @throws ReindexFailedException
+     */
+    private function waitForReindexTask(string $taskId, string $oldIndexName, string $newIndexName): void
+    {
+        $pollInterval = max(1, $this->searchIndexConfigService->getReindexPollIntervalSeconds());
+        $maxWait = max(1, $this->searchIndexConfigService->getReindexMaxWaitSeconds());
+        $deadline = time() + $maxWait;
+
+        while (true) {
+            $taskInfo = $this->getTaskInfo($taskId);
+
+            if (($taskInfo['completed'] ?? false) === true) {
+                if (!empty($taskInfo['error'])) {
+                    throw new ReindexFailedException(sprintf(
+                        'Reindex task "%s" completed with error: %s',
+                        $taskId,
+                        $this->safeJsonEncode($taskInfo['error'])
+                    ));
+                }
+
+                $failures = $taskInfo['response']['failures'] ?? [];
+                if (!empty($failures)) {
+                    throw new ReindexFailedException(sprintf(
+                        'Reindex task "%s" completed with %d document failure(s): %s',
+                        $taskId,
+                        count($failures),
+                        $this->safeJsonEncode(array_slice($failures, 0, 5))
+                    ));
+                }
+
+                $this->logger->info(sprintf(
+                    'Reindex task "%s" completed (old="%s", new="%s", took=%sms, total=%s)',
+                    $taskId,
+                    $oldIndexName,
+                    $newIndexName,
+                    $taskInfo['response']['took'] ?? 'n/a',
+                    $taskInfo['response']['total'] ?? 'n/a'
+                ));
+
+                return;
+            }
+
+            if (time() > $deadline) {
+                throw new ReindexFailedException(sprintf(
+                    'Reindex task "%s" did not complete within %d seconds (old="%s", new="%s").',
+                    $taskId,
+                    $maxWait,
+                    $oldIndexName,
+                    $newIndexName
+                ));
+            }
+
+            sleep($pollInterval);
+        }
+    }
+
+    /**
+     * Pimcore's shared SearchClientInterface does not expose the tasks API, but both
+     * OpenSearch's OpenSearch\Client and Elasticsearch's Elastic\Elasticsearch\Client
+     * expose `->tasks()->get(['task_id' => ...])`. Reach for the original client via
+     * the bundle-local sub-interfaces that expose getOriginalClient().
+     *
+     * Protected so unit tests can supply task responses without stubbing the entire
+     * underlying client SDK.
+     *
+     * @return array<string,mixed>
+     *
+     * @throws ReindexFailedException
+     */
+    protected function getTaskInfo(string $taskId): array
+    {
+        if (!method_exists($this->client, 'getOriginalClient')) {
+            throw new ReindexFailedException(
+                'Configured search client does not expose the tasks API; cannot poll reindex task "' . $taskId . '".'
+            );
+        }
+
+        try {
+            // @phpstan-ignore-next-line method.notFound (only OpenSearch/Elasticsearch sub-interfaces expose getOriginalClient; guarded above)
+            $originalClient = $this->client->getOriginalClient();
+            $raw = $originalClient->tasks()->get(['task_id' => $taskId]);
+        } catch (Throwable $e) {
+            throw new ReindexFailedException(
+                'Failed to poll reindex task "' . $taskId . '": ' . $e->getMessage(),
+                0,
+                $e
+            );
+        }
+
+        if (is_object($raw) && method_exists($raw, 'asArray')) {
+            return $raw->asArray();
+        }
+
+        return is_array($raw) ? $raw : [];
+    }
+
+    private function safeJsonEncode(mixed $value): string
+    {
+        try {
+            return json_encode($value, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+        } catch (JsonException) {
+            return '(unencodable)';
+        }
     }
 
     public function createIndex(string $indexName, ?array $mappings = null): DefaultSearchService

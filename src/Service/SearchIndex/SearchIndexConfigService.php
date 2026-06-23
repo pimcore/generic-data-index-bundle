@@ -39,6 +39,7 @@ final class SearchIndexConfigService implements SearchIndexConfigServiceInterfac
         private readonly array $indexSettings,
         private readonly array $searchSettings,
         private readonly array $systemFieldsSettings,
+        private readonly array $reindexSettings = [],
     ) {
     }
 
@@ -135,5 +136,15 @@ final class SearchIndexConfigService implements SearchIndexConfigServiceInterfac
     private function getIndexPrefixWIthClassPrefix(): string
     {
         return $this->indexPrefix . self::CLASS_INDEX_PREFIX;
+    }
+
+    public function getReindexPollIntervalSeconds(): int
+    {
+        return (int) ($this->reindexSettings['poll_interval_seconds'] ?? 5);
+    }
+
+    public function getReindexMaxWaitSeconds(): int
+    {
+        return (int) ($this->reindexSettings['max_wait_seconds'] ?? 7200);
     }
 }

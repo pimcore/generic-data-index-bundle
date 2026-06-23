@@ -66,9 +66,20 @@ final class DeploymentReindexCommand extends AbstractCommand
             $classes = $classesList->load();
 
             foreach ($classes as $classDefinition) {
-                $updated = $this->classDefinitionReindexService
-                    ->reindexClassDefinition($classDefinition, true, true)
-                ;
+                try {
+                    $updated = $this->classDefinitionReindexService
+                        ->reindexClassDefinition($classDefinition, true, true)
+                    ;
+                } catch (Exception $e) {
+                    $output->writeln(sprintf(
+                        '<error>Reindex failed for class "%s" (id %s): %s</error>',
+                        $classDefinition->getName(),
+                        $classDefinition->getId(),
+                        $e->getMessage()
+                    ));
+
+                    return self::FAILURE;
+                }
 
                 if ($updated) {
                     $updatedIds[] = $classDefinition->getId();
@@ -95,12 +106,14 @@ final class DeploymentReindexCommand extends AbstractCommand
             }
 
             $output->writeln('<info>Finished</info>', OutputInterface::VERBOSITY_NORMAL);
+
+            return self::SUCCESS;
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
+
+            return self::FAILURE;
         } finally {
             $this->release();
         }
-
-        return self::SUCCESS;
     }
 }

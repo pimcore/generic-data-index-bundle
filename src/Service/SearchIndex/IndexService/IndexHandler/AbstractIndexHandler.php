@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
+use Throwable;
 
 abstract class AbstractIndexHandler implements IndexHandlerInterface
 {
@@ -76,12 +77,16 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                     $alias,
                     $mappingProperties
                 );
-            } catch (Exception $e) {
-                try {
-                    $this->updateMapping($context, true, $mappingProperties);
-                } catch (Exception $e) {
-                    $this->logger->error('Reindexing failed due to following error: ' . $e);
-                }
+            } catch (Throwable $e) {
+                // Surface the failure with the original cause preserved. The previous
+                // implementation fell back to updateMapping($context, true, ...) which
+                // calls createIndex on the live index (delete-then-create) and silently
+                // emptied production data on any reindex failure.
+                $this->logger->error(
+                    sprintf('Reindex failed for alias "%s": %s', $alias, $e->getMessage()),
+                    ['exception' => $e]
+                );
+                throw $e;
             }
         }
 

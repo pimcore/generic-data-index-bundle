@@ -43,4 +43,8 @@ interface SearchIndexConfigServiceInterface
     public function getMaxSynchronousChildrenRenameLimit(): int;
 
     public function getSystemFieldsSettings(string $elementType): array;
+
+    public function getReindexPollIntervalSeconds(): int;
+
+    public function getReindexMaxWaitSeconds(): int;
 }

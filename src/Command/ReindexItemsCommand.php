@@ -63,17 +63,19 @@ final class ReindexItemsCommand extends AbstractCommand
             );
 
             $this->reindexService->reindexAllIndices();
+
+            $output->writeln(
+                '<info>Finished</info>',
+                OutputInterface::VERBOSITY_NORMAL
+            );
+
+            return self::SUCCESS;
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
+
+            return self::FAILURE;
         } finally {
             $this->release();
         }
-
-        $output->writeln(
-            '<info>Finished</info>',
-            OutputInterface::VERBOSITY_NORMAL
-        );
-
-        return self::SUCCESS;
     }
 }
