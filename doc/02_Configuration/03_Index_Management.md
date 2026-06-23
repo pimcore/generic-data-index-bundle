@@ -188,23 +188,24 @@ After updating class definitions during deployment, run:
 bin/console generic-data-index:deployment:reindex
 ```
 
-<<<<<<< HEAD
 This updates the index structure for all class definitions modified since the last
 deployment and reindexes data objects for affected classes.
-=======
-This command will update the index structure for all data object classes which were created/updated since the last deployment and reindex all data objects for relevant classes.
 
 ### Cleaning Up Unused Indices
 
-To clean up old indices that are not referenced by any alias, use the following command:
+To clean up managed indices with a `-odd` or `-even` suffix (under the configured index prefix)
+that are not referenced by any alias, use the following command:
 
+```bash
+bin/console generic-data-index:cleanup:unused-indices
 ```
-php bin/console generic-data-index:cleanup:unused-indices
-```
+
+> **Note:** This command only targets bundle-managed indices that use the configured index prefix
+> and end with `-odd` or `-even`. Other unaliased indices (e.g. custom indices under the same prefix
+> without this suffix) will not be affected.
 
 To preview what would be deleted without performing any changes, run:
 
+```bash
+bin/console generic-data-index:cleanup:unused-indices --dry-run
 ```
-php bin/console generic-data-index:cleanup:unused-indices --dry-run
-```
->>>>>>> f2aa62a (feat(search-index): add command to clean up unused indices)

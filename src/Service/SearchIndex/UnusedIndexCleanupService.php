@@ -72,6 +72,9 @@ final readonly class UnusedIndexCleanupService
     private function getAllManagedIndices(): array
     {
         $indexPrefix = $this->searchIndexConfigService->getIndexPrefix();
+        if ($indexPrefix === '') {
+            return [];
+        }
 
         try {
             $stats = $this->searchIndexService->getStats($indexPrefix . '*');

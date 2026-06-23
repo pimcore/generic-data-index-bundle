@@ -49,7 +49,10 @@ final class CleanupUnusedIndicesCommand extends AbstractCommand
                 'List unused indices without deleting them.'
             )
             ->setDescription(
-                'Deletes Generic Data Index indices that are not referenced by any alias.'
+                'Deletes managed Generic Data Index indices with the configured index prefix and a -odd/-even suffix that are not referenced by any alias.'
+            )
+            ->setHelp(
+                'This command only targets managed Generic Data Index indices that use the configured index prefix and end with -odd or -even. It does not consider other indices.'
             );
     }
 
