@@ -93,6 +93,7 @@ final class CleanupUnusedIndicesCommand extends AbstractCommand
             }
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
+            return self::FAILURE;
         } finally {
             $this->release();
         }
