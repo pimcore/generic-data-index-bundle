@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 
 use Exception;
 use JsonException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Debug\SearchInformation;
@@ -45,7 +46,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly SearchExecutionServiceInterface $searchExecutionService,
         private readonly IndexAliasServiceInterface $indexAliasService,
-        private readonly SearchClientInterface $client
+        private readonly SearchClientInterface $client,
+        private readonly int $reindexMaxPolls,
+        private readonly int $reindexPollIntervalSeconds,
     ) {
     }
 
@@ -106,7 +109,6 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $body = [
             'source' => [
                 'index' => $oldIndexName,
-
             ],
             'dest' => [
                 'index' => $newIndexName,
@@ -114,12 +116,106 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         ];
 
         try {
-            $this->client->reIndex(['body' => $body]);
-        } catch (Exception $e) {
+            // Submit reindex as async task to avoid HTTP timeout on large indices
+            $response = $this->client->reIndex([
+                'body' => $body,
+                'wait_for_completion' => false,
+            ]);
+
+            $taskId = $response['task'] ?? null;
+            if (!$taskId) {
+                throw new ReindexFailedException(
+                    'Reindex did not return a task ID; response: ' . json_encode($response, JSON_PARTIAL_OUTPUT_ON_ERROR)
+                );
+            }
+
+            $this->waitForTask($taskId);
+            $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
+        } catch (\Throwable $e) {
+            $this->deleteIndex($newIndexName, true);
+
             throw $e;
         }
+    }
 
-        $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
+    /**
+     * @throws ReindexFailedException
+     */
+    private function waitForTask(string $taskId): void
+    {
+        for ($poll = 0; $poll < $this->reindexMaxPolls; $poll++) {
+            $taskStatus = $this->fetchTaskStatus($taskId);
+
+            if (empty($taskStatus['completed'])) {
+                sleep($this->reindexPollIntervalSeconds);
+
+                continue;
+            }
+
+            // Top-level task error (auth failure, node loss, etc.)
+            if (!empty($taskStatus['error'])) {
+                throw new ReindexFailedException(
+                    'Reindex task failed: ' . json_encode($taskStatus['error'], JSON_PARTIAL_OUTPUT_ON_ERROR)
+                );
+            }
+
+            // Per-document failures and timed_out live inside response
+            $response = $taskStatus['response'] ?? [];
+
+            if (!empty($response['timed_out'])) {
+                throw new ReindexFailedException(
+                    "Reindex task timed out server-side for task $taskId"
+                );
+            }
+
+            if (!empty($response['failures'])) {
+                throw new ReindexFailedException(
+                    'Reindex task completed with failures: ' . json_encode($response['failures'], JSON_PARTIAL_OUTPUT_ON_ERROR)
+                );
+            }
+
+            return;
+        }
+
+        throw new ReindexFailedException(
+            \sprintf(
+                'Reindex task %s did not complete within %d seconds',
+                $taskId,
+                $this->reindexMaxPolls * $this->reindexPollIntervalSeconds
+            )
+        );
+    }
+
+    /**
+     * @throws ReindexFailedException
+     */
+    private function fetchTaskStatus(string $taskId): array
+    {
+        $client = $this->client;
+
+        if (!\is_callable([$client, 'getOriginalClient'])) {
+            throw new ReindexFailedException(
+                'Task polling requires a client exposing getOriginalClient(); got ' . \get_class($client)
+            );
+        }
+
+        try {
+            $response = $client->getOriginalClient()->tasks()->get(['task_id' => $taskId]);
+        } catch (\Throwable $e) {
+            throw new ReindexFailedException(\sprintf('Failed to fetch status for reindex task %s', $taskId), 0, $e);
+        }
+
+        if (\is_object($response) && \method_exists($response, 'asArray')) {
+            $response = $response->asArray();
+        }
+
+        if (!\is_array($response)) {
+            throw new ReindexFailedException(
+                'Unexpected task status response type: ' . (\is_object($response) ? \get_class($response) : \gettype($response))
+            );
+        }
+
+        return $response;
     }
 
     public function createIndex(string $indexName, ?array $mappings = null): DefaultSearchService
@@ -323,6 +419,13 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             throw new SwitchIndexAliasException('Switching Alias failed for ' . $newIndexName);
         }
 
-        $this->deleteIndex($oldIndexName);
+        // Delete both suffixes to avoid orphaned indices — skip only the newly aliased index
+        foreach (['-' . self::INDEX_VERSION_EVEN, '-' . self::INDEX_VERSION_ODD] as $suffix) {
+            $candidate = $aliasName . $suffix;
+            if ($candidate !== $newIndexName) {
+                $this->deleteIndex($candidate, true);
+            }
+        }
+
     }
 }

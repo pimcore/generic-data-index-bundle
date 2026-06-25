@@ -17,6 +17,7 @@ use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ClientType;
 use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\DispatchQueueMessagesHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -93,6 +94,12 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
 
         $definition = $container->getDefinition(DispatchQueueMessagesHandler::class);
         $definition->setArgument('$queueSettings', $indexSettings['queue_settings']);
+
+        $definition = $container->getDefinition(SearchIndexServiceInterface::class);
+        if ($definition->getClass() === \Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService::class) {
+            $definition->setArgument('$reindexMaxPolls', $indexSettings['reindex_settings']['max_polls']);
+            $definition->setArgument('$reindexPollIntervalSeconds', $indexSettings['reindex_settings']['poll_interval']);
+        }
     }
 
     private function getIndexSettings(array $indexSettings): array
