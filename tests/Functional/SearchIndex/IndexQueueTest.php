@@ -254,13 +254,13 @@ class IndexQueueTest extends Unit
             $repo->generateSelectQuery(
                 'objects',
                 [
-                    $elementType,
-                    $shortIndexName,
-                    IndexQueueOperation::DELETE->value,
-                    (string)(time() * 1000 + 1),
-                    '0',
+                    'elementId'        => 'id',
+                    'elementType'      => "'" . $elementType . "'",
+                    'elementIndexName' => "'" . $shortIndexName . "'",
+                    'operation'        => "'" . IndexQueueOperation::DELETE->value . "'",
+                    'operationTime'    => "'" . (string)(time() * 1000 + 1) . "'",
+                    'dispatched'       => '0',
                 ],
-                'id',
                 ['id' => $elementId],
                 ['id']
             )
