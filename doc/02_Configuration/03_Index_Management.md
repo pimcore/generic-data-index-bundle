@@ -16,6 +16,7 @@ to power search and listing features in Pimcore.
 | `generic-data-index:update:index -r` | Delete and recreate indices, then queue all elements |
 | `generic-data-index:reindex` | Native search engine reindex (reorganizes data within existing indices, no database read) |
 | `generic-data-index:deployment:reindex` | Update indices only for class definitions changed since the last deployment |
+| `generic-data-index:cleanup:unused-indices` | Delete managed indices not referenced by any alias (`-odd`/`-even` suffixes only) |
 
 ## Index Prefix
 
@@ -190,3 +191,18 @@ bin/console generic-data-index:deployment:reindex
 
 This updates the index structure for all class definitions modified since the last
 deployment and reindexes data objects for affected classes.
+
+### Cleaning Up Unused Indices
+
+To clean up managed indices that are no longer referenced by any alias, run:
+
+```bash
+bin/console generic-data-index:cleanup:unused-indices
+```
+
+This only targets indices with the configured prefix and a `-odd` or `-even` suffix.
+To preview deletions without making changes, use `--dry-run`:
+
+```bash
+bin/console generic-data-index:cleanup:unused-indices --dry-run
+```
