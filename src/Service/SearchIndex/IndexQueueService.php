@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
+use Doctrine\DBAL\Connection;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
@@ -48,7 +49,8 @@ final class IndexQueueService implements IndexQueueServiceInterface
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly ElementServiceInterface $elementService,
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
-        private readonly MessageBusInterface $messageBus
+        private readonly MessageBusInterface $messageBus,
+        private readonly Connection $connection
     ) {
     }
 
@@ -61,6 +63,15 @@ final class IndexQueueService implements IndexQueueServiceInterface
     ): IndexQueueService {
         try {
             $this->checkOperationValid($operation);
+
+            // Do not send to the search index synchronously when inside an open database transaction.
+            // The save event fires after Pimcore's inner savepoint commits but before any outer
+            // transaction the caller opened, so the DB record may still be rolled back.
+            // Fall back to the queue path: the queue entry lives in the same transaction and is
+            // rolled back together with the object if the caller rolls back.
+            if ($processSynchronously && $this->connection->getTransactionNestingLevel() > 0) {
+                $processSynchronously = false;
+            }
 
             if ($processSynchronously) {
                 $this->doHandleIndexData($element, $operation);
