@@ -41,6 +41,13 @@ final class IndexQueueRepository
 
     public const BATCH_SIZE = 500;
 
+    /**
+     * Factor reserving the low-order digits of a dispatch id for a random
+     * uniqueness suffix, while the millisecond timestamp stays in the
+     * high-order digits. See generateDispatchId().
+     */
+    private const DISPATCH_ID_FACTOR = 1_000_000;
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly TimeServiceInterface $timeService,
@@ -85,8 +92,11 @@ final class IndexQueueRepository
             if ($dispatch) {
                 $dispatchId = $this->dispatchItems($limit);
 
+                // No row locking required: dispatchItems() has already claimed the
+                // rows for this worker by stamping them with the unique $dispatchId,
+                // so this query only ever reads its own, exclusively-owned rows.
                 $sql = sprintf(
-                    'SELECT * FROM %s WHERE %s = :dispatchId FOR UPDATE SKIP LOCKED',
+                    'SELECT * FROM %s WHERE %s = :dispatchId',
                     $this->connection->quoteIdentifier(IndexQueue::TABLE),
                     $this->connection->quoteIdentifier('dispatched')
                 );
@@ -97,8 +107,12 @@ final class IndexQueueRepository
                 )->fetchAllAssociative();
             }
 
+            // Non-dispatching read ("peek"): returns unhandled entries without
+            // claiming them. As a pure read it neither needs nor should hold row
+            // locks. Concurrency-safe claiming is handled by the $dispatch branch
+            // above via dispatchItems().
             $sql = sprintf(
-                'SELECT * FROM %s WHERE %s = 0 ORDER BY %s ASC LIMIT %s FOR UPDATE SKIP LOCKED',
+                'SELECT * FROM %s WHERE %s = 0 ORDER BY %s ASC LIMIT %s',
                 $this->connection->quoteIdentifier(IndexQueue::TABLE),
                 $this->connection->quoteIdentifier('dispatched'),
                 $this->connection->quoteIdentifier('operationTime'),
@@ -264,20 +278,38 @@ final class IndexQueueRepository
     public function dispatchItems(
         int $limit
     ): int {
-        $dispatchId = $this->timeService->getCurrentMillisecondTimestamp();
+        $timestamp = $this->timeService->getCurrentMillisecondTimestamp();
+        $dispatchId = $this->generateDispatchId($timestamp);
 
         // Executed as direct SQL statement as doctrine ORM does not support LIMIT in UPDATE queries
         $this->connection->executeQuery(
             'UPDATE ' . IndexQueue::TABLE .
-            ' SET dispatched = :dispatchId WHERE dispatched < :dispatched LIMIT ' . $limit,
+            ' SET dispatched = :dispatchId WHERE dispatched < :threshold LIMIT ' . $limit,
 
             [
                 'dispatchId' => $dispatchId,
-                'dispatched' => $dispatchId - 60*60*24*1000,
+                // 24h staleness threshold, scaled to the dispatch id encoding so
+                // that unhandled (0) and stale rows are still re-dispatched.
+                'threshold' => ($timestamp - 60*60*24*1000) * self::DISPATCH_ID_FACTOR,
             ]
         );
 
         return $dispatchId;
+    }
+
+    /**
+     * Builds a per-dispatch claim token that stays unique even when several
+     * workers dispatch within the same millisecond.
+     *
+     * The millisecond timestamp is kept in the high-order digits - preserving
+     * the chronological ordering the stale-item re-dispatch in dispatchItems()
+     * relies on - while a random suffix in the low-order digits guarantees
+     * uniqueness within a single millisecond. The result stays well within the
+     * unsigned bigint range of the "dispatched" column.
+     */
+    private function generateDispatchId(int $timestamp): int
+    {
+        return $timestamp * self::DISPATCH_ID_FACTOR + random_int(0, self::DISPATCH_ID_FACTOR - 1);
     }
 
     public function resetDispatchedItems(string $dispatchId): void

@@ -81,7 +81,9 @@ class IndexQueueTest extends Unit
         $this->assertCount(1, $indexQueueRepository->getUnhandledIndexQueueEntries());
 
         $dispatchedItems = $indexQueueRepository->getUnhandledIndexQueueEntries(true);
-        usleep(1000); //sleep for 1 ms to ensure that the dispatchId is different
+        // No sleep needed: dispatch ids are unique even within the same
+        // millisecond, so a subsequent dispatch never re-fetches already
+        // dispatched items.
         $this->assertEquals([], $indexQueueRepository->getUnhandledIndexQueueEntries(true));
 
         $dispatchedItems = array_map(fn ($entry) => $indexQueueRepository->denormalizeDatabaseEntry($entry), $dispatchedItems);
