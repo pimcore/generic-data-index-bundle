@@ -62,11 +62,11 @@ class Configuration implements ConfigurationInterface
                                     ->defaultValue(ClientType::OPEN_SEARCH->value)
                                     ->validate()
                                         ->ifTrue(static function (mixed $value): bool {
-                                            // Non-strings and empty strings are not our concern here:
-                                            // - null: the scalarNode default or Symfony's own type error handles it
-                                            // - "": env var that resolved to empty at build time — validate at runtime
-                                            // - "%env(...)%": unresolved reference — validate at runtime
-                                            if (!is_string($value) || $value === '' || str_starts_with($value, '%env(')) {
+                                            // Symfony's Config component already short-circuits env-var placeholders
+                                            // before calling custom validators, so no explicit env-var guard is needed.
+                                            // Non-strings (e.g. null) and empty strings are left to Symfony's own
+                                            // type handling and to runtime validation in SearchClientFactory.
+                                            if (!is_string($value) || $value === '') {
                                                 return false;
                                             }
 
