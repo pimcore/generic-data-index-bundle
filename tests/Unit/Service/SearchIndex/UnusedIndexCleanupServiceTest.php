@@ -143,4 +143,32 @@ final class UnusedIndexCleanupServiceTest extends Unit
 
         $this->assertSame(['pimcore_asset-odd'], $service->cleanupUnusedIndices());
     }
+
+    public function testFindUnusedIndicesBubblesUpStatsException(): void
+    {
+        $searchIndexService = $this->createMock(SearchIndexServiceInterface::class);
+        $searchIndexService
+            ->method('getStats')
+            ->willThrowException(new \RuntimeException('stats failed'))
+        ;
+
+        $indexAliasService = $this->createMock(IndexAliasServiceInterface::class);
+        $indexAliasService->expects($this->never())->method('getAllAliases');
+
+        $searchIndexConfigService = $this->createMock(SearchIndexConfigServiceInterface::class);
+        $searchIndexConfigService
+            ->method('getIndexPrefix')
+            ->willReturn('pimcore_')
+        ;
+
+        $service = new UnusedIndexCleanupService(
+            $searchIndexService,
+            $indexAliasService,
+            $searchIndexConfigService
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('stats failed');
+        $service->findUnusedIndices();
+    }
 }
