@@ -64,12 +64,19 @@ final class IndexQueueService implements IndexQueueServiceInterface
         try {
             $this->checkOperationValid($operation);
 
-            // Do not send to the search index synchronously when inside an open database transaction.
-            // The save event fires after Pimcore's inner savepoint commits but before any outer
-            // transaction the caller opened, so the DB record may still be rolled back.
-            // Fall back to the queue path: the queue entry lives in the same transaction and is
-            // rolled back together with the object if the caller rolls back.
-            if ($processSynchronously && $this->connection->getTransactionNestingLevel() > 0) {
+            // Do not send to the search index synchronously when inside an open database transaction
+            // for UPDATE operations. The save event fires after Pimcore's inner savepoint commits
+            // but before any outer transaction the caller opened, so the DB record may still be
+            // rolled back. Fall back to the queue path: the queue entry lives in the same
+            // transaction and is rolled back together with the object if the caller rolls back.
+            // DELETE operations are exempt: they only need the element ID (no DB read required)
+            // and child deletions fire their POST_DELETE while still inside the parent's transaction,
+            // so this check would prevent synchronous index cleanup of deleted children.
+            if (
+                $processSynchronously &&
+                $operation !== IndexQueueOperation::DELETE->value &&
+                $this->connection->getTransactionNestingLevel() > 0
+            ) {
                 $processSynchronously = false;
             }
 
