@@ -54,10 +54,29 @@ class Configuration implements ConfigurationInterface
                                     ->info('Name of search client from to be used.')
                                     ->defaultValue('default')
                                 ->end()
-                                ->enumNode('client_type')
-                                    ->info('Type of search client to be used.')
-                                    ->values([ClientType::OPEN_SEARCH->value, ClientType::ELASTIC_SEARCH->value])
+                                ->scalarNode('client_type')
+                                    ->info(sprintf(
+                                        'Type of search client to be used. Allowed values: %s. Supports env vars.',
+                                        implode(', ', array_column(ClientType::cases(), 'value'))
+                                    ))
                                     ->defaultValue(ClientType::OPEN_SEARCH->value)
+                                    ->validate()
+                                        ->ifTrue(static function (mixed $value): bool {
+                                            // Non-strings and empty strings are not our concern here:
+                                            // - null: the scalarNode default or Symfony's own type error handles it
+                                            // - "": env var that resolved to empty at build time — validate at runtime
+                                            // - "%env(...)%": unresolved reference — validate at runtime
+                                            if (!is_string($value) || $value === '' || str_starts_with($value, '%env(')) {
+                                                return false;
+                                            }
+
+                                            return !in_array($value, array_column(ClientType::cases(), 'value'), true);
+                                        })
+                                        ->thenInvalid(sprintf(
+                                            'Invalid client_type %%s. Allowed values: %s.',
+                                            implode(', ', array_column(ClientType::cases(), 'value'))
+                                        ))
+                                    ->end()
                                 ->end()
                                 ->scalarNode('index_prefix')
                                     ->defaultValue('pimcore_')
