@@ -52,7 +52,8 @@ final class CleanupUnusedIndicesCommand extends AbstractCommand
                 'Deletes managed Generic Data Index indices with the configured index prefix and a -odd/-even suffix that are not referenced by any alias.'
             )
             ->setHelp(
-                'This command only targets managed Generic Data Index indices that use the configured index prefix and end with -odd or -even. It does not consider other indices.'
+                'This command only targets managed Generic Data Index indices that use the configured index prefix and end with -odd or -even. It does not consider other indices.' . PHP_EOL .
+                'Warning: do not run this command while a reindex is in progress. A reindex creates and populates the new -odd/-even index before attaching it to its alias, so during that window the new index is not referenced by any alias and would be deleted by this command.'
             );
     }
 
@@ -93,6 +94,7 @@ final class CleanupUnusedIndicesCommand extends AbstractCommand
             }
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
+
             return self::FAILURE;
         } finally {
             $this->release();

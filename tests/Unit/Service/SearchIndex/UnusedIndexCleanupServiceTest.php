@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceIn
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\UnusedIndexCleanupService;
+use RuntimeException;
 
 /**
  * @internal
@@ -142,5 +143,57 @@ final class UnusedIndexCleanupServiceTest extends Unit
         );
 
         $this->assertSame(['pimcore_asset-odd'], $service->cleanupUnusedIndices());
+    }
+
+    public function testGetStatsExceptionIsNotSwallowed(): void
+    {
+        $searchIndexService = $this->createMock(SearchIndexServiceInterface::class);
+        $searchIndexService
+            ->method('getStats')
+            ->willThrowException(new RuntimeException('search engine unavailable'))
+        ;
+        $searchIndexService->expects($this->never())->method('deleteIndex');
+
+        $indexAliasService = $this->createMock(IndexAliasServiceInterface::class);
+
+        $searchIndexConfigService = $this->createMock(SearchIndexConfigServiceInterface::class);
+        $searchIndexConfigService
+            ->method('getIndexPrefix')
+            ->willReturn('pimcore_')
+        ;
+
+        $service = new UnusedIndexCleanupService(
+            $searchIndexService,
+            $indexAliasService,
+            $searchIndexConfigService
+        );
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('search engine unavailable');
+
+        $service->cleanupUnusedIndices();
+    }
+
+    public function testEmptyPrefixReturnsNoIndices(): void
+    {
+        $searchIndexService = $this->createMock(SearchIndexServiceInterface::class);
+        $searchIndexService->expects($this->never())->method('getStats');
+        $searchIndexService->expects($this->never())->method('deleteIndex');
+
+        $indexAliasService = $this->createMock(IndexAliasServiceInterface::class);
+
+        $searchIndexConfigService = $this->createMock(SearchIndexConfigServiceInterface::class);
+        $searchIndexConfigService
+            ->method('getIndexPrefix')
+            ->willReturn('')
+        ;
+
+        $service = new UnusedIndexCleanupService(
+            $searchIndexService,
+            $indexAliasService,
+            $searchIndexConfigService
+        );
+
+        $this->assertSame([], $service->findUnusedIndices());
     }
 }

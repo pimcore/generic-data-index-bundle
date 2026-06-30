@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
-use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 
@@ -76,11 +75,7 @@ final readonly class UnusedIndexCleanupService
             return [];
         }
 
-        try {
-            $stats = $this->searchIndexService->getStats($indexPrefix . '*');
-        } catch (Exception) {
-            return [];
-        }
+        $stats = $this->searchIndexService->getStats($indexPrefix . '*');
 
         $indices = $stats['indices'] ?? null;
         if (!is_array($indices)) {

@@ -206,3 +206,10 @@ To preview deletions without making changes, use `--dry-run`:
 ```bash
 bin/console generic-data-index:cleanup:unused-indices --dry-run
 ```
+
+> **Warning:** Do not run this command while a reindex is in progress. During a reindex the
+> new `-odd`/`-even` index is created and populated before it is attached to its alias, so for
+> the duration of that window it carries the configured prefix and suffix but is not referenced
+> by any alias. This command would classify such an index as unused and delete the index that is
+> actively being built. Run a `--dry-run` first and make sure no reindex (e.g.
+> `generic-data-index:reindex` or `generic-data-index:deployment:reindex`) is running.
