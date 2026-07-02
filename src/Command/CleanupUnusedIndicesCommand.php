@@ -31,6 +31,8 @@ final class CleanupUnusedIndicesCommand extends AbstractCommand
 
     private const OPTION_DRY_RUN = 'dry-run';
 
+    private const OPTION_MIN_AGE = 'min-age';
+
     public function __construct(
         private readonly UnusedIndexCleanupService $unusedIndexCleanupService,
         ?string $name = null
@@ -48,12 +50,19 @@ final class CleanupUnusedIndicesCommand extends AbstractCommand
                 InputOption::VALUE_NONE,
                 'List unused indices without deleting them.'
             )
+            ->addOption(
+                self::OPTION_MIN_AGE,
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Minimum age in seconds an index must have before it is considered unused. Set to 0 to disable the age guard.',
+                (string) UnusedIndexCleanupService::DEFAULT_MIN_AGE_SECONDS
+            )
             ->setDescription(
                 'Deletes managed Generic Data Index indices with the configured index prefix and a -odd/-even suffix that are not referenced by any alias.'
             )
             ->setHelp(
                 'This command only targets managed Generic Data Index indices that use the configured index prefix and end with -odd or -even. It does not consider other indices.' . PHP_EOL .
-                'Warning: do not run this command while a reindex is in progress. A reindex creates and populates the new -odd/-even index before attaching it to its alias, so during that window the new index is not referenced by any alias and would be deleted by this command.'
+                'A reindex creates and populates the new -odd/-even index before attaching it to its alias, so during that window the new index is not referenced by any alias. To avoid deleting an index that is actively being built, indices younger than --min-age seconds (default: 86400) are never deleted. Only lower this threshold or disable it (--min-age=0) when no reindex is or was recently running.'
             );
     }
 
@@ -70,7 +79,15 @@ final class CleanupUnusedIndicesCommand extends AbstractCommand
 
         try {
             $dryRun = (bool) $input->getOption(self::OPTION_DRY_RUN);
-            $unusedIndices = $this->unusedIndexCleanupService->cleanupUnusedIndices($dryRun);
+
+            $minAge = $input->getOption(self::OPTION_MIN_AGE);
+            if (!is_numeric($minAge) || (int) $minAge < 0) {
+                $output->writeln('<error>The --min-age option must be a non-negative number of seconds.</error>');
+
+                return self::FAILURE;
+            }
+
+            $unusedIndices = $this->unusedIndexCleanupService->cleanupUnusedIndices($dryRun, (int) $minAge);
 
             if (empty($unusedIndices)) {
                 $output->writeln('<info>No unused indices found.</info>');

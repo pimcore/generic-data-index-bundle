@@ -29,16 +29,14 @@ final class UnusedIndexCleanupServiceTest extends Unit
     {
         $searchIndexService = $this->createMock(SearchIndexServiceInterface::class);
         $searchIndexService
-            ->method('getStats')
+            ->method('getIndexSettings')
             ->with('pimcore_*')
             ->willReturn([
-                'indices' => [
-                    'pimcore_asset-odd' => [],
-                    'pimcore_asset-even' => [],
-                    'pimcore_document-even' => [],
-                    'pimcore_custom' => [],
-                    'other_prefix_asset-odd' => [],
-                ],
+                'pimcore_asset-odd' => $this->indexSettings('-2 days'),
+                'pimcore_asset-even' => $this->indexSettings('-2 days'),
+                'pimcore_document-even' => $this->indexSettings('-2 days'),
+                'pimcore_custom' => $this->indexSettings('-2 days'),
+                'other_prefix_asset-odd' => $this->indexSettings('-2 days'),
             ])
         ;
         $searchIndexService->expects($this->never())->method('deleteIndex');
@@ -52,31 +50,24 @@ final class UnusedIndexCleanupServiceTest extends Unit
             ])
         ;
 
-        $searchIndexConfigService = $this->createMock(SearchIndexConfigServiceInterface::class);
-        $searchIndexConfigService
-            ->method('getIndexPrefix')
-            ->willReturn('pimcore_')
-        ;
-
         $service = new UnusedIndexCleanupService(
             $searchIndexService,
             $indexAliasService,
-            $searchIndexConfigService
+            $this->mockConfigService('pimcore_')
         );
 
         $this->assertSame(['pimcore_asset-odd'], $service->findUnusedIndices());
     }
 
-    public function testDryRunDoesNotDeleteIndices(): void
+    public function testRecentlyCreatedIndicesAreProtectedByMinAge(): void
     {
         $searchIndexService = $this->createMock(SearchIndexServiceInterface::class);
         $searchIndexService
-            ->method('getStats')
+            ->method('getIndexSettings')
             ->willReturn([
-                'indices' => [
-                    'pimcore_asset-odd' => [],
-                    'pimcore_asset-even' => [],
-                ],
+                'pimcore_asset-odd' => $this->indexSettings('-10 minutes'),
+                'pimcore_asset-even' => $this->indexSettings('-2 days'),
+                'pimcore_document-odd' => [], // creation date unknown
             ])
         ;
         $searchIndexService->expects($this->never())->method('deleteIndex');
@@ -89,16 +80,46 @@ final class UnusedIndexCleanupServiceTest extends Unit
             ])
         ;
 
-        $searchIndexConfigService = $this->createMock(SearchIndexConfigServiceInterface::class);
-        $searchIndexConfigService
-            ->method('getIndexPrefix')
-            ->willReturn('pimcore_')
+        $service = new UnusedIndexCleanupService(
+            $searchIndexService,
+            $indexAliasService,
+            $this->mockConfigService('pimcore_')
+        );
+
+        // The fresh index and the index with unknown creation date are not considered unused.
+        $this->assertSame([], $service->findUnusedIndices());
+
+        // Disabling the age guard includes both.
+        $this->assertSame(
+            ['pimcore_asset-odd', 'pimcore_document-odd'],
+            $service->findUnusedIndices(0)
+        );
+    }
+
+    public function testDryRunDoesNotDeleteIndices(): void
+    {
+        $searchIndexService = $this->createMock(SearchIndexServiceInterface::class);
+        $searchIndexService
+            ->method('getIndexSettings')
+            ->willReturn([
+                'pimcore_asset-odd' => $this->indexSettings('-2 days'),
+                'pimcore_asset-even' => $this->indexSettings('-2 days'),
+            ])
+        ;
+        $searchIndexService->expects($this->never())->method('deleteIndex');
+
+        $indexAliasService = $this->createMock(IndexAliasServiceInterface::class);
+        $indexAliasService
+            ->method('getAllAliases')
+            ->willReturn([
+                ['alias' => 'pimcore_asset', 'index' => 'pimcore_asset-even'],
+            ])
         ;
 
         $service = new UnusedIndexCleanupService(
             $searchIndexService,
             $indexAliasService,
-            $searchIndexConfigService
+            $this->mockConfigService('pimcore_')
         );
 
         $this->assertSame(['pimcore_asset-odd'], $service->cleanupUnusedIndices(true));
@@ -108,12 +129,10 @@ final class UnusedIndexCleanupServiceTest extends Unit
     {
         $searchIndexService = $this->createMock(SearchIndexServiceInterface::class);
         $searchIndexService
-            ->method('getStats')
+            ->method('getIndexSettings')
             ->willReturn([
-                'indices' => [
-                    'pimcore_asset-odd' => [],
-                    'pimcore_asset-even' => [],
-                ],
+                'pimcore_asset-odd' => $this->indexSettings('-2 days'),
+                'pimcore_asset-even' => $this->indexSettings('-2 days'),
             ])
         ;
         $searchIndexService
@@ -130,42 +149,30 @@ final class UnusedIndexCleanupServiceTest extends Unit
             ])
         ;
 
-        $searchIndexConfigService = $this->createMock(SearchIndexConfigServiceInterface::class);
-        $searchIndexConfigService
-            ->method('getIndexPrefix')
-            ->willReturn('pimcore_')
-        ;
-
         $service = new UnusedIndexCleanupService(
             $searchIndexService,
             $indexAliasService,
-            $searchIndexConfigService
+            $this->mockConfigService('pimcore_')
         );
 
         $this->assertSame(['pimcore_asset-odd'], $service->cleanupUnusedIndices());
     }
 
-    public function testGetStatsExceptionIsNotSwallowed(): void
+    public function testGetIndexSettingsExceptionIsNotSwallowed(): void
     {
         $searchIndexService = $this->createMock(SearchIndexServiceInterface::class);
         $searchIndexService
-            ->method('getStats')
+            ->method('getIndexSettings')
             ->willThrowException(new RuntimeException('search engine unavailable'))
         ;
         $searchIndexService->expects($this->never())->method('deleteIndex');
 
         $indexAliasService = $this->createMock(IndexAliasServiceInterface::class);
 
-        $searchIndexConfigService = $this->createMock(SearchIndexConfigServiceInterface::class);
-        $searchIndexConfigService
-            ->method('getIndexPrefix')
-            ->willReturn('pimcore_')
-        ;
-
         $service = new UnusedIndexCleanupService(
             $searchIndexService,
             $indexAliasService,
-            $searchIndexConfigService
+            $this->mockConfigService('pimcore_')
         );
 
         $this->expectException(RuntimeException::class);
@@ -177,23 +184,39 @@ final class UnusedIndexCleanupServiceTest extends Unit
     public function testEmptyPrefixReturnsNoIndices(): void
     {
         $searchIndexService = $this->createMock(SearchIndexServiceInterface::class);
-        $searchIndexService->expects($this->never())->method('getStats');
+        $searchIndexService->expects($this->never())->method('getIndexSettings');
         $searchIndexService->expects($this->never())->method('deleteIndex');
 
         $indexAliasService = $this->createMock(IndexAliasServiceInterface::class);
 
-        $searchIndexConfigService = $this->createMock(SearchIndexConfigServiceInterface::class);
-        $searchIndexConfigService
-            ->method('getIndexPrefix')
-            ->willReturn('')
-        ;
-
         $service = new UnusedIndexCleanupService(
             $searchIndexService,
             $indexAliasService,
-            $searchIndexConfigService
+            $this->mockConfigService('')
         );
 
         $this->assertSame([], $service->findUnusedIndices());
+    }
+
+    private function mockConfigService(string $indexPrefix): SearchIndexConfigServiceInterface
+    {
+        $searchIndexConfigService = $this->createMock(SearchIndexConfigServiceInterface::class);
+        $searchIndexConfigService
+            ->method('getIndexPrefix')
+            ->willReturn($indexPrefix)
+        ;
+
+        return $searchIndexConfigService;
+    }
+
+    private function indexSettings(string $createdAt): array
+    {
+        return [
+            'settings' => [
+                'index' => [
+                    'creation_date' => (string) (strtotime($createdAt) * 1000),
+                ],
+            ],
+        ];
     }
 }

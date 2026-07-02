@@ -207,9 +207,17 @@ To preview deletions without making changes, use `--dry-run`:
 bin/console generic-data-index:cleanup:unused-indices --dry-run
 ```
 
-> **Warning:** Do not run this command while a reindex is in progress. During a reindex the
-> new `-odd`/`-even` index is created and populated before it is attached to its alias, so for
-> the duration of that window it carries the configured prefix and suffix but is not referenced
-> by any alias. This command would classify such an index as unused and delete the index that is
-> actively being built. Run a `--dry-run` first and make sure no reindex (e.g.
-> `generic-data-index:reindex` or `generic-data-index:deployment:reindex`) is running.
+During a reindex the new `-odd`/`-even` index is created and populated before it is attached
+to its alias, so for the duration of that window it carries the configured prefix and suffix
+but is not referenced by any alias. To avoid deleting an index that is actively being built,
+indices younger than `--min-age` seconds (default: `86400`, i.e. 24 hours) are never
+considered unused. Indices whose creation date cannot be determined are also skipped.
+
+```bash
+bin/console generic-data-index:cleanup:unused-indices --min-age=3600
+```
+
+> **Warning:** Only lower `--min-age` or disable the guard entirely (`--min-age=0`) when you
+> are sure no reindex (e.g. `generic-data-index:reindex` or
+> `generic-data-index:deployment:reindex`) is currently running or expected to take longer
+> than the chosen threshold. Run a `--dry-run` first to review what would be deleted.
