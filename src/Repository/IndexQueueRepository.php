@@ -41,6 +41,13 @@ final class IndexQueueRepository
 
     public const BATCH_SIZE = 500;
 
+    /**
+     * Factor reserving the low-order digits of a dispatch id for a random
+     * uniqueness suffix, while the millisecond timestamp stays in the
+     * high-order digits. See generateDispatchId().
+     */
+    private const DISPATCH_ID_FACTOR = 1_000_000;
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly TimeServiceInterface $timeService,
@@ -85,8 +92,11 @@ final class IndexQueueRepository
             if ($dispatch) {
                 $dispatchId = $this->dispatchItems($limit);
 
+                // No row locking required: dispatchItems() has already claimed the
+                // rows for this worker by stamping them with the unique $dispatchId,
+                // so this query only ever reads its own, exclusively-owned rows.
                 $sql = sprintf(
-                    'SELECT * FROM %s WHERE %s = :dispatchId FOR UPDATE SKIP LOCKED',
+                    'SELECT * FROM %s WHERE %s = :dispatchId',
                     $this->connection->quoteIdentifier(IndexQueue::TABLE),
                     $this->connection->quoteIdentifier('dispatched')
                 );
@@ -97,8 +107,12 @@ final class IndexQueueRepository
                 )->fetchAllAssociative();
             }
 
+            // Non-dispatching read ("peek"): returns unhandled entries without
+            // claiming them. As a pure read it neither needs nor should hold row
+            // locks. Concurrency-safe claiming is handled by the $dispatch branch
+            // above via dispatchItems().
             $sql = sprintf(
-                'SELECT * FROM %s WHERE %s = 0 ORDER BY %s ASC LIMIT %s FOR UPDATE SKIP LOCKED',
+                'SELECT * FROM %s WHERE %s = 0 ORDER BY %s ASC LIMIT %s',
                 $this->connection->quoteIdentifier(IndexQueue::TABLE),
                 $this->connection->quoteIdentifier('dispatched'),
                 $this->connection->quoteIdentifier('operationTime'),
@@ -202,53 +216,34 @@ final class IndexQueueRepository
     }
 
     /**
-     * @throws DBALException
+     * @throws DBALException|Throwable
      */
-    public function enqueueBySelectQuery(
-        DBALQueryBuilder $queryBuilder
-    ): void {
-        $result = $this->connection->fetchAllAssociative($queryBuilder->getSQL(), $queryBuilder->getParameters());
-        if (empty($result)) {
-            return;
+    public function enqueueBySelectQuery(DBALQueryBuilder $queryBuilder): void
+    {
+        $firstRow = null;
+        $idKey = null;
+        $chunk = [];
+
+        $iterator = $this->connection->iterateAssociative(
+            $queryBuilder->getSQL(),
+            $queryBuilder->getParameters()
+        );
+
+        foreach ($iterator as $row) {
+            if ($firstRow === null) {
+                $firstRow = $row;
+                $idKey = array_key_first($row);
+            }
+            $chunk[] = $row[$idKey];
+            if (count($chunk) === self::BATCH_SIZE) {
+                $this->flushChunk($chunk, $firstRow);
+                $chunk = [];
+            }
         }
 
-        [
-            $ids,
-            $elementType,
-            $operation,
-            $operationTime,
-            $elementIndexName
-        ] = $this->getValuesFromSqlResult($result);
-
-        foreach (array_chunk($ids, self::BATCH_SIZE) as $chunk) {
-            $effectiveChunkSize = count($chunk);
-
-            try {
-                $this->connection->beginTransaction();
-
-                $affectedRows = $this->insertFromChunk(
-                    $chunk,
-                    $elementType,
-                    $operation,
-                    $operationTime,
-                    $elementIndexName
-                );
-
-                if ($affectedRows < $effectiveChunkSize) {
-                    $this->updateFromChunk(
-                        $chunk,
-                        $elementType,
-                        $operation,
-                        $operationTime
-                    );
-                }
-
-                $this->connection->commit();
-            } catch (Throwable $e) {
-                $this->connection->rollBack();
-
-                throw $e;
-            }
+        // flush remaining
+        if (!empty($chunk) && $firstRow !== null) {
+            $this->flushChunk($chunk, $firstRow);
         }
     }
 
@@ -274,20 +269,23 @@ final class IndexQueueRepository
                     dispatched = VALUES(dispatched)
         SQL;
 
-        $values = [];
-        foreach ($enqueueItemList as $item) {
-            $values[] = sprintf(
-                '(%s, %s, %s, %s, %s, 0)',
-                $this->connection->quote($item->getId()),
-                $this->connection->quote($item->getElementType()),
-                $this->connection->quote($item->getIndex()),
-                $this->connection->quote($operation->value),
-                $operationTime
+        $chunks = array_chunk($enqueueItemList, self::BATCH_SIZE);
+        foreach ($chunks as $chunk) {
+            $values = [];
+            foreach ($chunk as $item) {
+                $values[] = sprintf(
+                    '(%s, %s, %s, %s, %s, 0)',
+                    $this->connection->quote($item->getId()),
+                    $this->connection->quote($item->getElementType()),
+                    $this->connection->quote($item->getIndex()),
+                    $this->connection->quote($operation->value),
+                    $operationTime
+                );
+            }
+            $this->connection->executeQuery(
+                sprintf($sql, IndexQueue::TABLE, implode(',', $values))
             );
         }
-        $this->connection->executeQuery(
-            sprintf($sql, IndexQueue::TABLE, implode(',', $values))
-        );
     }
 
     /**
@@ -296,20 +294,38 @@ final class IndexQueueRepository
     public function dispatchItems(
         int $limit
     ): int {
-        $dispatchId = $this->timeService->getCurrentMillisecondTimestamp();
+        $timestamp = $this->timeService->getCurrentMillisecondTimestamp();
+        $dispatchId = $this->generateDispatchId($timestamp);
 
         // Executed as direct SQL statement as doctrine ORM does not support LIMIT in UPDATE queries
         $this->connection->executeQuery(
             'UPDATE ' . IndexQueue::TABLE .
-            ' SET dispatched = :dispatchId WHERE dispatched < :dispatched LIMIT ' . $limit,
+            ' SET dispatched = :dispatchId WHERE dispatched < :threshold LIMIT ' . $limit,
 
             [
                 'dispatchId' => $dispatchId,
-                'dispatched' => $dispatchId - 60*60*24*1000,
+                // 24h staleness threshold, scaled to the dispatch id encoding so
+                // that unhandled (0) and stale rows are still re-dispatched.
+                'threshold' => ($timestamp - 60*60*24*1000) * self::DISPATCH_ID_FACTOR,
             ]
         );
 
         return $dispatchId;
+    }
+
+    /**
+     * Builds a per-dispatch claim token that stays unique even when several
+     * workers dispatch within the same millisecond.
+     *
+     * The millisecond timestamp is kept in the high-order digits - preserving
+     * the chronological ordering the stale-item re-dispatch in dispatchItems()
+     * relies on - while a random suffix in the low-order digits guarantees
+     * uniqueness within a single millisecond. The result stays well within the
+     * unsigned bigint range of the "dispatched" column.
+     */
+    private function generateDispatchId(int $timestamp): int
+    {
+        return $timestamp * self::DISPATCH_ID_FACTOR + random_int(0, self::DISPATCH_ID_FACTOR - 1);
     }
 
     public function resetDispatchedItems(string $dispatchId): void
@@ -349,29 +365,40 @@ final class IndexQueueRepository
         array $chunk,
         string $elementType,
         string $operation,
-        int $operationTime
+        int $operationTime,
+        ?string $elementIndexName = null,
     ): int {
         if (empty($chunk)) {
             return 0;
         }
 
         $placeholders = str_repeat('?,', count($chunk) - 1) . '?';
-        $updateSql = sprintf(
-            'UPDATE %s SET %s = ?, %s = ?, %s = 0 WHERE %s IN (%s) AND %s = ?',
-            $this->connection->quoteIdentifier(IndexQueue::TABLE),
+
+        $setClauses = sprintf(
+            '%s = ?, %s = ?, %s = 0',
             $this->connection->quoteIdentifier('operation'),
             $this->connection->quoteIdentifier('operationTime'),
             $this->connection->quoteIdentifier('dispatched'),
+        );
+
+        if ($elementIndexName !== null) {
+            $setClauses .= sprintf(', %s = ?', $this->connection->quoteIdentifier('elementIndexName'));
+        }
+
+        $updateSql = sprintf(
+            'UPDATE %s SET %s WHERE %s IN (%s) AND %s = ?',
+            $this->connection->quoteIdentifier(IndexQueue::TABLE),
+            $setClauses,
             $this->connection->quoteIdentifier('elementId'),
             $placeholders,
             $this->connection->quoteIdentifier('elementType')
         );
 
-        $updateParams = array_merge(
-            [$operation, $operationTime],
-            $chunk,
-            [$elementType]
-        );
+        $updateParams = [$operation, $operationTime];
+        if ($elementIndexName !== null) {
+            $updateParams[] = $elementIndexName;
+        }
+        $updateParams = array_merge($updateParams, $chunk, [$elementType]);
 
         return $this->connection->executeStatement($updateSql, $updateParams);
     }
@@ -402,36 +429,89 @@ final class IndexQueueRepository
 
         $insertParams = [];
         foreach ($chunk as $id) {
-            $insertParams = array_merge($insertParams, [
-                $id,
-                $elementType,
-                $elementIndexName,
-                $operation,
-                $operationTime,
-            ]);
+            array_push($insertParams, $id, $elementType, $elementIndexName, $operation, $operationTime);
         }
 
         return $this->connection->executeStatement($insertSql, $insertParams);
     }
 
     /**
-     * Extracts values from SQL result rows that use named column aliases.
+     * Extracts values from a result chunk that uses named column aliases.
      * Expected aliases: elementId, elementType, elementIndexName, operation, operationTime.
+     *
+     * @param list<string|int>     $ids      Element IDs (flat list) for the current chunk
+     * @param array<string, mixed> $metaData First row of the query result, providing element type, operation, etc.
+     *
+     * @return array{0: list<string|int>, 1: string, 2: string, 3: int, 4: string|null}|array{}
      */
-    private function getValuesFromSqlResult(array $result): array
+    private function getValuesFromSqlResult(array $ids, array $metaData): array
     {
-        if (empty($result)) {
+        if (empty($ids)) {
             return [];
         }
 
-        $firstRow = $result[0];
-
         return [
-            array_column($result, 'elementId'),
-            $firstRow['elementType'],
-            $firstRow['operation'],
-            (int)$firstRow['operationTime'],
-            $firstRow['elementIndexName'],
+            $ids,
+            $metaData['elementType'],
+            $metaData['operation'],
+            (int)$metaData['operationTime'],
+            $metaData['elementIndexName'] ?? null,
         ];
+    }
+
+    /**
+     * @param list<string|int> $chunk Element IDs
+     * @param array{elementType: string, elementId: string, operation: string, operationTime: string|int, elementIndexName: string} $metaData
+     *
+     * @throws Throwable
+     * @throws DBALException
+     */
+    private function flushChunk(array $chunk, array $metaData): void
+    {
+        if (empty($chunk)) {
+            return;
+        }
+
+        [
+            $ids,
+            $elementType,
+            $operation,
+            $operationTime,
+            $elementIndexName,
+
+        ] = $this->getValuesFromSqlResult(
+            $chunk,
+            $metaData
+        );
+
+        $effectiveChunkSize = count($chunk);
+
+        try {
+            $this->connection->beginTransaction();
+
+            $affectedRows = $this->insertFromChunk(
+                $ids,
+                $elementType,
+                $operation,
+                $operationTime,
+                $elementIndexName
+            );
+
+            if ($affectedRows < $effectiveChunkSize) {
+                $this->updateFromChunk(
+                    $ids,
+                    $elementType,
+                    $operation,
+                    $operationTime,
+                    $elementIndexName,
+                );
+            }
+
+            $this->connection->commit();
+        } catch (Throwable $e) {
+            $this->connection->rollBack();
+
+            throw $e;
+        }
     }
 }

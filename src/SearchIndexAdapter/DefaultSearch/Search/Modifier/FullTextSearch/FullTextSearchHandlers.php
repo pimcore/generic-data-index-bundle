@@ -100,7 +100,14 @@ final readonly class FullTextSearchHandlers
             return;
         }
 
-        $context->getSearch()->addQuery(new SimpleQueryStringFilter($fullValueSearch->getSearchTerm()));
+        $context->getSearch()->addQuery(
+            new SimpleQueryStringFilter(
+                $fullValueSearch->getSearchTerm(),
+                $fullValueSearch->getDefaultOperator(),
+                $fullValueSearch->getFields(),
+                $fullValueSearch->getFlags(),
+            )
+        );
     }
 
     #[AsSearchModifierHandler]

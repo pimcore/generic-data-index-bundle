@@ -137,6 +137,11 @@ final readonly class NestedTypeFilters
             return null;
         }
 
-        return (new SimpleQueryStringFilter($modifier->getSearchTerm()))->toArrayAsSubQuery();
+        return (new SimpleQueryStringFilter(
+            $modifier->getSearchTerm(),
+            $modifier->getDefaultOperator(),
+            $modifier->getFields(),
+            $modifier->getFlags(),
+        ))->toArrayAsSubQuery();
     }
 }
