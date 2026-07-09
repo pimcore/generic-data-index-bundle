@@ -209,7 +209,8 @@ final class IndexUpdateCommand extends AbstractCommand
         }
     }
 
-    private function updateAssets() : void  {
+    private function updateAssets(): void
+    {
         try {
             $this->output->writeln(
                 '<info>Update asset index</info>',
@@ -224,7 +225,8 @@ final class IndexUpdateCommand extends AbstractCommand
         }
     }
 
-    private function updateDocuments() : void  {
+    private function updateDocuments(): void
+    {
         try {
             $this->output->writeln(
                 '<info>Update document index</info>',
