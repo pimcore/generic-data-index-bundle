@@ -20,6 +20,7 @@ use Doctrine\ORM\Mapping\Entity;
 #[ORM\Table(name: self::TABLE)]
 #[ORM\Index(columns: ['dispatched'], name: self::TABLE . '_dispatched')]
 #[ORM\Index(columns: ['operationTime'], name: self::TABLE . '_operation_time')]
+#[ORM\UniqueConstraint(name: self::TABLE . '_element_id_type', columns: ['elementId', 'elementType'])]
 
 /**
  * @internal
@@ -29,6 +30,7 @@ class IndexQueue
     public const TABLE = 'generic_data_index_queue';
 
     #[ORM\Id]
+    #[ORM\GeneratedValue]
     #[ORM\Column(type: 'bigint')]
     private int $id;
 
