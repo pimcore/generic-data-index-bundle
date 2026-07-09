@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Messenger\TransportName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
@@ -29,6 +30,7 @@ use Pimcore\Event\Model\DataObjectEvent;
 use Pimcore\Model\DataObject\Service;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 
 /**
  * @internal
@@ -64,13 +66,21 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
 
     public function updateDataObject(DataObjectEvent $event): void
     {
+        if (!$this->installer->isInstalled()) {
+            return;
+        }
+
         $this->messageBus->dispatch(
             new UpdateSiblingsMessage(
                 $event->getObject()->getId(),
                 ElementType::DATA_OBJECT->value,
                 true
-            )
+            ),
+            $this->synchronousProcessing->isEnabled()
+                ? [new TransportNamesStamp(TransportName::SYNC->value)]
+                : []
         );
+
         $this->updateData($event);
     }
 

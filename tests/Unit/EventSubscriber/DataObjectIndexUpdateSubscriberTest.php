@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\EventSubscriber;
 
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Messenger\TransportName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber\DataObjectIndexUpdateSubscriber;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
@@ -28,6 +29,7 @@ use Pimcore\Event\Model\DataObjectEvent;
 use Pimcore\Model\DataObject\AbstractObject;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 
 /**
  * @internal
@@ -46,10 +48,11 @@ final class DataObjectIndexUpdateSubscriberTest extends Unit
         ]);
 
         $messageBus = $this->makeEmpty(MessageBusInterface::class, [
-            'dispatch' => Expected::once(function (UpdateSiblingsMessage $message) {
+            'dispatch' => Expected::once(function (UpdateSiblingsMessage $message, array $stamps) {
                 $this->assertSame(42, $message->getElementId());
                 $this->assertSame(ElementType::DATA_OBJECT->value, $message->getElementType());
                 $this->assertTrue($message->getResetChildrenIndexBy());
+                $this->assertSame([], $stamps);
 
                 return new Envelope($message);
             }),
@@ -64,9 +67,70 @@ final class DataObjectIndexUpdateSubscriberTest extends Unit
             ]),
             $this->makeEmpty(QueueMessagesDispatcher::class),
             $this->makeEmpty(RuntimeCacheResolverInterface::class, ['isRegistered' => false]),
-            $this->makeEmpty(SynchronousProcessingServiceInterface::class),
+            $this->makeEmpty(SynchronousProcessingServiceInterface::class, ['isEnabled' => false]),
             $this->makeEmpty(SynchronousProcessingRelatedIdsServiceInterface::class),
             $messageBus
+        );
+
+        $subscriber->updateDataObject($event);
+    }
+
+    public function testUpdateDataObjectDispatchesSynchronouslyWhenSyncProcessingEnabled(): void
+    {
+        $dataObject = $this->makeEmpty(AbstractObject::class, [
+            'getId' => 42,
+        ]);
+
+        $event = $this->makeEmpty(DataObjectEvent::class, [
+            'getObject' => $dataObject,
+            'hasArgument' => false,
+        ]);
+
+        $messageBus = $this->makeEmpty(MessageBusInterface::class, [
+            'dispatch' => Expected::once(function (UpdateSiblingsMessage $message, array $stamps) {
+                $this->assertCount(1, $stamps);
+                $this->assertInstanceOf(TransportNamesStamp::class, $stamps[0]);
+                $this->assertSame([TransportName::SYNC->value], $stamps[0]->getTransportNames());
+
+                return new Envelope($message);
+            }),
+        ]);
+
+        $subscriber = new DataObjectIndexUpdateSubscriber(
+            $this->makeEmpty(Installer::class, ['isInstalled' => true]),
+            $this->makeEmpty(IndexQueueServiceInterface::class, [
+                'updateIndexQueue' => Expected::atLeastOnce(
+                    $this->makeEmpty(IndexQueueServiceInterface::class, ['commit' => null])
+                ),
+            ]),
+            $this->makeEmpty(QueueMessagesDispatcher::class),
+            $this->makeEmpty(RuntimeCacheResolverInterface::class, ['isRegistered' => false]),
+            $this->makeEmpty(SynchronousProcessingServiceInterface::class, ['isEnabled' => true]),
+            $this->makeEmpty(SynchronousProcessingRelatedIdsServiceInterface::class),
+            $messageBus
+        );
+
+        $subscriber->updateDataObject($event);
+    }
+
+    public function testUpdateDataObjectDoesNothingWhenNotInstalled(): void
+    {
+        $event = $this->makeEmpty(DataObjectEvent::class, [
+            'getObject' => Expected::never(),
+        ]);
+
+        $subscriber = new DataObjectIndexUpdateSubscriber(
+            $this->makeEmpty(Installer::class, ['isInstalled' => false]),
+            $this->makeEmpty(IndexQueueServiceInterface::class, [
+                'updateIndexQueue' => Expected::never(),
+            ]),
+            $this->makeEmpty(QueueMessagesDispatcher::class),
+            $this->makeEmpty(RuntimeCacheResolverInterface::class),
+            $this->makeEmpty(SynchronousProcessingServiceInterface::class),
+            $this->makeEmpty(SynchronousProcessingRelatedIdsServiceInterface::class),
+            $this->makeEmpty(MessageBusInterface::class, [
+                'dispatch' => Expected::never(),
+            ])
         );
 
         $subscriber->updateDataObject($event);

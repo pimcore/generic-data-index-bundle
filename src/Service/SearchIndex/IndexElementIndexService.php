@@ -96,6 +96,8 @@ final readonly class IndexElementIndexService implements IndexElementIndexServic
 
             $index++;
         }
+
+        $this->bulkOperationService->commit();
     }
 
     private function getIndexedIndex(AbstractObject|Document $element): ?int
