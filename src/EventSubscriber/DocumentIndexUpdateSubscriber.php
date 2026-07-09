@@ -72,6 +72,8 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
                 ElementType::DOCUMENT->value,
                 false
             ),
+            // In synchronous mode (e.g. CLI, tests) route to the sync transport so
+            // siblings are reindexed immediately; otherwise process on the async queue.
             $this->synchronousProcessing->isEnabled()
                 ? [new TransportNamesStamp(TransportName::SYNC->value)]
                 : []

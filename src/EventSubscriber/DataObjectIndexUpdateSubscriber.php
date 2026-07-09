@@ -76,6 +76,8 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
                 ElementType::DATA_OBJECT->value,
                 true
             ),
+            // In synchronous mode (e.g. CLI, tests) route to the sync transport so
+            // siblings are reindexed immediately; otherwise process on the async queue.
             $this->synchronousProcessing->isEnabled()
                 ? [new TransportNamesStamp(TransportName::SYNC->value)]
                 : []
