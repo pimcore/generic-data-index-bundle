@@ -21,4 +21,6 @@ use Pimcore\Model\Element\ElementInterface;
 interface DependencyServiceInterface
 {
     public function getRequiresDependencies(ElementInterface $element): array;
+
+    public function isReferencedByAny(ElementInterface $element): bool;
 }

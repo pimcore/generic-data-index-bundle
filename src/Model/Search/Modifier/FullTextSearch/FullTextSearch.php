@@ -17,13 +17,37 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierIn
 
 final readonly class FullTextSearch implements SearchModifierInterface
 {
+    /**
+     * @param string[] $fields
+     */
     public function __construct(
-        private string $searchTerm
+        private string $searchTerm,
+        private string $defaultOperator = 'AND',
+        private array $fields = [],
+        private ?string $flags = 'PHRASE|WHITESPACE',
     ) {
     }
 
     public function getSearchTerm(): string
     {
         return $this->searchTerm;
+    }
+
+    public function getDefaultOperator(): string
+    {
+        return $this->defaultOperator;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getFields(): array
+    {
+        return $this->fields;
+    }
+
+    public function getFlags(): ?string
+    {
+        return $this->flags;
     }
 }

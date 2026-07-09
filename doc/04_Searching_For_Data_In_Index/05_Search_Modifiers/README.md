@@ -1,107 +1,126 @@
+---
+title: Search Modifiers
+description: Filter, sort, and aggregate search results using built-in and custom search modifiers.
+---
+
 # Search Modifiers
 
-Search modifiers can influence the search results by modifying the search query. They can be used to filter, sort or aggregate the search results. 
-
-Search modifiers can be added to the search via the `addModifier()` method of the search object.
+Search modifiers filter, sort, and aggregate search results by altering the
+underlying query. Add them via the `addModifier()` method:
 
 ```php
-$search->addModifier(new ParentIdFilter(1))
+$search->addModifier(new ParentIdFilter(1));
 ```
 
 ## Available Search Modifiers
 
 ### Filters
 
-| Modifier                                                                                                                                                            | Modifier Category         | Description                                                                                                                                                                                                                                                                                                               |
-|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [IdFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/Basic/IdFilter.php)                                       | Basic filters             | Filter by element ID                                                                                                                                                                                                                                                                                                      |
-| [IdsFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/Basic/IdsFilter.php)                                     | Basic filters             | Filter by multiple element IDs                                                                                                                                                                                                                                                                                            |
-| [BooleanFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.x/src/Model/Search/Modifier/Filter/Basic/BooleanFilter.php)                             | Basic filters             | Filter boolean fields based on the value with [PQL field name resolution support](#pql-field-name-resolution)                                                                                                                                                                                                             |
-| [IntegerFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/Basic/IntegerFilter.php)                             | Basic filters             | Filter integer fields based on the value with [PQL field name resolution support](#pql-field-name-resolution)                                                                                                                                                                                                             |
-| [NumberFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.x/src/Model/Search/Modifier/Filter/Basic/NumberFilter.php)                               | Basic filters             | Filter number fields based on the value with [PQL field name resolution support](#pql-field-name-resolution)                                                                                                                                                                                                              |
-| [ExcludeFoldersFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/Basic/ExcludeFoldersFilter.php)               | Basic filters             | Exclude folders from search result                                                                                                                                                                                                                                                                                        |
-| [ExcludeVariantsFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.x/src/Model/Search/Modifier/Filter/Basic/ExcludeVariantsFilter.php)              | Basic filters             | Exclude data object variants from search result                                                                                                                                                                                                                                                                           |
-| [ParentIdsFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/Tree/ParentIdsFilter.php)                          | Tree related filters      | Filter by parent ID                                                                                                                                                                                                                                                                                                       |
-| [PathFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/Tree/PathFilter.php)                                    | Tree related filters      | Filter by path (depending on use case for all levels or direct children only and with or without the parent item included)                                                                                                                                                                                                |
-| [ClassIdsFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/Tree/ClassIdsFilter.php)                            | Tree related filters      | Filter object items by class IDs (depending on use case the folders can be included in the result). Setting parameter `$useClassName` to `true` allows filtering based on the classNames instead                                                                                                                          |
-| [TagFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/Tree/TagFilter.php)                                      | Tree related filters      | Filter by tag IDs (it is also possible to include child tags)                                                                                                                                                                                                                                                             |
-| [AssetMetaDataFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/Asset/AssetMetaDataFilter.php)                 | Asset filters             | Filter by asset meta data attribute. The format of the `$data` which needs to be passed depends on the type of the meta data attribute and is handled by its [field definition adapter](https://github.com/pimcore/generic-data-index-bundle/tree/1.x/src/SearchIndexAdapter/DefaultSearch/Asset/FieldDefinitionAdapter). |
-| [WorkspaceQuery](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/Workspaces/WorkspaceQuery.php)                      | Workspace related filters | Filter based on the user workspaces and permissions for a defined element type (this query is added to the asset/document/data object search by default)                                                                                                                                                                  |
-| [ElementWorkspacesQuery](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/Workspaces/WorkspaceQuery.php)              | Workspace related filters | Filter based on the user workspaces and permissions respecting all element types (this query is added to the element search by default)                                                                                                                                                                                   |
-| [MultiSelectFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/FieldType/MultiSelectFilter.php)                 | Field type filters        | Filter text fields by a list of exact strings. Supports [PQL field name resolution](#pql-field-name-resolution).                                                                                                                                                                                                          |
-| [BooleanMultiSelectFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.x/src/Model/Search/Modifier/Filter/FieldType/BooleanMultiSelectFilter.php)   | Field type filters        | Filter boolean fields by a list of values (true, false, null). Supports [PQL field name resolution](#pql-field-name-resolution).                                                                                                                                                                                          |
-| [DateFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/FieldType/DateFilter.php)                               | Field type filters        | Filter date fields based on an exact date or a range of dates. Supports [PQL field name resolution](#pql-field-name-resolution).                                                                                                                                                                                          |
-| [ClassificationStoreFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.x/src/Model/Search/Modifier/Filter/FieldType/ClassificationStoreFilter.php) | Nested filters            | Filter based on the classification store field values. Requires sub-modifier based on the filtered field type. Only fields types, which are supported by classificaiton store can be used for sub-modifier.                                                                                                               |
-| [NestedFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.x/src/Model/Search/Modifier/Filter/FieldType/NestedFilter.php)                           | Nested filters            | Filter for nested fields. Requires sub-modifier based on the field type of nested field.                                                                                                                                                                                                                                  |
+| Modifier | Category | Description |
+|----------|----------|-------------|
+| [IdFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Basic/IdFilter.php) | Basic | Filter by element ID |
+| [IdsFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Basic/IdsFilter.php) | Basic | Filter by multiple element IDs |
+| [BooleanFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Basic/BooleanFilter.php) | Basic | Filter boolean fields. Supports [PQL field name resolution](#pql-field-name-resolution). |
+| [IntegerFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Basic/IntegerFilter.php) | Basic | Filter integer fields. Supports [PQL field name resolution](#pql-field-name-resolution). |
+| [NumberFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Basic/NumberFilter.php) | Basic | Filter number fields. Supports [PQL field name resolution](#pql-field-name-resolution). |
+| [ExcludeFoldersFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Basic/ExcludeFoldersFilter.php) | Basic | Exclude folders from results |
+| [ExcludeVariantsFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Basic/ExcludeVariantsFilter.php) | Basic | Exclude data object variants from results |
+| [ParentIdsFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Tree/ParentIdFilter.php) | Tree | Filter by one or more parent IDs |
+| [PathFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Tree/PathFilter.php) | Tree | Filter by path (all levels or direct children, with or without parent) |
+| [ClassIdsFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Tree/ClassIdsFilter.php) | Tree | Filter objects by class IDs (optionally include folders). Set `$useClassName` to `true` to filter by class name instead. |
+| [TagFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Tree/TagFilter.php) | Tree | Filter by tag IDs (optionally include child tags) |
+| [AssetMetaDataFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Asset/AssetMetaDataFilter.php) | Asset | Filter by asset metadata attribute. The `$data` format depends on the metadata type and its [field definition adapter](https://github.com/pimcore/generic-data-index-bundle/tree/2026.x/src/SearchIndexAdapter/DefaultSearch/Asset/FieldDefinitionAdapter). |
+| [WorkspaceQuery](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Workspaces/WorkspaceQuery.php) | Workspace | Filter by user workspaces and permissions for a single element type (added to asset/document/data object searches by default) |
+| [ElementWorkspacesQuery](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Workspaces/ElementWorkspacesQuery.php) | Workspace | Filter by user workspaces across all element types (added to element search by default) |
+| [MultiSelectFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/FieldType/MultiSelectFilter.php) | Field type | Filter text fields by exact string list. Supports [PQL field name resolution](#pql-field-name-resolution). |
+| [BooleanMultiSelectFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/FieldType/BooleanMultiSelectFilter.php) | Field type | Filter boolean fields by value list (true, false, null). Supports [PQL field name resolution](#pql-field-name-resolution). |
+| [DateFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/FieldType/DateFilter.php) | Field type | Filter date fields by exact date or date range. Supports [PQL field name resolution](#pql-field-name-resolution). |
+| [ClassificationStoreFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/FieldType/ClassificationStoreFilter.php) | Nested | Filter by classification store field values. Requires a sub-modifier matching the field type. |
+| [NestedFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/FieldType/NestedFilter.php) | Nested | Filter nested fields. Requires a sub-modifier matching the nested field type. |
 
 ### Full Text Search Queries
 
-| Modifier                                                                                                                                        | Modifier Category | Description                                                                                                                                                                                                                                                                                                                |
-|-------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [ElementKeySearch](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/FullTextSearch/ElementKeySearch.php) | Full text search  | Search by element key like in the studio UI with [wildcard support](#wildcard-support).                                                                                                                                                                                                                                    |
-| [FullTextSearch](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/FullTextSearch/FullTextSearch.php)       | Full text search  | Search on all element fields by value with simple query string syntax for [OpenSearch](https://opensearch.org/docs/latest/query-dsl/full-text/simple-query-string/#simple-query-string-syntax) or [Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-simple-query-string-query.html#simple-query-string-syntax). |
-| [MultiMatchSearch](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/FullTextSearch/MultiMatchSearch.php) | Full text search  | Search using multi_match query with configurable fields, match type (best_fields, most_fields, cross_fields, phrase, phrase_prefix) and operator (or/and). See [OpenSearch](https://opensearch.org/docs/latest/query-dsl/full-text/multi-match/) or [Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html) documentation. |
-| [WildcardSearch](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/FullTextSearch/WildcardSearch.php)     | Full text search        | Filter text fields based on search terms with [wildcard support](#wildcard-support) and [PQL field name resolution support](#pql-field-name-resolution).                                                                                                                                                                   |
-
+| Modifier | Description |
+|----------|-------------|
+| [ElementKeySearch](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/FullTextSearch/ElementKeySearch.php) | Search by element key (as in Pimcore Studio) with [wildcard support](#wildcard-support) |
+| [FullTextSearch](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/FullTextSearch/FullTextSearch.php) | Search all element fields using simple query string syntax ([OpenSearch](https://opensearch.org/docs/latest/query-dsl/full-text/simple-query-string/#simple-query-string-syntax) / [Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-simple-query-string-query.html#simple-query-string-syntax)) |
+| [MultiMatchSearch](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/FullTextSearch/MultiMatchSearch.php) | Search with configurable fields, match type (best_fields, most_fields, cross_fields, phrase, phrase_prefix), and operator (or/and). See [OpenSearch](https://opensearch.org/docs/latest/query-dsl/full-text/multi-match/) / [Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-multi-match-query.html) docs. |
+| [WildcardSearch](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/FullTextSearch/WildcardSearch.php) | Filter text fields with [wildcard support](#wildcard-support) and [PQL field name resolution](#pql-field-name-resolution) |
 
 ### Dependencies
 
-| Modifier                                                                                                                                       | Modifier Category | Description                                               |
-|------------------------------------------------------------------------------------------------------------------------------------------------|-------------------|-----------------------------------------------------------|
-| [RequiresFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/Dependency/RequiresFilter.php) | Dependencies      | Get all elements which the given element requires.        |
-| [RequiredByFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/Dependency/RequiredByFilter.php)    | Dependencies      | Get all elements which are required by the given element. |
-
+| Modifier | Description |
+|----------|-------------|
+| [RequiresFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Dependency/RequiresFilter.php) | Get all elements that the given element requires |
+| [RequiredByFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Dependency/RequiredByFilter.php) | Get all elements required by the given element |
 
 ### Query Language
 
-| Modifier                                                                                                                         | Modifier Category | Description                                                                               |
-|----------------------------------------------------------------------------------------------------------------------------------|-------------------|-------------------------------------------------------------------------------------------|
-| [PqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/QueryLanguage/PqlFilter.php) | Query Language    | Apply a [Pimcore Query Language (PQL)](../09_Pimcore_Query_Language/README.md) condition. |
+| Modifier | Description |
+|----------|-------------|
+| [PqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/QueryLanguage/PqlFilter.php) | Apply a [Pimcore Query Language (PQL)](../09_Pimcore_Query_Language/README.md) condition |
+| [TreePqlFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.5/src/Model/Search/Modifier/QueryLanguage/TreePqlFilter.php) | Query Language    | Apply a [Pimcore Query Language (PQL)](../09_Pimcore_Query_Language/README.md) condition in a tree context: shows folders containing matching descendants and non-folder items matching the PQL query. Requires pre-computed relevant folder keys. |
 
 ### Sort Modifiers
 
-If multiple sort modifiers are added to the search, the order of the modifiers is important. The search result will be sorted by the first added modifier first, then by the second added modifier and so on.
+When multiple sort modifiers are added, they apply in order: the first modifier
+is the primary sort, the second is the secondary sort, and so on.
 
-| Modifier                                                                                                                                     | Modifier Category      | Description                                                                                                                                                                                                                                                                                                                                                                   |
-|----------------------------------------------------------------------------------------------------------------------------------------------|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [OrderByFullPath](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Sort/Tree/OrderByFullPath.php)     | Tree related sorting   | Order by full path (including element key)                                                                                                                                                                                                                                                                                                                                    |
-| [OrderByField](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Sort/OrderByField.php)                | Field based sorting    | Order by given field name.<br/>If `$enablePqlFieldNameResolution` is set to true (default) [Pimcore Query Language](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Sort/OrderByField.php) field name resolution logic is enabled. Therefore it's possible to use short field names then instead of specifying the full indexed path. |
-| [OrderByPageNumber](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Sort/Tree/OrderByPageNumber.php) | Search related sorting | Use inverted search for large amounts of data (this modifier is added to the search when there are at least 1000 results by default, and page number is above the half of total pages. Furthermore, existing sorting has to be already applied.)                                                                                                                              |
-| [OrderByIndexField](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Sort/Tree/OrderByIndexField.php) | Search related sorting | Order by element tree index for custom tree sorting. This modifier is currently applied only for data objects and documents!                                                                                                                                                                                                                                                  |
+| Modifier | Category | Description |
+|----------|----------|-------------|
+| [OrderByFullPath](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Sort/Tree/OrderByFullPath.php) | Tree | Sort by full path (including element key) |
+| [OrderByField](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Sort/OrderByField.php) | Field | Sort by field name. With `$enablePqlFieldNameResolution` set to `true` (default), short field names resolve automatically via PQL logic. |
+| [OrderByPageNumber](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Sort/OrderByPageNumber.php) | Search | Inverted search for large result sets. Applied automatically when results exceed 1,000 and the current page is past the halfway point. Requires existing sorting. |
+| [OrderByIndexField](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Sort/Tree/OrderByIndexField.php) | Search | Sort by element tree index for custom tree ordering. Applies to data objects and documents only. |
 
 ### Aggregations
 
+| Modifier | Category | Description |
+|----------|----------|-------------|
+| [ChildrenCountAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Aggregation/Tree/ChildrenCountAggregation.php) | Tree | Get children counts for given element IDs |
+| [ChildFolderAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2.5/src/Model/Search/Modifier/Aggregation/Tree/ChildFolderAggregation.php)      | Tree related aggregation | Get the keys (names) of child folders at a specific tree level that contain descendants matching a search. Used internally by TreePqlFilter to determine which folders to display in filtered trees. |
+| [AssetMetaDataAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Aggregation/Asset/AssetMetaDataAggregation.php) | Asset | Aggregate filter options for supported metadata types (used in asset grid filters) |
+| [FileSizeSumAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Aggregation/Asset/FileSizeSumAggregation.php) | Asset | Sum file sizes across assets for a search. Use `FileSizeAggregationServiceInterface` for a simplified API. |
 
-| Modifier                                                                                                                                                           | Modifier Category        | Description                                                                                                                                                                                         |
-|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [ChildrenCountAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Aggregation/Tree/ChildrenCountAggregation.php)  | Tree related aggregation | Get children counts for given element IDs.                                                                                                                                                          |
-| [AssetMetaDataAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Aggregation/Asset/AssetMetaDataAggregation.php) | Assets                   | Used for the filters in the asset grid to aggregate the filter options for supported meta data types.                                                                                               |
-| [FileSizeSumAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Aggregation/Asset/FileSizeSumAggregation.php) | Assets                   | Aggregates the sum of file sizes for all assets for a given search. The `FileSizeAggregationServiceInterface` internally uses this aggregation and provides an easy way to use this functionality. |
+## Implementation Details
 
-## Search Modifier Implementation Details
+### Wildcard Support
 
-### Wildcard support
+Some modifiers support wildcard characters in search terms:
 
-For some search modifiers, wildcard support is available. Wildcards support the following characters:
-- `*` can be used to match any sequence of characters, regardless of length - for example "Car*" to find all items starting with "Car".
-- `?` can be used to match exactly one character - for example "Car?" to find all items starting with "Car" and having one more character.
+- `*` matches any character sequence (e.g. `Car*` matches "Car", "Carbon", "Carpet")
+- `?` matches exactly one character (e.g. `Car?` matches "Card", "Cars")
 
-### PQL field name resolution
+### PQL Field Name Resolution
 
-Some modifiers support [Pimcore Query Language (PQL)](../09_Pimcore_Query_Language/README.md) field name resolution by setting `$enablePqlFieldNameResolution` to `true` (enabled by default). Therefore, it's possible to use short field names then instead of specifying the full indexed path. 
+Some modifiers support
+[Pimcore Query Language (PQL)](../09_Pimcore_Query_Language/README.md)
+field name resolution via `$enablePqlFieldNameResolution` (enabled by default).
+This allows using short field names instead of full indexed paths.
 
-## Add your own search modifier
+## Creating Custom Search Modifiers
 
-To add a custom search modifier implementation two steps are necessary:
+Creating a custom search modifier requires two steps:
 
-1. Create a new class that implements the `Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\ModifierInterface` interface. 
-This model class should contain all configurable attributes for the modifier. Take a look at the [IdFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/Search/Modifier/Filter/Basic/IdFilter.php) for an example.
+### 1. Define the Modifier Model
 
-2. Create a service to implement the logic behind the modifier and add the [AsSearchModifierHandler](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Attribute/DefaultSearch/AsSearchModifierHandler.php) attribute. 
-The attribute can either be directly added to the method which implements to logic or to a class. If added to a class the ´__invoke` method will be used as the handler.
+Create a class implementing `ModifierInterface`. This model holds the modifier's
+configurable attributes. See
+[IdFilter](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Filter/Basic/IdFilter.php)
+for an example.
 
-The implemented method needs exactly two arguments.:
-* First argument: the modifier model (see step 1).
-* Second argument: [SearchModifierContextInterface](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Model/DefaultSearch/Modifier/SearchModifierContextInterface.php) $context
+### 2. Implement the Handler
 
-Take a look at the [BasicFilters](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/SearchIndexAdapter/DefaultSearch/Search/Modifier/Filter/BasicFilters.php) for an example and the [Default search models documentation](../06_Default_Search_Models/README.md) for more details about the search models to manipulate the search.
+Create a service with the
+[AsSearchModifierHandler](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Attribute/Search/AsSearchModifierHandler.php)
+attribute. Apply the attribute to either a method or a class (uses `__invoke`).
+
+The handler method requires exactly two parameters:
+- The modifier model (from step 1)
+- `SearchModifierContextInterface $context`
+
+See
+[BasicFilters](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/SearchIndexAdapter/DefaultSearch/Search/Modifier/Filter/BasicFilters.php)
+for an example and the
+[Default Search Models documentation](../06_Default_Search_Models/README.md)
+for manipulating the search query.

@@ -82,14 +82,14 @@ final class DocumentTypeAdapter extends AbstractElementTypeAdapter
         string $operation,
         int $operationTime,
         bool $includeElement = false
-    ): ?QueryBuilder {
+    ): QueryBuilder {
         $selects = [
-            (string)$element->getId(),
-            "'" . ElementType::DOCUMENT->value . "'",
-            "'" . IndexName::DOCUMENT->value . "'",
-            "'$operation'",
-            "'$operationTime'",
-            '0',
+            (string)$element->getId() . ' AS elementId',
+            "'" . ElementType::DOCUMENT->value . "' AS elementType",
+            "'" . IndexName::DOCUMENT->value . "' AS elementIndexName",
+            "'$operation' AS operation",
+            "'$operationTime' AS operationTime",
+            '0 AS dispatched',
         ];
 
         return $this->dbConnection->createQueryBuilder()

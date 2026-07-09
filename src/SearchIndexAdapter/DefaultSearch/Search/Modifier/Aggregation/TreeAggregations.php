@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemF
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Aggregation\Aggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchModifierContextInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree\ChildFolderAggregation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Aggregation\Tree\ChildrenCountAggregation;
 
 /**
@@ -46,6 +47,46 @@ final class TreeAggregations
                             'size' => count($aggregation->getParentIds()),
                         ],
                     ]
+                )
+            )
+            ->setSize(0)
+        ;
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleChildFolderAggregation(
+        ChildFolderAggregation $aggregation,
+        SearchModifierContextInterface $context
+    ): void {
+        $context->getSearch()
+            ->addAggregation(
+                new Aggregation(
+                    name: $aggregation->getAggregationName(),
+                    params: [
+                        'nested' => [
+                            'path' => SystemField::PATH_LEVELS->getPath(),
+                        ],
+                        'aggs' => [
+                            'filtered_level' => [
+                                'filter' => [
+                                    'term' => [
+                                        SystemField::PATH_LEVELS->getPath()
+                                            . '.level'
+                                            => $aggregation->getChildLevel(),
+                                    ],
+                                ],
+                                'aggs' => [
+                                    'folder_names' => [
+                                        'terms' => [
+                                            'field' => SystemField::PATH_LEVELS->getPath()
+                                                . '.name',
+                                            'size' => $aggregation->getMaxFolders(),
+                                        ],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
                 )
             )
             ->setSize(0)

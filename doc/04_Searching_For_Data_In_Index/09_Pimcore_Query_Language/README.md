@@ -1,18 +1,30 @@
-# Pimcore Query Language
+---
+title: Pimcore Query Language (PQL)
+description: PQL syntax reference for querying data objects, assets, and documents in the Generic Data Index.
+keywords:
+    - PQL
+    - Pimcore Query Language
+    - query language
+    - search syntax
+    - filter
+    - relation filter
+    - query string
+---
 
-Pimcore Query Language (PQL) is a query language that allows you to search for data in the Pimcore Generic Data Index. It is a simple and powerful query language that allows you to search for data using a wide range of search criteria.
+# Pimcore Query Language (PQL)
+
+Pimcore Query Language (PQL) defines a query syntax for searching data objects, assets,
+and documents in the Generic Data Index.
 
 ## Syntax
-
-Description of the PQL syntax:
 
 ```
 CONDITION = EXPRESSION | CONDITION ("AND" | "OR") CONDITION
 EXPRESSION = "(" CONDITION ")" | COMPARISON | QUERY_STRING_QUERY
 COMPARISON = FIELDNAME OPERATOR VALUE | RELATION_COMPARISON
 RELATION_COMPARISON = RELATION_FIELD_NAME OPERATOR VALUE
-FIELDNAME = IDENTIFIER{.IDENTIFIER}                         
-RELATION_FIELD_NAME = FIELDNAME:ENTITYNAME.FIELDNAME      
+FIELDNAME = IDENTIFIER{.IDENTIFIER}
+RELATION_FIELD_NAME = FIELDNAME:ENTITYNAME.FIELDNAME
 IDENTIFIER = [a-zA-Z_]\w*
 ENTITYNAME = [a-zA-Z_]\w*
 OPERATOR = "="|"!="|"<"|">"|">="|"<="|"LIKE"|"NOT LIKE"
@@ -24,35 +36,33 @@ QUERY_STRING_QUERY = "QUERY('" STRING "')"
 
 ### Operators
 
-| Operator   | Description                                                                                                                               | Examples                                             |
-|------------|-------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------|
-| `=`        | equal (case-sensitive)                                                                                                                    | `field = "value"`                                    |
-| `!=`       | not equal (case-sensitive)                                                                                                                | `field != "value"`                                   |
-| `<`        | smaller than                                                                                                                              | `field < 100`                                        |
-| `<=`       | smaller or equal than                                                                                                                     | `field <= 100`                                       |
-| `=>`       | bigger or equal than                                                                                                                      | `field >= 100`                                       |
-| `>`        | bigger than                                                                                                                               | `field > 100`                                        |
-| `LIKE`     | equal with wildcard support (case-insensitive)<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em> | `field like "val*"`<br/>`field like "val?e"`         |
-| `NOT LIKE` | not equal with wildcard support (case-insensitive)<br/><em>* matches zero or more characters</em><br/><em>? matches any single character</em>                | `field not like "val*"`<br/>`field not like "val?e"` |
+| Operator | Description | Examples |
+|----------|-------------|----------|
+| `=` | Equal (case-sensitive) | `field = "value"` |
+| `!=` | Not equal (case-sensitive) | `field != "value"` |
+| `<` | Less than | `field < 100` |
+| `<=` | Less than or equal to | `field <= 100` |
+| `>=` | Greater than or equal to | `field >= 100` |
+| `>` | Greater than | `field > 100` |
+| `LIKE` | Equal with wildcard support (case-insensitive). `*` matches zero or more characters, `?` matches one. | `field like "val*"` |
+| `NOT LIKE` | Not equal with wildcard support (case-insensitive). `*` matches zero or more characters, `?` matches one. | `field not like "val*"` |
 
 ### Null/Empty Values
 
-To search for null and empty values use the `NULL`/`EMPTY` keywords. Those can be used together with the `=` and `!=` operators to search for fields without value. Keep in mind that there can be a difference between `NULL` and an empty string. The `EMPTY` keyword is a shortcut for `NULL` or an empty string.
-
-**Examples:**
+Use the `NULL` and `EMPTY` keywords with `=` and `!=` operators to search for
+fields without values. `NULL` matches null values; `EMPTY` matches both null
+and empty strings.
 
 ```
 field = NULL
 field != NULL
-field = EMPTY # same as: field = NULL OR field = ''
-field != EMPTY # same as: field != NULL AND field != ''
+field = EMPTY       # equivalent to: field = NULL OR field = ''
+field != EMPTY      # equivalent to: field != NULL AND field != ''
 ```
 
 ### AND / OR / Brackets
 
-You can combine multiple conditions using the `AND` and `OR` operators. You can also use brackets to group conditions.
-
-**Examples:**
+Combine conditions with `AND` and `OR` operators. Use brackets to group conditions:
 
 ```
 field1 = "value1" AND field2 = "value2"
@@ -60,14 +70,10 @@ field1 = "value1" AND (field2 = "value2" OR field3 = "value3")
 (field1 = "value1" AND (field2 = "value2" OR field3 = "value3")) OR field4 = "value4"
 ```
 
-
 ### Relation Filters
 
-Supports filtering along relations with following notation:
-
-`<RELATION_FIELD_NAME>:<ENTITY_NAME>.<FIELD_NAME>`
-
-**Examples:**
+Filter along relations using the notation
+`<RELATION_FIELD_NAME>:<ENTITY_NAME>.<FIELD_NAME>`:
 
 ```
 main_image:Asset.type
@@ -75,15 +81,16 @@ category:Category.name
 manufacturer:Company.country
 ```
 
-The entity name can be either 'Asset', 'Document' or the name of the data object class.
+The entity name must be `Asset`, `Document`, or a data object class name.
 
 ### Field Names
 
-The field names are named and structured the same way as in the search index. Nested field names are supported with a dot ('.') notation.
-As described [here](../../05_Extending_Data_Index/06_Extend_Search_Index.md) the fields are separated into three sections (system_fields, standard_fields and custom_fields) and depending on the data type of a attribute the attribute value could be a nested structure with sub-attributes.
+Field names match the search index structure. Nested fields use dot (`.`) notation.
+Fields are organized into three sections (`system_fields`, `standard_fields`,
+`custom_fields`) as described in [Extending Search Index](../../05_Extending_Data_Index/06_Extend_Search_Index.md).
+Depending on the data type, attribute values may contain nested sub-attributes.
 
-
-**Examples for field names with their full path in the index:**
+**Full path examples:**
 
 ```
 system_fields.id
@@ -92,9 +99,12 @@ standard_fields.my_relation_field.asset
 standard_fields.description.de
 ```
 
-To simplify the usage of the PQL the field names can be used without the full path in most of the cases. The PQL will automatically search in the index structure and try to detect the correct field. So normally it's enough to use the technical field name like used for example in the data object class or asset metadata attribute.
+PQL automatically resolves short field names to their full indexed path.
+This works for all unambiguous field names. If a field name exists in multiple sections
+(e.g. both `system_fields` and `standard_fields`), use the full path.
+Query string queries (`QUERY()`) also require full paths.
 
-**Above examples for field names without the full path:**
+Use the technical field name as defined in the data object class or asset metadata:
 
 ```
 id
@@ -103,35 +113,60 @@ my_relation_field
 description.de
 ```
 
-Localized fields can be accessed in the form 'field_name.locale' (e.g. description.de).
+Access localized fields with `field_name.locale` (e.g. `description.de`).
 
-### Query String Query Filters
+### Query String Queries
 
-The PQL allows passing `query string queries` of [OpenSearch](https://opensearch.org/docs/latest/query-dsl/full-text/query-string) or [Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html) directly to the index. 
-The query string query syntax provides even more flexibility to define the search criteria. Take a look at the [OpenSearch documentation](https://opensearch.org/docs/latest/query-dsl/full-text/query-string/#query-string-syntax) or [Elasticsearch documentation](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax) respectively for more details.
+Pass
+[OpenSearch](https://opensearch.org/docs/latest/query-dsl/full-text/query-string)
+or
+[Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html)
+query string queries directly to the index using `QUERY()`:
 
-**Caution**: The automatic field detection is not supported for query string queries. So you have to use the full path for the field names.
+```
+QUERY("standard_fields.color:(red OR blue)")
+```
+
+See the
+[OpenSearch query string syntax](https://opensearch.org/docs/latest/query-dsl/full-text/query-string/#query-string-syntax)
+or
+[Elasticsearch query string syntax](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-query-string-query.html#query-string-syntax)
+for details.
+
+:::caution
+
+Automatic field name detection is not supported for query string queries.
+Use full field paths.
+
+:::
 
 ### Example PQL Queries
 
-All examples are based on the `Car` data object class of the [Pimcore Demo](https://pimcore.com/en/try).
+All examples reference the `Car` data object class from the
+[Pimcore Demo](https://pimcore.com/en/try).
 
-| Query                                                               | Description                                                                                                                | 
-|---------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------|
-| `series = "E-Type" AND (color = "green" OR productionYear < 1965)`  | All E-Type models which are green or produced before 1965.                                                                 |
-| `manufacturer:Manufacturer.name = "Alfa" AND productionYear > 1965` | All Alfa cars produced after 1965.                                                                                         |
-| `genericImages:Asset.fullPath LIKE "/Car Images/vw/*"`              | All cars with a image linked in the `genericImages` image gallery which is contained in the asset folder `/Car Images/vw`. |
-| `color = "red" OR color = "blue"`                                   | All red or blue cars using standard PQL syntax.                                                                            |
-| `series = empty AND color="red"`                                    | All models where the series is empty and the color is red.                                                                 |
-| `License.expiryDate <= 'now+2d/d'`                                  | All elements whose license expires in two days - if the field is a date field you can use [date-math](https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#date-math) syntax of elastic search/opensearch.|
-| `Query("standard_fields.color:(red OR blue)")`                      | All red or blue cars using simple query string syntax.                                                                     |
+| Query | Description |
+|-------|-------------|
+| `series = "E-Type" AND (color = "green" OR productionYear < 1965)` | All E-Type models that are green or produced before 1965 |
+| `manufacturer:Manufacturer.name = "Alfa" AND productionYear > 1965` | All Alfa cars produced after 1965 |
+| `genericImages:Asset.fullPath LIKE "/Car Images/vw/*"` | All cars with images in the `/Car Images/vw` asset folder |
+| `color = "red" OR color = "blue"` | All red or blue cars |
+| `series = empty AND color="red"` | All models with empty series and red color |
+| `License.expiryDate <= 'now+2d/d'` | All elements whose license expires within two days (uses [date math](https://www.elastic.co/guide/en/elasticsearch/reference/current/common-options.html#date-math) syntax) |
+| `Query("standard_fields.color:(red OR blue)")` | All red or blue cars using query string syntax |
 
 ## Limitations
 
-* When searching for related elements the maximum possible results amount of sub queries is 65.000, see also `terms query` [OpenSearch](https://opensearch.org/docs/latest/query-dsl/term/terms/) or [Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-query.html) documentation respectively.
-* Filtering for asset metadata fields is only possible if they are defined as predefined asset metadata or via the asset metadata class definitions bundle. Custom asset metadata fields directly defined on single assets are not supported.
-* Reserved keywords (`AND`, `OR`, `LIKE`, `NOT LIKE`, `NULL`, `EMPTY`) cannot be used as field names.
+- **Relation sub-query limit:** Maximum 65,000 results for related element sub-queries.
+  See `terms query` docs for
+  [OpenSearch](https://opensearch.org/docs/latest/query-dsl/term/terms/) /
+  [Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/current/query-dsl-terms-query.html).
+- **Asset metadata filtering:** Only predefined asset metadata and metadata from the
+  asset metadata class definitions bundle are supported. Custom metadata defined
+  directly on individual assets is not filterable.
+- **Reserved keywords:** `AND`, `OR`, `LIKE`, `NOT LIKE`, `NULL`, `EMPTY` cannot
+  be used as field names.
 
 ## Further Reading
 
-- [Use PQL as a Developer](./03_Use_PQL_as_Developer.md).
+- [Use PQL as a Developer](./03_Use_PQL_as_Developer.md)

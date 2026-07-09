@@ -112,6 +112,7 @@ final class AssetNormalizer implements NormalizerInterface
             $systemFields = array_merge($systemFields, [
                 SystemField::FILE_SIZE->value => $asset->getFileSize(),
                 SystemField::DEPENDENCIES->value => $this->dependencyService->getRequiresDependencies($asset),
+                SystemField::IS_REFERENCED->value => $this->dependencyService->isReferencedByAny($asset),
                 SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
                     $this->workflowService->hasWorkflowWithPermissions($asset),
                 SystemField::PATH_LEVELS->value => $pathLevels,

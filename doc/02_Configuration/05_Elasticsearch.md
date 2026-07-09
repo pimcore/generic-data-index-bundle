@@ -1,26 +1,32 @@
+---
+title: Elasticsearch Client Setup
+description: Configure Elasticsearch as the search engine for the Generic Data Index bundle.
+---
+
 # Elasticsearch Client Setup
 
 :::info
 
-This bundle requires minimum version of Elasticsearch 8.0.
+Requires Elasticsearch >= 8.0
 
 :::
 
-Following configuration is required to set up Elasticsearch. The Elasticsearch client configuration takes place via [Pimcore Elasticsearch Client](https://github.com/pimcore/elasticsearch-client) and has two parts:
-1) Configuring an Elasticsearch client.
-2) Define the client to be used by Generic Data Index bundle.
+Configuration requires two steps:
+1. Configure an Elasticsearch client via
+   [Pimcore Elasticsearch Client](https://github.com/pimcore/elasticsearch-client).
+2. Assign the client to the Generic Data Index bundle with `client_type: 'elasticsearch'`.
 
 ```yaml
-# Configuring an Elasticsearch client
+# 1. Elasticsearch client configuration
 pimcore_elasticsearch_client:
     es_clients:
       default:
         hosts: ['elastic:9200']
         username: 'elastic'
         password: 'somethingsecret'
-        logger_channel: 'pimcore.elasicsearch'
+        logger_channel: 'pimcore.elasticsearch'
 
-# Define the client to be used by your bundle (default client_type is 'openSearch')
+# 2. Assign client to Generic Data Index (default client_type is 'openSearch')
 pimcore_generic_data_index:
     index_service:
         client_params:
@@ -28,8 +34,15 @@ pimcore_generic_data_index:
             client_type: 'elasticsearch'
 ```
 
-For the further configuration of the client, please refer to the [Pimcore Elasticsearch Client documentation](https://github.com/pimcore/elasticsearch-client/blob/1.x/README.md).
+For additional client options, see the
+[Pimcore Elasticsearch Client documentation](https://github.com/pimcore/elasticsearch-client/blob/1.x/README.md).
 
-## Important Elasticsearch Configuration
+## Disable Auto-Index Creation
 
-Elasticsearch automatically creates indices on storing data if the index does not yet exist. This will cause issues with wrong indices and missing aliases. To overcome this issue, you need to disable that feature with the configuration `action.auto_create_index=false`.
+Elasticsearch creates indices automatically when storing data to a nonexistent index.
+This causes incorrect indices and missing aliases.
+Disable this in your Elasticsearch configuration:
+
+```
+action.auto_create_index=false
+```

@@ -1,45 +1,59 @@
+---
+title: Searching For Data In Index
+description: Search assets, data objects, and documents using the Generic Data Index search services.
+---
+
 # Searching For Data In Index
 
-The Generic Data Index bundle adds standardized and flexible services to search data from the search indices.
+The Generic Data Index bundle provides standardized search services for querying
+assets, data objects, and documents from the search indices.
 
-Each search is based on a search service (depending on the element type) and a search model defining the search query. The search models can be created with the [SearchProviderInterface](https://github.com/pimcore/generic-data-index-bundle/blob/2.0/src/Service/Search/SearchService/SearchProviderInterface.php)
+Each search uses a type-specific search service and a search model that defines the query.
+Create search models with the
+[SearchProviderInterface](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Service/Search/SearchService/SearchProviderInterface.php).
 
-The regular way to search for assets, data objects or documents is to use the related search service.
+## Asset Search
 
-## Asset Search Service
+Load all assets from the root folder (parent ID 1), ordered by full path:
 
-### Example usage
-
-- Example: This example loads all assets from the root folder (parent ID 1) and orders them by their full path.
 ```php
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 
-public function searchAction(SearchProviderInterface $searchProvider, AssetSearchServiceInterface $asserSearchService)
-{
+public function searchAction(
+    SearchProviderInterface $searchProvider,
+    AssetSearchServiceInterface $assetSearchService
+) {
     $assetSearch = $searchProvider->createAssetSearch()
                 ->addModifier(new ParentIdFilter(1))
                 ->addModifier(new OrderByFullPath())
                 ->setPageSize(50)
                 ->setPage(1);
 
-   $searchResult = $asserSearchService->search($assetSearch);
+   $searchResult = $assetSearchService->search($assetSearch);
 }
 ```
 
-## Data Object Search Service
+## Data Object Search
 
-- Example: This example loads all data objects from the root folder (parent ID 1) with a specific class definition and orders them by their full path.
+Load all data objects from the root folder for a specific class definition,
+ordered by full path:
+
 ```php
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Model\DataObject\ClassDefinition;
 
-public function searchAction(SearchProviderInterface $searchProvider, DataObjectSearchServiceInterface $dataObjectSearchService)
-{
+public function searchAction(
+    SearchProviderInterface $searchProvider,
+    DataObjectSearchServiceInterface $dataObjectSearchService
+) {
+    $carClassDefinition = ClassDefinition::getByName('Car');
+
     $dataObjectSearch = $searchProvider->createDataObjectSearch()
                 ->addModifier(new ParentIdFilter(1))
                 ->addModifier(new OrderByFullPath())
@@ -51,18 +65,20 @@ public function searchAction(SearchProviderInterface $searchProvider, DataObject
 }
 ```
 
+## Document Search
 
-## Document Search Service
+Load all documents from the root folder, ordered by full path:
 
-- Example: This example loads all documents from the root folder (parent ID 1) and orders them by their full path.
 ```php
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 
-public function searchAction(SearchProviderInterface $searchProvider, DocumentSearchServiceInterface $documentSearchService)
-{
+public function searchAction(
+    SearchProviderInterface $searchProvider,
+    DocumentSearchServiceInterface $documentSearchService
+) {
     $documentSearch = $searchProvider->createDocumentSearch()
                 ->addModifier(new ParentIdFilter(1))
                 ->addModifier(new OrderByFullPath())
@@ -73,13 +89,19 @@ public function searchAction(SearchProviderInterface $searchProvider, DocumentSe
 }
 ```
 
-## Element Search Service
+## Element Search (Cross-Type)
 
-The element search service can be used to search for assets, data objects and documents at the same time.
+The element search queries assets, data objects, and documents simultaneously.
 
-**Hint:** the element search does not support the calculation of the `hasChildren` attributes. This means that the `hasChildren` attribute will always be `false` for all elements.
+:::info
 
-- Example: This example loads all elements which are required by the asset ID 123 and orders them by their full path.
+The element search does not compute `hasChildren` attributes. `hasChildren` always
+returns `false` for all elements in element search results.
+
+:::
+
+Load all elements required by asset ID 123, ordered by full path:
+
 ```php
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Dependency\RequiredByFilter;
@@ -87,8 +109,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderB
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 
-public function searchAction(SearchProviderInterface $searchProvider, ElementSearchServiceInterface $elementSearchService)
-{
+public function searchAction(
+    SearchProviderInterface $searchProvider,
+    ElementSearchServiceInterface $elementSearchService
+) {
     $elementSearch = $searchProvider->createElementSearch()
                 ->addModifier(new RequiredByFilter(123, ElementType::ASSET))
                 ->addModifier(new OrderByFullPath())
@@ -99,14 +123,40 @@ public function searchAction(SearchProviderInterface $searchProvider, ElementSea
 }
 ```
 
+## Full-Text Search
+
+Use the `FullTextSearch` modifier for full-text queries. It supports the following options:
+
+```php
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\FullTextSearch;
+
+new FullTextSearch(
+    $term,
+    defaultOperator: 'AND',          // 'AND' (default) requires all terms, 'OR' matches any
+    fields: [],                      // limit to specific fields (with optional boosts), e.g. ['system_fields.key^3']
+    flags: 'PHRASE|WHITESPACE',      // enabled simple_query_string operators; null/'ALL' enables all of them
+);
+```
+
+By default, characters like `-` and `.` are treated as literal text (not as operators), and double quotes
+enable phrase search.
+
+> **Note on partial matches of values containing punctuation** (e.g. version numbers or SKUs like `1.1.1`):
+> partial matching is powered by an n-gram analyzer whose tokenizer only keeps letters and digits by default,
+> so punctuation splits the value. As a result, searching `1.1` does not match `1.1.1`. To enable this, extend
+> the n-gram tokenizer's `token_chars` (e.g. add `punctuation` and `symbol`) via `index_service.index_settings`
+> and re-index. See [Index Management](../02_Configuration/03_Index_Management.md).
+
 ## Search Modifiers
 
-To influence the data which gets fetched its possible to use so-called search modifiers.
-Find out details about search modifiers in the [search modifiers documentation](05_Search_Modifiers/README.md). There you will also find information on how to create your own custom search modifiers.
+Search modifiers filter, sort, and aggregate search results. See the
+[Search Modifiers documentation](05_Search_Modifiers/README.md) for the full reference
+and instructions on creating custom modifiers.
 
-## Retrieve IDs only instead of full objects
+## Retrieving IDs Only
 
-If you only want to retrieve your search results as list of IDs for your `AssetSearch`, `DataObjectSearch` or `DocumentSearch` you can use the `SearchResultIdListServiceInterface` to retrieve the IDs only.
+Use `SearchResultIdListServiceInterface` to retrieve search results as ID lists
+instead of full objects:
 
 ```php
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
@@ -114,36 +164,52 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderB
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchResultIdListServiceInterface;
 
-public function searchAction(SearchProviderInterface $searchProvider, SearchResultIdListServiceInterface $searchResultIdListService)
-{
+public function searchAction(
+    SearchProviderInterface $searchProvider,
+    SearchResultIdListServiceInterface $searchResultIdListService
+) {
     $dataObjectSearch = $searchProvider->createDataObjectSearch()
                 ->addModifier(new ParentIdFilter(1))
                 ->addModifier(new OrderByFullPath())
                 ->setPageSize(50)
                 ->setPage(1);
 
-    $allIds = $searchResultIdListService->getAllIds($dataObjectSearch); // returns an array of IDs for the full search result without pagination
-    $idsOnPage = $searchResultIdListService->getIdsForCurrentPage($dataObjectSearch); // returns an array of IDs for the current page
+    // All IDs for the full search result (ignoring pagination)
+    $allIds = $searchResultIdListService->getAllIds($dataObjectSearch);
+
+    // IDs for the current page only
+    $idsOnPage = $searchResultIdListService->getIdsForCurrentPage($dataObjectSearch);
 }
 ```
 
 ## Default Search Models
-The search services mentioned above offer a flexible and structured way to search for assets, data objects and documents. Nevertheless, if there are requirements which are not covered by the search services it might be needed to develop your own customized search queries. Default search models offer a streamlined way for executing such customized search queries. They are also used by the search services internally to create the executed search queries.
 
-Take a look at the dedicated [Default search models documentation](06_Default_Search_Models/README.md) to find out more.
+To build custom OpenSearch/Elasticsearch queries beyond what the search services offer,
+use default search models. The search services
+use these models internally.
+
+See the [Default Search Models documentation](06_Default_Search_Models/README.md).
 
 ## Permissions
-The search service respects the user permissions and user workspaces in connection to his roles.
 
-Details about permissions and workspaces can be found in the [permissions and workspaces documentation](08_Permissions_Workspaces/README.md).
+The search services respect user permissions and workspace configurations.
+
+See [Permissions and Workspaces](08_Permissions_Workspaces/README.md).
 
 ## Pimcore Query Language (PQL)
-The [Pimcore Query Language (PQL)](./09_Pimcore_Query_Language/README.md) is a query language which can be used to provide the user a flexible way to define search criteria for data objects, assets and documents.
 
+[PQL](./09_Pimcore_Query_Language/README.md) defines a query syntax
+for searching data objects, assets, and documents.
 
 ## Debug Search Queries
-To debug the Search queries which are created by the search service, it is possible to use the following magic parameter in the URL (when debug mode is enabled):
 
-| Get Parameter             | Description                                                                                                                                                                                                          |
-|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `debug-search-queries` | Will change the response of the called URL and outputs all executed search queries. <br/><br/>It is possible to influence the output verbosity with the value of the parameter (1=normal, 2=verbose, 3=very verbose) |
+When debug mode is enabled, add the `debug-search-queries` GET parameter to any URL
+to inspect the executed search queries:
+
+| Value | Output verbosity |
+|-------|-----------------|
+| `1` | Normal |
+| `2` | Verbose |
+| `3` | Very verbose |
+
+The response is replaced with the search query output.

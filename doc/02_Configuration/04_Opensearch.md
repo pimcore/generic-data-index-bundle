@@ -1,17 +1,23 @@
+---
+title: OpenSearch Client Setup
+description: Configure OpenSearch as the search engine for the Generic Data Index bundle.
+---
+
 # OpenSearch Client Setup
 
 :::info
 
-Supported versions of OpenSearch are 2.7. to 2.19
+Supported OpenSearch versions: 2.7 to 2.19
 
 :::
 
-Following configuration is required to set up OpenSearch. The OpenSearch client configuration takes place via [Pimcore Opensearch Client](https://github.com/pimcore/opensearch-client) and has two parts:
-1) Configuring an OpenSearch client.
-2) Define the client to be used by Generic Data Index bundle.
+Configuration requires two steps:
+1. Configure an OpenSearch client via
+   [Pimcore OpenSearch Client](https://github.com/pimcore/opensearch-client).
+2. Assign the client to the Generic Data Index bundle.
 
 ```yaml
-# Configuring an OpenSearch client
+# 1. OpenSearch client configuration
 pimcore_open_search_client:
     clients:
         default:
@@ -20,15 +26,25 @@ pimcore_open_search_client:
             username: 'admin'
             ssl_verification: false
 
-# Define the client to be used by your bundle
+# 2. Assign client to Generic Data Index
 pimcore_generic_data_index:
     index_service:
         client_params:
             client_name: default
 ```
 
-For the further configuration of the client, please refer to the [Pimcore OpenSearch Client documentation](https://github.com/pimcore/opensearch-client/blob/1.x/doc/02_Configuration.md).
+For additional client options, see the
+[Pimcore OpenSearch Client documentation](https://github.com/pimcore/opensearch-client/blob/1.x/doc/02_Configuration.md).
 
-## Important OpenSearch Configuration
+## Disable Auto-Index Creation
 
-OpenSearch automatically creates indices on storing data if the index does not yet exist. This will cause issues with wrong indices and missing aliases. To overcome this issue, you need to disable that feature with the configuration `action.auto_create_index=false`. (see here for more information on this https://github.com/pimcore/generic-data-index-bundle/issues/165 and https://github.com/pimcore/generic-data-index-bundle/issues/202)
+OpenSearch creates indices automatically when storing data to a nonexistent index.
+This causes incorrect indices and missing aliases.
+Disable this in your OpenSearch configuration:
+
+```
+action.auto_create_index=false
+```
+
+See [#165](https://github.com/pimcore/generic-data-index-bundle/issues/165) and
+[#202](https://github.com/pimcore/generic-data-index-bundle/issues/202) for details.
