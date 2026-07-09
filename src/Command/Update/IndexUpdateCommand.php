@@ -183,7 +183,7 @@ final class IndexUpdateCommand extends AbstractCommand
         return self::SUCCESS;
     }
 
-    private function updateClassDefinition(string $classDefinitionId)
+    private function updateClassDefinition(string $classDefinitionId): void
     {
         try {
             $classDefinition = ClassDefinition::getById($classDefinitionId);
