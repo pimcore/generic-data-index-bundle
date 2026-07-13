@@ -5,6 +5,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 # Upgrade Information
 
+## Upgrade to 2026.3.0
+
+- Added command `generic-data-index:cleanup:unused-indices` to delete managed indices not referenced by any alias.
+ 
+
 ## Upgrade to 2026.1.0
 
 ### PHP and Dependency Requirements
