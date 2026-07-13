@@ -16,6 +16,7 @@ to power search and listing features in Pimcore.
 | `generic-data-index:update:index -r` | Delete and recreate indices, then queue all elements |
 | `generic-data-index:reindex` | Native search engine reindex (reorganizes data within existing indices, no database read) |
 | `generic-data-index:deployment:reindex` | Update indices only for class definitions changed since the last deployment |
+| `generic-data-index:cleanup:unused-indices` | Delete managed indices not referenced by any alias (`-odd`/`-even` suffixes only) |
 
 ## Index Prefix
 
@@ -190,3 +191,33 @@ bin/console generic-data-index:deployment:reindex
 
 This updates the index structure for all class definitions modified since the last
 deployment and reindexes data objects for affected classes.
+
+### Cleaning Up Unused Indices
+
+To clean up managed indices that are no longer referenced by any alias, run:
+
+```bash
+bin/console generic-data-index:cleanup:unused-indices
+```
+
+This only targets indices with the configured prefix and a `-odd` or `-even` suffix.
+To preview deletions without making changes, use `--dry-run`:
+
+```bash
+bin/console generic-data-index:cleanup:unused-indices --dry-run
+```
+
+During a reindex the new `-odd`/`-even` index is created and populated before it is attached
+to its alias, so for the duration of that window it carries the configured prefix and suffix
+but is not referenced by any alias. To avoid deleting an index that is actively being built,
+indices younger than `--min-age` seconds (default: `86400`, i.e. 24 hours) are never
+considered unused. Indices whose creation date cannot be determined are also skipped.
+
+```bash
+bin/console generic-data-index:cleanup:unused-indices --min-age=3600
+```
+
+> **Warning:** Only lower `--min-age` or disable the guard entirely (`--min-age=0`) when you
+> are sure no reindex (e.g. `generic-data-index:reindex` or
+> `generic-data-index:deployment:reindex`) is currently running or expected to take longer
+> than the chosen threshold. Run a `--dry-run` first to review what would be deleted.
