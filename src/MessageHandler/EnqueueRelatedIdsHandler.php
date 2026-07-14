@@ -40,6 +40,10 @@ final readonly class EnqueueRelatedIdsHandler
         $elementType = $message->getElementType();
         $element = $this->elementService->getElementByType($message->getElementId(), $elementType->value);
 
+        if ($element === null) {
+            return;
+        }
+
         if ($elementType === ElementType::DATA_OBJECT) {
             $inheritanceBackup = AbstractObject::getGetInheritedValues();
             AbstractObject::setGetInheritedValues(true);
