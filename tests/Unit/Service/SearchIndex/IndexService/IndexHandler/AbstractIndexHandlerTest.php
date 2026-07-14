@@ -81,12 +81,7 @@ final class AbstractIndexHandlerTest extends Unit
             'putMapping' => [],
         ]);
 
-        $handler = new class(
-            $searchIndexService,
-            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
-            $this->makeEmpty(EventDispatcherInterface::class),
-            $this->makeEmpty(IndexMappingServiceInterface::class),
-        ) extends AbstractIndexHandler {
+        $handler = new class($searchIndexService, $this->makeEmpty(SearchIndexConfigServiceInterface::class), $this->makeEmpty(EventDispatcherInterface::class), $this->makeEmpty(IndexMappingServiceInterface::class), ) extends AbstractIndexHandler {
             protected function extractMappingProperties(mixed $context = null): array
             {
                 return [];
