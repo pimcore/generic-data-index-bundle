@@ -42,6 +42,24 @@ Each index uses an alias (e.g. `<prefix>_asset`) pointing to the current index
 between `-odd` and `-even` suffixes during reindexing (see
 [Updating index structure](#updating-index-structure) below).
 
+### Why `-odd` and `-even` Suffixes?
+
+The alternating suffixes enable zero-downtime reindexing (blue-green approach): when the
+index structure changes, the bundle builds a new index under the opposite suffix while
+the current index keeps serving reads and writes through the alias. Once the new index
+is fully populated, the alias is switched atomically and the old index is deleted.
+
+At rest there is only **one** concrete index — and therefore one set of shards — per
+asset index or class definition. Both suffixes exist side by side only transiently
+while a reindex is running. If `-odd` and `-even` indices for the same alias exist
+permanently, they are leftovers from a reindex that was interrupted (e.g. by a killed
+process) before its cleanup could run. Such orphaned indices are not used by the bundle
+and can be removed with the [cleanup command](#cleaning-up-unused-indices).
+
+The [default index settings](#index-options) use `number_of_shards: 1`, so the total
+shard count of the cluster scales with the number of class definitions — not with the
+suffix scheme.
+
 ## Keeping Indices Up to Date
 
 Create and update indices with:
