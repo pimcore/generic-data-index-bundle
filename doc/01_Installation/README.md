@@ -7,7 +7,8 @@ description: Install and configure the Generic Data Index bundle with OpenSearch
 
 :::info
 
-This bundle requires OpenSearch >= 2.7 or Elasticsearch >= 8.0.0.
+This bundle requires OpenSearch >= 2.7 and < 3.0 or Elasticsearch >= 8.0.0.
+OpenSearch 3 is not supported yet.
 
 :::
 
