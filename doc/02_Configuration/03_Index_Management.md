@@ -27,6 +27,23 @@ For the asset and data object indices the Generic Data Index uses an alias (e.g.
 most current index (e.g. `<index_prefix>_asset-odd`). The alias name always stays the same, the index names alternate
 between `-odd` and `-even` suffix. For more details also see 'Updating index structure for data indices' in the next section.
 
+### Why `-odd` and `-even` Suffixes?
+
+The alternating suffixes enable zero-downtime reindexing (blue-green approach): when the
+index structure changes, the bundle builds a new index under the opposite suffix while
+the current index keeps serving reads and writes through the alias. Once the new index
+is fully populated, the alias is switched atomically and the old index is deleted.
+
+At rest there is only **one** concrete index — and therefore one set of shards — per
+asset index or class definition. Both suffixes exist side by side only transiently
+while a reindex is running. If `-odd` and `-even` indices for the same alias exist
+permanently, they are leftovers from a reindex that was interrupted (e.g. by a killed
+process) before its cleanup could run. Such orphaned indices are not used by the bundle
+and can safely be deleted, as long as they are not referenced by any alias.
+
+The default index settings use `number_of_shards: 1`, so the total shard count of the
+cluster scales with the number of class definitions — not with the suffix scheme.
+
 ## Keeping Indices Up to Date
 
 The element search indices need to be created via the following console commands:
