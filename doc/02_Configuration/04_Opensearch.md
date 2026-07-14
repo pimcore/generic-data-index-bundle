@@ -7,7 +7,10 @@ description: Configure OpenSearch as the search engine for the Generic Data Inde
 
 :::info
 
-Supported OpenSearch versions: 2.7 to 2.19
+Supported OpenSearch versions: >= 2.7 and < 3.0.
+OpenSearch 3 is not supported yet — see the
+[Pimcore OpenSearch Client](https://github.com/pimcore/opensearch-client) for the
+supported client versions.
 
 :::
 
