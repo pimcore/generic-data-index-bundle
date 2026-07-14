@@ -2,7 +2,10 @@
 
 :::info
 
-Supported versions of OpenSearch are 2.7. to 2.19
+Supported versions of OpenSearch are >= 2.7 and < 3.0.
+OpenSearch 3 is not supported yet — see the
+[Pimcore OpenSearch Client](https://github.com/pimcore/opensearch-client) for the
+supported client versions.
 
 :::
 

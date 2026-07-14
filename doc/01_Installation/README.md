@@ -2,7 +2,8 @@
 
 :::info
 
- This bundle requires minimum version of OpenSearch 2.7. or Elasticsearch 8.0.0.
+ This bundle requires OpenSearch >= 2.7 and < 3.0 or Elasticsearch 8.0.0.
+ OpenSearch 3 is not supported yet.
 
 :::
 
