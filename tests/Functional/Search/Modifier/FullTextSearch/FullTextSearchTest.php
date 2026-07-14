@@ -180,10 +180,14 @@ final class FullTextSearchTest extends \Codeception\Test\Unit
 
     public function testFullTextSearch(): void
     {
+        // full text search covers all index fields including the element id, so fixture
+        // keys must not be numeric (element id collision) and must be single ngram-safe
+        // tokens: the ngram tokenizer only emits letter/digit grams, so hyphenated
+        // terms tokenized by whitespace at search time never match
         $asset = TestHelper::createImageAsset();
-        $asset->setFilename('Asset 1.jpg')->setKey('123')->save();
+        $asset->setFilename('asset-one.jpg')->setKey('assetalpha')->save();
         $asset2 = TestHelper::createImageAsset();
-        $asset2->setFilename('Asset 2.jpg')->setKey('456')->save();
+        $asset2->setFilename('asset-two.jpg')->setKey('assetbeta')->save();
 
         /** @var AssetSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
@@ -217,10 +221,11 @@ final class FullTextSearchTest extends \Codeception\Test\Unit
 
     public function testMultiMatchSearch(): void
     {
+        // see testFullTextSearch: keys must not be numeric to avoid element id collisions
         $asset = TestHelper::createImageAsset();
-        $asset->setFilename('Asset 1.jpg')->setKey('123')->save();
+        $asset->setFilename('asset-one.jpg')->setKey('assetalpha')->save();
         $asset2 = TestHelper::createImageAsset();
-        $asset2->setFilename('Asset 2.jpg')->setKey('456')->save();
+        $asset2->setFilename('asset-two.jpg')->setKey('assetbeta')->save();
 
         /** @var AssetSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
@@ -261,6 +266,34 @@ final class FullTextSearchTest extends \Codeception\Test\Unit
             ->addModifier(new MultiMatchSearch($asset2->getFilename()))
         ;
         $this->assertEquals([$asset2->getId()], $searchService->search($assetSearch)->getIds());
+    }
+
+    /**
+     * The full text search covers all index fields including the element id. This
+     * pins that behavior and documents why fixtures must not use numeric keys or
+     * search terms: they collide with auto-increment element ids.
+     *
+     * @see https://github.com/pimcore/generic-data-index-bundle/issues/462
+     */
+    public function testFullTextSearchMatchesElementId(): void
+    {
+        $asset = TestHelper::createImageAsset();
+        $asset2 = TestHelper::createImageAsset();
+        $asset->setKey((string) $asset2->getId())->save();
+
+        /** @var AssetSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $assetSearch = $searchProvider
+            ->createAssetSearch()
+            ->addModifier(new FullTextSearch((string) $asset2->getId()))
+        ;
+        $this->assertIdArrayEquals(
+            [$asset->getId(), $asset2->getId()],
+            $searchService->search($assetSearch)->getIds()
+        );
     }
 
     private function assertIdArrayEquals(array $ids1, array $ids2)

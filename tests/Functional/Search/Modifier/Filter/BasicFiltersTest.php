@@ -115,9 +115,11 @@ class BasicFiltersTest extends \Codeception\Test\Unit
         $this->assertCount(1, $searchResult->getItems());
         $this->assertEquals($asset->getId(), $searchResult->getItems()[0]->getId());
 
+        // use an id above the freshly created one — a literal id (e.g. 123) collides
+        // with auto-increment element ids once enough elements were created before
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new IdFilter(123))
+            ->addModifier(new IdFilter($asset->getId() + 1000))
         ;
         $searchResult = $searchService->search($assetSearch);
         $this->assertCount(0, $searchResult->getItems());
@@ -150,7 +152,7 @@ class BasicFiltersTest extends \Codeception\Test\Unit
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new IdsFilter([123]))
+            ->addModifier(new IdsFilter([$asset2->getId() + 1000]))
         ;
         $searchResult = $searchService->search($assetSearch);
         $this->assertCount(0, $searchResult->getItems());
