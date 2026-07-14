@@ -40,6 +40,8 @@ interface SearchIndexServiceInterface
 
     public function existsAlias(string $aliasName, ?string $indexName = null): bool;
 
+    public function existsIndex(string $indexName): bool;
+
     public function deleteAlias(string $indexName, string $aliasName): array;
 
     public function getDocument(string $index, int $id, bool $ignore404 = false): array;
