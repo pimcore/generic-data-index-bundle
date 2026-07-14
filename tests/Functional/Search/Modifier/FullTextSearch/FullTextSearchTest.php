@@ -180,12 +180,14 @@ final class FullTextSearchTest extends \Codeception\Test\Unit
 
     public function testFullTextSearch(): void
     {
-        // full text search covers all index fields including the element id, so
-        // fixture keys must not be numeric — they would collide with element ids
+        // full text search covers all index fields including the element id, so fixture
+        // keys must not be numeric (element id collision) and must be single ngram-safe
+        // tokens: the ngram tokenizer only emits letter/digit grams, so hyphenated
+        // terms tokenized by whitespace at search time never match
         $asset = TestHelper::createImageAsset();
-        $asset->setFilename('asset-one.jpg')->setKey('asset-fulltext-one')->save();
+        $asset->setFilename('asset-one.jpg')->setKey('assetalpha')->save();
         $asset2 = TestHelper::createImageAsset();
-        $asset2->setFilename('asset-two.jpg')->setKey('asset-fulltext-two')->save();
+        $asset2->setFilename('asset-two.jpg')->setKey('assetbeta')->save();
 
         /** @var AssetSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
@@ -221,9 +223,9 @@ final class FullTextSearchTest extends \Codeception\Test\Unit
     {
         // see testFullTextSearch: keys must not be numeric to avoid element id collisions
         $asset = TestHelper::createImageAsset();
-        $asset->setFilename('asset-one.jpg')->setKey('asset-fulltext-one')->save();
+        $asset->setFilename('asset-one.jpg')->setKey('assetalpha')->save();
         $asset2 = TestHelper::createImageAsset();
-        $asset2->setFilename('asset-two.jpg')->setKey('asset-fulltext-two')->save();
+        $asset2->setFilename('asset-two.jpg')->setKey('assetbeta')->save();
 
         /** @var AssetSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
