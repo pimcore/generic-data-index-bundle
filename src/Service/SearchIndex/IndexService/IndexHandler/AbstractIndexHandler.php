@@ -50,6 +50,17 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                 foreach ($versions as $version) {
                     $this->searchIndexService->deleteIndex($aliasName . '-' . $version, true);
                 }
+
+                // While the alias is missing, indexing traffic can auto-create a concrete
+                // index carrying the exact alias name; attaching the alias would then fail
+                // with invalid_alias_name_exception. Its data is derived from the database
+                // and gets rebuilt by the reindex following the recreation.
+                if ($this->searchIndexService->existsIndex($aliasName)) {
+                    $this->logger->warning(
+                        sprintf('Deleting index "%s" occupying the alias name before recreation', $aliasName)
+                    );
+                    $this->searchIndexService->deleteIndex($aliasName, true);
+                }
             }
 
             $this->createIndex($context, $aliasName);
