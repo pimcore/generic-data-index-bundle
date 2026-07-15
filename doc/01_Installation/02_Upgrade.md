@@ -35,6 +35,14 @@ description: Version-specific upgrade instructions and breaking changes for the 
   container parameter (env: `PIMCORE_MESSENGER_TRANSPORT_DSN_PREFIX`) instead of being hardcoded to
   `doctrine://default`.
 
+## Upgrade to 2.5.6
+- [Commands] `generic-data-index:deployment:reindex` and `generic-data-index:reindex` now exit with a non-zero status
+  code when reindexing fails, instead of always returning `0`. Deployment pipelines executing these commands will now
+  fail visibly on reindex errors — previously such errors were only printed while the process reported success.
+- [Indexing] Reindexing failures are no longer silently swallowed: if both the reindex and the fallback index
+  recreation fail, the exception now propagates and the mapping checksum is not stored, so the reindex of the class
+  definition is retried on the next run.
+
 ## Upgrade to 2.5.4
 - [Searching] The full-text search (`FullTextSearch` modifier) now defaults to `default_operator: AND` and
   `flags: PHRASE|WHITESPACE` for better relevance and to treat characters like `-` and `.` as literal text.
