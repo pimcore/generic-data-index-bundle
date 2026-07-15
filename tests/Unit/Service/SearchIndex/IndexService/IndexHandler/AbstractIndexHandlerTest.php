@@ -14,10 +14,12 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\IndexService\IndexHandler;
 
 use Codeception\Test\Unit;
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AbstractIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Psr\Log\AbstractLogger;
 use Psr\Log\NullLogger;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
@@ -68,6 +70,109 @@ final class AbstractIndexHandlerTest extends Unit
         $this->assertNotContains(self::ALIAS_NAME, $deletedIndices);
     }
 
+    /**
+     * When the in-place reindex fails (e.g. a 5xx from OpenSearch) and the fallback
+     * index recreation fails too, the failure must propagate to the caller. Otherwise
+     * the mapping checksum gets stored as if the reindex succeeded and the class is
+     * never retried on subsequent deployments.
+     *
+     * @see https://github.com/pimcore/service-operations/issues/853
+     */
+    public function testReindexMappingRethrowsWhenFallbackRecreationAlsoFails(): void
+    {
+        $reindexException = new Exception('initial reindex failure (504 Gateway Time-out)');
+        $fallbackException = new Exception('fallback recreation failed');
+
+        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => true,
+            'getCurrentIndexVersion' => '',
+            'reindex' => static function () use ($reindexException): void {
+                throw $reindexException;
+            },
+            'createIndex' => static function () use ($fallbackException): void {
+                throw $fallbackException;
+            },
+        ]);
+
+        $logger = $this->createCollectingLogger();
+        $handler = $this->createHandlerWithService($searchIndexService);
+        $handler->setLogger($logger);
+
+        $thrown = null;
+
+        try {
+            $handler->reindexMapping();
+        } catch (Exception $e) {
+            $thrown = $e;
+        }
+
+        $this->assertSame(
+            $fallbackException,
+            $thrown,
+            'Expected the fallback exception to propagate out of reindexMapping()'
+        );
+
+        $errorLogs = array_filter($logger->records, static fn (array $r): bool => $r['level'] === 'error');
+        $this->assertNotEmpty($errorLogs, 'The failure must still be logged');
+        $loggedMessage = implode(' | ', array_column($errorLogs, 'message'));
+        $this->assertStringContainsString(
+            'initial reindex failure',
+            $loggedMessage,
+            'The original reindex exception must not be lost through variable shadowing'
+        );
+    }
+
+    /**
+     * The fallback to a forced index recreation is the designed recovery for mapping
+     * changes that cannot be applied via reindex. When it succeeds, no exception
+     * may propagate.
+     */
+    public function testReindexMappingRecoversWhenFallbackRecreationSucceeds(): void
+    {
+        $createdIndices = [];
+        $fluent = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'addAlias' => [],
+        ]);
+
+        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => true,
+            'getCurrentIndexVersion' => '',
+            'reindex' => static function (): void {
+                throw new Exception('initial reindex failure (504 Gateway Time-out)');
+            },
+            'createIndex' => static function (string $indexName) use (&$createdIndices, $fluent) {
+                $createdIndices[] = $indexName;
+
+                return $fluent;
+            },
+            'putMapping' => [],
+        ]);
+
+        $handler = $this->createHandlerWithService($searchIndexService);
+        $handler->setLogger(new NullLogger());
+
+        $handler->reindexMapping();
+
+        $this->assertContains(
+            self::ALIAS_NAME . '-odd',
+            $createdIndices,
+            'The fallback must recreate the index when the reindex fails'
+        );
+    }
+
+    private function createCollectingLogger(): AbstractLogger
+    {
+        return new class extends AbstractLogger {
+            /** @var array<int, array{level: string, message: string}> */
+            public array $records = [];
+
+            public function log($level, $message, array $context = []): void
+            {
+                $this->records[] = ['level' => (string) $level, 'message' => (string) $message];
+            }
+        };
+    }
+
     private function createHandler(bool $indexSquatsAliasName, array &$deletedIndices): AbstractIndexHandler
     {
         $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
@@ -81,7 +186,15 @@ final class AbstractIndexHandlerTest extends Unit
             'putMapping' => [],
         ]);
 
-        $handler = new class($searchIndexService, $this->makeEmpty(SearchIndexConfigServiceInterface::class), $this->makeEmpty(EventDispatcherInterface::class), $this->makeEmpty(IndexMappingServiceInterface::class), ) extends AbstractIndexHandler {
+        $handler = $this->createHandlerWithService($searchIndexService);
+        $handler->setLogger(new NullLogger());
+
+        return $handler;
+    }
+
+    private function createHandlerWithService(SearchIndexServiceInterface $searchIndexService): AbstractIndexHandler
+    {
+        return new class($searchIndexService, $this->makeEmpty(SearchIndexConfigServiceInterface::class), $this->makeEmpty(EventDispatcherInterface::class), $this->makeEmpty(IndexMappingServiceInterface::class), ) extends AbstractIndexHandler {
             protected function extractMappingProperties(mixed $context = null): array
             {
                 return [];
@@ -92,8 +205,5 @@ final class AbstractIndexHandlerTest extends Unit
                 return 'test_alias';
             }
         };
-        $handler->setLogger(new NullLogger());
-
-        return $handler;
     }
 }

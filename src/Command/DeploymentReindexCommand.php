@@ -97,6 +97,8 @@ final class DeploymentReindexCommand extends AbstractCommand
             $output->writeln('<info>Finished</info>', OutputInterface::VERBOSITY_NORMAL);
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
+
+            return self::FAILURE;
         } finally {
             $this->release();
         }

@@ -100,8 +100,17 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             } catch (Exception $e) {
                 try {
                     $this->updateMapping($context, true, $mappingProperties);
-                } catch (Exception $e) {
-                    $this->logger->error('Reindexing failed due to following error: ' . $e);
+                } catch (Exception $fallbackException) {
+                    // Both the reindex and the fallback recreation failed: rethrow so the
+                    // failure reaches the caller instead of the mapping checksum being
+                    // stored as if the reindex had succeeded.
+                    $this->logger->error(sprintf(
+                        'Reindexing failed due to following error: %s (initial reindex failure: %s)',
+                        $fallbackException,
+                        $e->getMessage()
+                    ));
+
+                    throw $fallbackException;
                 }
             }
         }
