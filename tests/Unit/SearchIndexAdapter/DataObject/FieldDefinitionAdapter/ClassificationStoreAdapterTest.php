@@ -77,12 +77,10 @@ final class ClassificationStoreAdapterTest extends Unit
         $this->assertNull($result);
         $this->assertCount(1, $logger->records);
         $this->assertSame('warning', $logger->records[0]['level']);
-
-        $message = $logger->records[0]['message'];
-        $this->assertStringContainsString('input', $message);
-        $this->assertStringContainsString('42', $message);
-        $this->assertStringContainsString('9', $message);
-        $this->assertStringContainsString('unknown implementation for type input', $message);
+        $this->assertSame(
+            'Could not get field definition for type input for key 42 in group 9: unknown implementation for type input',
+            $logger->records[0]['message']
+        );
     }
 
     private function createCollectingLogger(): AbstractLogger
