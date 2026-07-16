@@ -111,22 +111,27 @@ final class IndexQueueService implements IndexQueueServiceInterface
      */
     public function handleIndexQueueEntries(array $entries): void
     {
-        try {
+        $processedEntries = [];
 
-            foreach ($entries as $entry) {
-                $this->logger->debug(
+        foreach ($entries as $entry) {
+            try {
+                $this->handleEntryByOperation($entry->getOperation(), $entry);
+                $processedEntries[] = $entry;
+            } catch (Exception $e) {
+                $this->logger->error(
                     sprintf(
-                        '%s updating index for element %s and type %s',
+                        '%s failed to update index for element %s and type %s. Error: %s',
                         IndexQueue::TABLE,
                         $entry->getElementId(),
-                        $entry->getElementType()
+                        $entry->getElementType(),
+                        $e->getMessage()
                     ));
-                $this->handleEntryByOperation($entry->getOperation(), $entry);
             }
+        }
 
+        try {
             $this->bulkOperationService->commit();
-            $this->indexQueueRepository->deleteQueueEntries($entries);
-
+            $this->indexQueueRepository->deleteQueueEntries($processedEntries);
         } catch (Exception $e) {
             throw new HandleIndexQueueEntriesException('handleIndexQueueEntry failed! Error: ' . $e->getMessage(), 0, $e);
         }

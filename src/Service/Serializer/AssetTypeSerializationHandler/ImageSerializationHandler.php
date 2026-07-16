@@ -33,8 +33,8 @@ class ImageSerializationHandler extends AbstractHandler
 
         return [
             ImageSystemField::THUMBNAIL->value => $this->getThumbnail($asset),
-            ImageSystemField::WIDTH->value => $asset->getWidth(),
-            ImageSystemField::HEIGHT->value => $asset->getHeight(),
+            ImageSystemField::WIDTH->value => $this->getWidth($asset),
+            ImageSystemField::HEIGHT->value => $this->getHeight($asset),
         ];
     }
 
@@ -52,6 +52,36 @@ class ImageSerializationHandler extends AbstractHandler
             return $image->getThumbnail(Image\Thumbnail\Config::getPreviewConfig())->getPath();
         } catch (Throwable $e) {
             $this->logger->error('Thumbnail generation failed for image asset: ' .
+                $image->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getWidth(Image $image): ?int
+    {
+        try {
+            return $image->getWidth();
+        } catch (Throwable $e) {
+            $this->logger->error('Width extraction failed for image asset: ' .
+                $image->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getHeight(Image $image): ?int
+    {
+        try {
+            return $image->getHeight();
+        } catch (Throwable $e) {
+            $this->logger->error('Height extraction failed for image asset: ' .
                 $image->getId() .
                 ' error ' .
                 $e->getMessage()
