@@ -278,6 +278,63 @@ class IndexQueueTest extends Unit
         );
     }
 
+    /**
+     * Regression test: when one entry in a queue batch fails (e.g. an invalid/unresolvable element),
+     * the other entries in the same batch must still be indexed and cleared from the queue, and the
+     * failed entry must be immediately retryable rather than stuck under its old dispatch claim for
+     * up to 24h (see IndexQueueRepository::dispatchItems() staleness threshold).
+     *
+     * @throws Exception
+     */
+    public function testPartialBatchFailureRetriesOnlyFailedEntry(): void
+    {
+        $indexName = $this->searchIndexConfigService->getIndexName(self::ASSET_INDEX_NAME);
+
+        $asset1 = TestHelper::createImageAsset();
+        $failingAsset = TestHelper::createImageAsset();
+        $asset3 = TestHelper::createImageAsset();
+
+        // Force this single entry to fail inside handleEntryByOperation() by making it resolve to an
+        // invalid element type, without touching the other, valid entries in the same batch.
+        $corruptedElementType = 'invalid-element-type';
+        Db::get()->executeStatement(
+            'UPDATE generic_data_index_queue SET elementType = ? WHERE elementId = ? AND elementType = ?',
+            [$corruptedElementType, $failingAsset->getId(), ElementType::ASSET->value]
+        );
+
+        $this->tester->consume();
+
+        $this->tester->checkIndexEntry($asset1->getId(), $indexName);
+        $this->tester->checkIndexEntry($asset3->getId(), $indexName);
+        $this->tester->checkDeletedIndexEntry($failingAsset->getId(), $indexName);
+
+        $this->assertEquals(
+            0,
+            Db::get()->fetchOne(
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType = ?',
+                [$asset1->getId(), ElementType::ASSET->value]
+            ),
+            'Successfully processed entries must be removed from the queue'
+        );
+        $this->assertEquals(
+            0,
+            Db::get()->fetchOne(
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType = ?',
+                [$asset3->getId(), ElementType::ASSET->value]
+            ),
+            'Successfully processed entries must be removed from the queue'
+        );
+
+        $this->assertEquals(
+            '0',
+            Db::get()->fetchOne(
+                'select dispatched from generic_data_index_queue where elementId = ? and elementType = ?',
+                [$failingAsset->getId(), $corruptedElementType]
+            ),
+            'Failed entry must stay in the queue with its dispatch claim cleared, ready for immediate retry'
+        );
+    }
+
     private function checkAndDeleteElement(ElementInterface $element, string $indexName): void
     {
         $this->tester->checkIndexEntry($element->getId(), $indexName);

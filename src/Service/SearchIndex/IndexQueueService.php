@@ -33,6 +33,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Throwable;
 
 /**
  * @internal
@@ -112,12 +113,14 @@ final class IndexQueueService implements IndexQueueServiceInterface
     public function handleIndexQueueEntries(array $entries): void
     {
         $processedEntries = [];
+        $failedEntries = [];
 
         foreach ($entries as $entry) {
             try {
                 $this->handleEntryByOperation($entry->getOperation(), $entry);
                 $processedEntries[] = $entry;
-            } catch (Exception $e) {
+            } catch (Throwable $e) {
+                $failedEntries[] = $entry;
                 $this->logger->error(
                     sprintf(
                         '%s failed to update index for element %s and type %s. Error: %s',
@@ -132,6 +135,13 @@ final class IndexQueueService implements IndexQueueServiceInterface
         try {
             $this->bulkOperationService->commit();
             $this->indexQueueRepository->deleteQueueEntries($processedEntries);
+
+            if (!empty($failedEntries)) {
+                // Reclaim the failed rows now instead of leaving them dispatched: dispatchItems()
+                // only re-dispatches rows once they are 24h stale, so without this they would sit
+                // unprocessed until then.
+                $this->indexQueueRepository->requeueEntries($failedEntries);
+            }
         } catch (Exception $e) {
             throw new HandleIndexQueueEntriesException('handleIndexQueueEntry failed! Error: ' . $e->getMessage(), 0, $e);
         }

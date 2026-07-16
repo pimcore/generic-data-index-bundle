@@ -19,9 +19,9 @@ class Image extends AssetSearchResultItem
 {
     private string $thumbnail;
 
-    private int $width;
+    private ?int $width;
 
-    private int $height;
+    private ?int $height;
 
     public function getThumbnail(): ?string
     {
@@ -35,24 +35,24 @@ class Image extends AssetSearchResultItem
         return $this;
     }
 
-    public function getWidth(): int
+    public function getWidth(): ?int
     {
         return $this->width;
     }
 
-    public function setWidth(int $width): Image
+    public function setWidth(?int $width): Image
     {
         $this->width = $width;
 
         return $this;
     }
 
-    public function getHeight(): int
+    public function getHeight(): ?int
     {
         return $this->height;
     }
 
-    public function setHeight(int $height): Image
+    public function setHeight(?int $height): Image
     {
         $this->height = $height;
 
