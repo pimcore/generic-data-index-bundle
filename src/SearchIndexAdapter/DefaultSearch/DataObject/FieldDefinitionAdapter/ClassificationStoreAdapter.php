@@ -295,9 +295,11 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     {
         try {
             $definition = $this->classificationService->getFieldDefinitionFromKeyConfig($key);
-        } catch (Exception) {
+        } catch (Exception $e) {
             $this->logger->warning(
-                'Could not get field definition for type ' . $key->getType() . ' in group ' . $key->getGroupId()
+                'Could not get field definition for type ' . $key->getType() .
+                ' for key ' . $key->getKeyId() . ' in group ' . $key->getGroupId() .
+                ': ' . $e->getMessage()
             );
 
             return null;
