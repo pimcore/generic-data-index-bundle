@@ -117,6 +117,13 @@ final class IndexQueueService implements IndexQueueServiceInterface
 
         foreach ($entries as $entry) {
             try {
+                // Field-level extraction failures (e.g. a missing physical file backing an asset's
+                // thumbnail/text/duration/dimensions) are caught inside the asset-type serialization
+                // handlers and degrade that single field to null; they never reach this catch. Such
+                // an entry is intentionally treated as processed - a missing file will not reappear,
+                // so retrying it forever would be pointless - and is indexed with the fields it could
+                // extract. Only failures that abort handling entirely (e.g. an unresolvable element,
+                // an index/backend error) land here and get requeued below.
                 $this->handleEntryByOperation($entry->getOperation(), $entry);
                 $processedEntries[] = $entry;
             } catch (Throwable $e) {

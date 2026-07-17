@@ -27,6 +27,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
 use Pimcore\Db;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Tests\Support\Util\TestHelper;
+use Pimcore\Tool\Storage;
 
 class IndexQueueTest extends Unit
 {
@@ -332,6 +333,39 @@ class IndexQueueTest extends Unit
                 [$failingAsset->getId(), $corruptedElementType]
             ),
             'Failed entry must stay in the queue with its dispatch claim cleared, ready for immediate retry'
+        );
+    }
+
+    /**
+     * Regression test for the actual PEES-1311 scenario (as opposed to
+     * testPartialBatchFailureRetriesOnlyFailedEntry(), which forces a queue-level failure through an
+     * invalid element type and never touches asset serialization at all): an asset whose physical file
+     * is missing on disk. The asset-type serialization handlers catch that failure per field (see
+     * ImageSerializationHandlerTest et al.) rather than letting it abort the whole entry, so this is
+     * intentionally treated as processed - indexed with whatever fields it could extract - and cleared
+     * from the queue rather than retried forever, since a missing file will not reappear on its own.
+     *
+     * @throws Exception
+     */
+    public function testAssetWithMissingFileIsIndexedAndRemovedFromQueue(): void
+    {
+        $indexName = $this->searchIndexConfigService->getIndexName(self::ASSET_INDEX_NAME);
+
+        $asset = TestHelper::createImageAsset();
+        Storage::get('asset')->delete($asset->getRealFullPath());
+
+        $this->tester->consume();
+
+        $this->tester->checkIndexEntry($asset->getId(), $indexName);
+
+        $this->assertEquals(
+            0,
+            Db::get()->fetchOne(
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType = ?',
+                [$asset->getId(), ElementType::ASSET->value]
+            ),
+            'An asset with a missing physical file must still be indexed with its available fields '
+            . 'and cleared from the queue, not retried forever'
         );
     }
 
