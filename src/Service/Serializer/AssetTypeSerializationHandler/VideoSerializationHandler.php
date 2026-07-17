@@ -35,8 +35,8 @@ class VideoSerializationHandler extends AbstractHandler
         return [
             VideoSystemField::IMAGE_THUMBNAIL->value => $this->getImageThumbnail($asset),
             VideoSystemField::DURATION->value => $this->getDuration($asset),
-            VideoSystemField::WIDTH->value => $asset->getWidth(),
-            VideoSystemField::HEIGHT->value => $asset->getHeight(),
+            VideoSystemField::WIDTH->value => $this->getWidth($asset),
+            VideoSystemField::HEIGHT->value => $this->getHeight($asset),
         ];
     }
 
@@ -70,6 +70,36 @@ class VideoSerializationHandler extends AbstractHandler
             return $video->getDuration();
         } catch (Throwable $e) {
             $this->logger->error('Duration extraction failed for video asset: ' .
+                $video->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getWidth(Video $video): ?int
+    {
+        try {
+            return $video->getWidth();
+        } catch (Throwable $e) {
+            $this->logger->error('Width extraction failed for video asset: ' .
+                $video->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getHeight(Video $video): ?int
+    {
+        try {
+            return $video->getHeight();
+        } catch (Throwable $e) {
+            $this->logger->error('Height extraction failed for video asset: ' .
                 $video->getId() .
                 ' error ' .
                 $e->getMessage()
