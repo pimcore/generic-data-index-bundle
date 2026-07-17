@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\Serializer\AssetTypeSerializationHandler;
 
 use Codeception\Test\Unit;
+use Error;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField\Asset\VideoSystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler\VideoSerializationHandler;
@@ -27,6 +28,11 @@ use Psr\Log\NullLogger;
  * of aborting the whole system-fields array, which would otherwise abort the index queue
  * batch this asset was processed in.
  *
+ * The thumbnail accessor throws an Error (not an Exception) specifically to prove the
+ * getImageThumbnail() catch is widened to Throwable - the original PEES-1311 fix widened
+ * it from Exception, and a narrower catch would let this case bubble up uncaught while
+ * still passing an Exception-only assertion.
+ *
  * @internal
  */
 final class VideoSerializationHandlerTest extends Unit
@@ -36,7 +42,7 @@ final class VideoSerializationHandlerTest extends Unit
         $video = $this->makeEmpty(Video::class, [
             'getId' => 42,
             'getImageThumbnail' => function () {
-                throw new Exception('thumbnail generation failed: file not found');
+                throw new Error('thumbnail generation failed: file not found');
             },
             'getDuration' => function () {
                 throw new Exception('duration extraction failed: file not found');
