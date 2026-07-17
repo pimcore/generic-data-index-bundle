@@ -42,8 +42,10 @@ class ImageSerializationHandler extends AbstractHandler
     {
         return (new SearchResultItem\Image())
             ->setThumbnail(ImageSystemField::THUMBNAIL->getData($indexData))
-            ->setWidth(ImageSystemField::WIDTH->getData($indexData))
-            ->setHeight(ImageSystemField::HEIGHT->getData($indexData));
+            // Width/height stay non-nullable on the model for BC; fall back to 0 when extraction
+            // failed and the indexed value is null instead of widening the public setter signature.
+            ->setWidth(ImageSystemField::WIDTH->getData($indexData) ?? 0)
+            ->setHeight(ImageSystemField::HEIGHT->getData($indexData) ?? 0);
     }
 
     private function getThumbnail(Image $image): ?string
