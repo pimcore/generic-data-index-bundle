@@ -79,6 +79,19 @@ final class BooleanAdapterTest extends Unit
         $this->assertNull($adapter->normalize(null));
     }
 
+    /**
+     * Outside classification stores the object getter returns the already hydrated
+     * bool (getDataFromResource ran at load time) — those values must pass through
+     * unchanged instead of being nulled by a second resource conversion.
+     */
+    public function testNormalizeKeepsHydratedBooleanSelectValues(): void
+    {
+        $adapter = $this->createAdapter(new BooleanSelect());
+
+        $this->assertTrue($adapter->normalize(true));
+        $this->assertFalse($adapter->normalize(false));
+    }
+
     private function createAdapter(Data $fieldDefinition): BooleanAdapter
     {
         $adapter = new BooleanAdapter(

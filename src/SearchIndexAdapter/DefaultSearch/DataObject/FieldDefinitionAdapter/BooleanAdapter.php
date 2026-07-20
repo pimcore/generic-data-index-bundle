@@ -30,8 +30,10 @@ final class BooleanAdapter extends AbstractAdapter
 
     public function normalize(mixed $value): mixed
     {
-        if ($value === null) {
-            return null;
+        // Values from object getters are already hydrated booleans; only raw
+        // resource values (e.g. classification store longtext) need conversion.
+        if ($value === null || is_bool($value)) {
+            return $value;
         }
 
         $fieldDefinition = $this->getFieldDefinition();
