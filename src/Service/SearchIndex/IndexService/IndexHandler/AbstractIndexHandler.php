@@ -188,9 +188,14 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         foreach ($mapping as $key => $value) {
             if (is_array($value)) {
                 if (empty($value)) {
-                    $mapping[$key] = new \stdClass();
+                    unset($mapping[$key]);
                 } else {
-                    $mapping[$key] = $this->castEmptyArraysToObject($value);
+                    $result = $this->castEmptyArraysToObject($value);
+                    if (empty($result)) {
+                        unset($mapping[$key]);
+                    } else {
+                        $mapping[$key] = $result;
+                    }
                 }
             }
         }
