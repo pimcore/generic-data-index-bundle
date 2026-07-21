@@ -251,11 +251,15 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
     private function castEmptyArraysToObject(array $mapping): array
     {
-        array_walk_recursive($mapping, static function (mixed &$value): void {
-            if (is_array($value) && empty($value)) {
-                $value = new \stdClass();
+        foreach ($mapping as $key => $value) {
+            if (is_array($value)) {
+                if (empty($value)) {
+                    $mapping[$key] = new \stdClass();
+                } else {
+                    $mapping[$key] = $this->castEmptyArraysToObject($value);
+                }
             }
-        });
+        }
 
         return $mapping;
     }
