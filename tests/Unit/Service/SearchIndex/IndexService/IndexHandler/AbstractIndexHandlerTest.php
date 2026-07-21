@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\I
 
 use Codeception\Test\Unit;
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AbstractIndexHandler;
@@ -193,47 +194,36 @@ final class AbstractIndexHandlerTest extends Unit
     }
 
     /**
-     * When doUpdateMapping() throws repeatedly (e.g. AWS rejects "properties":[]),
-     * reindexMapping() must not recurse forever. After MAX_REINDEX_ATTEMPTS the
-     * recursion must be stopped and an error must be logged.
+     * When reindexMapping() is called recursively beyond MAX_REINDEX_ATTEMPTS,
+     * it must throw ReindexFailedException to prevent infinite recursion.
      */
-    public function testReindexMappingIsLimitedToMaxAttempts(): void
+    public function testReindexMappingThrowsWhenMaxAttemptsReached(): void
     {
-        $putMappingCallCount = 0;
-
         $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
             'existsAlias' => false,
             'existsIndex' => false,
             'deleteIndex' => null,
             'getCurrentIndexVersion' => '',
-            'putMapping' => static function () use (&$putMappingCallCount): array {
-                $putMappingCallCount++;
+            'putMapping' => static function (): array {
                 throw new Exception('AWS rejected empty array in mapping');
             },
         ]);
 
-        $logger = $this->createCollectingLogger();
         $handler = $this->createHandlerWithService($searchIndexService);
-        $handler->setLogger($logger);
+        $handler->setLogger(new NullLogger());
 
-        // Must not throw a fatal error (stack overflow) and must return normally
-        $handler->updateMapping();
+        $this->expectException(ReindexFailedException::class);
+        $this->expectExceptionMessageMatches('/Max reindex attempts reached/i');
 
-        $errorLogs = array_filter($logger->records, static fn (array $r): bool => $r['level'] === 'error');
-        $this->assertNotEmpty($errorLogs, 'An error must be logged when max attempts is reached');
-        $loggedMessage = implode(' | ', array_column($errorLogs, 'message'));
-        $this->assertStringContainsString(
-            'Max reindex attempts reached',
-            $loggedMessage,
-            'The abort log message must mention max reindex attempts'
-        );
+        $handler->reindexMapping(depth: 3);
     }
 
     /**
-     * Empty array fields in mapping properties must be removed entirely so that
-     * OpenSearch/Elasticsearch never receives "[]" for a field.
+     * When extractMappingProperties() returns an empty array, doUpdateMapping() must
+     * omit the "properties" key from the putMapping body entirely so that
+     * OpenSearch/Elasticsearch never receives "properties":[].
      */
-    public function testDoUpdateMappingRemovesTopLevelEmptyArrayFields(): void
+    public function testDoUpdateMappingOmitsPropertiesKeyWhenMappingIsEmpty(): void
     {
         $capturedParams = null;
 
@@ -249,8 +239,8 @@ final class AbstractIndexHandlerTest extends Unit
 
         $handler = $this->createHandlerWithServiceAndMapping(
             $searchIndexService,
-            // extractMappingProperties returns a property whose value is an empty array
-            ['my_field' => []]
+            // extractMappingProperties returns an empty mapping
+            []
         );
         $handler->setLogger(new NullLogger());
 
@@ -258,16 +248,18 @@ final class AbstractIndexHandlerTest extends Unit
 
         $this->assertNotNull($capturedParams, 'putMapping must have been called');
         $this->assertArrayNotHasKey(
-            'my_field',
-            $capturedParams['body']['properties'],
-            'An empty array field in mapping properties must be removed'
+            'properties',
+            $capturedParams['body'],
+            'The "properties" key must be omitted from the putMapping body when the mapping is empty'
         );
     }
 
     /**
-     * Nested empty array fields deep inside a mapping must also be removed entirely.
+     * When extractMappingProperties() returns a non-empty mapping, doUpdateMapping() must
+     * include the "properties" key in the putMapping body and pass the raw mapping through
+     * (normalization of empty arrays is handled by DefaultSearchService::putMapping()).
      */
-    public function testDoUpdateMappingRemovesNestedEmptyArrayFields(): void
+    public function testDoUpdateMappingIncludesPropertiesKeyWhenMappingIsNonEmpty(): void
     {
         $capturedParams = null;
 
@@ -284,11 +276,8 @@ final class AbstractIndexHandlerTest extends Unit
         $handler = $this->createHandlerWithServiceAndMapping(
             $searchIndexService,
             [
-                'parent_field' => [
-                    'type' => 'object',
-                    'properties' => [
-                        'child_field' => [],
-                    ],
+                'my_field' => [
+                    'type' => 'keyword',
                 ],
             ]
         );
@@ -297,10 +286,15 @@ final class AbstractIndexHandlerTest extends Unit
         $handler->updateMapping();
 
         $this->assertNotNull($capturedParams, 'putMapping must have been called');
-        $this->assertArrayNotHasKey(
-            'child_field',
-            $capturedParams['body']['properties']['parent_field']['properties'],
-            'Nested empty array fields in mapping properties must be removed'
+        $this->assertArrayHasKey(
+            'properties',
+            $capturedParams['body'],
+            'The "properties" key must be present in the putMapping body when the mapping is non-empty'
+        );
+        $this->assertArrayHasKey(
+            'my_field',
+            $capturedParams['body']['properties'],
+            'Non-empty mapping fields must be passed through to putMapping'
         );
     }
 

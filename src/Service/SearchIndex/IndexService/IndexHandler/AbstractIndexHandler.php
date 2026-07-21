@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Exception;
 use JsonException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -26,8 +27,6 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 abstract class AbstractIndexHandler implements IndexHandlerInterface
 {
     use LoggerAwareTrait;
-
-    private int $reindexAttempts = 0;
 
     private const MAX_REINDEX_ATTEMPTS = 3;
 
@@ -76,24 +75,26 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         } catch (Exception $e) {
             $this->logger->info($e);
             //try recreating index
-            $this->reindexMapping($context, $mappingProperties);
+            try {
+                $this->reindexMapping($context, $mappingProperties);
+            } catch (ReindexFailedException $reindexException) {
+                $this->logger->error($reindexException->getMessage());
+            }
         }
     }
 
     /**
      * @throws Exception
+     * @throws ReindexFailedException
      */
     public function reindexMapping(
         ?ClassDefinition $context = null,
-        ?array $mappingProperties = null
+        ?array $mappingProperties = null,
+        int $depth = 0
     ): void {
-        if ($this->reindexAttempts >= self::MAX_REINDEX_ATTEMPTS) {
-            $this->logger->error('Max reindex attempts reached, aborting to prevent infinite recursion.');
-            $this->reindexAttempts = 0;
-
-            return;
+        if ($depth >= self::MAX_REINDEX_ATTEMPTS) {
+            throw new ReindexFailedException('Max reindex attempts reached, aborting to prevent infinite recursion.');
         }
-        $this->reindexAttempts++;
 
         $alias = $this->getAliasIndexName($context);
         $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
@@ -127,7 +128,6 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             }
         }
 
-        $this->reindexAttempts = 0;
         $this->createGlobalIndexAliases($context);
     }
 
@@ -168,39 +168,20 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
      */
     private function doUpdateMapping(mixed $context): void
     {
-        $mappingProperties = $this->castEmptyArraysToObject($this->extractMappingProperties($context));
+        $mappingProperties = $this->extractMappingProperties($context);
+        $body = [
+            '_source' => ['enabled' => true],
+        ];
+        if (!empty($mappingProperties)) {
+            $body['properties'] = $mappingProperties;
+        }
         $response = $this->searchIndexService->putMapping(
             [
                 'index' => $this->getCurrentFullIndexName($context),
-                'body' => [
-                    '_source' => [
-                        'enabled' => true,
-                    ],
-                    'properties' => $mappingProperties,
-                ],
+                'body' => $body,
             ]
         );
         $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
-    }
-
-    private function castEmptyArraysToObject(array $mapping): array
-    {
-        foreach ($mapping as $key => $value) {
-            if (is_array($value)) {
-                if (empty($value)) {
-                    unset($mapping[$key]);
-                } else {
-                    $result = $this->castEmptyArraysToObject($value);
-                    if (empty($result)) {
-                        unset($mapping[$key]);
-                    } else {
-                        $mapping[$key] = $result;
-                    }
-                }
-            }
-        }
-
-        return $mapping;
     }
 
     protected function createIndex(mixed $context, string $aliasName): void

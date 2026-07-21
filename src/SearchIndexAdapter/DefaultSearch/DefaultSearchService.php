@@ -231,7 +231,10 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             }
 
             if ($mappings) {
-                $body['mappings']['properties'] = $this->castEmptyArraysToObject($mappings);
+                $normalized = $this->castEmptyArraysToObject($mappings);
+                if (!empty($normalized)) {
+                    $body['mappings']['properties'] = $normalized;
+                }
             }
 
             $response = $this->client->createIndex(
@@ -312,6 +315,15 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
     public function putMapping(array $params): array
     {
+        if (isset($params['body']['properties'])) {
+            $normalized = $this->castEmptyArraysToObject($params['body']['properties']);
+            if (!empty($normalized)) {
+                $params['body']['properties'] = $normalized;
+            } else {
+                unset($params['body']['properties']);
+            }
+        }
+
         return $this->client->putIndexMapping($params);
     }
 

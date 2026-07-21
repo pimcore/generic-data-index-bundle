@@ -105,8 +105,10 @@ final class DefaultSearchServiceTest extends Unit
     }
 
     /**
-     * When createIndex() receives a mappings array with empty-array values,
-     * those fields must be removed entirely rather than sent as "[]" to OpenSearch.
+     * When createIndex() receives a mappings array whose only field has an empty-array value,
+     * normalization removes all fields, leaving an empty properties array. The entire
+     * "mappings" key must then be omitted from the body so OpenSearch never receives
+     * "mappings":{"properties":{}} or "mappings":{"properties":[]}.
      */
     public function testCreateIndexRemovesTopLevelEmptyMappingArrayFields(): void
     {
@@ -127,15 +129,16 @@ final class DefaultSearchServiceTest extends Unit
 
         $this->assertNotNull($capturedBody, 'createIndex must have been called on the client');
         $this->assertArrayNotHasKey(
-            'my_field',
-            $capturedBody['mappings']['properties'],
-            'An empty array field in the mappings passed to createIndex must be removed'
+            'mappings',
+            $capturedBody,
+            'When all mapping fields are empty, the "mappings" key must be omitted from the body entirely'
         );
     }
 
     /**
-     * Nested empty arrays inside mappings passed to createIndex() must also be
-     * removed entirely rather than sent as "[]" to OpenSearch.
+     * When a nested field's only child has an empty-array value, the child is removed
+     * and its parent's "properties" sub-key becomes empty and is also removed.
+     * The parent itself must survive if it still has other non-array keys (e.g. "type").
      */
     public function testCreateIndexRemovesNestedEmptyMappingArrayFields(): void
     {
@@ -162,10 +165,15 @@ final class DefaultSearchServiceTest extends Unit
         ]);
 
         $this->assertNotNull($capturedBody, 'createIndex must have been called on the client');
+        $this->assertArrayHasKey(
+            'parent_field',
+            $capturedBody['mappings']['properties'],
+            'parent_field must still exist because it has a non-array "type" key'
+        );
         $this->assertArrayNotHasKey(
-            'child_field',
-            $capturedBody['mappings']['properties']['parent_field']['properties'],
-            'Nested empty array fields in mappings passed to createIndex must be removed'
+            'properties',
+            $capturedBody['mappings']['properties']['parent_field'],
+            'The "properties" sub-key of parent_field must be removed when all its children are empty'
         );
     }
 
