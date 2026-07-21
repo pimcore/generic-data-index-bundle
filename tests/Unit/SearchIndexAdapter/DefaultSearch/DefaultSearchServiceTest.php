@@ -21,7 +21,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Searc
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\SearchClient\SearchClientInterface;
-use stdClass;
 
 /**
  * @internal
@@ -107,9 +106,9 @@ final class DefaultSearchServiceTest extends Unit
 
     /**
      * When createIndex() receives a mappings array with empty-array values,
-     * those must be sent as "{}" (stdClass) rather than "[]" to OpenSearch.
+     * those fields must be removed entirely rather than sent as "[]" to OpenSearch.
      */
-    public function testCreateIndexCastsTopLevelEmptyMappingArrayToStdClass(): void
+    public function testCreateIndexRemovesTopLevelEmptyMappingArrayFields(): void
     {
         $capturedBody = null;
 
@@ -127,18 +126,18 @@ final class DefaultSearchServiceTest extends Unit
         $service->createIndex('test_index', ['my_field' => []]);
 
         $this->assertNotNull($capturedBody, 'createIndex must have been called on the client');
-        $this->assertInstanceOf(
-            stdClass::class,
-            $capturedBody['mappings']['properties']['my_field'],
-            'An empty array in the mappings passed to createIndex must be cast to stdClass'
+        $this->assertArrayNotHasKey(
+            'my_field',
+            $capturedBody['mappings']['properties'],
+            'An empty array field in the mappings passed to createIndex must be removed'
         );
     }
 
     /**
      * Nested empty arrays inside mappings passed to createIndex() must also be
-     * cast to stdClass so that OpenSearch receives "{}" rather than "[]".
+     * removed entirely rather than sent as "[]" to OpenSearch.
      */
-    public function testCreateIndexCastsNestedEmptyMappingArraysToStdClass(): void
+    public function testCreateIndexRemovesNestedEmptyMappingArrayFields(): void
     {
         $capturedBody = null;
 
@@ -163,11 +162,10 @@ final class DefaultSearchServiceTest extends Unit
         ]);
 
         $this->assertNotNull($capturedBody, 'createIndex must have been called on the client');
-        $childField = $capturedBody['mappings']['properties']['parent_field']['properties']['child_field'];
-        $this->assertInstanceOf(
-            stdClass::class,
-            $childField,
-            'Nested empty array values in mappings passed to createIndex must be cast to stdClass'
+        $this->assertArrayNotHasKey(
+            'child_field',
+            $capturedBody['mappings']['properties']['parent_field']['properties'],
+            'Nested empty array fields in mappings passed to createIndex must be removed'
         );
     }
 

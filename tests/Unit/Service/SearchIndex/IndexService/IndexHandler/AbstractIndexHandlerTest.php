@@ -21,7 +21,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\Index
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Psr\Log\AbstractLogger;
 use Psr\Log\NullLogger;
-use stdClass;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -231,10 +230,10 @@ final class AbstractIndexHandlerTest extends Unit
     }
 
     /**
-     * Empty arrays in mapping properties must be cast to stdClass so the
-     * SmartSerializer sends "{}" instead of "[]" to OpenSearch/Elasticsearch.
+     * Empty array fields in mapping properties must be removed entirely so that
+     * OpenSearch/Elasticsearch never receives "[]" for a field.
      */
-    public function testDoUpdateMappingCastsTopLevelEmptyArrayToStdClass(): void
+    public function testDoUpdateMappingRemovesTopLevelEmptyArrayFields(): void
     {
         $capturedParams = null;
 
@@ -258,18 +257,17 @@ final class AbstractIndexHandlerTest extends Unit
         $handler->updateMapping();
 
         $this->assertNotNull($capturedParams, 'putMapping must have been called');
-        $properties = $capturedParams['body']['properties'];
-        $this->assertInstanceOf(
-            stdClass::class,
-            $properties['my_field'],
-            'An empty array value in mapping properties must be cast to stdClass'
+        $this->assertArrayNotHasKey(
+            'my_field',
+            $capturedParams['body']['properties'],
+            'An empty array field in mapping properties must be removed'
         );
     }
 
     /**
-     * Nested empty arrays deep inside a mapping must also be cast to stdClass.
+     * Nested empty array fields deep inside a mapping must also be removed entirely.
      */
-    public function testDoUpdateMappingCastsNestedEmptyArraysToStdClass(): void
+    public function testDoUpdateMappingRemovesNestedEmptyArrayFields(): void
     {
         $capturedParams = null;
 
@@ -299,11 +297,10 @@ final class AbstractIndexHandlerTest extends Unit
         $handler->updateMapping();
 
         $this->assertNotNull($capturedParams, 'putMapping must have been called');
-        $childField = $capturedParams['body']['properties']['parent_field']['properties']['child_field'];
-        $this->assertInstanceOf(
-            stdClass::class,
-            $childField,
-            'Nested empty array values in mapping properties must be cast to stdClass'
+        $this->assertArrayNotHasKey(
+            'child_field',
+            $capturedParams['body']['properties']['parent_field']['properties'],
+            'Nested empty array fields in mapping properties must be removed'
         );
     }
 
