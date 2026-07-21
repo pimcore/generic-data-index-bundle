@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Searc
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\SearchClient\SearchClientInterface;
+use stdClass;
 
 /**
  * @internal
@@ -102,6 +103,72 @@ final class DefaultSearchServiceTest extends Unit
         ]);
 
         $this->assertSame(10, $service->getCount($search, 'test_index'));
+    }
+
+    /**
+     * When createIndex() receives a mappings array with empty-array values,
+     * those must be sent as "{}" (stdClass) rather than "[]" to OpenSearch.
+     */
+    public function testCreateIndexCastsTopLevelEmptyMappingArrayToStdClass(): void
+    {
+        $capturedBody = null;
+
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                'existsIndex' => false,
+                'createIndex' => Expected::once(function (array $params) use (&$capturedBody): array {
+                    $capturedBody = $params['body'];
+
+                    return [];
+                }),
+            ])
+        );
+
+        $service->createIndex('test_index', ['my_field' => []]);
+
+        $this->assertNotNull($capturedBody, 'createIndex must have been called on the client');
+        $this->assertInstanceOf(
+            stdClass::class,
+            $capturedBody['mappings']['properties']['my_field'],
+            'An empty array in the mappings passed to createIndex must be cast to stdClass'
+        );
+    }
+
+    /**
+     * Nested empty arrays inside mappings passed to createIndex() must also be
+     * cast to stdClass so that OpenSearch receives "{}" rather than "[]".
+     */
+    public function testCreateIndexCastsNestedEmptyMappingArraysToStdClass(): void
+    {
+        $capturedBody = null;
+
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                'existsIndex' => false,
+                'createIndex' => Expected::once(function (array $params) use (&$capturedBody): array {
+                    $capturedBody = $params['body'];
+
+                    return [];
+                }),
+            ])
+        );
+
+        $service->createIndex('test_index', [
+            'parent_field' => [
+                'type' => 'object',
+                'properties' => [
+                    'child_field' => [],
+                ],
+            ],
+        ]);
+
+        $this->assertNotNull($capturedBody, 'createIndex must have been called on the client');
+        $childField = $capturedBody['mappings']['properties']['parent_field']['properties']['child_field'];
+        $this->assertInstanceOf(
+            stdClass::class,
+            $childField,
+            'Nested empty array values in mappings passed to createIndex must be cast to stdClass'
+        );
     }
 
     private function createService(

@@ -231,7 +231,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             }
 
             if ($mappings) {
-                $body['mappings']['properties'] = $mappings;
+                $body['mappings']['properties'] = $this->castEmptyArraysToObject($mappings);
             }
 
             $response = $this->client->createIndex(
@@ -247,6 +247,17 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         }
 
         return $this;
+    }
+
+    private function castEmptyArraysToObject(array $mapping): array
+    {
+        array_walk_recursive($mapping, static function (mixed &$value): void {
+            if (is_array($value) && empty($value)) {
+                $value = new \stdClass();
+            }
+        });
+
+        return $mapping;
     }
 
     public function addAlias(string $aliasName, string $indexName): array

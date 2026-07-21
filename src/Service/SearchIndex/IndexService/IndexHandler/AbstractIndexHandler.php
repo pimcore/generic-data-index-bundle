@@ -27,6 +27,10 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
 {
     use LoggerAwareTrait;
 
+    private int $reindexAttempts = 0;
+
+    private const MAX_REINDEX_ATTEMPTS = 3;
+
     public function __construct(
         protected readonly SearchIndexServiceInterface $searchIndexService,
         protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
@@ -83,6 +87,14 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): void {
+        if ($this->reindexAttempts >= self::MAX_REINDEX_ATTEMPTS) {
+            $this->logger->error('Max reindex attempts reached, aborting to prevent infinite recursion.');
+            $this->reindexAttempts = 0;
+
+            return;
+        }
+        $this->reindexAttempts++;
+
         $alias = $this->getAliasIndexName($context);
         $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
 
@@ -115,6 +127,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             }
         }
 
+        $this->reindexAttempts = 0;
         $this->createGlobalIndexAliases($context);
     }
 
@@ -155,6 +168,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
      */
     private function doUpdateMapping(mixed $context): void
     {
+        $mappingProperties = $this->castEmptyArraysToObject($this->extractMappingProperties($context));
         $response = $this->searchIndexService->putMapping(
             [
                 'index' => $this->getCurrentFullIndexName($context),
@@ -162,11 +176,22 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                     '_source' => [
                         'enabled' => true,
                     ],
-                    'properties' => $this->extractMappingProperties($context),
+                    'properties' => $mappingProperties,
                 ],
             ]
         );
         $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
+    }
+
+    private function castEmptyArraysToObject(array $mapping): array
+    {
+        array_walk_recursive($mapping, static function (mixed &$value): void {
+            if (is_array($value) && empty($value)) {
+                $value = new \stdClass();
+            }
+        });
+
+        return $mapping;
     }
 
     protected function createIndex(mixed $context, string $aliasName): void

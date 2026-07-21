@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\Index
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Psr\Log\AbstractLogger;
 use Psr\Log\NullLogger;
+use stdClass;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -192,12 +193,159 @@ final class AbstractIndexHandlerTest extends Unit
         return $handler;
     }
 
+    /**
+     * When doUpdateMapping() throws repeatedly (e.g. AWS rejects "properties":[]),
+     * reindexMapping() must not recurse forever. After MAX_REINDEX_ATTEMPTS the
+     * recursion must be stopped and an error must be logged.
+     */
+    public function testReindexMappingIsLimitedToMaxAttempts(): void
+    {
+        $putMappingCallCount = 0;
+
+        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => false,
+            'existsIndex' => false,
+            'deleteIndex' => null,
+            'getCurrentIndexVersion' => '',
+            'putMapping' => static function () use (&$putMappingCallCount): array {
+                $putMappingCallCount++;
+                throw new Exception('AWS rejected empty array in mapping');
+            },
+        ]);
+
+        $logger = $this->createCollectingLogger();
+        $handler = $this->createHandlerWithService($searchIndexService);
+        $handler->setLogger($logger);
+
+        // Must not throw a fatal error (stack overflow) and must return normally
+        $handler->updateMapping();
+
+        $errorLogs = array_filter($logger->records, static fn (array $r): bool => $r['level'] === 'error');
+        $this->assertNotEmpty($errorLogs, 'An error must be logged when max attempts is reached');
+        $loggedMessage = implode(' | ', array_column($errorLogs, 'message'));
+        $this->assertStringContainsString(
+            'Max reindex attempts reached',
+            $loggedMessage,
+            'The abort log message must mention max reindex attempts'
+        );
+    }
+
+    /**
+     * Empty arrays in mapping properties must be cast to stdClass so the
+     * SmartSerializer sends "{}" instead of "[]" to OpenSearch/Elasticsearch.
+     */
+    public function testDoUpdateMappingCastsTopLevelEmptyArrayToStdClass(): void
+    {
+        $capturedParams = null;
+
+        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => true,
+            'getCurrentIndexVersion' => '',
+            'putMapping' => static function (array $params) use (&$capturedParams): array {
+                $capturedParams = $params;
+
+                return [];
+            },
+        ]);
+
+        $handler = $this->createHandlerWithServiceAndMapping(
+            $searchIndexService,
+            // extractMappingProperties returns a property whose value is an empty array
+            ['my_field' => []]
+        );
+        $handler->setLogger(new NullLogger());
+
+        $handler->updateMapping();
+
+        $this->assertNotNull($capturedParams, 'putMapping must have been called');
+        $properties = $capturedParams['body']['properties'];
+        $this->assertInstanceOf(
+            stdClass::class,
+            $properties['my_field'],
+            'An empty array value in mapping properties must be cast to stdClass'
+        );
+    }
+
+    /**
+     * Nested empty arrays deep inside a mapping must also be cast to stdClass.
+     */
+    public function testDoUpdateMappingCastsNestedEmptyArraysToStdClass(): void
+    {
+        $capturedParams = null;
+
+        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => true,
+            'getCurrentIndexVersion' => '',
+            'putMapping' => static function (array $params) use (&$capturedParams): array {
+                $capturedParams = $params;
+
+                return [];
+            },
+        ]);
+
+        $handler = $this->createHandlerWithServiceAndMapping(
+            $searchIndexService,
+            [
+                'parent_field' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'child_field' => [],
+                    ],
+                ],
+            ]
+        );
+        $handler->setLogger(new NullLogger());
+
+        $handler->updateMapping();
+
+        $this->assertNotNull($capturedParams, 'putMapping must have been called');
+        $childField = $capturedParams['body']['properties']['parent_field']['properties']['child_field'];
+        $this->assertInstanceOf(
+            stdClass::class,
+            $childField,
+            'Nested empty array values in mapping properties must be cast to stdClass'
+        );
+    }
+
     private function createHandlerWithService(SearchIndexServiceInterface $searchIndexService): AbstractIndexHandler
     {
         return new class($searchIndexService, $this->makeEmpty(SearchIndexConfigServiceInterface::class), $this->makeEmpty(EventDispatcherInterface::class), $this->makeEmpty(IndexMappingServiceInterface::class), ) extends AbstractIndexHandler {
             protected function extractMappingProperties(mixed $context = null): array
             {
                 return [];
+            }
+
+            protected function getAliasIndexName(mixed $context = null): string
+            {
+                return 'test_alias';
+            }
+        };
+    }
+
+    private function createHandlerWithServiceAndMapping(
+        SearchIndexServiceInterface $searchIndexService,
+        array $mappingProperties
+    ): AbstractIndexHandler {
+        return new class(
+            $searchIndexService,
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
+            $this->makeEmpty(EventDispatcherInterface::class),
+            $this->makeEmpty(IndexMappingServiceInterface::class),
+            $mappingProperties
+        ) extends AbstractIndexHandler {
+            public function __construct(
+                SearchIndexServiceInterface $searchIndexService,
+                SearchIndexConfigServiceInterface $searchIndexConfigService,
+                EventDispatcherInterface $eventDispatcher,
+                IndexMappingServiceInterface $indexMappingService,
+                private readonly array $properties
+            ) {
+                parent::__construct($searchIndexService, $searchIndexConfigService, $eventDispatcher, $indexMappingService);
+            }
+
+            protected function extractMappingProperties(mixed $context = null): array
+            {
+                return $this->properties;
             }
 
             protected function getAliasIndexName(mixed $context = null): string
