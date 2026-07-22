@@ -37,8 +37,7 @@ interface IndexHandlerInterface
      */
     public function reindexMapping(
         ?ClassDefinition $context = null,
-        ?array $mappingProperties = null,
-        int $depth = 0
+        ?array $mappingProperties = null
     ): void;
 
     public function deleteIndex(mixed $context): void;

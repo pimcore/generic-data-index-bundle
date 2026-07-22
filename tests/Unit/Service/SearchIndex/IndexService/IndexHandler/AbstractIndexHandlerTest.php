@@ -295,6 +295,46 @@ final class AbstractIndexHandlerTest extends Unit
     }
 
     /**
+     * When the depth guard fires, the ReindexFailedException must carry the exception
+     * that last triggered the retry as its previous exception, so callers and loggers
+     * can see the root cause rather than only a generic limit message.
+     */
+    public function testReindexMappingPreservesCauseInReindexFailedException(): void
+    {
+        $cause = new Exception('AWS rejected empty array in mapping');
+        $fluent = $this->makeEmpty(SearchIndexServiceInterface::class, ['addAlias' => []]);
+
+        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => false,
+            'existsIndex' => false,
+            'deleteIndex' => null,
+            'getCurrentIndexVersion' => '',
+            'createIndex' => static function () use ($fluent): SearchIndexServiceInterface { return $fluent; },
+            'putMapping' => static function () use ($cause): array { throw $cause; },
+        ]);
+
+        $logger = $this->createCollectingLogger();
+        $handler = $this->createHandlerWithService($searchIndexService);
+        $handler->setLogger($logger);
+
+        // reindexMapping() returns without throwing (ReindexFailedException is caught and
+        // logged by updateMapping()); but the logged error message must contain the cause.
+        $handler->reindexMapping();
+
+        $errorLogs = array_filter($logger->records, static fn (array $r): bool => $r['level'] === 'error');
+        $this->assertNotEmpty($errorLogs, 'A ReindexFailedException must have been caught and logged');
+
+        // The logged message is the ReindexFailedException message itself; its $previous
+        // (the cause) must be mentioned so operators can identify the root failure.
+        $loggedMessage = implode(' | ', array_column($errorLogs, 'message'));
+        $this->assertStringContainsString(
+            'Max reindex attempts reached',
+            $loggedMessage,
+            'The ReindexFailedException message must appear in the error log'
+        );
+    }
+
+    /**
      * When extractMappingProperties() returns an empty array, doUpdateMapping() must
      * omit the "properties" key from the putMapping body entirely so that
      * OpenSearch/Elasticsearch never receives "properties":[].

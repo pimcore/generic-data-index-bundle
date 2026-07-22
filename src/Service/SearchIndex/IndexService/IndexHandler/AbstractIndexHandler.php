@@ -77,7 +77,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             $this->logger->info($e);
             //try recreating index
             try {
-                $this->reindexMapping($context, $mappingProperties, $reindexDepth + 1);
+                $this->doReindexMapping($context, $mappingProperties, $reindexDepth + 1, $e);
             } catch (ReindexFailedException $reindexException) {
                 $this->logger->error($reindexException->getMessage());
             }
@@ -85,16 +85,31 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     }
 
     /**
-     * @throws Exception
      * @throws ReindexFailedException
      */
     public function reindexMapping(
         ?ClassDefinition $context = null,
-        ?array $mappingProperties = null,
-        int $depth = 0
+        ?array $mappingProperties = null
+    ): void {
+        $this->doReindexMapping($context, $mappingProperties, 0);
+    }
+
+    /**
+     * @throws Exception
+     * @throws ReindexFailedException
+     */
+    private function doReindexMapping(
+        ?ClassDefinition $context,
+        ?array $mappingProperties,
+        int $depth,
+        ?\Throwable $cause = null
     ): void {
         if ($depth >= self::MAX_REINDEX_ATTEMPTS) {
-            throw new ReindexFailedException('Max reindex attempts reached, aborting to prevent infinite recursion.');
+            throw new ReindexFailedException(
+                'Max reindex attempts reached, aborting to prevent infinite recursion.',
+                0,
+                $cause
+            );
         }
 
         $alias = $this->getAliasIndexName($context);
