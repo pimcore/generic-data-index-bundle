@@ -32,6 +32,7 @@ interface IndexHandlerInterface
     ): void;
 
     /**
+     * @throws Exception
      * @throws ReindexFailedException
      */
     public function reindexMapping(

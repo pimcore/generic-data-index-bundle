@@ -98,6 +98,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     }
 
     /**
+     * @throws Exception
      * @throws ReindexFailedException
      */
     public function reindexMapping(
