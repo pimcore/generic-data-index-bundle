@@ -231,7 +231,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             }
 
             if ($mappings) {
-                $normalized = $this->castEmptyArraysToObject($mappings);
+                $normalized = $this->stripEmptyArraysFromMapping($mappings);
                 if (!empty($normalized)) {
                     $body['mappings']['properties'] = $normalized;
                 }
@@ -252,14 +252,14 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         return $this;
     }
 
-    private function castEmptyArraysToObject(array $mapping): array
+    private function stripEmptyArraysFromMapping(array $mapping): array
     {
         foreach ($mapping as $key => $value) {
             if (is_array($value)) {
                 if (empty($value)) {
                     unset($mapping[$key]);
                 } else {
-                    $result = $this->castEmptyArraysToObject($value);
+                    $result = $this->stripEmptyArraysFromMapping($value);
                     if (empty($result)) {
                         unset($mapping[$key]);
                     } else {
@@ -316,7 +316,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     public function putMapping(array $params): array
     {
         if (isset($params['body']['properties'])) {
-            $normalized = $this->castEmptyArraysToObject($params['body']['properties']);
+            $normalized = $this->stripEmptyArraysFromMapping($params['body']['properties']);
             if (!empty($normalized)) {
                 $params['body']['properties'] = $normalized;
             } else {

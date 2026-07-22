@@ -41,7 +41,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     public function updateMapping(
         mixed $context = null,
         bool $forceCreateIndex = false,
-        ?array $mappingProperties = null
+        ?array $mappingProperties = null,
+        int $reindexDepth = 0
     ): void {
         $aliasName = $this->getAliasIndexName($context);
 
@@ -76,7 +77,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             $this->logger->info($e);
             //try recreating index
             try {
-                $this->reindexMapping($context, $mappingProperties);
+                $this->reindexMapping($context, $mappingProperties, $reindexDepth + 1);
             } catch (ReindexFailedException $reindexException) {
                 $this->logger->error($reindexException->getMessage());
             }
@@ -102,7 +103,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         if (!$this->searchIndexService->existsAlias($alias)) {
             $this->updateMapping(
                 context: $context,
-                mappingProperties: $mappingProperties
+                mappingProperties: $mappingProperties,
+                reindexDepth: $depth
             );
         } else {
             try {

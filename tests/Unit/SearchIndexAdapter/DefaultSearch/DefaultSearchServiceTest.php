@@ -177,6 +177,87 @@ final class DefaultSearchServiceTest extends Unit
         );
     }
 
+    /**
+     * When putMapping() receives a properties array whose fields are all empty arrays,
+     * normalization removes them and the "properties" key must be absent from the forwarded call.
+     */
+    public function testPutMappingRemovesEmptyArrayFieldsFromProperties(): void
+    {
+        $capturedParams = null;
+
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                'putIndexMapping' => Expected::once(function (array $params) use (&$capturedParams): array {
+                    $capturedParams = $params;
+
+                    return [];
+                }),
+            ])
+        );
+
+        $service->putMapping([
+            'index' => 'test_index',
+            'body' => [
+                '_source' => ['enabled' => true],
+                'properties' => ['empty_field' => []],
+            ],
+        ]);
+
+        $this->assertNotNull($capturedParams, 'putIndexMapping must have been called on the client');
+        $this->assertArrayNotHasKey(
+            'properties',
+            $capturedParams['body'],
+            'When all properties fields are empty, the "properties" key must be omitted from the body'
+        );
+    }
+
+    /**
+     * When putMapping() receives a properties array with both valid and empty-array fields,
+     * normalization removes only the empty ones while preserving the valid mapping fields.
+     */
+    public function testPutMappingPreservesValidFieldsWhileRemovingEmptyOnes(): void
+    {
+        $capturedParams = null;
+
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                'putIndexMapping' => Expected::once(function (array $params) use (&$capturedParams): array {
+                    $capturedParams = $params;
+
+                    return [];
+                }),
+            ])
+        );
+
+        $service->putMapping([
+            'index' => 'test_index',
+            'body' => [
+                '_source' => ['enabled' => true],
+                'properties' => [
+                    'valid_field' => ['type' => 'keyword'],
+                    'empty_field' => [],
+                ],
+            ],
+        ]);
+
+        $this->assertNotNull($capturedParams, 'putIndexMapping must have been called on the client');
+        $this->assertArrayHasKey(
+            'properties',
+            $capturedParams['body'],
+            'The "properties" key must still be present when at least one field has a valid mapping'
+        );
+        $this->assertArrayHasKey(
+            'valid_field',
+            $capturedParams['body']['properties'],
+            'Valid mapping fields must be preserved after normalization'
+        );
+        $this->assertArrayNotHasKey(
+            'empty_field',
+            $capturedParams['body']['properties'],
+            'Empty-array mapping fields must be removed by normalization'
+        );
+    }
+
     private function createService(
         ?SearchIndexConfigServiceInterface $configService = null,
         ?SearchExecutionServiceInterface $searchExecutionService = null,

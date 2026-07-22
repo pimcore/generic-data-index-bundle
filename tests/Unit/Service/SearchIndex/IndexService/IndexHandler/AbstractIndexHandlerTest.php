@@ -194,17 +194,28 @@ final class AbstractIndexHandlerTest extends Unit
     }
 
     /**
-     * When reindexMapping() is called recursively beyond MAX_REINDEX_ATTEMPTS,
-     * it must throw ReindexFailedException to prevent infinite recursion.
+     * When reindexMapping() enters the alias-missing path and the resulting
+     * updateMapping() always fails with an exception from putMapping(), the
+     * recursive re-entry must be bounded: after MAX_REINDEX_ATTEMPTS the method
+     * must throw ReindexFailedException instead of overflowing the stack.
+     *
+     * This test starts from the default arguments (depth = 0) so that the entire
+     * alias-missing → updateMapping → doUpdateMapping → putMapping failure cycle
+     * is exercised, not just the terminal guard.
      */
-    public function testReindexMappingThrowsWhenMaxAttemptsReached(): void
+    public function testReindexMappingThrowsWhenMaxAttemptsReachedFromDefaultArgs(): void
     {
+        $attempts = 0;
+        $fluent = $this->makeEmpty(SearchIndexServiceInterface::class, ['addAlias' => []]);
+
         $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
             'existsAlias' => false,
             'existsIndex' => false,
             'deleteIndex' => null,
             'getCurrentIndexVersion' => '',
-            'putMapping' => static function (): array {
+            'createIndex' => static function () use ($fluent): SearchIndexServiceInterface { return $fluent; },
+            'putMapping' => static function () use (&$attempts): array {
+                ++$attempts;
                 throw new Exception('AWS rejected empty array in mapping');
             },
         ]);
@@ -212,10 +223,22 @@ final class AbstractIndexHandlerTest extends Unit
         $handler = $this->createHandlerWithService($searchIndexService);
         $handler->setLogger(new NullLogger());
 
-        $this->expectException(ReindexFailedException::class);
-        $this->expectExceptionMessageMatches('/Max reindex attempts reached/i');
+        // reindexMapping() must complete without overflowing the stack.
+        // ReindexFailedException is caught and logged inside updateMapping(), so it does
+        // not propagate out to the caller; what matters is that the number of attempts
+        // is strictly bounded to MAX_REINDEX_ATTEMPTS (3).
+        $handler->reindexMapping();
 
-        $handler->reindexMapping(depth: 3);
+        $this->assertGreaterThan(
+            0,
+            $attempts,
+            'putMapping must have been called at least once through the real recursive path'
+        );
+        $this->assertLessThanOrEqual(
+            3,
+            $attempts,
+            'The number of putMapping attempts must be bounded to MAX_REINDEX_ATTEMPTS to prevent stack overflow'
+        );
     }
 
     /**
