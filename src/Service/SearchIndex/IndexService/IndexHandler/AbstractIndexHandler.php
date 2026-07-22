@@ -92,7 +92,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             try {
                 $this->doReindexMapping($context, $mappingProperties, $reindexDepth + 1, $e);
             } catch (ReindexFailedException $reindexException) {
-                $this->logger->error($reindexException->getMessage());
+                $this->logger->error((string) $reindexException);
             }
         }
     }

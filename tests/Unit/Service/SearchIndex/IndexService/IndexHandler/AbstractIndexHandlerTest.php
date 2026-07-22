@@ -298,6 +298,10 @@ final class AbstractIndexHandlerTest extends Unit
      * When the depth guard fires, the ReindexFailedException must carry the exception
      * that last triggered the retry as its previous exception, so callers and loggers
      * can see the root cause rather than only a generic limit message.
+     *
+     * The production logger call uses `(string) $reindexException`, which casts the full
+     * exception chain to a string, so both the wrapper message and the $previous cause
+     * message appear in the logged output. This test verifies both are present.
      */
     public function testReindexMappingPreservesCauseInReindexFailedException(): void
     {
@@ -318,19 +322,27 @@ final class AbstractIndexHandlerTest extends Unit
         $handler->setLogger($logger);
 
         // reindexMapping() returns without throwing (ReindexFailedException is caught and
-        // logged by updateMapping()); but the logged error message must contain the cause.
+        // logged by updateMapping() as the full exception string including its $previous chain).
         $handler->reindexMapping();
 
         $errorLogs = array_filter($logger->records, static fn (array $r): bool => $r['level'] === 'error');
         $this->assertNotEmpty($errorLogs, 'A ReindexFailedException must have been caught and logged');
 
-        // The logged message is the ReindexFailedException message itself; its $previous
-        // (the cause) must be mentioned so operators can identify the root failure.
         $loggedMessage = implode(' | ', array_column($errorLogs, 'message'));
+
+        // The wrapper message must be present.
         $this->assertStringContainsString(
             'Max reindex attempts reached',
             $loggedMessage,
-            'The ReindexFailedException message must appear in the error log'
+            'The ReindexFailedException wrapper message must appear in the error log'
+        );
+
+        // The $previous cause message must also be present — removing the chained $cause
+        // from the ReindexFailedException constructor would break this assertion.
+        $this->assertStringContainsString(
+            'AWS rejected empty array in mapping',
+            $loggedMessage,
+            'The root-cause exception message must appear in the error log so operators can identify the failure'
         );
     }
 
