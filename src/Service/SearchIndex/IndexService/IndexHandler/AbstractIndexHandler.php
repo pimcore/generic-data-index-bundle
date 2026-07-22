@@ -43,7 +43,11 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         bool $forceCreateIndex = false,
         ?array $mappingProperties = null
     ): void {
-        $this->doUpdateMappingFull($context, $forceCreateIndex, $mappingProperties, 0);
+        try {
+            $this->doUpdateMappingFull($context, $forceCreateIndex, $mappingProperties, 0);
+        } catch (ReindexFailedException $reindexException) {
+            $this->logger->error((string) $reindexException);
+        }
     }
 
     /**
@@ -88,12 +92,9 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             $this->doUpdateMapping($context);
         } catch (Exception $e) {
             $this->logger->info($e);
-            //try recreating index
-            try {
-                $this->doReindexMapping($context, $mappingProperties, $reindexDepth + 1, $e);
-            } catch (ReindexFailedException $reindexException) {
-                $this->logger->error((string) $reindexException);
-            }
+            //try recreating index — ReindexFailedException propagates to the caller (doReindexMapping
+            //or, for the public entry-point, is caught in updateMapping()).
+            $this->doReindexMapping($context, $mappingProperties, $reindexDepth + 1, $e);
         }
     }
 

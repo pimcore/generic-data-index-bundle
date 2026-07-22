@@ -195,13 +195,16 @@ final class AbstractIndexHandlerTest extends Unit
 
     /**
      * When reindexMapping() enters the alias-missing path and the resulting
-     * updateMapping() always fails with an exception from putMapping(), the
+     * doUpdateMapping() always fails with an exception from putMapping(), the
      * recursive re-entry must be bounded: after MAX_REINDEX_ATTEMPTS the method
      * must throw ReindexFailedException instead of overflowing the stack.
      *
      * This test starts from the default arguments (depth = 0) so that the entire
-     * alias-missing → updateMapping → doUpdateMapping → putMapping failure cycle
-     * is exercised, not just the terminal guard.
+     * alias-missing → doUpdateMappingFull → doReindexMapping → putMapping failure
+     * cycle is exercised, not just the terminal guard.
+     *
+     * reindexMapping() is the public entry-point and must propagate ReindexFailedException
+     * so callers do not store a mapping checksum for an update that was never applied.
      */
     public function testReindexMappingThrowsWhenMaxAttemptsReachedFromDefaultArgs(): void
     {
@@ -223,12 +226,18 @@ final class AbstractIndexHandlerTest extends Unit
         $handler = $this->createHandlerWithService($searchIndexService);
         $handler->setLogger(new NullLogger());
 
-        // reindexMapping() must complete without overflowing the stack.
-        // ReindexFailedException is caught and logged inside updateMapping(), so it does
-        // not propagate out to the caller; what matters is that the number of attempts
-        // is strictly bounded to MAX_REINDEX_ATTEMPTS (3).
-        $handler->reindexMapping();
+        $thrown = null;
+        try {
+            $handler->reindexMapping();
+        } catch (ReindexFailedException $e) {
+            $thrown = $e;
+        }
 
+        $this->assertInstanceOf(
+            ReindexFailedException::class,
+            $thrown,
+            'reindexMapping() must throw ReindexFailedException after the bounded number of attempts'
+        );
         $this->assertGreaterThan(
             0,
             $attempts,
@@ -247,10 +256,8 @@ final class AbstractIndexHandlerTest extends Unit
      * remain bounded. Without the fix, every fallback resets depth to 0, enabling infinite
      * recursion. With the fix, putMapping is called at most MAX_REINDEX_ATTEMPTS times.
      *
-     * Note: updateMapping() deliberately catches ReindexFailedException internally (to keep
-     * the handler non-fatal for callers like deployment commands), so no exception propagates
-     * out of reindexMapping() in this path. The meaningful invariant is that putMapping is
-     * invoked a strictly bounded number of times.
+     * reindexMapping() must propagate ReindexFailedException once the depth guard fires,
+     * so callers do not store a mapping checksum for an update that was never applied.
      */
     public function testReindexMappingBoundsAttemptsWhenAliasExistsAndBothOperationsFail(): void
     {
@@ -275,13 +282,18 @@ final class AbstractIndexHandlerTest extends Unit
         $handler = $this->createHandlerWithService($searchIndexService);
         $handler->setLogger(new NullLogger());
 
-        // reindex() fails, the fallback updateMapping(forceCreate=true) is called, putMapping()
-        // inside it fails, which triggers reindexMapping(depth+1). Without depth forwarding this
-        // loops forever. With the fix the recursion is capped at MAX_REINDEX_ATTEMPTS.
-        // updateMapping() catches ReindexFailedException internally so reindexMapping() returns
-        // normally to the caller — the important invariant is the bounded attempt count.
-        $handler->reindexMapping();
+        $thrown = null;
+        try {
+            $handler->reindexMapping();
+        } catch (ReindexFailedException $e) {
+            $thrown = $e;
+        }
 
+        $this->assertInstanceOf(
+            ReindexFailedException::class,
+            $thrown,
+            'reindexMapping() must throw ReindexFailedException once all attempts are exhausted'
+        );
         $this->assertGreaterThan(
             0,
             $attempts,
@@ -296,12 +308,9 @@ final class AbstractIndexHandlerTest extends Unit
 
     /**
      * When the depth guard fires, the ReindexFailedException must carry the exception
-     * that last triggered the retry as its previous exception, so callers and loggers
-     * can see the root cause rather than only a generic limit message.
-     *
-     * The production logger call uses `(string) $reindexException`, which casts the full
-     * exception chain to a string, so both the wrapper message and the $previous cause
-     * message appear in the logged output. This test verifies both are present.
+     * that last triggered the retry as its $previous, so callers can inspect the full
+     * causal chain. This test catches the propagated exception from reindexMapping() and
+     * asserts both the wrapper message and the chained cause are present.
      */
     public function testReindexMappingPreservesCauseInReindexFailedException(): void
     {
@@ -317,32 +326,35 @@ final class AbstractIndexHandlerTest extends Unit
             'putMapping' => static function () use ($cause): array { throw $cause; },
         ]);
 
-        $logger = $this->createCollectingLogger();
         $handler = $this->createHandlerWithService($searchIndexService);
-        $handler->setLogger($logger);
+        $handler->setLogger(new NullLogger());
 
-        // reindexMapping() returns without throwing (ReindexFailedException is caught and
-        // logged by updateMapping() as the full exception string including its $previous chain).
-        $handler->reindexMapping();
+        $thrown = null;
+        try {
+            $handler->reindexMapping();
+        } catch (ReindexFailedException $e) {
+            $thrown = $e;
+        }
 
-        $errorLogs = array_filter($logger->records, static fn (array $r): bool => $r['level'] === 'error');
-        $this->assertNotEmpty($errorLogs, 'A ReindexFailedException must have been caught and logged');
-
-        $loggedMessage = implode(' | ', array_column($errorLogs, 'message'));
-
-        // The wrapper message must be present.
-        $this->assertStringContainsString(
-            'Max reindex attempts reached',
-            $loggedMessage,
-            'The ReindexFailedException wrapper message must appear in the error log'
+        $this->assertInstanceOf(
+            ReindexFailedException::class,
+            $thrown,
+            'reindexMapping() must throw ReindexFailedException after all attempts are exhausted'
         );
 
-        // The $previous cause message must also be present — removing the chained $cause
-        // from the ReindexFailedException constructor would break this assertion.
+        // The wrapper message must be set.
         $this->assertStringContainsString(
-            'AWS rejected empty array in mapping',
-            $loggedMessage,
-            'The root-cause exception message must appear in the error log so operators can identify the failure'
+            'Max reindex attempts reached',
+            $thrown->getMessage(),
+            'The ReindexFailedException wrapper message must be correct'
+        );
+
+        // The $previous cause must be chained — removing the $cause argument from the
+        // ReindexFailedException constructor would break this assertion.
+        $this->assertSame(
+            $cause,
+            $thrown->getPrevious(),
+            'The exception that triggered the final retry must be set as the previous exception'
         );
     }
 
