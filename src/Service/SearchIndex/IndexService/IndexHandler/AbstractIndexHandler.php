@@ -41,8 +41,21 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     public function updateMapping(
         mixed $context = null,
         bool $forceCreateIndex = false,
-        ?array $mappingProperties = null,
-        int $reindexDepth = 0
+        ?array $mappingProperties = null
+    ): void {
+        $this->doUpdateMappingFull($context, $forceCreateIndex, $mappingProperties, 0);
+    }
+
+    /**
+     * Depth-aware implementation of updateMapping(); called internally so that
+     * doReindexMapping() can forward the current recursion depth without exposing
+     * the counter through the public interface.
+     */
+    private function doUpdateMappingFull(
+        mixed $context,
+        bool $forceCreateIndex,
+        ?array $mappingProperties,
+        int $reindexDepth
     ): void {
         $aliasName = $this->getAliasIndexName($context);
 
@@ -116,8 +129,9 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
 
         if (!$this->searchIndexService->existsAlias($alias)) {
-            $this->updateMapping(
+            $this->doUpdateMappingFull(
                 context: $context,
+                forceCreateIndex: false,
                 mappingProperties: $mappingProperties,
                 reindexDepth: $depth
             );
@@ -129,7 +143,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                 );
             } catch (Exception $e) {
                 try {
-                    $this->updateMapping($context, true, $mappingProperties, $depth);
+                    $this->doUpdateMappingFull($context, true, $mappingProperties, $depth);
                 } catch (Exception $fallbackException) {
                     // Both the reindex and the fallback recreation failed: rethrow so the
                     // failure reaches the caller instead of the mapping checksum being

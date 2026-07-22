@@ -28,8 +28,7 @@ interface IndexHandlerInterface
     public function updateMapping(
         mixed $context = null,
         bool $forceCreateIndex = false,
-        ?array $mappingProperties = null,
-        int $reindexDepth = 0
+        ?array $mappingProperties = null
     ): void;
 
     /**
