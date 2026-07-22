@@ -246,6 +246,11 @@ final class AbstractIndexHandlerTest extends Unit
      * on putMapping(), the depth counter must still be forwarded so the recursive calls
      * remain bounded. Without the fix, every fallback resets depth to 0, enabling infinite
      * recursion. With the fix, putMapping is called at most MAX_REINDEX_ATTEMPTS times.
+     *
+     * Note: updateMapping() deliberately catches ReindexFailedException internally (to keep
+     * the handler non-fatal for callers like deployment commands), so no exception propagates
+     * out of reindexMapping() in this path. The meaningful invariant is that putMapping is
+     * invoked a strictly bounded number of times.
      */
     public function testReindexMappingBoundsAttemptsWhenAliasExistsAndBothOperationsFail(): void
     {
@@ -270,17 +275,12 @@ final class AbstractIndexHandlerTest extends Unit
         $handler = $this->createHandlerWithService($searchIndexService);
         $handler->setLogger(new NullLogger());
 
-        // The first call comes from the alias-present branch: reindex() fails, fallback
-        // updateMapping(forceCreate=true) is called, putMapping() inside it fails, which
-        // triggers reindexMapping(depth+1). Without depth forwarding this loops forever.
-        // With the fix the recursion is capped at MAX_REINDEX_ATTEMPTS and an exception
-        // propagates out of reindexMapping().
-        $thrown = null;
-        try {
-            $handler->reindexMapping();
-        } catch (Exception $e) {
-            $thrown = $e;
-        }
+        // reindex() fails, the fallback updateMapping(forceCreate=true) is called, putMapping()
+        // inside it fails, which triggers reindexMapping(depth+1). Without depth forwarding this
+        // loops forever. With the fix the recursion is capped at MAX_REINDEX_ATTEMPTS.
+        // updateMapping() catches ReindexFailedException internally so reindexMapping() returns
+        // normally to the caller — the important invariant is the bounded attempt count.
+        $handler->reindexMapping();
 
         $this->assertGreaterThan(
             0,
@@ -292,9 +292,6 @@ final class AbstractIndexHandlerTest extends Unit
             $attempts,
             'The number of putMapping attempts must be bounded to MAX_REINDEX_ATTEMPTS to prevent stack overflow'
         );
-        // After the depth guard fires the ReindexFailedException propagates out from the
-        // alias-missing updateMapping path; the alias-present catch re-throws it.
-        $this->assertNotNull($thrown, 'An exception must propagate when all attempts are exhausted');
     }
 
     /**
