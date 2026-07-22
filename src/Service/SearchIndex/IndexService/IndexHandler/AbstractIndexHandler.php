@@ -114,7 +114,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                 );
             } catch (Exception $e) {
                 try {
-                    $this->updateMapping($context, true, $mappingProperties);
+                    $this->updateMapping($context, true, $mappingProperties, $depth);
                 } catch (Exception $fallbackException) {
                     // Both the reindex and the fallback recreation failed: rethrow so the
                     // failure reaches the caller instead of the mapping checksum being

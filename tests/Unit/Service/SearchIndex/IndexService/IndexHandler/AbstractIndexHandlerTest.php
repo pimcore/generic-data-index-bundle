@@ -242,6 +242,62 @@ final class AbstractIndexHandlerTest extends Unit
     }
 
     /**
+     * When the alias exists, reindex() fails, and the fallback updateMapping() also fails
+     * on putMapping(), the depth counter must still be forwarded so the recursive calls
+     * remain bounded. Without the fix, every fallback resets depth to 0, enabling infinite
+     * recursion. With the fix, putMapping is called at most MAX_REINDEX_ATTEMPTS times.
+     */
+    public function testReindexMappingBoundsAttemptsWhenAliasExistsAndBothOperationsFail(): void
+    {
+        $attempts = 0;
+        $fluent = $this->makeEmpty(SearchIndexServiceInterface::class, ['addAlias' => []]);
+
+        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => true,
+            'existsIndex' => false,
+            'deleteIndex' => null,
+            'getCurrentIndexVersion' => '',
+            'reindex' => static function (): void {
+                throw new Exception('reindex failed (504 Gateway Time-out)');
+            },
+            'createIndex' => static function () use ($fluent): SearchIndexServiceInterface { return $fluent; },
+            'putMapping' => static function () use (&$attempts): array {
+                ++$attempts;
+                throw new Exception('putMapping failed after forced recreation');
+            },
+        ]);
+
+        $handler = $this->createHandlerWithService($searchIndexService);
+        $handler->setLogger(new NullLogger());
+
+        // The first call comes from the alias-present branch: reindex() fails, fallback
+        // updateMapping(forceCreate=true) is called, putMapping() inside it fails, which
+        // triggers reindexMapping(depth+1). Without depth forwarding this loops forever.
+        // With the fix the recursion is capped at MAX_REINDEX_ATTEMPTS and an exception
+        // propagates out of reindexMapping().
+        $thrown = null;
+        try {
+            $handler->reindexMapping();
+        } catch (Exception $e) {
+            $thrown = $e;
+        }
+
+        $this->assertGreaterThan(
+            0,
+            $attempts,
+            'putMapping must have been called at least once through the alias-present fallback path'
+        );
+        $this->assertLessThanOrEqual(
+            3,
+            $attempts,
+            'The number of putMapping attempts must be bounded to MAX_REINDEX_ATTEMPTS to prevent stack overflow'
+        );
+        // After the depth guard fires the ReindexFailedException propagates out from the
+        // alias-missing updateMapping path; the alias-present catch re-throws it.
+        $this->assertNotNull($thrown, 'An exception must propagate when all attempts are exhausted');
+    }
+
+    /**
      * When extractMappingProperties() returns an empty array, doUpdateMapping() must
      * omit the "properties" key from the putMapping body entirely so that
      * OpenSearch/Elasticsearch never receives "properties":[].
