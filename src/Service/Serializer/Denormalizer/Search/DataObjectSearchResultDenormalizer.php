@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\SearchResultItem\InheritedData;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DataObjectTypeSerializationHandlerService;
+use Pimcore\Model\DataObject\AbstractObject;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
 /**
@@ -63,8 +64,14 @@ final readonly class DataObjectSearchResultDenormalizer implements DenormalizerI
             ->setPublished($published)
             ->setKey(SystemField::KEY->getData($data))
             ->setIndex(SystemField::INDEX->getData($data))
-            ->setChildrenSortBy(SystemField::CHILDREN_SORT_BY->getData($data))
-            ->setChildrenSortOrder(SystemField::CHILDREN_SORT_ORDER->getData($data))
+            ->setChildrenSortBy(
+                SystemField::CHILDREN_SORT_BY->getData(
+                    $data
+                ) ?? AbstractObject::OBJECT_CHILDREN_SORT_BY_DEFAULT)
+            ->setChildrenSortOrder(
+                SystemField::CHILDREN_SORT_ORDER->getData(
+                    $data
+                ) ?? AbstractObject::OBJECT_CHILDREN_SORT_ORDER_DEFAULT)
             ->setPath(SystemField::PATH->getData($data))
             ->setFullPath(SystemField::FULL_PATH->getData($data))
             ->setUserOwner(SystemField::USER_OWNER->getData($data) ?? 0)
