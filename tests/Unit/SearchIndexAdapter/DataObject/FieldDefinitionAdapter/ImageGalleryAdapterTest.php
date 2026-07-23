@@ -62,4 +62,68 @@ final class ImageGalleryAdapterTest extends Unit
             ],
         ], $adapter->getIndexMapping());
     }
+
+    public function testNormalizeCollectsAssetIdsAndSkipsGalleryItemsWithoutImageId(): void
+    {
+        $searchIndexConfigService = $this->makeEmpty(
+            SearchIndexConfigServiceInterface::class
+        );
+
+        $fieldDefinitionService = $this->makeEmpty(FieldDefinitionServiceInterface::class);
+
+        $indexMappingService = $this->makeEmpty(
+            IndexMappingServiceInterface::class
+        );
+
+        $adapter = new ImageGalleryAdapter(
+            $searchIndexConfigService,
+            $fieldDefinitionService,
+            $indexMappingService
+        );
+
+        $gallery = new class extends ImageGallery {
+            public function normalize(mixed $value, array $params = []): array 
+            {
+                return [
+                    [
+                        'image' => [
+                            'id' => 123,
+                        ],
+                        'hotspots' => [],
+                    ],
+                    [
+                        'image' => [],
+                        'hotspots' => [],
+                    ],
+                ];
+            }
+        };
+
+        $adapter->setFieldDefinition($gallery);
+
+        $result = $adapter->normalize([]);
+
+        $this->assertSame(
+            [
+                123,
+            ],
+            $result['assets']
+        );
+
+        $this->assertSame(
+            [
+                [
+                    'image' => [
+                        'id' => 123,
+                    ],
+                    'hotspots' => [],
+                ],
+                [
+                    'image' => [],
+                    'hotspots' => [],
+                ],
+            ],
+            $result['details']
+        );
+    }
 }
