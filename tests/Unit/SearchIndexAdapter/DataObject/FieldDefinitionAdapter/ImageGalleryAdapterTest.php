@@ -28,27 +28,31 @@ final class ImageGalleryAdapterTest extends Unit
 {
     public function testGetSearchIndexMapping(): void
     {
-        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
-        $indexMappingServiceInterfaceMock = $this->makeEmpty(IndexMappingServiceInterface::class,
-            ['getMappingForTextKeyword' => [
-                'type' => 'text',
-                'fields' => [
-                    'keyword' => [
-                        'type' => 'keyword',
-                    ],
-                ],
-            ]]
+        $searchIndexConfigService = $this->makeEmpty(
+            SearchIndexConfigServiceInterface::class,
+            [
+                'getSearchAnalyzerAttributes' => [],
+            ]
+        );
+
+        $fieldDefinitionService = $this->makeEmpty(FieldDefinitionServiceInterface::class);
+
+        $indexMappingService = $this->makeEmpty(
+            IndexMappingServiceInterface::class,
+            [
+                'getMappingForAdvancedImage' => [],
+            ]
         );
 
         $adapter = new ImageGalleryAdapter(
-            $searchIndexConfigServiceInterfaceMock,
-            $fieldDefinitionServiceInterfaceMock,
-            $indexMappingServiceInterfaceMock
+            $searchIndexConfigService,
+            $fieldDefinitionService,
+            $indexMappingService
         );
 
         $gallery = new ImageGallery();
         $adapter->setFieldDefinition($gallery);
+
         $this->assertSame([
             'properties' => [
                 'assets' => [

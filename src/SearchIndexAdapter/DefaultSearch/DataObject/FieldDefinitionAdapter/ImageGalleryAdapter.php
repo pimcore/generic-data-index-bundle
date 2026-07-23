@@ -63,8 +63,10 @@ final class ImageGalleryAdapter extends AbstractAdapter
         $normalizedValues = $fieldDefinition->normalize($value);
         if (is_array($normalizedValues)) {
             foreach ($normalizedValues as $normalizedValue) {
-                if ($normalizedValue['image']['id']) {
-                    $returnValue['assets'][] = $normalizedValue['image']['id'];
+                $imageId = $normalizedValue['image']['id'] ?? null;
+
+                if ($imageId !== null) {
+                    $returnValue['assets'][] = $imageId;
                 }
             }
             $returnValue['details'] = $normalizedValues;
