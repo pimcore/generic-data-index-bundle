@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Asset\Image;
 use Pimcore\Model\Asset\Video;
+use Throwable;
 
 class VideoSerializationHandler extends AbstractHandler
 {
@@ -56,7 +57,7 @@ class VideoSerializationHandler extends AbstractHandler
     {
         try {
             return $video->getImageThumbnail(Image\Thumbnail\Config::getPreviewConfig())->getPath();
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $this->logger->error('Thumbnail generation failed for video asset: ' .
                 $video->getId() .
                 ' error ' .
