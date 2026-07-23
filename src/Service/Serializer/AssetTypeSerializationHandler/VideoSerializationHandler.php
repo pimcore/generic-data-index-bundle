@@ -37,9 +37,9 @@ class VideoSerializationHandler extends AbstractHandler
 
         return [
             VideoSystemField::IMAGE_THUMBNAIL->value => $this->getImageThumbnail($asset),
-            VideoSystemField::DURATION->value => $asset->getDuration(),
-            VideoSystemField::WIDTH->value => $asset->getWidth(),
-            VideoSystemField::HEIGHT->value => $asset->getHeight(),
+            VideoSystemField::DURATION->value => $this->getDuration($asset),
+            VideoSystemField::WIDTH->value => $this->getWidth($asset),
+            VideoSystemField::HEIGHT->value => $this->getHeight($asset),
         ];
     }
 
@@ -58,6 +58,54 @@ class VideoSerializationHandler extends AbstractHandler
             return $video->getImageThumbnail(Image\Thumbnail\Config::getPreviewConfig())->getPath();
         } catch (Exception $e) {
             $this->logger->error('Thumbnail generation failed for video asset: ' .
+                $video->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getDuration(Video $asset): ?int
+    {
+        try {
+            return $asset->getDuration();
+        }
+        catch (Exception $e) {
+            $this->logger->error('Failed getting duration for video asset: ' .
+                $video->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getWidth(Video $asset): ?int
+    {
+        try {
+            return $asset->getWidth();
+        }
+        catch (Exception $e) {
+            $this->logger->error('Failed getting width for video asset: ' .
+                $video->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getHeight(Video $asset): ?int
+    {
+        try {
+            return $asset->getHeight();
+        }
+        catch (Exception $e) {
+            $this->logger->error('Failed getting height for video asset: ' .
                 $video->getId() .
                 ' error ' .
                 $e->getMessage()
