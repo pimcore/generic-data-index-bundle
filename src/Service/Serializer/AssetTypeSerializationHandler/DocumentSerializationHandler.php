@@ -39,7 +39,7 @@ class DocumentSerializationHandler extends AbstractHandler
         return [
             DocumentSystemField::IMAGE_THUMBNAIL->value => $this->getImageThumbnail($asset),
             DocumentSystemField::PAGE_COUNT->value => $asset->getPageCount(),
-            DocumentSystemField::TEXT->value => $asset->getText(),
+            DocumentSystemField::TEXT->value => $this->getAssetText($asset),
         ];
     }
 
@@ -56,6 +56,21 @@ class DocumentSerializationHandler extends AbstractHandler
             return $document->getImageThumbnail(Image\Thumbnail\Config::getPreviewConfig())->getPath();
         } catch (Throwable $e) {
             $this->logger->error('Thumbnail generation failed for document asset: ' .
+                $document->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getAssetText(Document $document): ?string
+    {
+        try {
+            return $document->getText();
+        } catch (Throwable $e) {
+            $this->logger->error('Text extraction failed for document asset: ' .
                 $document->getId() .
                 ' error ' .
                 $e->getMessage()
