@@ -74,7 +74,7 @@ class VideoSerializationHandler extends AbstractHandler
         }
         catch (Exception $e) {
             $this->logger->error('Failed getting duration for video asset: ' .
-                $video->getId() .
+                $asset->getId() .
                 ' error ' .
                 $e->getMessage()
             );
@@ -90,7 +90,7 @@ class VideoSerializationHandler extends AbstractHandler
         }
         catch (Exception $e) {
             $this->logger->error('Failed getting width for video asset: ' .
-                $video->getId() .
+                $asset->getId() .
                 ' error ' .
                 $e->getMessage()
             );
@@ -106,7 +106,7 @@ class VideoSerializationHandler extends AbstractHandler
         }
         catch (Exception $e) {
             $this->logger->error('Failed getting height for video asset: ' .
-                $video->getId() .
+                $asset->getId() .
                 ' error ' .
                 $e->getMessage()
             );
