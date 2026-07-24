@@ -281,9 +281,10 @@ class IndexQueueTest extends Unit
 
     /**
      * Regression test: when one entry in a queue batch fails (e.g. an invalid/unresolvable element),
-     * the other entries in the same batch must still be indexed and cleared from the queue, and the
-     * failed entry must be immediately retryable rather than stuck under its old dispatch claim for
-     * up to 24h (see IndexQueueRepository::dispatchItems() staleness threshold).
+     * the other entries in the same batch must still be indexed and cleared from the queue. The
+     * failed entry is left under its existing dispatch claim and falls back to the same 24h
+     * staleness reclaim (see IndexQueueRepository::dispatchItems()) that already applied to the
+     * whole batch before this fix narrowed the failure to a single entry.
      *
      * @throws Exception
      */
@@ -326,13 +327,13 @@ class IndexQueueTest extends Unit
             'Successfully processed entries must be removed from the queue'
         );
 
-        $this->assertEquals(
+        $this->assertNotEquals(
             '0',
             Db::get()->fetchOne(
                 'select dispatched from generic_data_index_queue where elementId = ? and elementType = ?',
                 [$failingAsset->getId(), $corruptedElementType]
             ),
-            'Failed entry must stay in the queue with its dispatch claim cleared, ready for immediate retry'
+            'Failed entry must stay in the queue under its dispatch claim, to be reclaimed once stale'
         );
     }
 

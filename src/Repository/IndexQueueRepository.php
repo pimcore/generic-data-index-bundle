@@ -162,48 +162,6 @@ final class IndexQueueRepository
     }
 
     /**
-     * Reclaims entries that failed processing by clearing their dispatch claim, making them
-     * immediately eligible for re-dispatch instead of waiting for dispatchItems()'s 24h staleness
-     * threshold.
-     *
-     * The predicate also matches the entry's own "dispatched" value, not just (id, operationTime):
-     * if this worker took longer than the 24h staleness threshold, dispatchItems() may already have
-     * reassigned the row to a newer worker. Matching the original dispatch token too ensures a slow,
-     * obsolete worker can't reset that newer worker's active claim back to 0 out from under it.
-     *
-     * @param IndexQueue[] $entries
-     *
-     * @throws DBALException
-     */
-    public function requeueEntries(array $entries): void
-    {
-        $chunks = array_chunk($entries, self::BATCH_SIZE);
-        foreach ($chunks as $chunk) {
-            $tuples = array_map(
-                fn (IndexQueue $entry) => sprintf(
-                    '(%s, %s, %s)',
-                    $this->connection->quote((string)$entry->getId()),
-                    $this->connection->quote($entry->getOperationTime()),
-                    $this->connection->quote($entry->getDispatched())
-                ),
-                $chunk
-            );
-
-            $this->connection->executeQuery(
-                sprintf(
-                    'UPDATE %s SET %s = 0 WHERE (%s, %s, %s) IN (%s)',
-                    $this->connection->quoteIdentifier(IndexQueue::TABLE),
-                    $this->connection->quoteIdentifier('dispatched'),
-                    $this->connection->quoteIdentifier('id'),
-                    $this->connection->quoteIdentifier('operationTime'),
-                    $this->connection->quoteIdentifier('dispatched'),
-                    implode(',', $tuples)
-                )
-            );
-        }
-    }
-
-    /**
      * @throws ExceptionInterface
      */
     public function denormalizeDatabaseEntry(array $entry): IndexQueue

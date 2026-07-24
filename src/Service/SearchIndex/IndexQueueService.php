@@ -113,7 +113,6 @@ final class IndexQueueService implements IndexQueueServiceInterface
     public function handleIndexQueueEntries(array $entries): void
     {
         $processedEntries = [];
-        $failedEntries = [];
 
         foreach ($entries as $entry) {
             try {
@@ -123,11 +122,12 @@ final class IndexQueueService implements IndexQueueServiceInterface
                 // an entry is intentionally treated as processed - a missing file will not reappear,
                 // so retrying it forever would be pointless - and is indexed with the fields it could
                 // extract. Only failures that abort handling entirely (e.g. an unresolvable element,
-                // an index/backend error) land here and get requeued below.
+                // an index/backend error) land here; the entry stays dispatched and is picked up
+                // again by dispatchItems()'s existing 24h staleness reclaim, same as before this fix
+                // isolated failures to a single entry instead of aborting the whole batch.
                 $this->handleEntryByOperation($entry->getOperation(), $entry);
                 $processedEntries[] = $entry;
             } catch (Throwable $e) {
-                $failedEntries[] = $entry;
                 $this->logger->error(
                     sprintf(
                         '%s failed to update index for element %s and type %s. Error: %s',
@@ -142,13 +142,6 @@ final class IndexQueueService implements IndexQueueServiceInterface
         try {
             $this->bulkOperationService->commit();
             $this->indexQueueRepository->deleteQueueEntries($processedEntries);
-
-            if (!empty($failedEntries)) {
-                // Reclaim the failed rows now instead of leaving them dispatched: dispatchItems()
-                // only re-dispatches rows once they are 24h stale, so without this they would sit
-                // unprocessed until then.
-                $this->indexQueueRepository->requeueEntries($failedEntries);
-            }
         } catch (Exception $e) {
             throw new HandleIndexQueueEntriesException('handleIndexQueueEntry failed! Error: ' . $e->getMessage(), 0, $e);
         }
