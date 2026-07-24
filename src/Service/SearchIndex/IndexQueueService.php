@@ -33,6 +33,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Throwable;
 
 /**
  * @internal
@@ -111,22 +112,36 @@ final class IndexQueueService implements IndexQueueServiceInterface
      */
     public function handleIndexQueueEntries(array $entries): void
     {
-        try {
+        $processedEntries = [];
 
-            foreach ($entries as $entry) {
-                $this->logger->debug(
+        foreach ($entries as $entry) {
+            try {
+                // Field-level extraction failures (e.g. a missing physical file backing an asset's
+                // thumbnail/text/duration/dimensions) are caught inside the asset-type serialization
+                // handlers and degrade that single field to null; they never reach this catch. Such
+                // an entry is intentionally treated as processed - a missing file will not reappear,
+                // so retrying it forever would be pointless - and is indexed with the fields it could
+                // extract. Only failures that abort handling entirely (e.g. an unresolvable element,
+                // an index/backend error) land here; the entry stays dispatched and is picked up
+                // again by dispatchItems()'s existing 24h staleness reclaim, same as before this fix
+                // isolated failures to a single entry instead of aborting the whole batch.
+                $this->handleEntryByOperation($entry->getOperation(), $entry);
+                $processedEntries[] = $entry;
+            } catch (Throwable $e) {
+                $this->logger->error(
                     sprintf(
-                        '%s updating index for element %s and type %s',
+                        '%s failed to update index for element %s and type %s. Error: %s',
                         IndexQueue::TABLE,
                         $entry->getElementId(),
-                        $entry->getElementType()
+                        $entry->getElementType(),
+                        $e->getMessage()
                     ));
-                $this->handleEntryByOperation($entry->getOperation(), $entry);
             }
+        }
 
+        try {
             $this->bulkOperationService->commit();
-            $this->indexQueueRepository->deleteQueueEntries($entries);
-
+            $this->indexQueueRepository->deleteQueueEntries($processedEntries);
         } catch (Exception $e) {
             throw new HandleIndexQueueEntriesException('handleIndexQueueEntry failed! Error: ' . $e->getMessage(), 0, $e);
         }
