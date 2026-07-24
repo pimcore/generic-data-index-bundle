@@ -33,8 +33,8 @@ class ImageSerializationHandler extends AbstractHandler
 
         return [
             ImageSystemField::THUMBNAIL->value => $this->getThumbnail($asset),
-            ImageSystemField::WIDTH->value => $asset->getWidth(),
-            ImageSystemField::HEIGHT->value => $asset->getHeight(),
+            ImageSystemField::WIDTH->value => $this->getWidth($asset),
+            ImageSystemField::HEIGHT->value => $this->getHeight($asset),
         ];
     }
 
@@ -42,8 +42,10 @@ class ImageSerializationHandler extends AbstractHandler
     {
         return (new SearchResultItem\Image())
             ->setThumbnail(ImageSystemField::THUMBNAIL->getData($indexData))
-            ->setWidth(ImageSystemField::WIDTH->getData($indexData))
-            ->setHeight(ImageSystemField::HEIGHT->getData($indexData));
+            // Width/height stay non-nullable on the model for BC; fall back to 0 when extraction
+            // failed and the indexed value is null instead of widening the public setter signature.
+            ->setWidth(ImageSystemField::WIDTH->getData($indexData) ?? 0)
+            ->setHeight(ImageSystemField::HEIGHT->getData($indexData) ?? 0);
     }
 
     private function getThumbnail(Image $image): ?string
@@ -52,6 +54,36 @@ class ImageSerializationHandler extends AbstractHandler
             return $image->getThumbnail(Image\Thumbnail\Config::getPreviewConfig())->getPath();
         } catch (Throwable $e) {
             $this->logger->error('Thumbnail generation failed for image asset: ' .
+                $image->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getWidth(Image $image): ?int
+    {
+        try {
+            return $image->getWidth();
+        } catch (Throwable $e) {
+            $this->logger->error('Width extraction failed for image asset: ' .
+                $image->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getHeight(Image $image): ?int
+    {
+        try {
+            return $image->getHeight();
+        } catch (Throwable $e) {
+            $this->logger->error('Height extraction failed for image asset: ' .
                 $image->getId() .
                 ' error ' .
                 $e->getMessage()
