@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateSiblingsMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\UpdateSiblingsHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexElementIndexServiceInterface;
+use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\Document;
 
@@ -44,7 +45,7 @@ final class UpdateSiblingsHandlerTest extends Unit
             ])
         );
 
-        $handler(new UpdateSiblingsMessage(1, ElementType::DATA_OBJECT->value, true));
+        $handler(new UpdateSiblingsMessage(1, ElementType::DATA_OBJECT, true));
     }
 
     public function testResetChildrenIndexByCalledWhenSortByIndex(): void
@@ -63,7 +64,7 @@ final class UpdateSiblingsHandlerTest extends Unit
             ])
         );
 
-        $handler(new UpdateSiblingsMessage(1, ElementType::DATA_OBJECT->value, true));
+        $handler(new UpdateSiblingsMessage(1, ElementType::DATA_OBJECT, true));
     }
 
     public function testResetChildrenIndexByNotCalledForDocuments(): void
@@ -80,7 +81,7 @@ final class UpdateSiblingsHandlerTest extends Unit
             ])
         );
 
-        $handler(new UpdateSiblingsMessage(1, ElementType::DOCUMENT->value, false));
+        $handler(new UpdateSiblingsMessage(1, ElementType::DOCUMENT, false));
     }
 
     public function testNullElementSkipsProcessing(): void
@@ -95,7 +96,7 @@ final class UpdateSiblingsHandlerTest extends Unit
             ])
         );
 
-        $handler(new UpdateSiblingsMessage(999, ElementType::DATA_OBJECT->value, true));
+        $handler(new UpdateSiblingsMessage(999, ElementType::DATA_OBJECT, true));
     }
 
     public function testResetChildrenIndexByNotCalledWhenFlagIsFalse(): void
@@ -114,6 +115,21 @@ final class UpdateSiblingsHandlerTest extends Unit
             ])
         );
 
-        $handler(new UpdateSiblingsMessage(1, ElementType::DATA_OBJECT->value, false));
+        $handler(new UpdateSiblingsMessage(1, ElementType::DATA_OBJECT, false));
+    }
+
+    public function testAssetElementSkipsProcessing(): void
+    {
+        $handler = new UpdateSiblingsHandler(
+            $this->makeEmpty(IndexElementIndexServiceInterface::class, [
+                'updateSiblings' => Expected::never(),
+                'resetChildrenIndexBy' => Expected::never(),
+            ]),
+            $this->makeEmpty(ElementServiceInterface::class, [
+                'getElementByType' => $this->makeEmpty(Asset::class),
+            ])
+        );
+
+        $handler(new UpdateSiblingsMessage(1, ElementType::ASSET, false));
     }
 }

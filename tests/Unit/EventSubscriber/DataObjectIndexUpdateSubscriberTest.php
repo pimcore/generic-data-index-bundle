@@ -50,7 +50,7 @@ final class DataObjectIndexUpdateSubscriberTest extends Unit
         $messageBus = $this->makeEmpty(MessageBusInterface::class, [
             'dispatch' => Expected::once(function (UpdateSiblingsMessage $message, array $stamps) {
                 $this->assertSame(42, $message->getElementId());
-                $this->assertSame(ElementType::DATA_OBJECT->value, $message->getElementType());
+                $this->assertSame(ElementType::DATA_OBJECT, $message->getElementType());
                 $this->assertTrue($message->getResetChildrenIndexBy());
                 $this->assertSame([], $stamps);
 

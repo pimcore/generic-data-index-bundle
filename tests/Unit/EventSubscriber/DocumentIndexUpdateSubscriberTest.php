@@ -49,7 +49,7 @@ final class DocumentIndexUpdateSubscriberTest extends Unit
         $messageBus = $this->makeEmpty(MessageBusInterface::class, [
             'dispatch' => Expected::once(function (UpdateSiblingsMessage $message, array $stamps) {
                 $this->assertSame(42, $message->getElementId());
-                $this->assertSame(ElementType::DOCUMENT->value, $message->getElementType());
+                $this->assertSame(ElementType::DOCUMENT, $message->getElementType());
                 $this->assertFalse($message->getResetChildrenIndexBy());
                 $this->assertSame([], $stamps);
 

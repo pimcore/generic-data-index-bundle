@@ -73,7 +73,7 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
         $this->messageBus->dispatch(
             new UpdateSiblingsMessage(
                 $event->getObject()->getId(),
-                ElementType::DATA_OBJECT->value,
+                ElementType::DATA_OBJECT,
                 true
             ),
             // In synchronous mode (e.g. CLI, tests) route to the sync transport so

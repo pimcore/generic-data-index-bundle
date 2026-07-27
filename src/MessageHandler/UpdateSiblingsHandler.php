@@ -17,6 +17,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateSiblingsMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexElementIndexServiceInterface;
 use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\Document;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -33,13 +34,15 @@ final readonly class UpdateSiblingsHandler
 
     public function __invoke(UpdateSiblingsMessage $message): void
     {
-        $element = $this->elementService->getElementByType($message->getElementId(), $message->getElementType());
+        $elementType = $message->getElementType();
+        $element = $this->elementService->getElementByType($message->getElementId(), $elementType->value);
 
-        if ($element === null) {
+        // assets have no sibling index to maintain, and updateSiblings() cannot handle them
+        if (!$element instanceof AbstractObject && !$element instanceof Document) {
             return;
         }
 
-        $this->indexElementIndexService->updateSiblings($element, $message->getElementType());
+        $this->indexElementIndexService->updateSiblings($element, $elementType->value);
 
         if ($message->getResetChildrenIndexBy()
             && $element instanceof AbstractObject

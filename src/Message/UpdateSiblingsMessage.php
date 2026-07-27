@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Message;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
+
 /**
  * @internal
  */
@@ -20,7 +22,7 @@ final readonly class UpdateSiblingsMessage
 {
     public function __construct(
         private int $elementId,
-        private string $elementType,
+        private ElementType $elementType,
         private bool $resetChildrenIndexBy
     ) {
     }
@@ -30,7 +32,7 @@ final readonly class UpdateSiblingsMessage
         return $this->elementId;
     }
 
-    public function getElementType(): string
+    public function getElementType(): ElementType
     {
         return $this->elementType;
     }

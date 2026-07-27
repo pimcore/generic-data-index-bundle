@@ -69,7 +69,7 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
         $this->messageBus->dispatch(
             new UpdateSiblingsMessage(
                 $event->getDocument()->getId(),
-                ElementType::DOCUMENT->value,
+                ElementType::DOCUMENT,
                 false
             ),
             // In synchronous mode (e.g. CLI, tests) route to the sync transport so
