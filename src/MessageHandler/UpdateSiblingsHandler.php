@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\MessageHandler;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateSiblingsMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexElementIndexServiceInterface;

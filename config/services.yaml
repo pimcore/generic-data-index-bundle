@@ -20,6 +20,16 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber\:
         resource: '../src/EventSubscriber/*'
 
+    # these subscribers type-hint InstallerInterface (so it can be doubled in unit tests),
+    # which is too generic to autowire - point it at this bundle's installer explicitly
+    Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber\DataObjectIndexUpdateSubscriber:
+        arguments:
+            $installer: '@Pimcore\Bundle\GenericDataIndexBundle\Installer'
+
+    Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber\DocumentIndexUpdateSubscriber:
+        arguments:
+            $installer: '@Pimcore\Bundle\GenericDataIndexBundle\Installer'
+
     Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\:
         resource: '../src/MessageHandler'
         tags: [ { name: messenger.message_handler, bus: messenger.bus.pimcore-generic-data-index } ]

@@ -16,16 +16,16 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Messenger\TransportName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
-use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateSiblingsMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\SearchHelper;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcherInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Event\DocumentEvents;
 use Pimcore\Event\Model\DocumentEvent;
+use Pimcore\Extension\Bundle\Installer\InstallerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
@@ -37,8 +37,8 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
 {
     public function __construct(
         private IndexQueueServiceInterface $indexQueueService,
-        private Installer $installer,
-        private QueueMessagesDispatcher $queueMessagesDispatcher,
+        private InstallerInterface $installer,
+        private QueueMessagesDispatcherInterface $queueMessagesDispatcher,
         private RuntimeCacheResolverInterface $runtimeCacheResolver,
         private SynchronousProcessingServiceInterface $synchronousProcessing,
         private SynchronousProcessingRelatedIdsServiceInterface $synchronousProcessingRelatedIds,

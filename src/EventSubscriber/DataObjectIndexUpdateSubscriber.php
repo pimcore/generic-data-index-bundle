@@ -16,10 +16,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Messenger\TransportName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
-use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateSiblingsMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\SearchHelper;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcherInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
@@ -27,6 +26,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Event\DataObjectEvents;
 use Pimcore\Event\Model\DataObjectEvent;
+use Pimcore\Extension\Bundle\Installer\InstallerInterface;
 use Pimcore\Model\DataObject\Service;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -40,9 +40,9 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
     use LoggerAwareTrait;
 
     public function __construct(
-        private readonly Installer $installer,
+        private readonly InstallerInterface $installer,
         private readonly IndexQueueServiceInterface $indexQueueService,
-        private readonly QueueMessagesDispatcher $queueMessagesDispatcher,
+        private readonly QueueMessagesDispatcherInterface $queueMessagesDispatcher,
         private readonly RuntimeCacheResolverInterface $runtimeCacheResolver,
         private readonly SynchronousProcessingServiceInterface $synchronousProcessing,
         private readonly SynchronousProcessingRelatedIdsServiceInterface $synchronousProcessingRelatedIds,

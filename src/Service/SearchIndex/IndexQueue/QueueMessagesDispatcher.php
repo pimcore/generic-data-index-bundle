@@ -23,7 +23,7 @@ use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 /**
  * @internal
  */
-final class QueueMessagesDispatcher
+final class QueueMessagesDispatcher implements QueueMessagesDispatcherInterface
 {
     private const PENDING_TMP_STOREY_KEY = 'generic_data_index_queue_messages_dispatch_pending';
 

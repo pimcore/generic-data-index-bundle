@@ -18,14 +18,14 @@ use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Messenger\TransportName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber\DocumentIndexUpdateSubscriber;
-use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateSiblingsMessage;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcherInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Event\Model\DocumentEvent;
+use Pimcore\Extension\Bundle\Installer\InstallerInterface;
 use Pimcore\Model\Document;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -58,13 +58,9 @@ final class DocumentIndexUpdateSubscriberTest extends Unit
         ]);
 
         $subscriber = new DocumentIndexUpdateSubscriber(
-            $this->makeEmpty(IndexQueueServiceInterface::class, [
-                'updateIndexQueue' => Expected::atLeastOnce(
-                    $this->makeEmpty(IndexQueueServiceInterface::class, ['commit' => null])
-                ),
-            ]),
-            $this->makeEmpty(Installer::class, ['isInstalled' => true]),
-            $this->makeEmpty(QueueMessagesDispatcher::class),
+            $this->makeIndexQueueService(),
+            $this->makeEmpty(InstallerInterface::class, ['isInstalled' => true]),
+            $this->makeEmpty(QueueMessagesDispatcherInterface::class),
             $this->makeEmpty(RuntimeCacheResolverInterface::class, ['isRegistered' => false]),
             $this->makeEmpty(SynchronousProcessingServiceInterface::class, ['isEnabled' => false]),
             $this->makeEmpty(SynchronousProcessingRelatedIdsServiceInterface::class),
@@ -95,13 +91,9 @@ final class DocumentIndexUpdateSubscriberTest extends Unit
         ]);
 
         $subscriber = new DocumentIndexUpdateSubscriber(
-            $this->makeEmpty(IndexQueueServiceInterface::class, [
-                'updateIndexQueue' => Expected::atLeastOnce(
-                    $this->makeEmpty(IndexQueueServiceInterface::class, ['commit' => null])
-                ),
-            ]),
-            $this->makeEmpty(Installer::class, ['isInstalled' => true]),
-            $this->makeEmpty(QueueMessagesDispatcher::class),
+            $this->makeIndexQueueService(),
+            $this->makeEmpty(InstallerInterface::class, ['isInstalled' => true]),
+            $this->makeEmpty(QueueMessagesDispatcherInterface::class),
             $this->makeEmpty(RuntimeCacheResolverInterface::class, ['isRegistered' => false]),
             $this->makeEmpty(SynchronousProcessingServiceInterface::class, ['isEnabled' => true]),
             $this->makeEmpty(SynchronousProcessingRelatedIdsServiceInterface::class),
@@ -121,8 +113,8 @@ final class DocumentIndexUpdateSubscriberTest extends Unit
             $this->makeEmpty(IndexQueueServiceInterface::class, [
                 'updateIndexQueue' => Expected::never(),
             ]),
-            $this->makeEmpty(Installer::class, ['isInstalled' => false]),
-            $this->makeEmpty(QueueMessagesDispatcher::class),
+            $this->makeEmpty(InstallerInterface::class, ['isInstalled' => false]),
+            $this->makeEmpty(QueueMessagesDispatcherInterface::class),
             $this->makeEmpty(RuntimeCacheResolverInterface::class),
             $this->makeEmpty(SynchronousProcessingServiceInterface::class),
             $this->makeEmpty(SynchronousProcessingRelatedIdsServiceInterface::class),
@@ -132,5 +124,21 @@ final class DocumentIndexUpdateSubscriberTest extends Unit
         );
 
         $subscriber->updateDocument($event);
+    }
+
+    /**
+     * IndexQueueServiceInterface is fluent, so the double has to return itself from both methods.
+     */
+    private function makeIndexQueueService(): IndexQueueServiceInterface
+    {
+        $indexQueueService = null;
+        $returnSelf = static function () use (&$indexQueueService) {
+            return $indexQueueService;
+        };
+
+        return $indexQueueService = $this->makeEmpty(IndexQueueServiceInterface::class, [
+            'updateIndexQueue' => Expected::atLeastOnce($returnSelf),
+            'commit' => $returnSelf,
+        ]);
     }
 }
