@@ -27,6 +27,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
 use Pimcore\Db;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\Tests\Support\Util\TestHelper;
+use Pimcore\Tool\Storage;
 
 class IndexQueueTest extends Unit
 {
@@ -275,6 +276,97 @@ class IndexQueueTest extends Unit
                 [$elementId, $elementType]
             ),
             'elementIndexName must be overwritten when an existing queue entry is updated via the INSERT IGNORE + UPDATE fallback path'
+        );
+    }
+
+    /**
+     * Regression test: when one entry in a queue batch fails (e.g. an invalid/unresolvable element),
+     * the other entries in the same batch must still be indexed and cleared from the queue. The
+     * failed entry is left under its existing dispatch claim and falls back to the same 24h
+     * staleness reclaim (see IndexQueueRepository::dispatchItems()) that already applied to the
+     * whole batch before this fix narrowed the failure to a single entry.
+     *
+     * @throws Exception
+     */
+    public function testPartialBatchFailureRetriesOnlyFailedEntry(): void
+    {
+        $indexName = $this->searchIndexConfigService->getIndexName(self::ASSET_INDEX_NAME);
+
+        $asset1 = TestHelper::createImageAsset();
+        $failingAsset = TestHelper::createImageAsset();
+        $asset3 = TestHelper::createImageAsset();
+
+        // Force this single entry to fail inside handleEntryByOperation() by making it resolve to an
+        // invalid element type, without touching the other, valid entries in the same batch.
+        $corruptedElementType = 'invalid-element-type';
+        Db::get()->executeStatement(
+            'UPDATE generic_data_index_queue SET elementType = ? WHERE elementId = ? AND elementType = ?',
+            [$corruptedElementType, $failingAsset->getId(), ElementType::ASSET->value]
+        );
+
+        $this->tester->consume();
+
+        $this->tester->checkIndexEntry($asset1->getId(), $indexName);
+        $this->tester->checkIndexEntry($asset3->getId(), $indexName);
+        $this->tester->checkDeletedIndexEntry($failingAsset->getId(), $indexName);
+
+        $this->assertEquals(
+            0,
+            Db::get()->fetchOne(
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType = ?',
+                [$asset1->getId(), ElementType::ASSET->value]
+            ),
+            'Successfully processed entries must be removed from the queue'
+        );
+        $this->assertEquals(
+            0,
+            Db::get()->fetchOne(
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType = ?',
+                [$asset3->getId(), ElementType::ASSET->value]
+            ),
+            'Successfully processed entries must be removed from the queue'
+        );
+
+        $this->assertNotEquals(
+            '0',
+            Db::get()->fetchOne(
+                'select dispatched from generic_data_index_queue where elementId = ? and elementType = ?',
+                [$failingAsset->getId(), $corruptedElementType]
+            ),
+            'Failed entry must stay in the queue under its dispatch claim, to be reclaimed once stale'
+        );
+    }
+
+    /**
+     * Regression test for the actual PEES-1311 scenario (as opposed to
+     * testPartialBatchFailureRetriesOnlyFailedEntry(), which forces a queue-level failure through an
+     * invalid element type and never touches asset serialization at all): an asset whose physical file
+     * is missing on disk. The asset-type serialization handlers catch that failure per field (see
+     * ImageSerializationHandlerTest et al.) rather than letting it abort the whole entry, so this is
+     * intentionally treated as processed - indexed with whatever fields it could extract - and cleared
+     * from the queue rather than retried forever, since a missing file will not reappear on its own.
+     *
+     * @throws Exception
+     */
+    public function testAssetWithMissingFileIsIndexedAndRemovedFromQueue(): void
+    {
+        $indexName = $this->searchIndexConfigService->getIndexName(self::ASSET_INDEX_NAME);
+
+        $asset = TestHelper::createImageAsset();
+        Storage::get('asset')->delete($asset->getRealFullPath());
+
+        $this->tester->consume();
+
+        $this->tester->checkIndexEntry($asset->getId(), $indexName);
+
+        $this->assertEquals(
+            0,
+            Db::get()->fetchOne(
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType = ?',
+                [$asset->getId(), ElementType::ASSET->value]
+            ),
+            'An asset with a missing physical file must still be indexed with its available fields '
+            . 'and cleared from the queue, not retried forever'
         );
     }
 

@@ -366,6 +366,11 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         return $this->client->getIndexStats(['index' => $indexName]);
     }
 
+    public function getIndexSettings(string $indexName): array
+    {
+        return $this->client->getIndexSettings(['index' => $indexName]);
+    }
+
     public function getCount(AdapterSearchInterface $search, string $indexName): int
     {
         $body = $search->toArray();

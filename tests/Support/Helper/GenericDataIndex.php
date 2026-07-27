@@ -179,14 +179,21 @@ class GenericDataIndex extends \Codeception\Module
         $configService = $this->grabService(SearchIndexConfigServiceInterface::class);
         $indexPrefix = $configService->getIndexPrefix();
 
-        $client->deleteByQuery([
+        $response = $client->deleteByQuery([
             'index' => $indexPrefix . '*',
+            'conflicts' => 'proceed',
+            'refresh' => true,
             'body' => [
                 'query' => [
                     'match_all' => (object)[],
                 ],
             ],
         ]);
+
+        $this->assertEmpty(
+            $response['failures'] ?? [],
+            'Cleaning up the search indices failed - leftover documents would leak into subsequent tests'
+        );
     }
 
     public function setIndexResultWindow(

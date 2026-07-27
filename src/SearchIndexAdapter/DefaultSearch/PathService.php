@@ -124,6 +124,12 @@ final class PathService implements PathServiceInterface
                     'params' => [
                         'currentPath' => $currentPath . '/',
                         'newPath' => $newPath . '/',
+                        // Portal Engine's frontend thumbnail URLs are built via
+                        // urlencode_ignore_slash() (rawurlencode() per path segment), so accented
+                        // and other non-unreserved characters end up percent-encoded there. Provide
+                        // the equivalently-encoded path so the script can match/replace that form too.
+                        'currentPathEncoded' => $this->encodePathSegments($currentPath) . '/',
+                        'newPathEncoded' => $this->encodePathSegments($newPath) . '/',
                         'now' => date('c'),
                     ],
                 ],
@@ -188,15 +194,14 @@ final class PathService implements PathServiceInterface
                                 }
                             }
                             
-                            String encodedCurrentPath = params.currentPath.replace(" ", "%20");
                             String thumbPath = thumb.substring(pathStart);
-                            
-                            if(thumbPath.startsWith(encodedCurrentPath) || thumbPath.startsWith(params.currentPath)) {
-                                String matchedPath = thumbPath.startsWith(encodedCurrentPath) ? 
-                                    encodedCurrentPath : params.currentPath;
+
+                            if(thumbPath.startsWith(params.currentPathEncoded) || thumbPath.startsWith(params.currentPath)) {
+                                boolean matchedEncoded = thumbPath.startsWith(params.currentPathEncoded);
+                                String matchedPath = matchedEncoded ? params.currentPathEncoded : params.currentPath;
                                 String remainingPath = thumbPath.substring(matchedPath.length());
-                                String encodedNewPath = params.newPath.replace(" ", "%20");
-                                customFields.thumbnail = prefix + encodedNewPath + remainingPath;
+                                String replacementPath = matchedEncoded ? params.newPathEncoded : params.newPath;
+                                customFields.thumbnail = prefix + replacementPath + remainingPath;
                             }
 
                         }
@@ -216,6 +221,15 @@ final class PathService implements PathServiceInterface
                 }
                 ctx._source.system_fields.modificationDate = params.now;
                 ctx._source.system_fields.checksum = 0';
+    }
+
+    /**
+     * Mirrors urlencode_ignore_slash() (rawurlencode() applied per path segment), which is how
+     * Portal Engine builds its frontend thumbnail URLs (ThumbnailService::getThumbnailPath()).
+     */
+    private function encodePathSegments(string $path): string
+    {
+        return \urlencode_ignore_slash($path);
     }
 
     private function countDocumentsByPath(string $indexName, string $path): int

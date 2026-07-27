@@ -22,6 +22,7 @@ services:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionService
         arguments:
             $client: "@generic-data-index.search-client"
+            $debugMode: "%kernel.debug%"
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\BulkOperationService

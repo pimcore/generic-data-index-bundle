@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler;
 
-use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField\Asset\VideoSystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem;
@@ -21,14 +20,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Asset\Image;
 use Pimcore\Model\Asset\Video;
+use Throwable;
 
 class VideoSerializationHandler extends AbstractHandler
 {
     use LoggerAwareTrait;
 
-    /**
-     * @throws Exception
-     */
     public function getAdditionalSystemFields(Asset $asset): array
     {
         if (!$asset instanceof Video) {
@@ -37,9 +34,9 @@ class VideoSerializationHandler extends AbstractHandler
 
         return [
             VideoSystemField::IMAGE_THUMBNAIL->value => $this->getImageThumbnail($asset),
-            VideoSystemField::DURATION->value => $asset->getDuration(),
-            VideoSystemField::WIDTH->value => $asset->getWidth(),
-            VideoSystemField::HEIGHT->value => $asset->getHeight(),
+            VideoSystemField::DURATION->value => $this->getDuration($asset),
+            VideoSystemField::WIDTH->value => $this->getWidth($asset),
+            VideoSystemField::HEIGHT->value => $this->getHeight($asset),
         ];
     }
 
@@ -56,8 +53,53 @@ class VideoSerializationHandler extends AbstractHandler
     {
         try {
             return $video->getImageThumbnail(Image\Thumbnail\Config::getPreviewConfig())->getPath();
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             $this->logger->error('Thumbnail generation failed for video asset: ' .
+                $video->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getDuration(Video $video): ?float
+    {
+        try {
+            return $video->getDuration();
+        } catch (Throwable $e) {
+            $this->logger->error('Duration extraction failed for video asset: ' .
+                $video->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getWidth(Video $video): ?int
+    {
+        try {
+            return $video->getWidth();
+        } catch (Throwable $e) {
+            $this->logger->error('Width extraction failed for video asset: ' .
+                $video->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getHeight(Video $video): ?int
+    {
+        try {
+            return $video->getHeight();
+        } catch (Throwable $e) {
+            $this->logger->error('Height extraction failed for video asset: ' .
                 $video->getId() .
                 ' error ' .
                 $e->getMessage()
