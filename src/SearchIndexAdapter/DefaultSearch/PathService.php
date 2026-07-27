@@ -229,7 +229,7 @@ final class PathService implements PathServiceInterface
      */
     private function encodePathSegments(string $path): string
     {
-        return implode('/', array_map('rawurlencode', explode('/', $path)));
+        return \urlencode_ignore_slash($path);
     }
 
     private function countDocumentsByPath(string $indexName, string $path): int
