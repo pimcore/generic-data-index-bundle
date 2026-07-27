@@ -36,6 +36,7 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
     public function __construct(
         private readonly SearchResultDenormalizer $searchResultDenormalizer,
         private readonly SearchClientInterface $client,
+        private readonly bool $debugMode,
     ) {
     }
 
@@ -74,7 +75,9 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
                 []
             );
 
-            $this->executedSearches[] = $searchInformation;
+            if ($this->debugMode) {
+                $this->executedSearches[] = $searchInformation;
+            }
 
             if ($this->isWindowTooLarge($e)) {
                 throw new ResultWindowTooLargeException(
@@ -97,13 +100,15 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
             $defaultSearchResult['hits']['hits'] = array_reverse($defaultSearchResult['hits']['hits']);
         }
 
-        $this->executedSearches[] = new SearchInformation(
-            $search,
-            true,
-            $defaultSearchResult,
-            $executionTime,
-            debug_backtrace(),
-        );
+        if ($this->debugMode) {
+            $this->executedSearches[] = new SearchInformation(
+                $search,
+                true,
+                $defaultSearchResult,
+                $executionTime,
+                debug_backtrace(),
+            );
+        }
 
         return $this->searchResultDenormalizer->denormalize(
             $defaultSearchResult,
