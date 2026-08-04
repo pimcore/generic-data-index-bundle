@@ -30,6 +30,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\SearchClient\SearchClientInterface;
 use Psr\Log\LogLevel;
+use Psr\Log\NullLogger;
 
 /**
  * @internal
@@ -50,6 +51,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         private readonly int $reindexMaxPolls,
         private readonly int $reindexPollIntervalSeconds,
     ) {
+        if (!isset($this->logger)) {
+            $this->logger = new NullLogger();
+        }
     }
 
     public function refreshIndex(string $indexName): array
