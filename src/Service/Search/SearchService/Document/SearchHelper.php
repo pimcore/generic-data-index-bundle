@@ -64,6 +64,8 @@ final class SearchHelper extends AbstractSearchHelper
             DocumentSearchResult::class
         );
 
+        $result->setScore($searchResultHit->getScore());
+
         $this->runtimeCacheResolver->save($result, self::DOCUMENT_SEARCH . '_' . $result->getId());
         $result->setPermissions(
             $this->permissionService->getDocumentPermissions(

@@ -24,6 +24,7 @@ final readonly class DocumentSearchResult
         private PaginationInfo $pagination,
         /** @var SearchResultAggregation[] */
         private array $aggregations = [],
+        private ?float $maxScore = null,
     ) {
     }
 
@@ -35,6 +36,16 @@ final readonly class DocumentSearchResult
     public function getPagination(): PaginationInfo
     {
         return $this->pagination;
+    }
+
+    /**
+     * The highest relevance score across all hits (OpenSearch `hits.max_score`), or null when the
+     * query produced no scores. Useful to normalise per-item
+     * {@see DocumentSearchResultItem::getScore()} values for display.
+     */
+    public function getMaxScore(): ?float
+    {
+        return $this->maxScore;
     }
 
     public function getAggregations(): array

@@ -31,6 +31,7 @@ final class Search implements DefaultSearchInterface
         private FieldSortList $sortList = new FieldSortList(),
         private bool $reverseItemOrder = false,
         private ?array $searchAfter = null,
+        private ?array $knn = null,
 
     ) {
     }
@@ -133,6 +134,18 @@ final class Search implements DefaultSearchInterface
         return $this;
     }
 
+    public function getKnn(): ?array
+    {
+        return $this->knn;
+    }
+
+    public function setKnn(?array $knn): DefaultSearchInterface
+    {
+        $this->knn = $knn;
+
+        return $this;
+    }
+
     public function toArray(): array
     {
         $result = [
@@ -161,6 +174,10 @@ final class Search implements DefaultSearchInterface
 
         if ($this->getSearchAfter() !== null) {
             $result['search_after'] = $this->getSearchAfter();
+        }
+
+        if ($this->knn !== null) {
+            $result['knn'] = $this->knn;
         }
 
         return $result;

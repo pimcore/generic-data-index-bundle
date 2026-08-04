@@ -55,6 +55,8 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
 
     private array $searchIndexData;
 
+    private ?float $score = null;
+
     private AssetPermissions $permissions;
 
     private AssetLazyLoadingHandlerInterface $lazyLoadingHandler;
@@ -284,6 +286,18 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
     public function setSearchIndexData(array $searchIndexData): AssetSearchResultItem
     {
         $this->searchIndexData = $searchIndexData;
+
+        return $this;
+    }
+
+    public function getScore(): ?float
+    {
+        return $this->score;
+    }
+
+    public function setScore(?float $score): AssetSearchResultItem
+    {
+        $this->score = $score;
 
         return $this;
     }

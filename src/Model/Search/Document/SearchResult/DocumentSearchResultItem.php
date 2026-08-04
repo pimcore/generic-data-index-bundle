@@ -54,6 +54,8 @@ class DocumentSearchResultItem implements ElementSearchResultItemInterface
 
     private array $searchIndexData;
 
+    private ?float $score = null;
+
     private DocumentPermissions $permissions;
 
     private DocumentLazyLoadingHandlerInterface $lazyLoadingHandler;
@@ -275,6 +277,18 @@ class DocumentSearchResultItem implements ElementSearchResultItemInterface
     public function setSearchIndexData(array $searchIndexData): DocumentSearchResultItem
     {
         $this->searchIndexData = $searchIndexData;
+
+        return $this;
+    }
+
+    public function getScore(): ?float
+    {
+        return $this->score;
+    }
+
+    public function setScore(?float $score): DocumentSearchResultItem
+    {
+        $this->score = $score;
 
         return $this;
     }

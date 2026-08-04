@@ -63,6 +63,8 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 
     private array $searchIndexData;
 
+    private ?float $score = null;
+
     private DataObjectPermissions $permissions;
 
     private array $inheritedFields = [];
@@ -334,6 +336,18 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
     public function setSearchIndexData(array $searchIndexData): DataObjectSearchResultItem
     {
         $this->searchIndexData = $searchIndexData;
+
+        return $this;
+    }
+
+    public function getScore(): ?float
+    {
+        return $this->score;
+    }
+
+    public function setScore(?float $score): DataObjectSearchResultItem
+    {
+        $this->score = $score;
 
         return $this;
     }

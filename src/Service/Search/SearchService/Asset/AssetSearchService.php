@@ -77,6 +77,7 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
                     pageSize: $search->getPageSize()
                 ),
                 aggregations: $searchResult->getAggregations(),
+                maxScore: $searchResult->getMaxScore(),
             );
         } catch (Exception $e) {
             throw new AssetSearchException($e->getMessage());

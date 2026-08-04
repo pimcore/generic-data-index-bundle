@@ -39,4 +39,8 @@ interface DefaultSearchInterface extends AdapterSearchInterface
     public function getSearchAfter(): ?array;
 
     public function setSearchAfter(?array $searchAfter): DefaultSearchInterface;
+
+    public function getKnn(): ?array;
+
+    public function setKnn(?array $knn): DefaultSearchInterface;
 }
