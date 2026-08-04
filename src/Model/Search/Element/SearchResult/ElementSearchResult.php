@@ -25,12 +25,23 @@ final readonly class ElementSearchResult
         private PaginationInfo $pagination,
         /** @var SearchResultAggregation[] */
         private array $aggregations = [],
+        private ?float $maxScore = null,
     ) {
     }
 
     public function getItems(): array
     {
         return $this->items;
+    }
+
+    /**
+     * The highest relevance score across all hits (`hits.max_score`), or null when the query
+     * produced no scores. Useful to normalise per-item scores for display (see
+     * {@see \Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ScoreAwareResultItemInterface}).
+     */
+    public function getMaxScore(): ?float
+    {
+        return $this->maxScore;
     }
 
     public function getPagination(): PaginationInfo

@@ -42,5 +42,12 @@ interface DefaultSearchInterface extends AdapterSearchInterface
 
     public function getKnn(): ?array;
 
+    /**
+     * Sets Elasticsearch's TOP-LEVEL `knn` clause (serialized as a sibling of `query`). This is
+     * the Elasticsearch form only: OpenSearch places kNN INSIDE the query tree (a `knn` query
+     * against the vector field), so OpenSearch consumers must attach a knn query instead of
+     * calling this. The search body model is engine-agnostic by design - choosing the right
+     * placement for the configured client is the caller's responsibility.
+     */
     public function setKnn(?array $knn): DefaultSearchInterface;
 }

@@ -139,6 +139,10 @@ final class Search implements DefaultSearchInterface
         return $this->knn;
     }
 
+    /**
+     * {@inheritdoc} Elasticsearch's top-level `knn` clause; see {@see DefaultSearchInterface::setKnn()}
+     * for why OpenSearch consumers must use a query-level knn query instead.
+     */
     public function setKnn(?array $knn): DefaultSearchInterface
     {
         $this->knn = $knn;

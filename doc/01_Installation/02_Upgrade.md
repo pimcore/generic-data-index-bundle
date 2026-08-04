@@ -8,7 +8,9 @@ description: Version-specific upgrade instructions and breaking changes for the 
 ## Upgrade to 2026.3.0
 
 - Added command `generic-data-index:cleanup:unused-indices` to delete managed indices not referenced by any alias.
- 
+- [Searching] Element search result items now expose therelevance score via the new
+  `ScoreAwareResultItemInterface`.
+- [Searching] The search result models now expose `getMaxScore()`
 
 ## Upgrade to 2026.1.0
 

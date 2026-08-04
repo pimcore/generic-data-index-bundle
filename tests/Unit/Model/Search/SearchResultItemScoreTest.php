@@ -23,9 +23,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ScoreAwareResu
  * Guards that the query-time relevance score is exposed on every element search-result item via
  * ScoreAwareResultItemInterface (deliberately separate from ElementSearchResultItemInterface, so
  * existing implementations of that interface stay backwards compatible): it defaults to null
- * (query produced no score) and round-trips via the setter. The score is populated during
- * hydration from the SearchResultHit - that wiring is covered end-to-end by the KnnSearch
- * functional E2E test.
+ * (query produced no score) and round-trips via the setter. The hydration wiring that populates
+ * it from the adapter hit is covered by SearchHelperScoreHydrationTest.
  *
  * @internal
  */
