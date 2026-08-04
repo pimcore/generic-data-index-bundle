@@ -17,12 +17,15 @@ use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ScoreAwareResultItemInterface;
 
 /**
- * Guards that the query-time relevance score is exposed on every element search-result item:
- * it defaults to null (query produced no score) and round-trips via the setter. The score is
- * populated during hydration from the SearchResultHit - that wiring is covered end-to-end by the
- * KnnSearch functional E2E test.
+ * Guards that the query-time relevance score is exposed on every element search-result item via
+ * ScoreAwareResultItemInterface (deliberately separate from ElementSearchResultItemInterface, so
+ * existing implementations of that interface stay backwards compatible): it defaults to null
+ * (query produced no score) and round-trips via the setter. The score is populated during
+ * hydration from the SearchResultHit - that wiring is covered end-to-end by the KnnSearch
+ * functional E2E test.
  *
  * @internal
  */
@@ -32,6 +35,7 @@ final class SearchResultItemScoreTest extends Unit
     {
         $item = new AssetSearchResultItem();
 
+        self::assertInstanceOf(ScoreAwareResultItemInterface::class, $item);
         self::assertNull($item->getScore());
         self::assertSame(0.8734, $item->setScore(0.8734)->getScore());
         self::assertNull($item->setScore(null)->getScore());
@@ -41,6 +45,7 @@ final class SearchResultItemScoreTest extends Unit
     {
         $item = new DataObjectSearchResultItem();
 
+        self::assertInstanceOf(ScoreAwareResultItemInterface::class, $item);
         self::assertNull($item->getScore());
         self::assertSame(0.8734, $item->setScore(0.8734)->getScore());
         self::assertNull($item->setScore(null)->getScore());
@@ -50,6 +55,7 @@ final class SearchResultItemScoreTest extends Unit
     {
         $item = new DocumentSearchResultItem();
 
+        self::assertInstanceOf(ScoreAwareResultItemInterface::class, $item);
         self::assertNull($item->getScore());
         self::assertSame(0.8734, $item->setScore(0.8734)->getScore());
         self::assertNull($item->setScore(null)->getScore());

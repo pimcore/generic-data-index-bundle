@@ -16,10 +16,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchRe
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\SearchResultItem\InheritedData;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ScoreAwareResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DataObjectLazyLoadingHandlerInterface;
 
-class DataObjectSearchResultItem implements ElementSearchResultItemInterface
+class DataObjectSearchResultItem implements ElementSearchResultItemInterface, ScoreAwareResultItemInterface
 {
     private int $id;
 

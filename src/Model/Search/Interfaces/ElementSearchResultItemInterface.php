@@ -72,14 +72,5 @@ interface ElementSearchResultItemInterface
 
     public function setSearchIndexData(array $searchIndexData): ElementSearchResultItemInterface;
 
-    /**
-     * The query-time relevance score of this hit (e.g. kNN vector similarity or full-text
-     * relevance), or null when the executing query produced no score - for example a filter-only
-     * search, or one sorted by a field without score tracking.
-     */
-    public function getScore(): ?float;
-
-    public function setScore(?float $score): ElementSearchResultItemInterface;
-
     public function getPermissions(): BasePermissions;
 }

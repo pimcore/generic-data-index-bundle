@@ -15,10 +15,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResu
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ScoreAwareResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DocumentLazyLoadingHandlerInterface;
 
-class DocumentSearchResultItem implements ElementSearchResultItemInterface
+class DocumentSearchResultItem implements ElementSearchResultItemInterface, ScoreAwareResultItemInterface
 {
     private int $id;
 
