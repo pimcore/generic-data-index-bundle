@@ -18,7 +18,7 @@ use Symfony\Contracts\Service\Attribute\Required;
 
 trait LoggerAwareTrait
 {
-    protected LoggerInterface $logger;
+    protected LoggerInterface|null $logger;
 
     #[Required]
     public function setLogger(LoggerInterface $pimcoreLogger): void
