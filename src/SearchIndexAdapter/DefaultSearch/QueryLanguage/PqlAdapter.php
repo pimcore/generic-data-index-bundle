@@ -21,7 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\QueryLanguage\SubQueryResultList
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\IndexEntity;
 use Pimcore\Bundle\GenericDataIndexBundle\QueryLanguage\ProcessorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\QueryLanguage\PqlAdapterInterface;
-use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
+use Symfony\Component\DependencyInjection\Attribute\AutowireIterator;
 
 /**
  * @internal
@@ -30,11 +30,11 @@ final readonly class PqlAdapter implements PqlAdapterInterface
 {
     public function __construct(
         private SubQueriesProcessorInterface $subQueriesProcessor,
-        #[TaggedIterator(ServiceTag::PQL_FIELD_NAME_TRANSFORMER->value)]
+        #[AutowireIterator(ServiceTag::PQL_FIELD_NAME_TRANSFORMER->value)]
         private iterable $fieldNameTransformers,
-        #[TaggedIterator(ServiceTag::PQL_FIELD_NAME_TRANSFORMER_SORT->value)]
+        #[AutowireIterator(ServiceTag::PQL_FIELD_NAME_TRANSFORMER_SORT->value)]
         private iterable $fieldNameTransformersSort,
-        #[TaggedIterator(ServiceTag::PQL_FIELD_NAME_VALIDATOR->value)]
+        #[AutowireIterator(ServiceTag::PQL_FIELD_NAME_VALIDATOR->value)]
         private iterable $fieldNameValidators,
     ) {
     }
