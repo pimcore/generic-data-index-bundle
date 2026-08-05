@@ -28,6 +28,8 @@ use Symfony\Component\Stopwatch\Stopwatch;
  */
 final class SearchExecutionService implements SearchExecutionServiceInterface
 {
+    private const MAX_EXECUTED_SEARCHES = 500;
+
     /**
      * @var SearchInformation[]
      */
@@ -76,7 +78,7 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
             );
 
             if ($this->debugMode) {
-                $this->executedSearches[] = $searchInformation;
+                $this->addExecutedSearch($searchInformation);
             }
 
             if ($this->isWindowTooLarge($e)) {
@@ -101,13 +103,13 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
         }
 
         if ($this->debugMode) {
-            $this->executedSearches[] = new SearchInformation(
+            $this->addExecutedSearch(new SearchInformation(
                 $search,
                 true,
                 $defaultSearchResult,
                 $executionTime,
                 debug_backtrace(),
-            );
+            ));
         }
 
         return $this->searchResultDenormalizer->denormalize(
@@ -121,6 +123,16 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
     public function getExecutedSearches(): array
     {
         return $this->executedSearches;
+    }
+
+    private function addExecutedSearch(SearchInformation $searchInformation): void
+    {
+        $this->executedSearches[] = $searchInformation;
+
+        $excess = count($this->executedSearches) - self::MAX_EXECUTED_SEARCHES;
+        if ($excess > 0) {
+            array_splice($this->executedSearches, 0, $excess);
+        }
     }
 
     private function isWindowTooLarge(Exception $e): bool
