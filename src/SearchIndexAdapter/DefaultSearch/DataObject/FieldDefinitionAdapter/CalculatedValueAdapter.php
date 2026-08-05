@@ -83,7 +83,10 @@ final class CalculatedValueAdapter extends AbstractAdapter
             return $value;
         }
 
-        return (bool) $value;
+        // Calculators may return loosely typed values; only recognized boolean
+        // representations are indexed, anything else becomes null instead of
+        // silently reversing filters (e.g. 'false' must not turn into true).
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
     }
 
     private function normalizeText(mixed $value): mixed

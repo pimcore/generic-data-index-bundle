@@ -87,6 +87,11 @@ final class CalculatedValueAdapterTest extends Unit
         $this->assertFalse($adapter->normalize('0'));
         $this->assertTrue($adapter->normalize(1));
         $this->assertFalse($adapter->normalize(0));
+        $this->assertTrue($adapter->normalize('true'));
+        $this->assertFalse($adapter->normalize('false'));
+        $this->assertTrue($adapter->normalize('yes'));
+        $this->assertFalse($adapter->normalize('no'));
+        $this->assertNull($adapter->normalize('not a boolean'));
         $this->assertNull($adapter->normalize(null));
     }
 
