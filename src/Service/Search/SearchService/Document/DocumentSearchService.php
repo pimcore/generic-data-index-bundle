@@ -77,6 +77,7 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
                     pageSize: $search->getPageSize()
                 ),
                 aggregations:  $searchResult->getAggregations(),
+                maxScore: $searchResult->getMaxScore(),
             );
         } catch (Exception $e) {
             throw new DocumentSearchException($e->getMessage());

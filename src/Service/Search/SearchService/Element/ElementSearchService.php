@@ -66,6 +66,7 @@ final readonly class ElementSearchService implements ElementSearchServiceInterfa
                     pageSize: $search->getPageSize()
                 ),
                 aggregations:  $searchResult->getAggregations(),
+                maxScore: $searchResult->getMaxScore(),
             );
         } catch (Exception $e) {
             throw new ElementSearchException($e->getMessage(), 0, $e);

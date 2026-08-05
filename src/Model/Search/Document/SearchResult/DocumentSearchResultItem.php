@@ -15,10 +15,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResu
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ScoreAwareResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DocumentLazyLoadingHandlerInterface;
 
-class DocumentSearchResultItem implements ElementSearchResultItemInterface
+class DocumentSearchResultItem implements ElementSearchResultItemInterface, ScoreAwareResultItemInterface
 {
     private int $id;
 
@@ -53,6 +54,8 @@ class DocumentSearchResultItem implements ElementSearchResultItemInterface
     private bool $hasChildren;
 
     private array $searchIndexData;
+
+    private ?float $score = null;
 
     private DocumentPermissions $permissions;
 
@@ -275,6 +278,18 @@ class DocumentSearchResultItem implements ElementSearchResultItemInterface
     public function setSearchIndexData(array $searchIndexData): DocumentSearchResultItem
     {
         $this->searchIndexData = $searchIndexData;
+
+        return $this;
+    }
+
+    public function getScore(): ?float
+    {
+        return $this->score;
+    }
+
+    public function setScore(?float $score): DocumentSearchResultItem
+    {
+        $this->score = $score;
 
         return $this;
     }
