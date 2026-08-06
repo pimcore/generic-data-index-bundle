@@ -277,14 +277,15 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
     /**
      * Cancels a server-side task so an aborted reindex does not keep writing into
-     * its target index. Returns whether the task is confirmed to no longer write —
-     * either cancelled, never started, or already finished. Only then is it safe
-     * to delete the target index.
+     * its target index. Returns whether the task is confirmed to no longer write.
+     * Only then is it safe to delete the target index.
      */
     private function cancelTask(?string $taskId): bool
     {
         if (!$taskId) {
-            return true;
+            // The submission may have been accepted server-side even though its
+            // response never arrived — a task might be running whose ID is unknown.
+            return false;
         }
 
         if (!\is_callable([$this->client, 'getOriginalClient'])) {
@@ -293,10 +294,8 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
         try {
             $this->client->getOriginalClient()->tasks()->cancel(['task_id' => $taskId]);
-
-            return true;
         } catch (\Throwable $e) {
-            if (str_contains($e->getMessage(), 'resource_not_found')) {
+            if ($this->exceptionIndicatesMissingTask($e)) {
                 // the task already finished — it cannot write anymore
                 return true;
             }
@@ -305,6 +304,35 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
             return false;
         }
+
+        // Cancellation is cooperative: the task stops between batches. Report the
+        // target as safe to delete only once the task is observed gone or completed.
+        for ($attempt = 0; $attempt < self::MAX_CONSECUTIVE_POLL_FAILURES; $attempt++) {
+            try {
+                $taskStatus = $this->fetchTaskStatus($taskId);
+            } catch (ReindexFailedException $e) {
+                return $this->exceptionIndicatesMissingTask($e);
+            }
+
+            if (!empty($taskStatus['completed'])) {
+                return true;
+            }
+
+            sleep($this->reindexPollIntervalSeconds);
+        }
+
+        return false;
+    }
+
+    private function exceptionIndicatesMissingTask(\Throwable $e): bool
+    {
+        for ($current = $e; $current !== null; $current = $current->getPrevious()) {
+            if (str_contains($current->getMessage(), 'resource_not_found')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

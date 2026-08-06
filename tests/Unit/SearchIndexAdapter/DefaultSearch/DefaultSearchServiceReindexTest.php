@@ -301,7 +301,13 @@ final class DefaultSearchServiceReindexTest extends Unit
             $this->createService(client: $client, reindexMaxPolls: 10)->reindex('test_index', []);
             $this->fail('Expected ReindexFailedException');
         } catch (ReindexFailedException) {
-            $this->assertContains('test_index-even', $deletedIndices, 'New index must be cleaned up on failure');
+            // the cluster is unreachable, so the cancellation cannot be confirmed
+            // either — the target index is kept for the next attempt's cleanup
+            $this->assertSame(
+                1,
+                $this->countDeletes($deletedIndices, 'test_index-even'),
+                'The target index must be kept while the task state is unknown'
+            );
         }
     }
 
@@ -309,12 +315,84 @@ final class DefaultSearchServiceReindexTest extends Unit
     // Cleanup: the server-side task is cancelled before the new index is deleted
     // -------------------------------------------------------------------------
 
+    /**
+     * The kickoff request can be accepted server-side while the client fails to
+     * receive the response — a task may be running whose ID was never learned.
+     * Without a task ID the target must be kept, not deleted under an unknown writer.
+     */
+    public function testReindexKeepsNewIndexWhenTaskIdIsUnknown(): void
+    {
+        $deletedIndices = [];
+
+        $client = $this->makeEmpty(SearchClientInterface::class, [
+            'existsIndex' => true,
+            'createIndex' => [],
+            'reIndex' => ['acknowledged' => true], // no 'task' key — outcome unknown
+            'deleteIndex' => function (array $params) use (&$deletedIndices): array {
+                $deletedIndices[] = $params['index'];
+
+                return [];
+            },
+        ]);
+
+        try {
+            $this->createService(client: $client)->reindex('test_index', []);
+            $this->fail('Expected ReindexFailedException');
+        } catch (ReindexFailedException) {
+            $this->assertSame(
+                1,
+                $this->countDeletes($deletedIndices, 'test_index-even'),
+                'Without a known task ID the target index must be kept — a task may still write into it'
+            );
+        }
+    }
+
+    /**
+     * Cancellation is cooperative: the cancel API only flags the task, which stops
+     * between batches. As long as the task is still observable as running, the
+     * target must be kept.
+     */
+    public function testReindexKeepsNewIndexWhenCancelledTaskIsStillRunning(): void
+    {
+        $deletedIndices = [];
+        $tasksStub = new ReindexTestTasksStub([
+            new Exception('connection refused'),
+            new Exception('connection refused'),
+            new Exception('connection refused'),
+            ['completed' => false], // post-cancel verification: still running
+        ]);
+
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub($tasksStub),
+            taskId: 'node:42',
+            onDeleteIndex: static function (array $params) use (&$deletedIndices): array {
+                $deletedIndices[] = $params['index'];
+
+                return [];
+            },
+        );
+
+        try {
+            $this->createService(client: $client, reindexMaxPolls: 10)->reindex('test_index', []);
+            $this->fail('Expected ReindexFailedException');
+        } catch (ReindexFailedException) {
+            $this->assertSame(
+                1,
+                $this->countDeletes($deletedIndices, 'test_index-even'),
+                'The target index must be kept while the cancelled task is still observable as running'
+            );
+        }
+    }
+
     public function testReindexCancelsServerSideTaskWhenAborting(): void
     {
         $deletedIndices = [];
         $tasksStub = new ReindexTestTasksStub([
             ['completed' => false],
             new Exception('connection lost'),
+            new Exception('connection lost'),
+            new Exception('connection lost'),
+            ['completed' => true], // post-cancel verification: task stopped
         ]);
 
         $client = new ReindexTestSearchClientStub(
