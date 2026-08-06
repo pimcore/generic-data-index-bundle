@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
@@ -30,9 +31,14 @@ interface SearchIndexServiceInterface
     public function getCurrentIndexVersion(string $indexName): string;
 
     /**
+     * Reindexes the current index version into a freshly created one with the given
+     * mapping and switches the alias. MAPPING_INCOMPATIBLE is returned when the
+     * existing documents cannot be indexed into the new mapping; genuine errors
+     * (unreachable cluster, timeouts) are thrown.
+     *
      * @throws Exception
      */
-    public function reindex(string $indexName, array $mapping): void;
+    public function reindex(string $indexName, array $mapping): ReindexResult;
 
     public function createIndex(string $indexName, ?array $mappings = null): self;
 
