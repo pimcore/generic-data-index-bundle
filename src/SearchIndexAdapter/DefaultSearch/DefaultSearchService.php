@@ -143,7 +143,8 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             $taskId = $response['task'] ?? null;
             if (!$taskId) {
                 throw new ReindexFailedException(
-                    'Reindex did not return a task ID; response: ' . json_encode($response, JSON_PARTIAL_OUTPUT_ON_ERROR)
+                    'Reindex did not return a task ID; response: '
+                    . json_encode($response, JSON_PARTIAL_OUTPUT_ON_ERROR)
                 );
             }
 

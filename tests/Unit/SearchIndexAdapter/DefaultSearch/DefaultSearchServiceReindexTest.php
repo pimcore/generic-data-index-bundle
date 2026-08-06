@@ -172,7 +172,7 @@ final class DefaultSearchServiceReindexTest extends Unit
                             [
                                 'index' => 'test_index-even',
                                 'id' => '43',
-                                'cause' => ['type' => 'strict_dynamic_mapping_exception', 'reason' => 'mapping not allowed'],
+                                'cause' => ['type' => 'strict_dynamic_mapping_exception', 'reason' => 'not allowed'],
                                 'status' => 400,
                             ],
                         ],
