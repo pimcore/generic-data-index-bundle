@@ -3,6 +3,10 @@
 Following steps are necessary during updating to newer versions.
 
 ## Upgrade to 2.5.8
+- [Indexing] The class mapping checksum is now calculated independently of the array key order, so that a changed
+  order of e.g. the configured system languages no longer marks unchanged class definitions as changed and triggers
+  a native reindex. Checksums stored by earlier versions are recognised and updated automatically — upgrading does
+  **not** reindex existing class definitions.
 - [Indexing] A failed native reindex no longer triggers a forced recreation of the live index. Recreation now only
   happens when the reindex reports that the existing documents are incompatible with the new mapping (e.g. after a
   field type change); genuine errors — unreachable search cluster, timeouts, rejected requests — propagate and fail
