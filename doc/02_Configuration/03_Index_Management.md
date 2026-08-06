@@ -134,6 +134,32 @@ index data from the database but reindexes data within the search indices.
 bin/console generic-data-index:reindex
 ```
 
+#### Reindex Options
+
+Native reindexing is submitted as an asynchronous task to OpenSearch/Elasticsearch and its progress is polled until
+the task has finished. Two options control how long the process waits:
+
+- **max_polls** (default 720): maximum number of polling attempts before the reindex is aborted
+- **poll_interval** (default 5): seconds to wait between two status polls
+
+With the defaults, a reindex may therefore run for up to one hour (720 × 5 seconds). If reindexing an index takes
+longer than this budget, the command aborts with an error and a non-zero exit code — increase `max_polls` for very
+large indices:
+
+```yaml
+pimcore_generic_data_index:
+    index_service:
+        reindex_settings:
+            max_polls: 720
+            poll_interval: 5
+```
+
+Transient failures while polling (e.g. a temporarily unreachable or overloaded search cluster) are retried and do not
+abort a running reindex. If reindexing fails for a different reason — the cluster is unreachable, the task reports an
+error or times out server-side — the command fails instead of modifying the live index, and the reindex is retried on
+the next run. The index is only recreated (and repopulated via the index queue) when the already indexed documents are
+incompatible with the new mapping, for example after a field type change.
+
 ### Handling Failed Messages
 
 By default, the messenger will retry failed messages 3 times and then send them into the failed queue `pimcore_generic_data_index_failed`.
