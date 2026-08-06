@@ -335,8 +335,13 @@ final class DefaultSearchService implements SearchIndexServiceInterface
      */
     private function ensureNoActiveReindexTask(string $targetIndexName): void
     {
+        // Without the tasks API the async reindex could never be polled, cancelled
+        // or verified — fail before an index is created or a task is submitted.
         if (!\is_callable([$this->client, 'getOriginalClient'])) {
-            return;
+            throw new ReindexFailedException(
+                'The configured search client does not expose the tasks API'
+                . ' (getOriginalClient()); the asynchronous reindex cannot be tracked.'
+            );
         }
 
         try {
@@ -349,9 +354,15 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 $tasks = $tasks->asArray();
             }
         } catch (\Throwable $e) {
-            $this->logger->warning(sprintf('Could not check for running reindex tasks: %s', $e->getMessage()));
-
-            return;
+            throw new ReindexFailedException(
+                sprintf(
+                    'Could not verify that no previous reindex task is still writing into "%s": %s',
+                    $targetIndexName,
+                    $e->getMessage()
+                ),
+                0,
+                $e
+            );
         }
 
         foreach ($tasks['nodes'] ?? [] as $node) {

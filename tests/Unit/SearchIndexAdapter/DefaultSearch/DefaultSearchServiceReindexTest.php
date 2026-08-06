@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\DefaultSearch;
 
+use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
@@ -35,11 +36,11 @@ final class DefaultSearchServiceReindexTest extends Unit
 
     public function testReindexThrowsWhenResponseMissingTaskId(): void
     {
-        $client = $this->makeEmpty(SearchClientInterface::class, [
-            'existsIndex' => false,
-            'createIndex' => [],
-            'reIndex' => ['acknowledged' => true], // no 'task' key
-        ]);
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub(new ReindexTestTasksStub([])),
+            taskId: 'unused',
+        );
+        $client->reindexResponseOverride = ['acknowledged' => true]; // no 'task' key
 
         $this->expectException(ReindexFailedException::class);
         $this->expectExceptionMessageMatches('/did not return a task ID/');
@@ -49,11 +50,11 @@ final class DefaultSearchServiceReindexTest extends Unit
 
     public function testReindexThrowsWhenTaskIdIsEmpty(): void
     {
-        $client = $this->makeEmpty(SearchClientInterface::class, [
-            'existsIndex' => false,
-            'createIndex' => [],
-            'reIndex' => ['task' => ''],
-        ]);
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub(new ReindexTestTasksStub([])),
+            taskId: 'unused',
+        );
+        $client->reindexResponseOverride = ['task' => ''];
 
         $this->expectException(ReindexFailedException::class);
         $this->expectExceptionMessageMatches('/did not return a task ID/');
@@ -65,20 +66,43 @@ final class DefaultSearchServiceReindexTest extends Unit
     // fetchTaskStatus: client without getOriginalClient()
     // -------------------------------------------------------------------------
 
-    public function testReindexThrowsWhenClientLacksGetOriginalClient(): void
+    /**
+     * Without the tasks API the async reindex could never be tracked, cancelled or
+     * verified — it must fail before any index is created or task submitted, not
+     * after kicking off an orphaned writer.
+     */
+    public function testReindexFailsFastWhenClientLacksTaskApi(): void
     {
         // Plain SearchClientInterface has no getOriginalClient() — duck-typing check fails
         $client = $this->makeEmpty(SearchClientInterface::class, [
-            'existsIndex' => false,
-            'createIndex' => [],
-            'reIndex' => ['task' => 'node:42'],
-            'deleteIndex' => [],
+            'createIndex' => Expected::never(),
+            'reIndex' => Expected::never(),
+            'deleteIndex' => Expected::never(),
         ]);
 
         $this->expectException(ReindexFailedException::class);
-        $this->expectExceptionMessageMatches('/getOriginalClient/');
+        $this->expectExceptionMessageMatches('/tasks API/');
 
         $this->createService(client: $client)->reindex('test_index', []);
+    }
+
+    public function testReindexFailsFastWhenLeftoverTaskCheckFails(): void
+    {
+        $tasksStub = new ReindexTestTasksStub([]);
+        $tasksStub->listException = new Exception('cURL error 7: connection refused');
+
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub($tasksStub),
+            taskId: 'node:1',
+        );
+
+        try {
+            $this->createService(client: $client)->reindex('test_index', []);
+            $this->fail('Expected ReindexFailedException');
+        } catch (ReindexFailedException $e) {
+            $this->assertMatchesRegularExpression('/verify/i', $e->getMessage());
+            $this->assertSame(0, $client->createIndexCalls, 'No index may be created when the check fails');
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -324,16 +348,16 @@ final class DefaultSearchServiceReindexTest extends Unit
     {
         $deletedIndices = [];
 
-        $client = $this->makeEmpty(SearchClientInterface::class, [
-            'existsIndex' => true,
-            'createIndex' => [],
-            'reIndex' => ['acknowledged' => true], // no 'task' key — outcome unknown
-            'deleteIndex' => function (array $params) use (&$deletedIndices): array {
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub(new ReindexTestTasksStub([])),
+            taskId: 'node:1',
+            onDeleteIndex: static function (array $params) use (&$deletedIndices): array {
                 $deletedIndices[] = $params['index'];
 
                 return [];
             },
-        ]);
+        );
+        $client->reindexResponseOverride = ['acknowledged' => true]; // no 'task' key — outcome unknown
 
         try {
             $this->createService(client: $client)->reindex('test_index', []);
@@ -726,6 +750,10 @@ final class DefaultSearchServiceReindexTest extends Unit
  */
 final class ReindexTestSearchClientStub implements SearchClientInterface
 {
+    public ?array $reindexResponseOverride = null;
+
+    public int $createIndexCalls = 0;
+
     public function __construct(
         private readonly object $originalClient,
         private readonly string $taskId,
@@ -748,7 +776,7 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
 
     public function reIndex(array $_params): array
     {
-        return ['task' => $this->taskId];
+        return $this->reindexResponseOverride ?? ['task' => $this->taskId];
     }
 
     public function deleteIndex(array $params): array
@@ -813,6 +841,8 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
 
     public function createIndex(array $_params): array
     {
+        $this->createIndexCalls++;
+
         return [];
     }
 
@@ -903,12 +933,18 @@ final class ReindexTestTasksStub
     /** @var array<string, mixed> */
     public array $listResponse = [];
 
+    public ?\Throwable $listException = null;
+
     public function __construct(private readonly array $responses)
     {
     }
 
     public function list(array $params = []): array
     {
+        if ($this->listException !== null) {
+            throw $this->listException;
+        }
+
         return $this->listResponse;
     }
 
