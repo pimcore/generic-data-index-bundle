@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 
 use Exception;
 use JsonException;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
@@ -39,6 +40,8 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     public const INDEX_VERSION_ODD = 'odd';
 
     public const INDEX_VERSION_EVEN = 'even';
+
+    private const MAX_CONSECUTIVE_POLL_FAILURES = 3;
 
     use LoggerAwareTrait;
 
@@ -94,7 +97,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     /**
      * @throws Exception
      */
-    public function reindex(string $indexName, array $mapping): void
+    public function reindex(string $indexName, array $mapping): ReindexResult
     {
         $currentIndexVersion = $this->getCurrentIndexVersion($indexName);
         $newIndexVersion = $currentIndexVersion === self::INDEX_VERSION_EVEN
@@ -115,6 +118,8 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             ],
         ];
 
+        $taskId = null;
+
         try {
             // Submit reindex as async task to avoid HTTP timeout on large indices
             $response = $this->client->reIndex([
@@ -129,22 +134,70 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 );
             }
 
-            $this->waitForTask($taskId);
-            $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
+            $taskStatus = $this->waitForTaskCompletion($taskId);
         } catch (\Throwable $e) {
+            $this->cancelTask($taskId);
             $this->deleteIndex($newIndexName, true);
 
             throw $e;
         }
+
+        // Per-document failures mean the existing documents cannot be indexed into
+        // the new mapping (e.g. after a field type change). This is an expected
+        // outcome of a mapping change, not an error: report it as a result so the
+        // caller can decide to recreate the index.
+        $failures = $taskStatus['response']['failures'] ?? [];
+        if (!empty($failures)) {
+            $this->logger->warning(sprintf(
+                'Reindex from "%s" to "%s" is not possible with the existing documents: %s',
+                $oldIndexName,
+                $newIndexName,
+                json_encode(array_slice($failures, 0, 5), JSON_PARTIAL_OUTPUT_ON_ERROR)
+            ));
+            $this->deleteIndex($newIndexName, true);
+
+            return ReindexResult::MAPPING_INCOMPATIBLE;
+        }
+
+        $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
+
+        return ReindexResult::SUCCESS;
     }
 
     /**
+     * Polls the task status until the task completes. Transient failures of single
+     * status requests are retried — a long-running reindex puts load on the cluster,
+     * so occasional rejected or timed-out requests are expected and must not abort
+     * the operation.
+     *
+     * @return array<string, mixed> the completed task status
+     *
      * @throws ReindexFailedException
      */
-    private function waitForTask(string $taskId): void
+    private function waitForTaskCompletion(string $taskId): array
     {
+        $consecutivePollFailures = 0;
+
         for ($poll = 0; $poll < $this->reindexMaxPolls; $poll++) {
-            $taskStatus = $this->fetchTaskStatus($taskId);
+            try {
+                $taskStatus = $this->fetchTaskStatus($taskId);
+                $consecutivePollFailures = 0;
+            } catch (ReindexFailedException $e) {
+                if (++$consecutivePollFailures >= self::MAX_CONSECUTIVE_POLL_FAILURES) {
+                    throw $e;
+                }
+
+                $this->logger->warning(sprintf(
+                    'Failed to fetch status of reindex task %s (attempt %d of %d): %s',
+                    $taskId,
+                    $consecutivePollFailures,
+                    self::MAX_CONSECUTIVE_POLL_FAILURES,
+                    $e->getMessage()
+                ));
+                sleep($this->reindexPollIntervalSeconds);
+
+                continue;
+            }
 
             if (empty($taskStatus['completed'])) {
                 sleep($this->reindexPollIntervalSeconds);
@@ -159,22 +212,13 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 );
             }
 
-            // Per-document failures and timed_out live inside response
-            $response = $taskStatus['response'] ?? [];
-
-            if (!empty($response['timed_out'])) {
+            if (!empty($taskStatus['response']['timed_out'])) {
                 throw new ReindexFailedException(
                     "Reindex task timed out server-side for task $taskId"
                 );
             }
 
-            if (!empty($response['failures'])) {
-                throw new ReindexFailedException(
-                    'Reindex task completed with failures: ' . json_encode($response['failures'], JSON_PARTIAL_OUTPUT_ON_ERROR)
-                );
-            }
-
-            return;
+            return $taskStatus;
         }
 
         throw new ReindexFailedException(
@@ -184,6 +228,23 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 $this->reindexMaxPolls * $this->reindexPollIntervalSeconds
             )
         );
+    }
+
+    /**
+     * Best-effort cancellation of a server-side task before its target index is
+     * deleted, so an aborted reindex does not keep writing into a dropped index.
+     */
+    private function cancelTask(?string $taskId): void
+    {
+        if (!$taskId || !\is_callable([$this->client, 'getOriginalClient'])) {
+            return;
+        }
+
+        try {
+            $this->client->getOriginalClient()->tasks()->cancel(['task_id' => $taskId]);
+        } catch (\Throwable $e) {
+            $this->logger->warning(sprintf('Failed to cancel reindex task %s: %s', $taskId, $e->getMessage()));
+        }
     }
 
     /**

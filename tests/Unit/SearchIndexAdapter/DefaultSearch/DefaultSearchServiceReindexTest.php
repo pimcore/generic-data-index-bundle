@@ -14,6 +14,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\DefaultSearch;
 
 use Codeception\Test\Unit;
+use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
@@ -140,11 +142,19 @@ final class DefaultSearchServiceReindexTest extends Unit
     }
 
     // -------------------------------------------------------------------------
-    // waitForTask: per-document failures inside response
+    // Per-document failures: expected structural outcome, reported as result
     // -------------------------------------------------------------------------
 
-    public function testReindexThrowsOnPerDocumentFailures(): void
+    /**
+     * Documents that cannot be indexed into the new mapping (e.g. after a field
+     * type change) are an expected outcome, not an error: reported as
+     * MAPPING_INCOMPATIBLE so the caller can decide to recreate the index. The
+     * unusable new index is cleaned up and the alias is left untouched.
+     */
+    public function testReindexReturnsMappingIncompatibleOnPerDocumentFailures(): void
     {
+        $deletedIndices = [];
+
         $client = $this->buildClientWithTaskResponses(
             taskId: 'node:1',
             taskResponses: [
@@ -152,16 +162,102 @@ final class DefaultSearchServiceReindexTest extends Unit
                     'completed' => true,
                     'response' => [
                         'timed_out' => false,
-                        'failures' => [['shard' => 0, 'reason' => 'disk full']],
+                        'failures' => [['index' => 'test_index-even', 'reason' => 'mapper_parsing_exception']],
                     ],
                 ],
-            ]
+            ],
+            onDeleteIndex: static function (array $params) use (&$deletedIndices): array {
+                $deletedIndices[] = $params['index'];
+
+                return [];
+            }
         );
 
-        $this->expectException(ReindexFailedException::class);
-        $this->expectExceptionMessageMatches('/completed with failures/');
+        $result = $this->createService(client: $client)->reindex('test_index', []);
 
-        $this->createService(client: $client)->reindex('test_index', []);
+        $this->assertSame(ReindexResult::MAPPING_INCOMPATIBLE, $result);
+        $this->assertContains('test_index-even', $deletedIndices, 'The unusable new index must be cleaned up');
+    }
+
+    // -------------------------------------------------------------------------
+    // Poll resilience: transient task-status failures are retried
+    // -------------------------------------------------------------------------
+
+    /**
+     * A single failed status request must not abort a long-running reindex —
+     * transient hiccups are expected while _reindex puts load on the cluster.
+     *
+     * @see https://github.com/pimcore/service-operations/issues/1126
+     */
+    public function testReindexRetriesTransientPollFailures(): void
+    {
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [
+                new Exception('cURL error 7: connection refused'),
+                ['completed' => false],
+                new Exception('cURL error 28: request timed out'),
+                ['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]],
+            ],
+            withAliasSwitchSupport: true
+        );
+
+        $result = $this->createService(client: $client, reindexMaxPolls: 10)->reindex('test_index', []);
+
+        $this->assertSame(ReindexResult::SUCCESS, $result);
+    }
+
+    public function testReindexThrowsAfterPersistentPollFailures(): void
+    {
+        $deletedIndices = [];
+
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [
+                new Exception('cURL error 7: connection refused'),
+            ],
+            onDeleteIndex: static function (array $params) use (&$deletedIndices): array {
+                $deletedIndices[] = $params['index'];
+
+                return [];
+            }
+        );
+
+        try {
+            $this->createService(client: $client, reindexMaxPolls: 10)->reindex('test_index', []);
+            $this->fail('Expected ReindexFailedException');
+        } catch (ReindexFailedException) {
+            $this->assertContains('test_index-even', $deletedIndices, 'New index must be cleaned up on failure');
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Cleanup: the server-side task is cancelled before the new index is deleted
+    // -------------------------------------------------------------------------
+
+    public function testReindexCancelsServerSideTaskWhenAborting(): void
+    {
+        $tasksStub = new ReindexTestTasksStub([
+            ['completed' => false],
+            new Exception('connection lost'),
+        ]);
+
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub($tasksStub),
+            taskId: 'node:42',
+            existsIndexValue: false,
+        );
+
+        try {
+            $this->createService(client: $client, reindexMaxPolls: 10)->reindex('test_index', []);
+            $this->fail('Expected ReindexFailedException');
+        } catch (ReindexFailedException) {
+            $this->assertSame(
+                ['node:42'],
+                $tasksStub->cancelledTasks,
+                'The still-running server-side task must be cancelled before its target index is deleted'
+            );
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -185,8 +281,9 @@ final class DefaultSearchServiceReindexTest extends Unit
             }
         );
 
-        // Must not throw
-        $this->createService(client: $client)->reindex('test_index', []);
+        $result = $this->createService(client: $client)->reindex('test_index', []);
+
+        $this->assertSame(ReindexResult::SUCCESS, $result);
 
         // No alias exists → currentVersion='', newIndexName='test_index-even'.
         // createIndex() silently deletes test_index-even before recreating it.
@@ -210,8 +307,8 @@ final class DefaultSearchServiceReindexTest extends Unit
             withAliasSwitchSupport: true
         );
 
-        $this->createService(client: $client, reindexMaxPolls: 5)->reindex('test_index', []);
-        $this->assertTrue(true);
+        $result = $this->createService(client: $client, reindexMaxPolls: 5)->reindex('test_index', []);
+        $this->assertSame(ReindexResult::SUCCESS, $result);
     }
 
     // -------------------------------------------------------------------------
@@ -478,10 +575,16 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
     }
 }
 
-/** Stubs for the task polling chain: getOriginalClient()->tasks()->get() */
+/**
+ * Stubs for the task polling chain: getOriginalClient()->tasks()->get().
+ * A Throwable entry in $responses simulates a failed status request.
+ */
 final class ReindexTestTasksStub
 {
     private int $callCount = 0;
+
+    /** @var array<int, mixed> */
+    public array $cancelledTasks = [];
 
     public function __construct(private readonly array $responses)
     {
@@ -492,7 +595,18 @@ final class ReindexTestTasksStub
         $response = $this->responses[$this->callCount] ?? end($this->responses);
         $this->callCount++;
 
+        if ($response instanceof \Throwable) {
+            throw $response;
+        }
+
         return $response;
+    }
+
+    public function cancel(array $params): array
+    {
+        $this->cancelledTasks[] = $params['task_id'] ?? null;
+
+        return [];
     }
 }
 
