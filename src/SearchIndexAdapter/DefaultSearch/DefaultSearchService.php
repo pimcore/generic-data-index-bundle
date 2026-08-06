@@ -155,10 +155,11 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 $this->deleteIndex($newIndexName, true);
             } else {
                 $this->logger->warning(sprintf(
-                    'Keeping index "%s": reindex task %s could not be confirmed as cancelled and may still write'
-                    . ' into it. The index is cleaned up by the next reindex.',
+                    'Keeping index "%s": %s may still write into it. The index is cleaned up by the next reindex.',
                     $newIndexName,
                     $taskId
+                        ? sprintf('reindex task %s could not be confirmed as cancelled and', $taskId)
+                        : 'the reindex submission was not confirmed, so an unknown task'
                 ));
             }
 
