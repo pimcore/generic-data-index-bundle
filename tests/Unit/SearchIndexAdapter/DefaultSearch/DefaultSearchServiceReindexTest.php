@@ -492,6 +492,78 @@ final class DefaultSearchServiceReindexTest extends Unit
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Pre-flight: leftover task from an earlier aborted attempt
+    // -------------------------------------------------------------------------
+
+    /**
+     * When a previous attempt aborted without confirmed cancellation, its task may
+     * still write into the target name. Before the delete-first index creation, a
+     * still-running writer must be stopped — otherwise it pollutes the new index.
+     */
+    public function testReindexCancelsLeftoverTaskWritingIntoTarget(): void
+    {
+        $tasksStub = new ReindexTestTasksStub([
+            ['completed' => true], // verification of the cancelled leftover task
+            ['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]],
+        ]);
+        $tasksStub->listResponse = [
+            'nodes' => [
+                'node1' => [
+                    'tasks' => [
+                        'node1:99' => [
+                            'action' => 'indices:data/write/reindex',
+                            'description' => 'reindex from [test_index-odd] to [test_index-even]',
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub($tasksStub),
+            taskId: 'node:1',
+            withAliasSwitchSupport: true,
+        );
+
+        $result = $this->createService(client: $client)->reindex('test_index', []);
+
+        $this->assertSame(ReindexResult::SUCCESS, $result);
+        $this->assertContains(
+            'node1:99',
+            $tasksStub->cancelledTasks,
+            'A leftover task still writing into the target must be cancelled before the index is recreated'
+        );
+    }
+
+    public function testReindexThrowsWhenLeftoverTaskCannotBeStopped(): void
+    {
+        $tasksStub = new ReindexTestTasksStub([]);
+        $tasksStub->listResponse = [
+            'nodes' => [
+                'node1' => [
+                    'tasks' => [
+                        'node1:99' => [
+                            'action' => 'indices:data/write/reindex',
+                            'description' => 'reindex from [test_index-odd] to [test_index-even]',
+                        ],
+                    ],
+                ],
+            ],
+        ];
+        $tasksStub->cancelException = new Exception('connection refused');
+
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub($tasksStub),
+            taskId: 'node:1',
+        );
+
+        $this->expectException(ReindexFailedException::class);
+        $this->expectExceptionMessageMatches('/still writing/');
+
+        $this->createService(client: $client)->reindex('test_index', []);
+    }
+
     /**
      * @param array<int, string> $deletedIndices
      */
@@ -828,8 +900,16 @@ final class ReindexTestTasksStub
 
     public ?\Throwable $cancelException = null;
 
+    /** @var array<string, mixed> */
+    public array $listResponse = [];
+
     public function __construct(private readonly array $responses)
     {
+    }
+
+    public function list(array $params = []): array
+    {
+        return $this->listResponse;
     }
 
     public function get(array $params): mixed

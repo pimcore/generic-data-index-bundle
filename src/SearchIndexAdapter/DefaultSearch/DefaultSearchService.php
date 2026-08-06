@@ -120,6 +120,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $oldIndexName = $indexName . '-' . $currentIndexVersion;
         $newIndexName = $indexName . '-' . $newIndexVersion;
 
+        $this->ensureNoActiveReindexTask($newIndexName);
         $this->createIndex($newIndexName, $mapping);
 
         $body = [
@@ -322,6 +323,60 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         }
 
         return false;
+    }
+
+    /**
+     * A previous aborted attempt may have left a reindex task behind that still
+     * writes into the target name (see cancelTask()). It must be stopped before
+     * the delete-first index creation — otherwise the old writer pollutes the
+     * freshly created index with stale documents.
+     *
+     * @throws ReindexFailedException
+     */
+    private function ensureNoActiveReindexTask(string $targetIndexName): void
+    {
+        if (!\is_callable([$this->client, 'getOriginalClient'])) {
+            return;
+        }
+
+        try {
+            $tasks = $this->client->getOriginalClient()->tasks()->list([
+                'actions' => '*reindex',
+                'detailed' => true,
+            ]);
+
+            if (\is_object($tasks) && \method_exists($tasks, 'asArray')) {
+                $tasks = $tasks->asArray();
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warning(sprintf('Could not check for running reindex tasks: %s', $e->getMessage()));
+
+            return;
+        }
+
+        foreach ($tasks['nodes'] ?? [] as $node) {
+            foreach ($node['tasks'] ?? [] as $taskId => $task) {
+                $description = $task['description'] ?? '';
+                if (!str_contains($description, '[' . $targetIndexName . ']')) {
+                    continue;
+                }
+
+                $this->logger->warning(sprintf(
+                    'Cancelling leftover reindex task %s from an earlier aborted attempt (%s)',
+                    $taskId,
+                    $description
+                ));
+
+                if (!$this->cancelTask((string) $taskId)) {
+                    throw new ReindexFailedException(sprintf(
+                        'A previous reindex task (%s) is still writing into "%s" and could not be stopped;'
+                        . ' retry once it has finished.',
+                        $taskId,
+                        $targetIndexName
+                    ));
+                }
+            }
+        }
     }
 
     private function exceptionIndicatesMissingTask(\Throwable $e): bool
