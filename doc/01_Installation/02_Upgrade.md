@@ -42,6 +42,15 @@ description: Version-specific upgrade instructions and breaking changes for the 
   container parameter (env: `PIMCORE_MESSENGER_TRANSPORT_DSN_PREFIX`) instead of being hardcoded to
   `doctrine://default`.
 
+## Upgrade to 2.5.8
+- [Indexing] A failed native reindex no longer triggers a forced recreation of the live index. Recreation now only
+  happens when the reindex reports that the existing documents are incompatible with the new mapping (e.g. after a
+  field type change); genuine errors — unreachable search cluster, timeouts, rejected requests — propagate and fail
+  the operation instead, so a transient connection failure during deployment can no longer purge the index.
+- [Indexing] Transient failures of single task-status requests during a long-running reindex are now retried instead
+  of aborting the reindex, and an aborted reindex cancels the server-side task before cleaning up its target index.
+- [Indexing] `SearchIndexServiceInterface::reindex()` (`@internal`) now returns a `ReindexResult` enum instead of `void`.
+
 ## Upgrade to 2.5.6
 - [Commands] `generic-data-index:deployment:reindex` and `generic-data-index:reindex` now exit with a non-zero status
   code when reindexing fails, instead of always returning `0`. Deployment pipelines executing these commands will now
