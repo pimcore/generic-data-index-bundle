@@ -156,7 +156,10 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         }
 
         if (!array_is_list($normalizedValue)) {
-            ksort($normalizedValue);
+            // SORT_STRING: the default SORT_REGULAR compares numeric keys numerically,
+            // so distinct keys like 1 and '01' would compare equal and keep their
+            // insertion order instead of being sorted deterministically.
+            ksort($normalizedValue, SORT_STRING);
         }
 
         return $normalizedValue;

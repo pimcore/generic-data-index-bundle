@@ -25,6 +25,42 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
  */
 final class AbstractIndexHandlerChecksumTest extends Unit
 {
+    /**
+     * Numeric-ish keys (e.g. classification store ids) are cast to integers by PHP,
+     * and ksort()'s default SORT_REGULAR compares those numerically — so distinct
+     * keys such as 1 and '01' compare equal and keep their insertion order. Sorting
+     * as strings gives a total, deterministic order for every valid array key.
+     */
+    public function testGetClassMappingCheckSumIsStableForNumericKeyOrder(): void
+    {
+        $indexHandler = $this->getIndexHandler();
+
+        $mappingA = [
+            'custom_fields' => [
+                'properties' => [
+                    1 => ['type' => 'keyword'],
+                    '01' => ['type' => 'text'],
+                    10 => ['type' => 'boolean'],
+                ],
+            ],
+        ];
+
+        $mappingB = [
+            'custom_fields' => [
+                'properties' => [
+                    10 => ['type' => 'boolean'],
+                    '01' => ['type' => 'text'],
+                    1 => ['type' => 'keyword'],
+                ],
+            ],
+        ];
+
+        $this->assertSame(
+            $indexHandler->getClassMappingCheckSum($mappingA),
+            $indexHandler->getClassMappingCheckSum($mappingB)
+        );
+    }
+
     public function testGetClassMappingCheckSumIsStableForAssociativeKeyOrder(): void
     {
         $indexHandler = $this->getIndexHandler();
