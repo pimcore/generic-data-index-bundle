@@ -43,6 +43,19 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
     private const MAX_CONSECUTIVE_POLL_FAILURES = 3;
 
+    /**
+     * Failure cause types that prove the existing documents are structurally
+     * incompatible with the new mapping. Anything else (rejected executions,
+     * cluster blocks, unavailable shards, ...) may be transient and must never
+     * be answered with an index recreation.
+     */
+    private const MAPPING_INCOMPATIBILITY_FAILURE_TYPES = [
+        'mapper_parsing_exception',
+        'mapper_exception',
+        'strict_dynamic_mapping_exception',
+        'document_parsing_exception',
+    ];
+
     use LoggerAwareTrait;
 
     public function __construct(
@@ -136,27 +149,43 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
             $taskStatus = $this->waitForTaskCompletion($taskId);
         } catch (\Throwable $e) {
-            $this->cancelTask($taskId);
-            $this->deleteIndex($newIndexName, true);
+            if ($this->cancelTask($taskId)) {
+                $this->deleteIndex($newIndexName, true);
+            } else {
+                $this->logger->warning(sprintf(
+                    'Keeping index "%s": reindex task %s could not be confirmed as cancelled and may still write'
+                    . ' into it. The index is cleaned up by the next reindex.',
+                    $newIndexName,
+                    $taskId
+                ));
+            }
 
             throw $e;
         }
 
-        // Per-document failures mean the existing documents cannot be indexed into
-        // the new mapping (e.g. after a field type change). This is an expected
-        // outcome of a mapping change, not an error: report it as a result so the
-        // caller can decide to recreate the index.
+        // The task is completed at this point, so the new index can be deleted safely.
         $failures = $taskStatus['response']['failures'] ?? [];
         if (!empty($failures)) {
-            $this->logger->warning(sprintf(
-                'Reindex from "%s" to "%s" is not possible with the existing documents: %s',
-                $oldIndexName,
-                $newIndexName,
-                json_encode(array_slice($failures, 0, 5), JSON_PARTIAL_OUTPUT_ON_ERROR)
-            ));
             $this->deleteIndex($newIndexName, true);
 
-            return ReindexResult::MAPPING_INCOMPATIBLE;
+            // Only failures that prove a structural mapping incompatibility (e.g.
+            // after a field type change) are an expected outcome the caller may
+            // answer with an index recreation. Everything else may be transient.
+            if ($this->areMappingIncompatibilityFailures($failures)) {
+                $this->logger->warning(sprintf(
+                    'Reindex from "%s" to "%s" is not possible with the existing documents: %s',
+                    $oldIndexName,
+                    $newIndexName,
+                    json_encode(array_slice($failures, 0, 5), JSON_PARTIAL_OUTPUT_ON_ERROR)
+                ));
+
+                return ReindexResult::MAPPING_INCOMPATIBLE;
+            }
+
+            throw new ReindexFailedException(
+                'Reindex task completed with failures: '
+                . json_encode(array_slice($failures, 0, 5), JSON_PARTIAL_OUTPUT_ON_ERROR)
+            );
         }
 
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
@@ -231,19 +260,49 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     }
 
     /**
-     * Best-effort cancellation of a server-side task before its target index is
-     * deleted, so an aborted reindex does not keep writing into a dropped index.
+     * @param array<int, array<string, mixed>> $failures
      */
-    private function cancelTask(?string $taskId): void
+    private function areMappingIncompatibilityFailures(array $failures): bool
     {
-        if (!$taskId || !\is_callable([$this->client, 'getOriginalClient'])) {
-            return;
+        foreach ($failures as $failure) {
+            $causeType = $failure['cause']['type'] ?? '';
+            if (!\in_array($causeType, self::MAPPING_INCOMPATIBILITY_FAILURE_TYPES, true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Cancels a server-side task so an aborted reindex does not keep writing into
+     * its target index. Returns whether the task is confirmed to no longer write —
+     * either cancelled, never started, or already finished. Only then is it safe
+     * to delete the target index.
+     */
+    private function cancelTask(?string $taskId): bool
+    {
+        if (!$taskId) {
+            return true;
+        }
+
+        if (!\is_callable([$this->client, 'getOriginalClient'])) {
+            return false;
         }
 
         try {
             $this->client->getOriginalClient()->tasks()->cancel(['task_id' => $taskId]);
+
+            return true;
         } catch (\Throwable $e) {
+            if (str_contains($e->getMessage(), 'resource_not_found')) {
+                // the task already finished — it cannot write anymore
+                return true;
+            }
+
             $this->logger->warning(sprintf('Failed to cancel reindex task %s: %s', $taskId, $e->getMessage()));
+
+            return false;
         }
     }
 

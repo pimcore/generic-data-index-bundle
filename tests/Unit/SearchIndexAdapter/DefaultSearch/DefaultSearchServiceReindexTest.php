@@ -151,7 +151,7 @@ final class DefaultSearchServiceReindexTest extends Unit
      * MAPPING_INCOMPATIBLE so the caller can decide to recreate the index. The
      * unusable new index is cleaned up and the alias is left untouched.
      */
-    public function testReindexReturnsMappingIncompatibleOnPerDocumentFailures(): void
+    public function testReindexReturnsMappingIncompatibleOnStructuralDocumentFailures(): void
     {
         $deletedIndices = [];
 
@@ -162,7 +162,20 @@ final class DefaultSearchServiceReindexTest extends Unit
                     'completed' => true,
                     'response' => [
                         'timed_out' => false,
-                        'failures' => [['index' => 'test_index-even', 'reason' => 'mapper_parsing_exception']],
+                        'failures' => [
+                            [
+                                'index' => 'test_index-even',
+                                'id' => '42',
+                                'cause' => ['type' => 'mapper_parsing_exception', 'reason' => 'failed to parse field'],
+                                'status' => 400,
+                            ],
+                            [
+                                'index' => 'test_index-even',
+                                'id' => '43',
+                                'cause' => ['type' => 'strict_dynamic_mapping_exception', 'reason' => 'mapping not allowed'],
+                                'status' => 400,
+                            ],
+                        ],
                     ],
                 ],
             ],
@@ -177,6 +190,67 @@ final class DefaultSearchServiceReindexTest extends Unit
 
         $this->assertSame(ReindexResult::MAPPING_INCOMPATIBLE, $result);
         $this->assertContains('test_index-even', $deletedIndices, 'The unusable new index must be cleaned up');
+    }
+
+    /**
+     * The bulk-failure list can also contain transient causes (rejected executions,
+     * disk watermark blocks, unavailable shards). Those must never be reported as
+     * MAPPING_INCOMPATIBLE — the caller would recreate the live index over a
+     * temporary cluster condition.
+     */
+    public function testReindexThrowsOnTransientDocumentFailures(): void
+    {
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [
+                [
+                    'completed' => true,
+                    'response' => [
+                        'timed_out' => false,
+                        'failures' => [
+                            [
+                                'index' => 'test_index-even',
+                                'id' => '42',
+                                'cause' => ['type' => 'es_rejected_execution_exception', 'reason' => 'queue full'],
+                                'status' => 429,
+                            ],
+                        ],
+                    ],
+                ],
+            ]
+        );
+
+        $this->expectException(ReindexFailedException::class);
+        $this->expectExceptionMessageMatches('/completed with failures/');
+
+        $this->createService(client: $client)->reindex('test_index', []);
+    }
+
+    public function testReindexThrowsOnMixedDocumentFailures(): void
+    {
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [
+                [
+                    'completed' => true,
+                    'response' => [
+                        'timed_out' => false,
+                        'failures' => [
+                            [
+                                'cause' => ['type' => 'mapper_parsing_exception', 'reason' => 'failed to parse'],
+                            ],
+                            [
+                                'cause' => ['type' => 'cluster_block_exception', 'reason' => 'disk watermark exceeded'],
+                            ],
+                        ],
+                    ],
+                ],
+            ]
+        );
+
+        $this->expectException(ReindexFailedException::class);
+
+        $this->createService(client: $client)->reindex('test_index', []);
     }
 
     // -------------------------------------------------------------------------
@@ -237,6 +311,7 @@ final class DefaultSearchServiceReindexTest extends Unit
 
     public function testReindexCancelsServerSideTaskWhenAborting(): void
     {
+        $deletedIndices = [];
         $tasksStub = new ReindexTestTasksStub([
             ['completed' => false],
             new Exception('connection lost'),
@@ -245,7 +320,11 @@ final class DefaultSearchServiceReindexTest extends Unit
         $client = new ReindexTestSearchClientStub(
             originalClient: new ReindexTestOriginalClientStub($tasksStub),
             taskId: 'node:42',
-            existsIndexValue: false,
+            onDeleteIndex: static function (array $params) use (&$deletedIndices): array {
+                $deletedIndices[] = $params['index'];
+
+                return [];
+            },
         );
 
         try {
@@ -257,7 +336,90 @@ final class DefaultSearchServiceReindexTest extends Unit
                 $tasksStub->cancelledTasks,
                 'The still-running server-side task must be cancelled before its target index is deleted'
             );
+            // one delete from createIndex() (delete-first), one from the abort cleanup
+            $this->assertSame(
+                2,
+                $this->countDeletes($deletedIndices, 'test_index-even'),
+                'The target index is safe to delete after confirmed cancellation'
+            );
         }
+    }
+
+    /**
+     * If the cancellation cannot be confirmed (e.g. the same outage that aborted the
+     * polling), the target index must be kept — the still-running server-side task
+     * would otherwise auto-recreate the dropped index and keep writing into it. The
+     * leftover index is removed by the next reindex attempt.
+     */
+    public function testReindexKeepsNewIndexWhenTaskCancellationIsUnconfirmed(): void
+    {
+        $deletedIndices = [];
+        $tasksStub = new ReindexTestTasksStub([
+            new Exception('connection refused'),
+        ]);
+        $tasksStub->cancelException = new Exception('connection refused');
+
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub($tasksStub),
+            taskId: 'node:42',
+            onDeleteIndex: static function (array $params) use (&$deletedIndices): array {
+                $deletedIndices[] = $params['index'];
+
+                return [];
+            },
+        );
+
+        try {
+            $this->createService(client: $client, reindexMaxPolls: 10)->reindex('test_index', []);
+            $this->fail('Expected ReindexFailedException');
+        } catch (ReindexFailedException) {
+            // only the delete-first inside createIndex(); NO abort cleanup delete
+            $this->assertSame(
+                1,
+                $this->countDeletes($deletedIndices, 'test_index-even'),
+                'The target index must be kept while the server-side task may still write into it'
+            );
+        }
+    }
+
+    public function testReindexTreatsAlreadyFinishedTaskAsCancelled(): void
+    {
+        $deletedIndices = [];
+        $tasksStub = new ReindexTestTasksStub([
+            new Exception('connection refused'),
+        ]);
+        $tasksStub->cancelException = new Exception(
+            '{"error":{"type":"resource_not_found_exception","reason":"task [node:42] is not found"}}'
+        );
+
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub($tasksStub),
+            taskId: 'node:42',
+            onDeleteIndex: static function (array $params) use (&$deletedIndices): array {
+                $deletedIndices[] = $params['index'];
+
+                return [];
+            },
+        );
+
+        try {
+            $this->createService(client: $client, reindexMaxPolls: 10)->reindex('test_index', []);
+            $this->fail('Expected ReindexFailedException');
+        } catch (ReindexFailedException) {
+            $this->assertSame(
+                2,
+                $this->countDeletes($deletedIndices, 'test_index-even'),
+                'A task that no longer exists cannot write anymore — the target index is safe to delete'
+            );
+        }
+    }
+
+    /**
+     * @param array<int, string> $deletedIndices
+     */
+    private function countDeletes(array $deletedIndices, string $indexName): int
+    {
+        return count(array_filter($deletedIndices, static fn (string $name): bool => $name === $indexName));
     }
 
     // -------------------------------------------------------------------------
@@ -586,6 +748,8 @@ final class ReindexTestTasksStub
     /** @var array<int, mixed> */
     public array $cancelledTasks = [];
 
+    public ?\Throwable $cancelException = null;
+
     public function __construct(private readonly array $responses)
     {
     }
@@ -605,6 +769,10 @@ final class ReindexTestTasksStub
     public function cancel(array $params): array
     {
         $this->cancelledTasks[] = $params['task_id'] ?? null;
+
+        if ($this->cancelException !== null) {
+            throw $this->cancelException;
+        }
 
         return [];
     }
