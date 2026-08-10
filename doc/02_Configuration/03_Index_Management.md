@@ -245,8 +245,8 @@ Notes:
 
 - The indexed value is the **save-time snapshot** as a string, truncated to the field
   definition's `columnLength` (default 190). The fields stay searchable, filterable and sortable.
-- Changed calculator logic is only reflected after an element is saved again — or by running a
-  reindex with the mode overridden to `live` (see below).
+- Changed calculator logic is only reflected after an element is saved again (see
+  [Refreshing calculated values after a calculator change](#refreshing-calculated-values-after-a-calculator-change) below).
 - Calculated fields inside field collections and object bricks are not read from the query store
   and keep live behavior.
 - Switching the mode does not change the index mapping, so it does not trigger an automatic
