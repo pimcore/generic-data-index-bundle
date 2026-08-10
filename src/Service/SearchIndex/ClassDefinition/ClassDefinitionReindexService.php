@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\Enqueue
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
+use Psr\Log\LoggerInterface;
 
 /**
  * @internal
@@ -31,6 +32,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         private EnqueueServiceInterface $enqueueService,
         private SettingsStoreServiceInterface $settingsStoreService,
         private IndexIconUpdateServiceInterface $indexIconUpdateService,
+        private LoggerInterface $pimcoreGenericDataIndexLogger,
     ) {
     }
 
@@ -76,8 +78,21 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
 
         if ($skipIfClassNotChanged && $storedCheckSum === $currentCheckSum) {
+            $this->pimcoreGenericDataIndexLogger->debug('Mapping unchanged, skipping reindex', [
+                'class' => $classDefinition->getName(),
+                'classId' => $classDefinition->getId(),
+                'checksum' => $currentCheckSum,
+            ]);
+
             return false;
         }
+
+        $this->pimcoreGenericDataIndexLogger->info('Mapping changed, reindexing class', [
+            'class' => $classDefinition->getName(),
+            'classId' => $classDefinition->getId(),
+            'storedChecksum' => $storedCheckSum,
+            'currentChecksum' => $currentCheckSum,
+        ]);
 
         $this->dataObjectIndexHandler
             ->reindexMapping(
