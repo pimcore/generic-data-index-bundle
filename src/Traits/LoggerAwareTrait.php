@@ -21,8 +21,10 @@ trait LoggerAwareTrait
     protected LoggerInterface|null $logger;
 
     #[Required]
-    public function setLogger(LoggerInterface $pimcoreLogger): void
+    public function setLogger(LoggerInterface $pimcoreGenericDataIndexLogger): void
     {
-        $this->logger = $pimcoreLogger;
+        // Bind to the dedicated "pimcore_generic_data_index" Monolog channel (declared in the
+        // bundle extension). Autowiring resolves the argument name to that channel's logger.
+        $this->logger = $pimcoreGenericDataIndexLogger;
     }
 }
