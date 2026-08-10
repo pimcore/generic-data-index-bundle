@@ -94,13 +94,13 @@ final class IndexQueueService implements IndexQueueServiceInterface
 
             $this->pathService->rewriteChildrenIndexPaths($element);
         } catch (Exception $e) {
-            $this->logger->error(
-                sprintf(
-                    'Update indexQueue in database-table %s failed! Error: %s',
-                    IndexQueue::TABLE,
-                    $e->getMessage()
-                )
-            );
+            $this->logger->error('Updating the index queue failed', [
+                'table' => IndexQueue::TABLE,
+                'elementId' => $element->getId(),
+                'elementType' => $element->getType(),
+                'operation' => $operation,
+                'exception' => $e,
+            ]);
         }
 
         return $this;
