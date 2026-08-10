@@ -96,7 +96,11 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
 
             foreach ($languages as $language) {
                 $localizedValue = $useQueryStore
-                    ? $this->calculatedValueQueryStoreService->getLocalizedValue($dataObject, $fieldDefinition, $language)
+                    ? $this->calculatedValueQueryStoreService->getLocalizedValue(
+                        $dataObject,
+                        $fieldDefinition,
+                        $language
+                    )
                     : $value->getLocalizedValue($attribute, $language);
                 $localizedValue =  $this->fieldDefinitionService->normalizeValue($fieldDefinition, $localizedValue);
                 $result[$attribute][$language] = $localizedValue;
@@ -120,8 +124,16 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         }
         $languages = array_keys($indexData);
         $attributes = array_keys(reset($indexData));
+        $queryStore = $this->calculatedFieldsIndexModeResolver->getMode() === CalculatedFieldsIndexMode::QUERY_STORE;
         $result = [];
         foreach ($attributes as $attribute) {
+            // In query_store mode calculated values come from the query table (handled in
+            // normalize()); the inheritance pass must not call getLocalizedValue() for them,
+            // which would execute the calculator and defeat the mode.
+            if ($queryStore && $value->getFieldDefinition($attribute) instanceof CalculatedValue) {
+                continue;
+            }
+
             foreach ($languages as $indexDataLanguage) {
                 $data = $this->getInheritedDataForAdapter(
                     $dataObject,

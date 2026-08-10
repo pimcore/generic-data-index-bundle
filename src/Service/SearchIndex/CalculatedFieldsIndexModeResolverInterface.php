@@ -16,24 +16,23 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\CalculatedFieldsIndexMode;
 
 /**
- * Resolves the effective calculated-fields index mode. Precedence:
- *
- *   1. a process-level override (set e.g. by a CLI option),
- *   2. the GENERIC_DATA_INDEX_CALCULATED_FIELDS_MODE environment variable — value
- *      extraction happens in the queue worker processes, so overriding the mode for a
- *      reindex cycle means setting the environment variable on the workers,
- *   3. the configured `calculated_fields_index_mode`.
+ * Resolves the effective calculated-fields index mode: the process-level override if set
+ * (e.g. from a reindex CLI option, carried to the worker via IndexUpdateQueueMessage),
+ * otherwise the configured mode.
  *
  * @internal
  */
 interface CalculatedFieldsIndexModeResolverInterface
 {
-    public const ENV_VAR = 'GENERIC_DATA_INDEX_CALCULATED_FIELDS_MODE';
-
     public function getMode(): CalculatedFieldsIndexMode;
 
     /**
-     * Process-level override, e.g. from a CLI option. Pass null to clear.
+     * The current process-level override, or null when the configured mode applies.
+     */
+    public function getOverrideMode(): ?CalculatedFieldsIndexMode;
+
+    /**
+     * Set a process-level override, or null to clear it.
      */
     public function overrideMode(?CalculatedFieldsIndexMode $mode): void;
 }

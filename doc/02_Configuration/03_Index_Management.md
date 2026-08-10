@@ -254,19 +254,20 @@ Notes:
 
 ### Refreshing calculated values with live data
 
-The reindex command accepts a mode override for a single run:
+The stored value reflects the last save. To refresh calculated values in the index under changed
+calculator logic without permanently switching the mode, pass a per-run override to a reindex
+command that enqueues elements:
 
 ```bash
-bin/console generic-data-index:reindex --calculated-fields-mode=live
+bin/console generic-data-index:update:index --calculated-fields-mode=live
+# or, for changed classes only:
+bin/console generic-data-index:deployment:reindex --calculated-fields-mode=live
 ```
 
-Since element values are extracted by the **index queue workers** (separate processes), the
-override must also be set on the workers for the duration of the queue drain, via the
-`GENERIC_DATA_INDEX_CALCULATED_FIELDS_MODE` environment variable:
+The override is carried on the index-queue messages produced by that run, so it reaches the queue
+workers that extract the values and applies to exactly those elements — a normal save happening at
+the same time keeps using the configured mode. No configuration change and no worker environment
+variable are required.
 
-```bash
-GENERIC_DATA_INDEX_CALCULATED_FIELDS_MODE=live bin/console messenger:consume pimcore_generic_data_index_queue ...
-```
-
-The environment variable takes precedence over the configured mode; a CLI override takes
-precedence over both within its own process.
+> `generic-data-index:reindex` performs a native index-to-index copy and does not re-extract values,
+> so the override does not apply there.

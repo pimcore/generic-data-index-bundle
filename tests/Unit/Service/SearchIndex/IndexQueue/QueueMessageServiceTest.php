@@ -17,6 +17,7 @@ use Codeception\Test\Unit;
 use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolver;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessageService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
@@ -33,7 +34,8 @@ final class QueueMessageServiceTest extends Unit
     {
         $this->queueMessageService = new QueueMessageService(
             $this->getEmptyQueueRepository(),
-            $this->makeEmpty(MessageBusInterface::class)
+            $this->makeEmpty(MessageBusInterface::class),
+            new CalculatedFieldsIndexModeResolver(),
         );
     }
 

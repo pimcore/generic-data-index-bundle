@@ -16,7 +16,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Command;
 use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Command\ReindexItemsCommand;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolverInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -38,10 +37,7 @@ final class ReindexItemsCommandTest extends Unit
             },
         ]);
 
-        $commandTester = new CommandTester(new ReindexItemsCommand(
-            $reindexService,
-            $this->makeEmpty(CalculatedFieldsIndexModeResolverInterface::class)
-        ));
+        $commandTester = new CommandTester(new ReindexItemsCommand($reindexService));
         $commandTester->execute([]);
 
         $this->assertSame(Command::SUCCESS, $commandTester->getStatusCode());
@@ -62,10 +58,7 @@ final class ReindexItemsCommandTest extends Unit
             },
         ]);
 
-        $commandTester = new CommandTester(new ReindexItemsCommand(
-            $reindexService,
-            $this->makeEmpty(CalculatedFieldsIndexModeResolverInterface::class)
-        ));
+        $commandTester = new CommandTester(new ReindexItemsCommand($reindexService));
         $commandTester->execute([]);
 
         $this->assertSame(Command::FAILURE, $commandTester->getStatusCode());

@@ -14,18 +14,13 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\CalculatedFieldsIndexMode;
-use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 
 /**
  * @internal
  */
 final class CalculatedFieldsIndexModeResolver implements CalculatedFieldsIndexModeResolverInterface
 {
-    use LoggerAwareTrait;
-
     private ?CalculatedFieldsIndexMode $override = null;
-
-    private bool $invalidEnvValueLogged = false;
 
     public function __construct(
         private readonly string $configuredMode = CalculatedFieldsIndexMode::LIVE->value,
@@ -34,29 +29,12 @@ final class CalculatedFieldsIndexModeResolver implements CalculatedFieldsIndexMo
 
     public function getMode(): CalculatedFieldsIndexMode
     {
-        if ($this->override !== null) {
-            return $this->override;
-        }
+        return $this->override ?? CalculatedFieldsIndexMode::from($this->configuredMode);
+    }
 
-        $envValue = getenv(self::ENV_VAR);
-        if ($envValue !== false && $envValue !== '') {
-            $envMode = CalculatedFieldsIndexMode::tryFrom($envValue);
-            if ($envMode !== null) {
-                return $envMode;
-            }
-
-            if (!$this->invalidEnvValueLogged) {
-                $this->invalidEnvValueLogged = true;
-                $this->logger->warning(sprintf(
-                    'Ignoring invalid value "%s" of %s, falling back to the configured mode. Valid values: %s',
-                    $envValue,
-                    self::ENV_VAR,
-                    implode(', ', array_column(CalculatedFieldsIndexMode::cases(), 'value'))
-                ));
-            }
-        }
-
-        return CalculatedFieldsIndexMode::from($this->configuredMode);
+    public function getOverrideMode(): ?CalculatedFieldsIndexMode
+    {
+        return $this->override;
     }
 
     public function overrideMode(?CalculatedFieldsIndexMode $mode): void

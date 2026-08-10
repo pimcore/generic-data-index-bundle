@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\IdNotFoundException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\CalculatedFieldsModeOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Component\Console\Command\LockableTrait;
@@ -33,6 +34,7 @@ use Symfony\Contracts\Service\Attribute\Required;
  */
 final class IndexUpdateCommand extends AbstractCommand
 {
+    use CalculatedFieldsModeOptionTrait;
     use LockableTrait;
 
     private const OPTION_CLASS_DEFINITION_ID = 'class-definition-id';
@@ -103,6 +105,8 @@ final class IndexUpdateCommand extends AbstractCommand
                 'Updates index/mapping for all classDefinitions/asset without ' .
                 'deleting them. Adds there elements to index queue.'
             );
+
+        $this->addCalculatedFieldsModeOption();
     }
 
     /**
@@ -115,6 +119,12 @@ final class IndexUpdateCommand extends AbstractCommand
             throw new CommandAlreadyRunningException(
                 'The command is already running in another process.'
             );
+        }
+
+        if (!$this->applyCalculatedFieldsModeOption($input, $output)) {
+            $this->release();
+
+            return self::INVALID;
         }
 
         if ($input->getOption(self::UPDATE_GLOBAL_ALIASES_ONLY)) {

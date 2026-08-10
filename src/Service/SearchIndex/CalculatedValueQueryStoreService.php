@@ -14,7 +14,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Doctrine\DBAL\Connection;
-use Doctrine\DBAL\Exception as DBALException;
+use Doctrine\DBAL\Exception\InvalidFieldNameException;
+use Doctrine\DBAL\Exception\TableNotFoundException;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\DataObject\ClassDefinition\Data\CalculatedValue;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields;
@@ -48,7 +49,7 @@ final class CalculatedValueQueryStoreService implements CalculatedValueQueryStor
             'object_query_' . $dataObject->getClassId(),
             $this->getCalculatedFieldNames($dataObject, localized: false),
             $dataObject,
-            $dataObject->getClassId() . ':' . $dataObject->getId()
+            $dataObject->getClassId() . ':' . $dataObject->getId() . ':' . (int) $dataObject->getModificationDate()
         );
 
         return $this->toValue($row, $fieldDefinition->getName());
@@ -64,6 +65,7 @@ final class CalculatedValueQueryStoreService implements CalculatedValueQueryStor
             $this->getCalculatedFieldNames($dataObject, localized: true),
             $dataObject,
             $dataObject->getClassId() . ':' . $dataObject->getId() . ':' . $language
+            . ':' . (int) $dataObject->getModificationDate()
         );
 
         return $this->toValue($row, $fieldDefinition->getName());
@@ -86,10 +88,13 @@ final class CalculatedValueQueryStoreService implements CalculatedValueQueryStor
 
         $row = [];
         if ($fieldNames !== []) {
-            $columns = implode(', ', array_map(
-                fn (string $name) => $this->connection->quoteIdentifier($name),
-                $fieldNames
-            ));
+            $columns = implode(
+                ', ',
+                array_map(
+                    fn (string $name) => $this->connection->quoteIdentifier($name),
+                    $fieldNames
+                )
+            );
 
             try {
                 $result = $this->connection->fetchAssociative(
@@ -102,11 +107,13 @@ final class CalculatedValueQueryStoreService implements CalculatedValueQueryStor
                     [$dataObject->getId()]
                 );
                 $row = $result ?: [];
-            } catch (DBALException $e) {
-                // Missing table/column (e.g. field added but class not yet rebuilt): the
-                // affected values degrade to null instead of failing the whole element.
+            } catch (TableNotFoundException | InvalidFieldNameException $e) {
+                // Missing table/column (e.g. field added but class not yet rebuilt) is an expected
+                // structural gap: the affected values degrade to null instead of failing the
+                // element. Operational failures (connection, timeout, deadlock) are NOT caught here
+                // - they propagate so the queue retries instead of erasing valid values with null.
                 $this->logger->warning(sprintf(
-                    'Could not read calculated field values from "%s" for object %d: %s',
+                    'Query table "%s" or a calculated column is missing for object %d, indexing null: %s',
                     $table,
                     $dataObject->getId(),
                     $e->getMessage()
@@ -114,7 +121,9 @@ final class CalculatedValueQueryStoreService implements CalculatedValueQueryStor
             }
         }
 
-        return $this->rowCache[$cacheKey] = $row;
+        $this->rowCache[$cacheKey] = $row;
+
+        return $row;
     }
 
     /**

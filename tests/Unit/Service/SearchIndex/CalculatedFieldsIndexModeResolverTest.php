@@ -16,54 +16,33 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\CalculatedFieldsIndexMode;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolver;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolverInterface;
-use Psr\Log\NullLogger;
 
 final class CalculatedFieldsIndexModeResolverTest extends Unit
 {
-    protected function _after(): void
-    {
-        putenv(CalculatedFieldsIndexModeResolverInterface::ENV_VAR);
-    }
-
     public function testDefaultsToConfiguredMode(): void
     {
-        $this->assertSame(CalculatedFieldsIndexMode::LIVE, $this->createResolver('live')->getMode());
-        $this->assertSame(CalculatedFieldsIndexMode::QUERY_STORE, $this->createResolver('query_store')->getMode());
+        $this->assertSame(CalculatedFieldsIndexMode::LIVE, (new CalculatedFieldsIndexModeResolver('live'))->getMode());
+        $this->assertSame(
+            CalculatedFieldsIndexMode::QUERY_STORE,
+            (new CalculatedFieldsIndexModeResolver('query_store'))->getMode()
+        );
     }
 
-    public function testEnvironmentVariableOverridesConfiguredMode(): void
+    public function testNoOverrideByDefault(): void
     {
-        putenv(CalculatedFieldsIndexModeResolverInterface::ENV_VAR . '=live');
-
-        $this->assertSame(CalculatedFieldsIndexMode::LIVE, $this->createResolver('query_store')->getMode());
+        $this->assertNull((new CalculatedFieldsIndexModeResolver('query_store'))->getOverrideMode());
     }
 
-    public function testInvalidEnvironmentValueFallsBackToConfiguredMode(): void
+    public function testOverrideWinsOverConfiguredModeAndIsReadable(): void
     {
-        putenv(CalculatedFieldsIndexModeResolverInterface::ENV_VAR . '=nonsense');
+        $resolver = new CalculatedFieldsIndexModeResolver('query_store');
 
-        $this->assertSame(CalculatedFieldsIndexMode::QUERY_STORE, $this->createResolver('query_store')->getMode());
-    }
-
-    public function testProcessOverrideWinsOverEnvironmentAndConfig(): void
-    {
-        putenv(CalculatedFieldsIndexModeResolverInterface::ENV_VAR . '=query_store');
-
-        $resolver = $this->createResolver('query_store');
         $resolver->overrideMode(CalculatedFieldsIndexMode::LIVE);
-
         $this->assertSame(CalculatedFieldsIndexMode::LIVE, $resolver->getMode());
+        $this->assertSame(CalculatedFieldsIndexMode::LIVE, $resolver->getOverrideMode());
 
         $resolver->overrideMode(null);
         $this->assertSame(CalculatedFieldsIndexMode::QUERY_STORE, $resolver->getMode());
-    }
-
-    private function createResolver(string $configuredMode): CalculatedFieldsIndexModeResolver
-    {
-        $resolver = new CalculatedFieldsIndexModeResolver($configuredMode);
-        $resolver->setLogger(new NullLogger());
-
-        return $resolver;
+        $this->assertNull($resolver->getOverrideMode());
     }
 }
