@@ -48,3 +48,18 @@ package-lock.json
 /auth.json
 /config.json
 /composer.phar
+
+# test setup residue (copied by setup script)
+/config/config.yaml
+/config/packages/
+
+# Test-setup residue copied into the bundle by tests/bin setup script
+/config/config.yaml
+/config/bundles.php
+/config/system.yaml
+/config/services_test.yaml
+/config/packages/
+/public/
+/templates/
+/kernel/
+/bin/console

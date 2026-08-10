@@ -223,3 +223,50 @@ php bin/console generic-data-index:deployment:reindex
 ```
 
 This command will update the index structure for all data object classes which were created/updated since the last deployment and reindex all data objects for relevant classes.
+
+## Calculated Fields Index Mode
+
+By default, values of calculated value fields are computed **live** while index data is
+extracted: the field's calculator class is executed for every calculated field of every element on
+every (re)indexing — for localized calculated fields once per language. For expensive calculators
+(relation loads, external services) this can dominate the indexing cost on large installations.
+
+With the `query_store` mode, the value stored in the object's **query table** (written on every
+save — the same value SQL-based grid listings use) is indexed instead, and the calculator is never
+executed during indexing:
+
+```yaml
+pimcore_generic_data_index:
+    index_service:
+        calculated_fields_index_mode: 'query_store' # default: 'live'
+```
+
+Notes:
+
+- The indexed value is the **save-time snapshot** as a string, truncated to the field
+  definition's `columnLength` (default 190). The fields stay searchable, filterable and sortable.
+- Changed calculator logic is only reflected after an element is saved again — or by running a
+  reindex with the mode overridden to `live` (see below).
+- Calculated fields inside field collections and object bricks are not read from the query store
+  and keep live behavior.
+- Switching the mode does not change the index mapping, so it does not trigger an automatic
+  reindex: values converge as elements are saved or reprocessed by the index queue.
+
+### Refreshing calculated values with live data
+
+The reindex command accepts a mode override for a single run:
+
+```bash
+bin/console generic-data-index:reindex --calculated-fields-mode=live
+```
+
+Since element values are extracted by the **index queue workers** (separate processes), the
+override must also be set on the workers for the duration of the queue drain, via the
+`GENERIC_DATA_INDEX_CALCULATED_FIELDS_MODE` environment variable:
+
+```bash
+GENERIC_DATA_INDEX_CALCULATED_FIELDS_MODE=live bin/console messenger:consume pimcore_generic_data_index_queue ...
+```
+
+The environment variable takes precedence over the configured mode; a CLI override takes
+precedence over both within its own process.
