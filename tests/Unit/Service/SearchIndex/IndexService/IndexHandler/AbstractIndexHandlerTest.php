@@ -13,14 +13,15 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\IndexService\IndexHandler;
 
+use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AbstractIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
-use Psr\Log\AbstractLogger;
 use Psr\Log\NullLogger;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
@@ -79,25 +80,21 @@ final class AbstractIndexHandlerTest extends Unit
      *
      * @see https://github.com/pimcore/service-operations/issues/853
      */
-    public function testReindexMappingRethrowsWhenFallbackRecreationAlsoFails(): void
+    public function testReindexMappingPropagatesRecreationFailures(): void
     {
-        $reindexException = new Exception('initial reindex failure (504 Gateway Time-out)');
-        $fallbackException = new Exception('fallback recreation failed');
+        $recreationException = new Exception('index recreation failed');
 
         $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
             'existsAlias' => true,
             'getCurrentIndexVersion' => '',
-            'reindex' => static function () use ($reindexException): void {
-                throw $reindexException;
-            },
-            'createIndex' => static function () use ($fallbackException): void {
-                throw $fallbackException;
+            'reindex' => ReindexResult::MAPPING_INCOMPATIBLE,
+            'createIndex' => static function () use ($recreationException): void {
+                throw $recreationException;
             },
         ]);
 
-        $logger = $this->createCollectingLogger();
         $handler = $this->createHandlerWithService($searchIndexService);
-        $handler->setLogger($logger);
+        $handler->setLogger(new NullLogger());
 
         $thrown = null;
 
@@ -108,27 +105,58 @@ final class AbstractIndexHandlerTest extends Unit
         }
 
         $this->assertSame(
-            $fallbackException,
+            $recreationException,
             $thrown,
-            'Expected the fallback exception to propagate out of reindexMapping()'
-        );
-
-        $errorLogs = array_filter($logger->records, static fn (array $r): bool => $r['level'] === 'error');
-        $this->assertNotEmpty($errorLogs, 'The failure must still be logged');
-        $loggedMessage = implode(' | ', array_column($errorLogs, 'message'));
-        $this->assertStringContainsString(
-            'initial reindex failure',
-            $loggedMessage,
-            'The original reindex exception must not be lost through variable shadowing'
+            'A failed index recreation must propagate so the mapping checksum is not stored'
         );
     }
 
     /**
-     * The fallback to a forced index recreation is the designed recovery for mapping
-     * changes that cannot be applied via reindex. When it succeeds, no exception
-     * may propagate.
+     * A transient failure (unreachable cluster, timeout, rejected request) must
+     * propagate without touching any index. Recreating the live index in reaction
+     * to a transient error destroys all indexed data.
+     *
+     * @see https://github.com/pimcore/service-operations/issues/1126
      */
-    public function testReindexMappingRecoversWhenFallbackRecreationSucceeds(): void
+    public function testReindexMappingPropagatesTransientFailuresWithoutTouchingIndices(): void
+    {
+        $transientException = new Exception('No alive nodes found in your cluster');
+
+        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => true,
+            'getCurrentIndexVersion' => '',
+            'reindex' => static function () use ($transientException): void {
+                throw $transientException;
+            },
+            'createIndex' => Expected::never(),
+            'deleteIndex' => Expected::never(),
+            'putMapping' => Expected::never(),
+        ]);
+
+        $handler = $this->createHandlerWithService($searchIndexService);
+        $handler->setLogger(new NullLogger());
+
+        $thrown = null;
+
+        try {
+            $handler->reindexMapping();
+        } catch (Exception $e) {
+            $thrown = $e;
+        }
+
+        $this->assertSame(
+            $transientException,
+            $thrown,
+            'A transient reindex failure must propagate unchanged and must not trigger index recreation'
+        );
+    }
+
+    /**
+     * A forced index recreation is the designed recovery for mapping changes that
+     * cannot be applied to the existing documents via reindex — reported by the
+     * adapter as MAPPING_INCOMPATIBLE, never inferred from an exception.
+     */
+    public function testReindexMappingRecreatesIndexWhenMappingIsIncompatible(): void
     {
         $createdIndices = [];
         $fluent = $this->makeEmpty(SearchIndexServiceInterface::class, [
@@ -138,9 +166,7 @@ final class AbstractIndexHandlerTest extends Unit
         $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
             'existsAlias' => true,
             'getCurrentIndexVersion' => '',
-            'reindex' => static function (): void {
-                throw new Exception('initial reindex failure (504 Gateway Time-out)');
-            },
+            'reindex' => ReindexResult::MAPPING_INCOMPATIBLE,
             'createIndex' => static function (string $indexName) use (&$createdIndices, $fluent) {
                 $createdIndices[] = $indexName;
 
@@ -157,21 +183,23 @@ final class AbstractIndexHandlerTest extends Unit
         $this->assertContains(
             self::ALIAS_NAME . '-odd',
             $createdIndices,
-            'The fallback must recreate the index when the reindex fails'
+            'The index must be recreated when the mapping is incompatible'
         );
     }
 
-    private function createCollectingLogger(): AbstractLogger
+    public function testReindexMappingDoesNotRecreateIndexOnSuccess(): void
     {
-        return new class extends AbstractLogger {
-            /** @var array<int, array{level: string, message: string}> */
-            public array $records = [];
+        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => true,
+            'reindex' => ReindexResult::SUCCESS,
+            'createIndex' => Expected::never(),
+            'deleteIndex' => Expected::never(),
+        ]);
 
-            public function log($level, $message, array $context = []): void
-            {
-                $this->records[] = ['level' => (string) $level, 'message' => (string) $message];
-            }
-        };
+        $handler = $this->createHandlerWithService($searchIndexService);
+        $handler->setLogger(new NullLogger());
+
+        $handler->reindexMapping();
     }
 
     private function createHandler(bool $indexSquatsAliasName, array &$deletedIndices): AbstractIndexHandler
@@ -251,15 +279,15 @@ final class AbstractIndexHandlerTest extends Unit
     }
 
     /**
-     * When the alias exists, reindex() fails, and the fallback updateMapping() also fails
-     * on putMapping(), the depth counter must still be forwarded so the recursive calls
-     * remain bounded. Without the fix, every fallback resets depth to 0, enabling infinite
-     * recursion. With the fix, putMapping is called at most MAX_REINDEX_ATTEMPTS times.
+     * When reindexMapping() returns MAPPING_INCOMPATIBLE and the subsequent index recreation
+     * fails on putMapping(), the failure must propagate so callers do not store a mapping
+     * checksum for an update that was never applied.
      *
-     * reindexMapping() must propagate ReindexFailedException once the depth guard fires,
-     * so callers do not store a mapping checksum for an update that was never applied.
+     * Note: In the ReindexResult model, transient failures (thrown exceptions from reindex())
+     * propagate immediately. Only MAPPING_INCOMPATIBLE triggers index recreation and the
+     * depth guard applies to that recreation path to prevent infinite recursion.
      */
-    public function testReindexMappingBoundsAttemptsWhenAliasExistsAndBothOperationsFail(): void
+    public function testReindexMappingBoundsAttemptsWhenMappingIncompatibleAndRecreationFails(): void
     {
         $attempts = 0;
         $fluent = $this->makeEmpty(SearchIndexServiceInterface::class, ['addAlias' => []]);
@@ -269,9 +297,7 @@ final class AbstractIndexHandlerTest extends Unit
             'existsIndex' => false,
             'deleteIndex' => null,
             'getCurrentIndexVersion' => '',
-            'reindex' => static function (): void {
-                throw new Exception('reindex failed (504 Gateway Time-out)');
-            },
+            'reindex' => ReindexResult::MAPPING_INCOMPATIBLE,
             'createIndex' => static function () use ($fluent): SearchIndexServiceInterface { return $fluent; },
             'putMapping' => static function () use (&$attempts): array {
                 ++$attempts;
@@ -285,19 +311,18 @@ final class AbstractIndexHandlerTest extends Unit
         $thrown = null;
         try {
             $handler->reindexMapping();
-        } catch (ReindexFailedException $e) {
+        } catch (Exception $e) {
             $thrown = $e;
         }
 
-        $this->assertInstanceOf(
-            ReindexFailedException::class,
+        $this->assertNotNull(
             $thrown,
-            'reindexMapping() must throw ReindexFailedException once all attempts are exhausted'
+            'reindexMapping() must throw when index recreation fails after MAPPING_INCOMPATIBLE'
         );
         $this->assertGreaterThan(
             0,
             $attempts,
-            'putMapping must have been called at least once through the alias-present fallback path'
+            'putMapping must have been called at least once through the MAPPING_INCOMPATIBLE recreation path'
         );
         $this->assertLessThanOrEqual(
             3,

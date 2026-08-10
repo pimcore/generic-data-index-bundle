@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Exception;
 use JsonException;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
@@ -138,26 +139,23 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                 reindexDepth: $depth
             );
         } else {
-            try {
-                $this->searchIndexService->reindex(
-                    $alias,
-                    $mappingProperties
-                );
-            } catch (Exception $e) {
-                try {
-                    $this->doUpdateMappingFull($context, true, $mappingProperties, $depth);
-                } catch (Exception $fallbackException) {
-                    // Both the reindex and the fallback recreation failed: rethrow so the
-                    // failure reaches the caller instead of the mapping checksum being
-                    // stored as if the reindex had succeeded.
-                    $this->logger->error(sprintf(
-                        'Reindexing failed due to following error: %s (initial reindex failure: %s)',
-                        $fallbackException,
-                        $e->getMessage()
-                    ));
+            $reindexResult = $this->searchIndexService->reindex(
+                $alias,
+                $mappingProperties
+            );
 
-                    throw $fallbackException;
-                }
+            if ($reindexResult === ReindexResult::MAPPING_INCOMPATIBLE) {
+                // The new mapping cannot be applied to the existing documents (e.g.
+                // after a field type change): recreate the index with the new mapping;
+                // its content is re-populated from the index queue. Genuine reindex
+                // errors (unreachable cluster, timeouts) are thrown by reindex() and
+                // propagate — recreating the live index in reaction to a transient
+                // failure would destroy all indexed data.
+                $this->logger->warning(sprintf(
+                    'Recreating index for alias "%s": the new mapping is incompatible with the indexed documents',
+                    $alias
+                ));
+                $this->doUpdateMappingFull($context, true, $mappingProperties, $depth);
             }
         }
 
