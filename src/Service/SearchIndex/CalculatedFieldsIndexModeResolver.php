@@ -20,8 +20,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\CalculatedFieldsIndex
  */
 final class CalculatedFieldsIndexModeResolver implements CalculatedFieldsIndexModeResolverInterface
 {
-    private ?CalculatedFieldsIndexMode $override = null;
-
     public function __construct(
         private readonly string $configuredMode = CalculatedFieldsIndexMode::LIVE->value,
     ) {
@@ -29,16 +27,6 @@ final class CalculatedFieldsIndexModeResolver implements CalculatedFieldsIndexMo
 
     public function getMode(): CalculatedFieldsIndexMode
     {
-        return $this->override ?? CalculatedFieldsIndexMode::from($this->configuredMode);
-    }
-
-    public function getOverrideMode(): ?CalculatedFieldsIndexMode
-    {
-        return $this->override;
-    }
-
-    public function overrideMode(?CalculatedFieldsIndexMode $mode): void
-    {
-        $this->override = $mode;
+        return CalculatedFieldsIndexMode::from($this->configuredMode);
     }
 }

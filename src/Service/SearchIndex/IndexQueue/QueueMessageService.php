@@ -16,7 +16,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\IndexUpdateQueueMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolverInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Symfony\Component\Messenger\MessageBusInterface;
 
@@ -29,8 +28,7 @@ final class QueueMessageService implements QueueMessageServiceInterface
 
     public function __construct(
         private readonly IndexQueueRepository $indexQueueRepository,
-        private readonly MessageBusInterface $messageBus,
-        private readonly CalculatedFieldsIndexModeResolverInterface $calculatedFieldsIndexModeResolver,
+        private readonly MessageBusInterface $messageBus
     ) {
     }
 
@@ -56,10 +54,7 @@ final class QueueMessageService implements QueueMessageServiceInterface
                         'dispatchId' => $dispatchId,
                         'entries' => $amountOfEntries,
                     ]);
-                    $this->messageBus->dispatch(new IndexUpdateQueueMessage(
-                        $entries,
-                        $this->calculatedFieldsIndexModeResolver->getOverrideMode(),
-                    ));
+                    $this->messageBus->dispatch(new IndexUpdateQueueMessage($entries));
                 } catch (Exception $exception) {
                     $this->logger->error('Dispatching IndexUpdateQueueMessage failed', [
                         'dispatchId' => $dispatchId,

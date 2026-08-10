@@ -19,7 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIn
 
 final class CalculatedFieldsIndexModeResolverTest extends Unit
 {
-    public function testDefaultsToConfiguredMode(): void
+    public function testResolvesTheConfiguredMode(): void
     {
         $this->assertSame(CalculatedFieldsIndexMode::LIVE, (new CalculatedFieldsIndexModeResolver('live'))->getMode());
         $this->assertSame(
@@ -28,21 +28,8 @@ final class CalculatedFieldsIndexModeResolverTest extends Unit
         );
     }
 
-    public function testNoOverrideByDefault(): void
+    public function testDefaultsToLive(): void
     {
-        $this->assertNull((new CalculatedFieldsIndexModeResolver('query_store'))->getOverrideMode());
-    }
-
-    public function testOverrideWinsOverConfiguredModeAndIsReadable(): void
-    {
-        $resolver = new CalculatedFieldsIndexModeResolver('query_store');
-
-        $resolver->overrideMode(CalculatedFieldsIndexMode::LIVE);
-        $this->assertSame(CalculatedFieldsIndexMode::LIVE, $resolver->getMode());
-        $this->assertSame(CalculatedFieldsIndexMode::LIVE, $resolver->getOverrideMode());
-
-        $resolver->overrideMode(null);
-        $this->assertSame(CalculatedFieldsIndexMode::QUERY_STORE, $resolver->getMode());
-        $this->assertNull($resolver->getOverrideMode());
+        $this->assertSame(CalculatedFieldsIndexMode::LIVE, (new CalculatedFieldsIndexModeResolver())->getMode());
     }
 }

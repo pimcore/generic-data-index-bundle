@@ -252,22 +252,18 @@ Notes:
 - Switching the mode does not change the index mapping, so it does not trigger an automatic
   reindex: values converge as elements are saved or reprocessed by the index queue.
 
-### Refreshing calculated values with live data
+### Refreshing calculated values after a calculator change
 
-The stored value reflects the last save. To refresh calculated values in the index under changed
-calculator logic without permanently switching the mode, pass a per-run override to a reindex
-command that enqueues elements:
+In `query_store` mode the indexed value is the **save-time snapshot** stored in the object's query
+table (`object_query_*`), which is (re)written only when an object is **saved**. Changing a
+calculator's code therefore does not update already-stored values on its own — exactly as with
+Pimcore's classic SQL grids and listings, which read the same query-table snapshot.
 
-```bash
-bin/console generic-data-index:update:index --calculated-fields-mode=live
-# or, for changed classes only:
-bin/console generic-data-index:deployment:reindex --calculated-fields-mode=live
-```
+To refresh calculated values after a calculator change, **re-save the affected objects** (e.g. a
+short console command that loads the class's objects in chunks and calls `->save()` on each). A save
+recomputes the calculated fields, rewrites `object_query_*`, and enqueues the element for reindexing,
+so both the query table and the index pick up the new logic. For large object counts, batch the
+re-save and disable versioning for the run to reduce cost.
 
-The override is carried on the index-queue messages produced by that run, so it reaches the queue
-workers that extract the values and applies to exactly those elements — a normal save happening at
-the same time keeps using the configured mode. No configuration change and no worker environment
-variable are required.
-
-> `generic-data-index:reindex` performs a native index-to-index copy and does not re-extract values,
-> so the override does not apply there.
+> A dedicated command to recompute the query-table snapshots without a full object save is planned
+> as a follow-up.

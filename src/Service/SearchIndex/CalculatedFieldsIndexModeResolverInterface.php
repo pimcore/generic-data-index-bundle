@@ -16,23 +16,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\CalculatedFieldsIndexMode;
 
 /**
- * Resolves the effective calculated-fields index mode: the process-level override if set
- * (e.g. from a reindex CLI option, carried to the worker via IndexUpdateQueueMessage),
- * otherwise the configured mode.
+ * Resolves the configured calculated-fields index mode.
  *
  * @internal
  */
 interface CalculatedFieldsIndexModeResolverInterface
 {
     public function getMode(): CalculatedFieldsIndexMode;
-
-    /**
-     * The current process-level override, or null when the configured mode applies.
-     */
-    public function getOverrideMode(): ?CalculatedFieldsIndexMode;
-
-    /**
-     * Set a process-level override, or null to clear it.
-     */
-    public function overrideMode(?CalculatedFieldsIndexMode $mode): void;
 }

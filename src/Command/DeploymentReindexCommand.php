@@ -17,7 +17,6 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Traits\CalculatedFieldsModeOptionTrait;
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Component\Console\Command\LockableTrait;
@@ -29,7 +28,6 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 final class DeploymentReindexCommand extends AbstractCommand
 {
-    use CalculatedFieldsModeOptionTrait;
     use LockableTrait;
 
     public function __construct(
@@ -48,8 +46,6 @@ final class DeploymentReindexCommand extends AbstractCommand
                 'Updates index/mapping for all classDefinitions which changed without' .
                 'deleting them. Afterwards are affected items added into the index queue.'
             );
-
-        $this->addCalculatedFieldsModeOption();
     }
 
     /**
@@ -62,12 +58,6 @@ final class DeploymentReindexCommand extends AbstractCommand
             throw new CommandAlreadyRunningException(
                 'The command is already running in another process.'
             );
-        }
-
-        if (!$this->applyCalculatedFieldsModeOption($input, $output)) {
-            $this->release();
-
-            return self::INVALID;
         }
 
         try {
