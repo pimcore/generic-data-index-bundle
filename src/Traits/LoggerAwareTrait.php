@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Traits;
 
 use Psr\Log\LoggerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Contracts\Service\Attribute\Required;
 
 trait LoggerAwareTrait
@@ -21,10 +22,13 @@ trait LoggerAwareTrait
     protected LoggerInterface|null $logger;
 
     #[Required]
-    public function setLogger(LoggerInterface $pimcoreGenericDataIndexLogger): void
-    {
-        // Bind to the dedicated "pimcore_generic_data_index" Monolog channel (declared in the
-        // bundle extension). Autowiring resolves the argument name to that channel's logger.
-        $this->logger = $pimcoreGenericDataIndexLogger;
+    public function setLogger(
+        // The dedicated "pimcore_generic_data_index" Monolog channel is selected explicitly by
+        // service id, NOT by argument name - so the public parameter keeps its original name and
+        // named-argument callers are not broken.
+        #[Autowire(service: 'monolog.logger.pimcore_generic_data_index')]
+        LoggerInterface $pimcoreLogger,
+    ): void {
+        $this->logger = $pimcoreLogger;
     }
 }

@@ -12,8 +12,9 @@ Following steps are necessary during updating to newer versions.
   items are still pending dispatch), every live index with its document count and size, and a warning for any index
   present in both the `-even` and `-odd` version at once (the fingerprint of an interrupted reindex).
 - [Logging] Generic Data Index now logs to a dedicated `pimcore_generic_data_index` Monolog channel, so its output
-  can be filtered, raised to debug, or routed separately. The channel is still handled by the application's existing
-  handlers — no configuration change is required.
+  can be filtered, raised to debug, or routed separately. Handlers without a channel restriction pick it up
+  automatically; if you restrict a handler to an explicit channel allow-list (e.g. `channels: ["pimcore"]`), add
+  `pimcore_generic_data_index` to that list so its records are not dropped.
 - [Logging] Failure paths (index checksum read, queue enqueue, dispatch handler) now log with structured context and
   the original exception, a claimed queue batch's dispatch id is logged across dispatch and processing for
   correlation, and the per-class mapping-checksum reindex decision (skip vs. reindex, with stored vs. current
