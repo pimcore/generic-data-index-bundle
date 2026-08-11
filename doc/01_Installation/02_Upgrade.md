@@ -42,6 +42,24 @@ description: Version-specific upgrade instructions and breaking changes for the 
   container parameter (env: `PIMCORE_MESSENGER_TRANSPORT_DSN_PREFIX`) instead of being hardcoded to
   `doctrine://default`.
 
+## Upgrade to 2.5.9
+- [Commands] `generic-data-index:update:index` now exits with a non-zero status code when one or more of its
+  update sections (class definition, asset index, full update) fail, instead of always returning `0`. All sections
+  are still attempted and the queue is still dispatched; the command only reports the failure at the end. Deployment
+  pipelines that treated a partial failure as success will now fail visibly — this mirrors the same change made for
+  `generic-data-index:deployment:reindex` and `generic-data-index:reindex` in 2.5.6.
+- [Commands] Added a read-only `generic-data-index:status` command that reports the index queue depth (and whether
+  items are still pending dispatch), every live index with its document count and size, and a warning for any index
+  present in both the `-even` and `-odd` version at once (the fingerprint of an interrupted reindex).
+- [Logging] Generic Data Index now logs to a dedicated `pimcore_generic_data_index` Monolog channel, so its output
+  can be filtered, raised to debug, or routed separately. Handlers without a channel restriction pick it up
+  automatically; if you restrict a handler to an explicit channel allow-list (e.g. `channels: ["pimcore"]`), add
+  `pimcore_generic_data_index` to that list so its records are not dropped.
+- [Logging] Failure paths (index checksum read, queue enqueue, dispatch handler) now log with structured context and
+  the original exception, a claimed queue batch's dispatch id is logged across dispatch and processing for
+  correlation, and the per-class mapping-checksum reindex decision (skip vs. reindex, with stored vs. current
+  checksum) is logged.
+
 ## Upgrade to 2.5.8
 - [Indexing] A failed native reindex no longer triggers a forced recreation of the live index. Recreation now only
   happens when the reindex reports that the existing documents are incompatible with the new mapping (e.g. after a
