@@ -111,6 +111,8 @@ final class StatusCommand extends AbstractCommand
             }
         }
 
-        return array_values(array_keys(array_intersect_key($seenEven, $seenOdd)));
+        // array_keys() already returns a 0-indexed list, so no array_values() wrapper is needed
+        // (newer PHPStan flags the redundant call).
+        return array_keys(array_intersect_key($seenEven, $seenOdd));
     }
 }
