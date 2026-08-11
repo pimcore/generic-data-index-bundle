@@ -67,7 +67,8 @@ final class IndexStatsService implements IndexStatsServiceInterface
         // 10000 buckets, so it alone would drop empty indices and, on very large installs, omit any
         // index beyond the cap. Enumerate every index from _stats instead (it lists them all),
         // preferring the aggregation's accurate searchable doc count and falling back to the _stats
-        // document count where the aggregation has no bucket - so an uncapped index never reports 0.
+        // PRIMARY-shard document count where the aggregation has no bucket - primaries (not total)
+        // so replicas don't inflate the logical count, and an uncapped index never reports 0.
         $docCountByIndex = [];
         foreach ($aggregationResult['aggregations']['indices']['buckets'] as $bucket) {
             $docCountByIndex[$bucket['key']] = $bucket['doc_count'];
@@ -81,7 +82,7 @@ final class IndexStatsService implements IndexStatsServiceInterface
             $sizeInBytes = (int)($indexStats['total']['store']['size_in_bytes'] ?? 0);
             $indices[] = new IndexStatsIndex(
                 indexName: $indexName,
-                itemsCount: $docCountByIndex[$indexName] ?? (int)($indexStats['total']['docs']['count'] ?? 0),
+                itemsCount: $docCountByIndex[$indexName] ?? (int)($indexStats['primaries']['docs']['count'] ?? 0),
                 sizeInKb: round(($sizeInBytes / 1024), 2)
             );
         }
