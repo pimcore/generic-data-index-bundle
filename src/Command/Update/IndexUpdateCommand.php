@@ -22,6 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Component\Console\Command\LockableTrait;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -125,6 +126,7 @@ final class IndexUpdateCommand extends AbstractCommand
         $this->indexUpdateService->setReCreateIndex($input->getOption(self::OPTION_RECREATE_INDEX));
 
         $updateAll = true;
+        $failed = false;
 
         /** @var string|null $classDefinitionId */
         $classDefinitionId = $input->getOption(self::OPTION_CLASS_DEFINITION_ID);
@@ -152,7 +154,8 @@ final class IndexUpdateCommand extends AbstractCommand
                     ->indexUpdateService
                     ->updateClassDefinition($classDefinition);
             } catch (Exception $e) {
-                $this->output->writeln('<error>' . $e->getMessage() . '</error>');
+                $failed = true;
+                $this->writeSectionError(sprintf('Updating ClassDefinition %s', $classDefinitionId), $e);
             }
         }
 
@@ -169,7 +172,8 @@ final class IndexUpdateCommand extends AbstractCommand
                     ->indexUpdateService
                     ->updateAssets();
             } catch (Exception $e) {
-                $this->output->writeln($e->getMessage());
+                $failed = true;
+                $this->writeSectionError('Updating asset index', $e);
             }
         }
 
@@ -184,7 +188,8 @@ final class IndexUpdateCommand extends AbstractCommand
                     ->indexUpdateService
                     ->updateAll();
             } catch (Exception $e) {
-                $this->output->writeln('<error>' . $e->getMessage() . '</error>');
+                $failed = true;
+                $this->writeSectionError('Updating all mappings and indices', $e);
             }
         }
 
@@ -198,9 +203,46 @@ final class IndexUpdateCommand extends AbstractCommand
 
         $this->release();
 
+        if ($failed) {
+            // One or more sections failed. Return a non-zero exit code so callers (deployment
+            // pipelines, CI) see the failure instead of a false success. All sections are still
+            // attempted first, so a single failure does not hide the others.
+            $this->output->writeln(
+                '<error>Finished with errors - see above. The index may be incomplete.</error>'
+            );
+
+            return self::FAILURE;
+        }
+
         $this->output->writeln('<info>Finished</info>', OutputInterface::VERBOSITY_NORMAL);
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Writes a section failure including the exception type and its cause chain, so the actual
+     * reason is visible and not reduced to a bare message.
+     */
+    private function writeSectionError(string $context, Exception $e): void
+    {
+        // Escape dynamic values before wrapping them in <error> markup: an exception message (or the
+        // class id in $context) containing something like "<field>" would otherwise be parsed as a
+        // console style tag and could throw from OutputFormatter - aborting the error reporting, the
+        // remaining sections and the queue dispatch, which is exactly what this command must avoid.
+        $this->output->writeln(sprintf(
+            '<error>%s failed: %s: %s</error>',
+            OutputFormatter::escape($context),
+            $e::class,
+            OutputFormatter::escape($e->getMessage())
+        ));
+
+        for ($previous = $e->getPrevious(); $previous !== null; $previous = $previous->getPrevious()) {
+            $this->output->writeln(sprintf(
+                '<error>  caused by %s: %s</error>',
+                $previous::class,
+                OutputFormatter::escape($previous->getMessage())
+            ));
+        }
     }
 
     private function updateGlobalIndexAliases(): void
