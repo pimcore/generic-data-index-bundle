@@ -22,6 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService
 use Pimcore\Console\AbstractCommand;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Component\Console\Command\LockableTrait;
+use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -224,15 +225,23 @@ final class IndexUpdateCommand extends AbstractCommand
      */
     private function writeSectionError(string $context, Exception $e): void
     {
+        // Escape dynamic values before wrapping them in <error> markup: an exception message (or the
+        // class id in $context) containing something like "<field>" would otherwise be parsed as a
+        // console style tag and could throw from OutputFormatter - aborting the error reporting, the
+        // remaining sections and the queue dispatch, which is exactly what this command must avoid.
         $this->output->writeln(sprintf(
             '<error>%s failed: %s: %s</error>',
-            $context,
+            OutputFormatter::escape($context),
             $e::class,
-            $e->getMessage()
+            OutputFormatter::escape($e->getMessage())
         ));
 
         for ($previous = $e->getPrevious(); $previous !== null; $previous = $previous->getPrevious()) {
-            $this->output->writeln(sprintf('<error>  caused by %s: %s</error>', $previous::class, $previous->getMessage()));
+            $this->output->writeln(sprintf(
+                '<error>  caused by %s: %s</error>',
+                $previous::class,
+                OutputFormatter::escape($previous->getMessage())
+            ));
         }
     }
 

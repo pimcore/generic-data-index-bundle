@@ -83,6 +83,35 @@ final class IndexUpdateCommandTest extends Unit
     }
 
     /**
+     * An exception message containing console-style markup must not make the error reporting throw
+     * from OutputFormatter - that would abort the remaining sections and the queue dispatch, the
+     * opposite of what this command promises. The dynamic values are escaped, so the run completes.
+     */
+    public function testExceptionMessageWithConsoleMarkupDoesNotAbortTheRun(): void
+    {
+        $dispatched = false;
+        $indexUpdateService = $this->makeEmpty(IndexUpdateServiceInterface::class, [
+            'updateAll' => function (): void {
+                // `<fg=bogus>` is invalid console markup: OutputFormatter throws on it unless escaped.
+                throw new RuntimeException('invalid mapping <fg=bogus>value</>');
+            },
+        ]);
+        $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
+            'dispatchQueueMessages' => function () use (&$dispatched): void {
+                $dispatched = true;
+            },
+        ]);
+
+        $commandTester = new CommandTester($this->createCommand($indexUpdateService, $enqueueService));
+        $commandTester->execute([]); // must not throw
+
+        $this->assertSame(Command::FAILURE, $commandTester->getStatusCode());
+        $this->assertTrue($dispatched, 'queue dispatch must still run even when the error message contains markup');
+        // the markup is rendered literally rather than interpreted as a (broken) style tag
+        $this->assertStringContainsString('invalid mapping <fg=bogus>value</>', $commandTester->getDisplay());
+    }
+
+    /**
      * The happy path still returns success.
      */
     public function testReturnsSuccessWhenAllSectionsSucceed(): void
