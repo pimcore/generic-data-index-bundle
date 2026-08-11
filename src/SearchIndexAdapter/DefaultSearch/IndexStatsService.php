@@ -63,12 +63,28 @@ final class IndexStatsService implements IndexStatsServiceInterface
             ],
         ]);
 
-        $indices = [];
+        // Document counts come from the terms aggregation on _index, which counts top-level
+        // (searchable) documents - the element count we want. Index stats are deliberately NOT used
+        // for the count: their docs.count is a raw Lucene total that would be inflated by nested
+        // block/table sub-documents and by replica shards. Every index that holds documents appears
+        // in the aggregation (its 10000-bucket cap is far above any realistic number of GDI indices),
+        // so an index absent from it is empty and correctly counts as 0.
+        $docCountByIndex = [];
         foreach ($aggregationResult['aggregations']['indices']['buckets'] as $bucket) {
-            $sizeInBytes = (int)($allStats['indices'][$bucket['key']]['total']['store']['size_in_bytes'] ?? 0);
+            $docCountByIndex[$bucket['key']] = $bucket['doc_count'];
+        }
+
+        // Enumerate every index from _stats - it lists empty indices too, which the aggregation
+        // omits - so an empty live index is still reported (with a 0 count) rather than dropped.
+        $allIndexStats = $allStats['indices'] ?? [];
+        ksort($allIndexStats);
+
+        $indices = [];
+        foreach ($allIndexStats as $indexName => $indexStats) {
+            $sizeInBytes = (int)($indexStats['total']['store']['size_in_bytes'] ?? 0);
             $indices[] = new IndexStatsIndex(
-                indexName: $bucket['key'],
-                itemsCount: $bucket['doc_count'],
+                indexName: $indexName,
+                itemsCount: $docCountByIndex[$indexName] ?? 0,
                 sizeInKb: round(($sizeInBytes / 1024), 2)
             );
         }
