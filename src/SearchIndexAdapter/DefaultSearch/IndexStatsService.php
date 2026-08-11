@@ -63,12 +63,24 @@ final class IndexStatsService implements IndexStatsServiceInterface
             ],
         ]);
 
-        $indices = [];
+        // The terms aggregation on _index has no bucket for an index that holds zero documents,
+        // so it alone would silently drop empty indices. Enumerate every index reported by _stats
+        // instead - which does list empty ones - and take the accurate searchable doc count from
+        // the aggregation where present, defaulting to 0 for the empty ones.
+        $docCountByIndex = [];
         foreach ($aggregationResult['aggregations']['indices']['buckets'] as $bucket) {
-            $sizeInBytes = (int)($allStats['indices'][$bucket['key']]['total']['store']['size_in_bytes'] ?? 0);
+            $docCountByIndex[$bucket['key']] = $bucket['doc_count'];
+        }
+
+        $allIndexStats = $allStats['indices'] ?? [];
+        ksort($allIndexStats);
+
+        $indices = [];
+        foreach ($allIndexStats as $indexName => $indexStats) {
+            $sizeInBytes = (int)($indexStats['total']['store']['size_in_bytes'] ?? 0);
             $indices[] = new IndexStatsIndex(
-                indexName: $bucket['key'],
-                itemsCount: $bucket['doc_count'],
+                indexName: $indexName,
+                itemsCount: $docCountByIndex[$indexName] ?? 0,
                 sizeInKb: round(($sizeInBytes / 1024), 2)
             );
         }

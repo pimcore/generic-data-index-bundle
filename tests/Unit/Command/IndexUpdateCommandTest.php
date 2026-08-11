@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Command;
 
 use Codeception\Test\Unit;
+use LogicException;
 use Pimcore\Bundle\GenericDataIndexBundle\Command\Update\IndexUpdateCommand;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
@@ -30,9 +31,16 @@ final class IndexUpdateCommandTest extends Unit
      */
     public function testReturnsFailureWhenAnUpdateSectionThrows(): void
     {
+        // The section throws an exception that WRAPS an underlying cause, so the test can assert the
+        // whole chain is rendered - not just the outer message. Without a nested cause the cause-chain
+        // loop in writeSectionError() could be deleted and this test would stay green.
         $indexUpdateService = $this->makeEmpty(IndexUpdateServiceInterface::class, [
             'updateAll' => function (): void {
-                throw new RuntimeException('mapping update failed (simulated)');
+                throw new RuntimeException(
+                    'mapping update failed (simulated)',
+                    0,
+                    new LogicException('root cause: invalid mapping definition')
+                );
             },
         ]);
 
@@ -41,9 +49,13 @@ final class IndexUpdateCommandTest extends Unit
 
         $this->assertSame(Command::FAILURE, $commandTester->getStatusCode());
         $display = $commandTester->getDisplay();
-        // the exception type and message must both be visible (cause preservation)
+        // the outer exception type and message must be visible
         $this->assertStringContainsString('RuntimeException', $display);
         $this->assertStringContainsString('mapping update failed (simulated)', $display);
+        // ...and so must the preserved cause chain (type + message of the previous exception)
+        $this->assertStringContainsString('caused by', $display);
+        $this->assertStringContainsString('LogicException', $display);
+        $this->assertStringContainsString('root cause: invalid mapping definition', $display);
     }
 
     /**

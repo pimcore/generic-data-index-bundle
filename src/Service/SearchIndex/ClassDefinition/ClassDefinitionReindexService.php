@@ -87,7 +87,10 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
             return false;
         }
 
-        $this->pimcoreGenericDataIndexLogger->info('Mapping changed, reindexing class', [
+        // Reached both when the mapping actually changed and when a caller forces a reindex
+        // ($skipIfClassNotChanged === false) despite equal checksums, so the message states the
+        // decision without asserting a change - the stored vs current checksum tell that story.
+        $this->pimcoreGenericDataIndexLogger->info('Reindexing class mapping', [
             'class' => $classDefinition->getName(),
             'classId' => $classDefinition->getId(),
             'storedChecksum' => $storedCheckSum,
