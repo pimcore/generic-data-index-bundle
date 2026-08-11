@@ -63,17 +63,19 @@ final class IndexStatsService implements IndexStatsServiceInterface
             ],
         ]);
 
-        // The terms aggregation on _index has no bucket for a zero-document index and is capped at
-        // 10000 buckets, so it alone would drop empty indices and, on very large installs, omit any
-        // index beyond the cap. Enumerate every index from _stats instead (it lists them all),
-        // preferring the aggregation's accurate searchable doc count and falling back to the _stats
-        // PRIMARY-shard document count where the aggregation has no bucket - primaries (not total)
-        // so replicas don't inflate the logical count, and an uncapped index never reports 0.
+        // Document counts come from the terms aggregation on _index, which counts top-level
+        // (searchable) documents - the element count we want. Index stats are deliberately NOT used
+        // for the count: their docs.count is a raw Lucene total that would be inflated by nested
+        // block/table sub-documents and by replica shards. Every index that holds documents appears
+        // in the aggregation (its 10000-bucket cap is far above any realistic number of GDI indices),
+        // so an index absent from it is empty and correctly counts as 0.
         $docCountByIndex = [];
         foreach ($aggregationResult['aggregations']['indices']['buckets'] as $bucket) {
             $docCountByIndex[$bucket['key']] = $bucket['doc_count'];
         }
 
+        // Enumerate every index from _stats - it lists empty indices too, which the aggregation
+        // omits - so an empty live index is still reported (with a 0 count) rather than dropped.
         $allIndexStats = $allStats['indices'] ?? [];
         ksort($allIndexStats);
 
@@ -82,7 +84,7 @@ final class IndexStatsService implements IndexStatsServiceInterface
             $sizeInBytes = (int)($indexStats['total']['store']['size_in_bytes'] ?? 0);
             $indices[] = new IndexStatsIndex(
                 indexName: $indexName,
-                itemsCount: $docCountByIndex[$indexName] ?? (int)($indexStats['primaries']['docs']['count'] ?? 0),
+                itemsCount: $docCountByIndex[$indexName] ?? 0,
                 sizeInKb: round(($sizeInBytes / 1024), 2)
             );
         }
