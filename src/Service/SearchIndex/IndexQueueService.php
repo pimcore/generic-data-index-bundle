@@ -94,13 +94,13 @@ final class IndexQueueService implements IndexQueueServiceInterface
 
             $this->pathService->rewriteChildrenIndexPaths($element);
         } catch (Exception $e) {
-            $this->logger->error(
-                sprintf(
-                    'Update indexQueue in database-table %s failed! Error: %s',
-                    IndexQueue::TABLE,
-                    $e->getMessage()
-                )
-            );
+            $this->logger->error('Updating the index queue failed', [
+                'table' => IndexQueue::TABLE,
+                'elementId' => $element->getId(),
+                'elementType' => $element->getType(),
+                'operation' => $operation,
+                'exception' => $e,
+            ]);
         }
 
         return $this;
@@ -111,16 +111,29 @@ final class IndexQueueService implements IndexQueueServiceInterface
      */
     public function handleIndexQueueEntries(array $entries): void
     {
+        if ($entries === []) {
+            return;
+        }
+
+        // The dispatch id is stamped on every row of a claimed batch, so logging it lets a whole
+        // batch's fate be correlated across dispatch and processing with a single grep.
+        $dispatchId = $entries[array_key_first($entries)]->getDispatched();
+
+        $this->logger->info('Processing index queue batch', [
+            'dispatchId' => $dispatchId,
+            'entries' => count($entries),
+        ]);
+
         try {
 
             foreach ($entries as $entry) {
-                $this->logger->debug(
-                    sprintf(
-                        '%s updating index for element %s and type %s',
-                        IndexQueue::TABLE,
-                        $entry->getElementId(),
-                        $entry->getElementType()
-                    ));
+                $this->logger->debug('Updating index for element', [
+                    'dispatchId' => $dispatchId,
+                    'elementId' => $entry->getElementId(),
+                    'elementType' => $entry->getElementType(),
+                    'operation' => $entry->getOperation(),
+                    'indexName' => $entry->getElementIndexName(),
+                ]);
                 $this->handleEntryByOperation($entry->getOperation(), $entry);
             }
 
@@ -128,6 +141,12 @@ final class IndexQueueService implements IndexQueueServiceInterface
             $this->indexQueueRepository->deleteQueueEntries($entries);
 
         } catch (Exception $e) {
+            $this->logger->error('Processing index queue batch failed', [
+                'dispatchId' => $dispatchId,
+                'entries' => count($entries),
+                'exception' => $e,
+            ]);
+
             throw new HandleIndexQueueEntriesException('handleIndexQueueEntry failed! Error: ' . $e->getMessage(), 0, $e);
         }
     }
