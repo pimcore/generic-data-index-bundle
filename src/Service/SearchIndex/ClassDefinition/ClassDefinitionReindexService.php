@@ -78,10 +78,13 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
 
         if ($skipIfClassNotChanged && $storedCheckSum === $currentCheckSum) {
+            // Same structured keys as the reindex branch below (here they are equal by definition),
+            // so a log query on storedChecksum/currentChecksum includes skipped classes too.
             $this->pimcoreGenericDataIndexLogger->debug('Mapping unchanged, skipping reindex', [
                 'class' => $classDefinition->getName(),
                 'classId' => $classDefinition->getId(),
-                'checksum' => $currentCheckSum,
+                'storedChecksum' => $storedCheckSum,
+                'currentChecksum' => $currentCheckSum,
             ]);
 
             return false;
