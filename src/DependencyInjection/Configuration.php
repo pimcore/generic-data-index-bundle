@@ -144,6 +144,13 @@ class Configuration implements ConfigurationInterface
                                 ->end()
                             ->end()
                         ->end()
+                        ->enumNode('calculated_fields_index_mode')
+                            ->values(['live', 'query_store'])
+                            ->defaultValue('live')
+                            ->info('Where index values of calculated fields come from: "live" executes the '
+                                . 'calculator during indexing (default), "query_store" reads the save-time value '
+                                . 'from the object query table and never executes the calculator while indexing.')
+                        ->end()
                          ->arrayNode('system_fields_settings')
                             ->children()
                                 ->append($this->buildSystemFieldsSettingsNode('general'))

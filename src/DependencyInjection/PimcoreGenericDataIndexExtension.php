@@ -96,6 +96,11 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $definition->setArgument('$searchSettings', $indexSettings['search_settings']);
         $definition->setArgument('$systemFieldsSettings', $indexSettings['system_fields_settings']);
 
+        $resolverDefinition = $container->getDefinition(
+            \Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolverInterface::class
+        );
+        $resolverDefinition->setArgument('$configuredMode', $indexSettings['calculated_fields_index_mode']);
+
         $this->registerSearchClient($container, $indexSettings['client_params']);
 
         $container->setParameter(
