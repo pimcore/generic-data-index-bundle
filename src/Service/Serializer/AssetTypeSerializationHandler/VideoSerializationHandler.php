@@ -28,9 +28,6 @@ class VideoSerializationHandler extends AbstractHandler
 
     private const ERROR_SEPARATOR = ' error ';
 
-    /**
-     * @throws Exception
-     */
     public function getAdditionalSystemFields(Asset $asset): array
     {
         if (!$asset instanceof Video) {
@@ -69,51 +66,6 @@ class VideoSerializationHandler extends AbstractHandler
         return null;
     }
 
-    private function getDuration(Video $asset): ?int
-    {
-        try {
-            return $asset->getDuration();
-        } catch (Exception $e) {
-            $this->logger->error('Failed getting duration for video asset: ' .
-                $asset->getId() .
-                self::ERROR_SEPARATOR .
-                $e->getMessage()
-            );
-        }
-
-        return null;
-    }
-
-    private function getWidth(Video $asset): ?int
-    {
-        try {
-            return $asset->getWidth();
-        } catch (Exception $e) {
-            $this->logger->error('Failed getting width for video asset: ' .
-                $asset->getId() .
-                self::ERROR_SEPARATOR .
-                $e->getMessage()
-            );
-        }
-
-        return null;
-    }
-
-    private function getHeight(Video $asset): ?int
-    {
-        try {
-            return $asset->getHeight();
-        } catch (Exception $e) {
-            $this->logger->error('Failed getting height for video asset: ' .
-                $asset->getId() .
-                self::ERROR_SEPARATOR .
-                $e->getMessage()
-            );
-        }
-
-        return null;
-    }
-
     private function getDuration(Video $video): ?float
     {
         try {
@@ -121,7 +73,7 @@ class VideoSerializationHandler extends AbstractHandler
         } catch (Throwable $e) {
             $this->logger->error('Duration extraction failed for video asset: ' .
                 $video->getId() .
-                ' error ' .
+                self::ERROR_SEPARATOR .
                 $e->getMessage()
             );
         }
@@ -136,7 +88,7 @@ class VideoSerializationHandler extends AbstractHandler
         } catch (Throwable $e) {
             $this->logger->error('Width extraction failed for video asset: ' .
                 $video->getId() .
-                ' error ' .
+                self::ERROR_SEPARATOR .
                 $e->getMessage()
             );
         }
@@ -151,7 +103,7 @@ class VideoSerializationHandler extends AbstractHandler
         } catch (Throwable $e) {
             $this->logger->error('Height extraction failed for video asset: ' .
                 $video->getId() .
-                ' error ' .
+                self::ERROR_SEPARATOR .
                 $e->getMessage()
             );
         }
