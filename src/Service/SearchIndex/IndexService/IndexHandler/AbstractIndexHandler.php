@@ -39,16 +39,15 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     ) {
     }
 
+    /**
+     * @throws ReindexFailedException
+     */
     public function updateMapping(
         mixed $context = null,
         bool $forceCreateIndex = false,
         ?array $mappingProperties = null
     ): void {
-        try {
-            $this->doUpdateMappingFull($context, $forceCreateIndex, $mappingProperties, 0);
-        } catch (ReindexFailedException $reindexException) {
-            $this->logger->error((string) $reindexException);
-        }
+        $this->doUpdateMappingFull($context, $forceCreateIndex, $mappingProperties, 0);
     }
 
     /**
@@ -93,8 +92,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             $this->doUpdateMapping($context);
         } catch (Exception $e) {
             $this->logger->info($e);
-            //try recreating index — ReindexFailedException propagates to the caller (doReindexMapping
-            //or, for the public entry-point, is caught in updateMapping()).
+            //try recreating index — ReindexFailedException propagates to the caller.
             $this->doReindexMapping($context, $mappingProperties, $reindexDepth + 1, $e);
         }
     }

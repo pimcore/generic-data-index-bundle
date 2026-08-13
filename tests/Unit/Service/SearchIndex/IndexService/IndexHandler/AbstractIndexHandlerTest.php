@@ -73,6 +73,47 @@ final class AbstractIndexHandlerTest extends Unit
     }
 
     /**
+     * When updateMapping() exhausts all retry attempts (MAX_REINDEX_ATTEMPTS), the resulting
+     * ReindexFailedException must propagate to the caller instead of being swallowed.
+     * Otherwise IndexUpdateService::updateClassDefinition() stores the mapping checksum as if
+     * the update succeeded, leaving the index silently out of sync and never retried.
+     *
+     * @see https://github.com/pimcore/generic-data-index-bundle/issues/471
+     */
+    public function testUpdateMappingPropagatesReindexFailedException(): void
+    {
+        $fluent = $this->makeEmpty(SearchIndexServiceInterface::class, ['addAlias' => []]);
+
+        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => true,
+            'getCurrentIndexVersion' => '',
+            'putMapping' => static function (): array {
+                throw new Exception('putMapping failed');
+            },
+            'reindex' => ReindexResult::MAPPING_INCOMPATIBLE,
+            'createIndex' => static function () use ($fluent): SearchIndexServiceInterface { return $fluent; },
+            'deleteIndex' => null,
+            'existsIndex' => false,
+        ]);
+
+        $handler = $this->createHandlerWithService($searchIndexService);
+        $handler->setLogger(new NullLogger());
+
+        $thrown = null;
+        try {
+            $handler->updateMapping();
+        } catch (ReindexFailedException $e) {
+            $thrown = $e;
+        }
+
+        $this->assertInstanceOf(
+            ReindexFailedException::class,
+            $thrown,
+            'updateMapping() must propagate ReindexFailedException so the mapping checksum is never stored on failure'
+        );
+    }
+
+    /**
      * When the in-place reindex fails (e.g. a 5xx from OpenSearch) and the fallback
      * index recreation fails too, the failure must propagate to the caller. Otherwise
      * the mapping checksum gets stored as if the reindex succeeded and the class is
