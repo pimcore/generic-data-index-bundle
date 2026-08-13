@@ -233,3 +233,47 @@ bin/console generic-data-index:deployment:reindex
 
 This updates the index structure for all class definitions modified since the last
 deployment and reindexes data objects for affected classes.
+
+## Calculated Fields Index Mode
+
+By default, values of calculated value fields are computed **live** while index data is
+extracted: the field's calculator class is executed for every calculated field of every element on
+every (re)indexing — for localized calculated fields once per language. For expensive calculators
+(relation loads, external services) this can dominate the indexing cost on large installations.
+
+With the `query_store` mode, the value stored in the object's **query table** (written on every
+save — the same value SQL-based grid listings use) is indexed instead, and the calculator is never
+executed during indexing:
+
+```yaml
+pimcore_generic_data_index:
+    index_service:
+        calculated_fields_index_mode: 'query_store' # default: 'live'
+```
+
+Notes:
+
+- The indexed value is the **save-time snapshot** as a string, truncated to the field
+  definition's `columnLength` (default 190). The fields stay searchable, filterable and sortable.
+- Changed calculator logic is only reflected after an element is saved again (see
+  [Refreshing calculated values after a calculator change](#refreshing-calculated-values-after-a-calculator-change) below).
+- Calculated fields inside field collections and object bricks are not read from the query store
+  and keep live behavior.
+- Switching the mode does not change the index mapping, so it does not trigger an automatic
+  reindex: values converge as elements are saved or reprocessed by the index queue.
+
+### Refreshing calculated values after a calculator change
+
+In `query_store` mode the indexed value is the **save-time snapshot** stored in the object's query
+table (`object_query_*`), which is (re)written only when an object is **saved**. Changing a
+calculator's code therefore does not update already-stored values on its own — exactly as with
+Pimcore's classic SQL grids and listings, which read the same query-table snapshot.
+
+To refresh calculated values after a calculator change, **re-save the affected objects** (e.g. a
+short console command that loads the class's objects in chunks and calls `->save()` on each). A save
+recomputes the calculated fields, rewrites `object_query_*`, and enqueues the element for reindexing,
+so both the query table and the index pick up the new logic. For large object counts, batch the
+re-save and disable versioning for the run to reduce cost.
+
+> A dedicated command to recompute the query-table snapshots without a full object save is planned
+> as a follow-up.
