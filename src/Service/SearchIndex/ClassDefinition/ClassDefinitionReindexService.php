@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\Enqueue
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
+use Psr\Log\LoggerInterface;
 
 /**
  * @internal
@@ -32,6 +33,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         private EnqueueServiceInterface $enqueueService,
         private SettingsStoreServiceInterface $settingsStoreService,
         private IndexIconUpdateServiceInterface $indexIconUpdateService,
+        private LoggerInterface $pimcoreGenericDataIndexLogger,
     ) {
     }
 
@@ -78,6 +80,16 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
 
         if ($skipIfClassNotChanged && $storedCheckSum !== null) {
             if ($storedCheckSum === $currentCheckSum) {
+                // Same structured keys as the reindex branch below (here they are equal by
+                // definition), so a log query on storedChecksum/currentChecksum includes skipped
+                // classes too.
+                $this->pimcoreGenericDataIndexLogger->debug('Mapping unchanged, skipping reindex', [
+                    'class' => $classDefinition->getName(),
+                    'classId' => $classDefinition->getId(),
+                    'storedChecksum' => $storedCheckSum,
+                    'currentChecksum' => $currentCheckSum,
+                ]);
+
                 return false;
             }
 
@@ -85,6 +97,13 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
                 // The mapping is unchanged, only the checksum algorithm is: checksums
                 // stored before the key normalization was introduced depend on the key
                 // order. Re-stamp the entry instead of reindexing the class definition.
+                $this->pimcoreGenericDataIndexLogger->debug('Mapping unchanged, re-stamping legacy checksum and skipping reindex', [
+                    'class' => $classDefinition->getName(),
+                    'classId' => $classDefinition->getId(),
+                    'storedChecksum' => $storedCheckSum,
+                    'currentChecksum' => $currentCheckSum,
+                ]);
+
                 $this->settingsStoreService->storeClassMapping(
                     classDefinitionId: $classDefinition->getId(),
                     data: $currentCheckSum
@@ -93,6 +112,16 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
                 return false;
             }
         }
+
+        // Reached both when the mapping actually changed and when a caller forces a reindex
+        // ($skipIfClassNotChanged === false) despite equal checksums, so the message states the
+        // decision without asserting a change - the stored vs current checksum tell that story.
+        $this->pimcoreGenericDataIndexLogger->info('Reindexing class mapping', [
+            'class' => $classDefinition->getName(),
+            'classId' => $classDefinition->getId(),
+            'storedChecksum' => $storedCheckSum,
+            'currentChecksum' => $currentCheckSum,
+        ]);
 
         $this->dataObjectIndexHandler
             ->reindexMapping(

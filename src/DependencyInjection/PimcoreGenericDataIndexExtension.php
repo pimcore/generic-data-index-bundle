@@ -72,6 +72,15 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $config = $this->getParsedConfig(__DIR__ . '/../../config/doctrine.yaml');
 
         $container->prependExtensionConfig('doctrine', $config['doctrine']);
+
+        // Dedicated log channel so Generic Data Index logs can be filtered, raised to debug, or
+        // routed separately from the rest of the application. Additive: the channel is still
+        // handled by the application's existing handlers, it is only tagged distinctly.
+        if ($container->hasExtension('monolog')) {
+            $container->prependExtensionConfig('monolog', [
+                'channels' => ['pimcore_generic_data_index'],
+            ]);
+        }
     }
 
     private function registerIndexServiceParams(ContainerBuilder $container, array $indexSettings): void
@@ -83,6 +92,11 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $definition->setArgument('$indexSettings', $indexSettings['index_settings']);
         $definition->setArgument('$searchSettings', $indexSettings['search_settings']);
         $definition->setArgument('$systemFieldsSettings', $indexSettings['system_fields_settings']);
+
+        $resolverDefinition = $container->getDefinition(
+            \Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolverInterface::class
+        );
+        $resolverDefinition->setArgument('$configuredMode', $indexSettings['calculated_fields_index_mode']);
 
         $clientId = $this->getDefaultSearchClientId($indexSettings);
         $container->setAlias('generic-data-index.search-client', $clientId);

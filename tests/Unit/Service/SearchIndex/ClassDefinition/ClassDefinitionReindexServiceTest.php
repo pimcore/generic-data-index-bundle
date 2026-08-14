@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\Enqueue
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
+use Psr\Log\LoggerInterface;
 
 /**
  * @internal
@@ -163,6 +164,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
             $this->makeEmpty(EnqueueServiceInterface::class),
             $settingsStore,
             $this->makeEmpty(IndexIconUpdateServiceInterface::class, ['updateIcon' => null]),
+            $this->makeEmpty(LoggerInterface::class),
         );
     }
 
