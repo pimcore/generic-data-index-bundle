@@ -14,10 +14,11 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition;
 
 use Exception;
+use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Psr\Log\LoggerInterface;
@@ -28,7 +29,7 @@ use Psr\Log\LoggerInterface;
 final readonly class ClassDefinitionReindexService implements ClassDefinitionReindexServiceInterface
 {
     public function __construct(
-        private DataObjectIndexHandler $dataObjectIndexHandler,
+        private IndexHandlerInterface $dataObjectIndexHandler,
         private EnqueueServiceInterface $enqueueService,
         private SettingsStoreServiceInterface $settingsStoreService,
         private IndexIconUpdateServiceInterface $indexIconUpdateService,
@@ -77,17 +78,39 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         $currentCheckSum = $this->dataObjectIndexHandler->getClassMappingCheckSum($mappingProperties);
         $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
 
-        if ($skipIfClassNotChanged && $storedCheckSum === $currentCheckSum) {
-            // Same structured keys as the reindex branch below (here they are equal by definition),
-            // so a log query on storedChecksum/currentChecksum includes skipped classes too.
-            $this->pimcoreGenericDataIndexLogger->debug('Mapping unchanged, skipping reindex', [
-                'class' => $classDefinition->getName(),
-                'classId' => $classDefinition->getId(),
-                'storedChecksum' => $storedCheckSum,
-                'currentChecksum' => $currentCheckSum,
-            ]);
+        if ($skipIfClassNotChanged && $storedCheckSum !== null) {
+            if ($storedCheckSum === $currentCheckSum) {
+                // Same structured keys as the reindex branch below (here they are equal by
+                // definition), so a log query on storedChecksum/currentChecksum includes skipped
+                // classes too.
+                $this->pimcoreGenericDataIndexLogger->debug('Mapping unchanged, skipping reindex', [
+                    'class' => $classDefinition->getName(),
+                    'classId' => $classDefinition->getId(),
+                    'storedChecksum' => $storedCheckSum,
+                    'currentChecksum' => $currentCheckSum,
+                ]);
 
-            return false;
+                return false;
+            }
+
+            if ($storedCheckSum === $this->getLegacyClassMappingCheckSum($mappingProperties)) {
+                // The mapping is unchanged, only the checksum algorithm is: checksums
+                // stored before the key normalization was introduced depend on the key
+                // order. Re-stamp the entry instead of reindexing the class definition.
+                $this->pimcoreGenericDataIndexLogger->debug('Mapping unchanged, re-stamping legacy checksum and skipping reindex', [
+                    'class' => $classDefinition->getName(),
+                    'classId' => $classDefinition->getId(),
+                    'storedChecksum' => $storedCheckSum,
+                    'currentChecksum' => $currentCheckSum,
+                ]);
+
+                $this->settingsStoreService->storeClassMapping(
+                    classDefinitionId: $classDefinition->getId(),
+                    data: $currentCheckSum
+                );
+
+                return false;
+            }
         }
 
         // Reached both when the mapping actually changed and when a caller forces a reindex
@@ -114,5 +137,18 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         );
 
         return true;
+    }
+
+    /**
+     * Checksum as it was calculated before the mapping properties were normalized,
+     * i.e. depending on the array key order. Only used to recognise entries stored
+     * by an older bundle version; can be dropped once upgrades from those versions
+     * are no longer supported.
+     *
+     * @throws JsonException
+     */
+    private function getLegacyClassMappingCheckSum(array $mappingProperties): int
+    {
+        return crc32(json_encode($mappingProperties, JSON_THROW_ON_ERROR));
     }
 }

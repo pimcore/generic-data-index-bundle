@@ -141,7 +141,28 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
      */
     public function getClassMappingCheckSum(array $properties): int
     {
-        return crc32(json_encode($properties, JSON_THROW_ON_ERROR));
+        return crc32(json_encode($this->normalizeForCheckSum($properties), JSON_THROW_ON_ERROR));
+    }
+
+    private function normalizeForCheckSum(mixed $value): mixed
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+
+        $normalizedValue = [];
+        foreach ($value as $key => $item) {
+            $normalizedValue[$key] = $this->normalizeForCheckSum($item);
+        }
+
+        if (!array_is_list($normalizedValue)) {
+            // SORT_STRING: the default SORT_REGULAR compares numeric keys numerically,
+            // so distinct keys like 1 and '01' would compare equal and keep their
+            // insertion order instead of being sorted deterministically.
+            ksort($normalizedValue, SORT_STRING);
+        }
+
+        return $normalizedValue;
     }
 
     abstract protected function extractMappingProperties(mixed $context = null): array;
