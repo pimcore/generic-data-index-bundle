@@ -56,4 +56,40 @@ class PathServiceTest extends \Codeception\Test\Unit
 
         $this->assertEquals('/test-folder/test-asset', $searchResultItem->getFullPath());
     }
+
+    public function testDataObjectChildrenPathRewrite()
+    {
+        $folder = TestHelper::createObjectFolder();
+        $object = TestHelper::createEmptyObject();
+        $object
+            ->setParent($folder)
+            ->setKey('test-object')
+            ->save();
+
+        $folder->setKey('renamed-object-folder')->save();
+
+        $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
+
+        $searchResultItem = $searchService->byId($object->getId());
+
+        $this->assertEquals('/renamed-object-folder/test-object', $searchResultItem->getFullPath());
+    }
+
+    public function testDocumentChildrenPathRewriteForNonFolderParent()
+    {
+        $parentPage = TestHelper::createEmptyDocumentPage();
+        $childPage = TestHelper::createEmptyDocumentPage('', false);
+        $childPage
+            ->setParent($parentPage)
+            ->setKey('child-page')
+            ->save();
+
+        $parentPage->setKey('renamed-page')->save();
+
+        $searchService = $this->tester->grabService('generic-data-index.test.service.document-search-service');
+
+        $searchResultItem = $searchService->byId($childPage->getId());
+
+        $this->assertEquals('/renamed-page/child-page', $searchResultItem->getFullPath());
+    }
 }
