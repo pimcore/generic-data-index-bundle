@@ -91,7 +91,9 @@ final class AbstractIndexHandlerTest extends Unit
                 throw new Exception('putMapping failed');
             },
             'reindex' => ReindexResult::MAPPING_INCOMPATIBLE,
-            'createIndex' => static function () use ($fluent): SearchIndexServiceInterface { return $fluent; },
+            'createIndex' => static function () use ($fluent): SearchIndexServiceInterface {
+                return $fluent;
+            },
             'deleteIndex' => null,
             'existsIndex' => false,
         ]);
@@ -100,6 +102,7 @@ final class AbstractIndexHandlerTest extends Unit
         $handler->setLogger(new NullLogger());
 
         $thrown = null;
+
         try {
             $handler->updateMapping();
         } catch (ReindexFailedException $e) {
@@ -285,9 +288,12 @@ final class AbstractIndexHandlerTest extends Unit
             'existsIndex' => false,
             'deleteIndex' => null,
             'getCurrentIndexVersion' => '',
-            'createIndex' => static function () use ($fluent): SearchIndexServiceInterface { return $fluent; },
+            'createIndex' => static function () use ($fluent): SearchIndexServiceInterface {
+                return $fluent;
+            },
             'putMapping' => static function () use (&$attempts): array {
                 ++$attempts;
+
                 throw new Exception('AWS rejected empty array in mapping');
             },
         ]);
@@ -296,6 +302,7 @@ final class AbstractIndexHandlerTest extends Unit
         $handler->setLogger(new NullLogger());
 
         $thrown = null;
+
         try {
             $handler->reindexMapping();
         } catch (ReindexFailedException $e) {
@@ -339,9 +346,12 @@ final class AbstractIndexHandlerTest extends Unit
             'deleteIndex' => null,
             'getCurrentIndexVersion' => '',
             'reindex' => ReindexResult::MAPPING_INCOMPATIBLE,
-            'createIndex' => static function () use ($fluent): SearchIndexServiceInterface { return $fluent; },
+            'createIndex' => static function () use ($fluent): SearchIndexServiceInterface {
+                return $fluent;
+            },
             'putMapping' => static function () use (&$attempts): array {
                 ++$attempts;
+
                 throw new Exception('putMapping failed after forced recreation');
             },
         ]);
@@ -350,6 +360,7 @@ final class AbstractIndexHandlerTest extends Unit
         $handler->setLogger(new NullLogger());
 
         $thrown = null;
+
         try {
             $handler->reindexMapping();
         } catch (Exception $e) {
@@ -388,14 +399,19 @@ final class AbstractIndexHandlerTest extends Unit
             'existsIndex' => false,
             'deleteIndex' => null,
             'getCurrentIndexVersion' => '',
-            'createIndex' => static function () use ($fluent): SearchIndexServiceInterface { return $fluent; },
-            'putMapping' => static function () use ($cause): array { throw $cause; },
+            'createIndex' => static function () use ($fluent): SearchIndexServiceInterface {
+                return $fluent;
+            },
+            'putMapping' => static function () use ($cause): array {
+                throw $cause;
+            },
         ]);
 
         $handler = $this->createHandlerWithService($searchIndexService);
         $handler->setLogger(new NullLogger());
 
         $thrown = null;
+
         try {
             $handler->reindexMapping();
         } catch (ReindexFailedException $e) {
@@ -523,13 +539,7 @@ final class AbstractIndexHandlerTest extends Unit
         SearchIndexServiceInterface $searchIndexService,
         array $mappingProperties
     ): AbstractIndexHandler {
-        return new class(
-            $searchIndexService,
-            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
-            $this->makeEmpty(EventDispatcherInterface::class),
-            $this->makeEmpty(IndexMappingServiceInterface::class),
-            $mappingProperties
-        ) extends AbstractIndexHandler {
+        return new class($searchIndexService, $this->makeEmpty(SearchIndexConfigServiceInterface::class), $this->makeEmpty(EventDispatcherInterface::class), $this->makeEmpty(IndexMappingServiceInterface::class), $mappingProperties) extends AbstractIndexHandler {
             public function __construct(
                 SearchIndexServiceInterface $searchIndexService,
                 SearchIndexConfigServiceInterface $searchIndexConfigService,
