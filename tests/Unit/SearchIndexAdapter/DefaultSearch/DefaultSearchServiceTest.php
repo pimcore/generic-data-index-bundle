@@ -104,6 +104,160 @@ final class DefaultSearchServiceTest extends Unit
         $this->assertSame(10, $service->getCount($search, 'test_index'));
     }
 
+    /**
+     * When createIndex() receives a mappings array whose only field has an empty-array value,
+     * normalization removes all fields, leaving an empty properties array. The entire
+     * "mappings" key must then be omitted from the body so OpenSearch never receives
+     * "mappings":{"properties":{}} or "mappings":{"properties":[]}.
+     */
+    public function testCreateIndexRemovesTopLevelEmptyMappingArrayFields(): void
+    {
+        $capturedBody = null;
+
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                'existsIndex' => false,
+                'createIndex' => Expected::once(function (array $params) use (&$capturedBody): array {
+                    $capturedBody = $params['body'];
+
+                    return [];
+                }),
+            ])
+        );
+
+        $service->createIndex('test_index', ['my_field' => []]);
+
+        $this->assertNotNull($capturedBody, 'createIndex must have been called on the client');
+        $this->assertArrayNotHasKey(
+            'mappings',
+            $capturedBody,
+            'When all mapping fields are empty, the "mappings" key must be omitted from the body entirely'
+        );
+    }
+
+    /**
+     * When a nested field's only child has an empty-array value, the child is removed
+     * and its parent's "properties" sub-key becomes empty and is also removed.
+     * The parent itself must survive if it still has other non-array keys (e.g. "type").
+     */
+    public function testCreateIndexRemovesNestedEmptyMappingArrayFields(): void
+    {
+        $capturedBody = null;
+
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                'existsIndex' => false,
+                'createIndex' => Expected::once(function (array $params) use (&$capturedBody): array {
+                    $capturedBody = $params['body'];
+
+                    return [];
+                }),
+            ])
+        );
+
+        $service->createIndex('test_index', [
+            'parent_field' => [
+                'type' => 'object',
+                'properties' => [
+                    'child_field' => [],
+                ],
+            ],
+        ]);
+
+        $this->assertNotNull($capturedBody, 'createIndex must have been called on the client');
+        $this->assertArrayHasKey(
+            'parent_field',
+            $capturedBody['mappings']['properties'],
+            'parent_field must still exist because it has a non-array "type" key'
+        );
+        $this->assertArrayNotHasKey(
+            'properties',
+            $capturedBody['mappings']['properties']['parent_field'],
+            'The "properties" sub-key of parent_field must be removed when all its children are empty'
+        );
+    }
+
+    /**
+     * When putMapping() receives a properties array whose fields are all empty arrays,
+     * normalization removes them and the "properties" key must be absent from the forwarded call.
+     */
+    public function testPutMappingRemovesEmptyArrayFieldsFromProperties(): void
+    {
+        $capturedParams = null;
+
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                'putIndexMapping' => Expected::once(function (array $params) use (&$capturedParams): array {
+                    $capturedParams = $params;
+
+                    return [];
+                }),
+            ])
+        );
+
+        $service->putMapping([
+            'index' => 'test_index',
+            'body' => [
+                '_source' => ['enabled' => true],
+                'properties' => ['empty_field' => []],
+            ],
+        ]);
+
+        $this->assertNotNull($capturedParams, 'putIndexMapping must have been called on the client');
+        $this->assertArrayNotHasKey(
+            'properties',
+            $capturedParams['body'],
+            'When all properties fields are empty, the "properties" key must be omitted from the body'
+        );
+    }
+
+    /**
+     * When putMapping() receives a properties array with both valid and empty-array fields,
+     * normalization removes only the empty ones while preserving the valid mapping fields.
+     */
+    public function testPutMappingPreservesValidFieldsWhileRemovingEmptyOnes(): void
+    {
+        $capturedParams = null;
+
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                'putIndexMapping' => Expected::once(function (array $params) use (&$capturedParams): array {
+                    $capturedParams = $params;
+
+                    return [];
+                }),
+            ])
+        );
+
+        $service->putMapping([
+            'index' => 'test_index',
+            'body' => [
+                '_source' => ['enabled' => true],
+                'properties' => [
+                    'valid_field' => ['type' => 'keyword'],
+                    'empty_field' => [],
+                ],
+            ],
+        ]);
+
+        $this->assertNotNull($capturedParams, 'putIndexMapping must have been called on the client');
+        $this->assertArrayHasKey(
+            'properties',
+            $capturedParams['body'],
+            'The "properties" key must still be present when at least one field has a valid mapping'
+        );
+        $this->assertArrayHasKey(
+            'valid_field',
+            $capturedParams['body']['properties'],
+            'Valid mapping fields must be preserved after normalization'
+        );
+        $this->assertArrayNotHasKey(
+            'empty_field',
+            $capturedParams['body']['properties'],
+            'Empty-array mapping fields must be removed by normalization'
+        );
+    }
+
     private function createService(
         ?SearchIndexConfigServiceInterface $configService = null,
         ?SearchExecutionServiceInterface $searchExecutionService = null,
