@@ -31,6 +31,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\SearchClient\SearchClientInterface;
 use Psr\Log\LogLevel;
+use Psr\Log\NullLogger;
 
 /**
  * @internal
@@ -66,6 +67,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         private readonly int $reindexMaxPolls,
         private readonly int $reindexPollIntervalSeconds,
     ) {
+        if (!isset($this->logger)) {
+            $this->logger = new NullLogger();
+        }
     }
 
     public function refreshIndex(string $indexName): array
@@ -447,7 +451,10 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             }
 
             if ($mappings) {
-                $body['mappings']['properties'] = $mappings;
+                $normalized = $this->stripEmptyArraysFromMapping($mappings);
+                if (!empty($normalized)) {
+                    $body['mappings']['properties'] = $normalized;
+                }
             }
 
             $response = $this->client->createIndex(
@@ -463,6 +470,26 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         }
 
         return $this;
+    }
+
+    private function stripEmptyArraysFromMapping(array $mapping): array
+    {
+        foreach ($mapping as $key => $value) {
+            if (is_array($value)) {
+                if (empty($value)) {
+                    unset($mapping[$key]);
+                } else {
+                    $result = $this->stripEmptyArraysFromMapping($value);
+                    if (empty($result)) {
+                        unset($mapping[$key]);
+                    } else {
+                        $mapping[$key] = $result;
+                    }
+                }
+            }
+        }
+
+        return $mapping;
     }
 
     public function addAlias(string $aliasName, string $indexName): array
@@ -508,6 +535,15 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
     public function putMapping(array $params): array
     {
+        if (isset($params['body']['properties'])) {
+            $normalized = $this->stripEmptyArraysFromMapping($params['body']['properties']);
+            if (!empty($normalized)) {
+                $params['body']['properties'] = $normalized;
+            } else {
+                unset($params['body']['properties']);
+            }
+        }
+
         return $this->client->putIndexMapping($params);
     }
 
