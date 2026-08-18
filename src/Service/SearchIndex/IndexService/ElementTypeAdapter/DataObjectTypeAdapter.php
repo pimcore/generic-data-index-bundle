@@ -23,6 +23,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateFolderIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\DataObject\UpdateIndexDataEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\UpdateIndexDataEventInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\DataObjectNormalizer;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -39,6 +40,7 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
     public function __construct(
         private readonly DataObjectNormalizer $normalizer,
         private readonly Connection $dbConnection,
+        private readonly GlobalIndexAliasServiceInterface $globalIndexAliasService,
     ) {
     }
 
@@ -85,6 +87,13 @@ final class DataObjectTypeAdapter extends AbstractElementTypeAdapter
     public function childrenPathRewriteNeeded(ElementInterface $element): bool
     {
         return $element->hasChildren(includingUnpublished: true);
+    }
+
+    public function getPathRewriteIndexName(ElementInterface $element): string
+    {
+        // concrete descendants live in per-class indexes, folders in the folder index -
+        // target the global data object alias so the path rewrite reaches all of them
+        return $this->globalIndexAliasService->getDataObjectAliasName();
     }
 
     public function getNormalizer(): NormalizerInterface
