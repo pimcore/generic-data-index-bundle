@@ -36,6 +36,18 @@ description: Version-specific upgrade instructions and breaking changes for the 
   `doctrine://default`.
 
 ## Upgrade to 2.5.9
+- [Indexing] Moving or renaming an element with children now rewrites the children's `path`/`fullPath` in the search
+  index for **all** element types: data objects are rewritten across all per-class indexes (previously only the
+  folder index was updated, so concrete objects kept their old path after a folder move), and documents are
+  rewritten for any parent document type (previously only moves of document *folders* were handled, so children of
+  a moved/renamed page kept their old path). Stale index paths also affected path-based workspace permission
+  filtering of search results.
+- [Configuration] **BC break:** the undocumented `max_synchronous_children_rename_limit` setting
+  (`pimcore_generic_data_index.index_service.search_settings`) was removed, together with
+  `SearchIndexConfigServiceInterface::getMaxSynchronousChildrenRenameLimit()` (`@internal`). Above that limit the
+  children path rewrite was silently skipped and never performed by any asynchronous process, leaving the index
+  permanently stale — the rewrite now always runs. Remove the setting from your configuration if you had set it;
+  Symfony will otherwise fail with an "Unrecognized option" error on container build.
 - [Commands] `generic-data-index:update:index` now exits with a non-zero status code when one or more of its
   update sections (class definition, asset index, full update) fail, instead of always returning `0`. All sections
   are still attempted and the queue is still dispatched; the command only reports the failure at the end. Deployment
