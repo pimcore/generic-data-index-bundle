@@ -108,11 +108,6 @@ final class SearchIndexConfigService implements SearchIndexConfigServiceInterfac
         return $this->searchSettings['search_analyzer_attributes'] ?? [];
     }
 
-    public function getMaxSynchronousChildrenRenameLimit(): int
-    {
-        return $this->searchSettings['max_synchronous_children_rename_limit'] ?? 0;
-    }
-
     public function getSystemFieldsSettings(string $elementType): array
     {
         $systemFieldsSettings = array_merge(
