@@ -138,14 +138,16 @@ final class DataObjectNormalizer implements NormalizerInterface
         }
 
         if (!$skipLazyLoadedFields) {
+            $tags = $this->getTagsByElement($dataObject);
+
             $result = array_merge($result, [
                 SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
                     $this->workflowService->hasWorkflowWithPermissions($dataObject),
                 SystemField::DEPENDENCIES->value => $this->dependencyService->getRequiresDependencies($dataObject),
                 SystemField::PATH_LEVELS->value => $pathLevels,
                 SystemField::PATH_LEVEL->value => count($pathLevels),
-                SystemField::TAGS->value => $this->extractTagIds($dataObject),
-                SystemField::PARENT_TAGS->value => $this->extractParentTagIds($dataObject),
+                SystemField::TAGS->value => $this->extractTagIds($tags),
+                SystemField::PARENT_TAGS->value => $this->extractParentTagIds($tags),
             ]);
         }
 
