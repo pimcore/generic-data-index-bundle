@@ -7,7 +7,7 @@ description: Configure Elasticsearch as the search engine for the Generic Data I
 
 :::info
 
-Requires Elasticsearch >= 8.0
+Requires Elasticsearch >= 8.12.2
 
 :::
 
@@ -35,7 +35,7 @@ pimcore_generic_data_index:
 ```
 
 For additional client options, see the
-[Pimcore Elasticsearch Client documentation](https://github.com/pimcore/elasticsearch-client/blob/1.x/README.md).
+[Pimcore Elasticsearch Client documentation](https://github.com/pimcore/elasticsearch-client#readme).
 
 ## Disable Auto-Index Creation
 
