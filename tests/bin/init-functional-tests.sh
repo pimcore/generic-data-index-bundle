@@ -16,7 +16,13 @@ docker compose down -v --remove-orphans
 
 docker compose up -d
 
-docker compose exec php .github/ci/scripts/setup-pimcore-environment-functional-tests.sh "$SEARCH_ENGINE"
+# The setup script switches to Elasticsearch automatically when the ES host is reachable,
+# so stop the Elasticsearch container when testing against OpenSearch.
+if [ "$SEARCH_ENGINE" != "elasticsearch" ]; then
+    docker compose stop elastic
+fi
+
+docker compose exec php .github/ci/scripts/setup-pimcore-environment.sh
 
 docker compose exec php composer config --global --auth http-basic.repo.pimcore.com token $1
 

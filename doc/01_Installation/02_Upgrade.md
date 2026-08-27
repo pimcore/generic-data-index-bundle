@@ -7,8 +7,10 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 ## Upgrade to 2026.3.0
 
+- [Elasticsearch] Raised the minimum supported Elasticsearch server version to `8.12.2`
+  (`pimcore/elasticsearch-client` `^2026.3` now requires the `elasticsearch/elasticsearch` client library `^8.12`).
 - Added command `generic-data-index:cleanup:unused-indices` to delete managed indices not referenced by any alias.
-- [Searching] Element search result items now expose therelevance score via the new
+- [Searching] Element search result items now expose the relevance score via the new
   `ScoreAwareResultItemInterface`.
 - [Searching] The search result models now expose `getMaxScore()`
 

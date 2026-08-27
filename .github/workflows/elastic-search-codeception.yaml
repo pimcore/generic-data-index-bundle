@@ -80,7 +80,7 @@ jobs:
             PIMCORE_VERSION: ${{ matrix.matrix.pimcore_version }}
             REQUIRE_ADMIN_BUNDLE: "false"
             PIMCORE_ELASTIC_SEARCH_HOST: "39201"
-            PIMCORE_ELASTIC_SEARCH_VERSION: "8.5.3"
+            PIMCORE_ELASTIC_SEARCH_VERSION: "8.12.2"
             ENABLE_ELASTICSEARCH: true
             COVERAGE: "xdebug"
         secrets:
