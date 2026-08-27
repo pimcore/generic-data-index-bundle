@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Model\Tool\TmpStore;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
+use Throwable;
 
 /**
  * @internal
@@ -46,9 +47,20 @@ final class QueueMessagesDispatcher
         }
 
         $message = new DispatchQueueMessagesMessage();
-        $this->messageBus->dispatch($message, $stamps);
 
+        // Mark as pending before dispatching: a synchronously dispatched message is handled
+        // inline (and an asynchronous one can be handled by a worker immediately), and the
+        // handler clears the pending state when it is done. Marking afterwards would leave a
+        // stale flag behind that suppresses further dispatches for the whole TmpStore lifetime.
         $this->markAsPending();
+
+        try {
+            $this->messageBus->dispatch($message, $stamps);
+        } catch (Throwable $exception) {
+            $this->clearPendingState();
+
+            throw $exception;
+        }
     }
 
     public function messageShouldBeTriggered(): bool
