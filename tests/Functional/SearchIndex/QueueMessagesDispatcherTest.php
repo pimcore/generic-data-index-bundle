@@ -78,7 +78,7 @@ class QueueMessagesDispatcherTest extends Unit
 
     public function testFailedDispatchClearsPendingFlagAndRethrows(): void
     {
-        $failingBus = new class () implements MessageBusInterface {
+        $failingBus = new class() implements MessageBusInterface {
             public function dispatch(object $message, array $stamps = []): Envelope
             {
                 throw new RuntimeException('dispatch failed');
