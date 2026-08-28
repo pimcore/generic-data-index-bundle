@@ -91,7 +91,7 @@ final class TreeSortHandlers
                 ->setReverseItemOrder(true)
                 // Read from the end: the offset is the number of items that follow the requested
                 // page. Deriving it from the page count instead would shift the whole window
-                // towards the end whenever the last page is not completely filled.
+                // towards the beginning by the number of items missing from the last page.
                 ->setFrom($isLastPage ? 0 : $totalItems - ($pageSize * $currentPage))
                 ->setSize($isLastPage ? $totalItems - ($pageSize * ($lastPage - 1)) : $pageSize)
                 ->setSortList(new FieldSortList($invertedSortList));

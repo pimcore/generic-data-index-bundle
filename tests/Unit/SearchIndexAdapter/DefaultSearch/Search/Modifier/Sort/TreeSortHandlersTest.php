@@ -44,6 +44,7 @@ final class TreeSortHandlersTest extends Unit
         $adapterSearch = $this->applyPageNumberSort($totalItems, $pageSize, $page);
 
         // Ascending page 8 covers the items 71-80, which are the items 16-25 counted from the end.
+        // The page-count based offset would be 20, returning the items 66-75 instead.
         $this->assertTrue($adapterSearch->isReverseItemOrder());
         $this->assertSame(15, $adapterSearch->getFrom());
         $this->assertSame(10, $adapterSearch->getSize());
