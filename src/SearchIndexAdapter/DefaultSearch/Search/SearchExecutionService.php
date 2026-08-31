@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\SearchFailedEx
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Debug\SearchInformation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer;
 use Pimcore\SearchClient\SearchClientInterface;
 use Symfony\Component\Stopwatch\Stopwatch;
@@ -35,10 +36,14 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
      */
     private array $executedSearches = [];
 
+    /**
+     * @param iterable<SearchBodyProcessorInterface> $searchBodyProcessors
+     */
     public function __construct(
         private readonly SearchResultDenormalizer $searchResultDenormalizer,
         private readonly SearchClientInterface $client,
         private readonly bool $debugMode,
+        private readonly iterable $searchBodyProcessors = [],
     ) {
     }
 
@@ -56,7 +61,7 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
 
             $searchParams = [
                 'index' => $indexName,
-                'body' => $search->toArray(),
+                'body' => $this->applySearchBodyProcessors($search->toArray(), $indexName),
             ];
 
             if ($trackTotalHits !== null) {
@@ -133,6 +138,20 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
         if ($excess > 0) {
             array_splice($this->executedSearches, 0, $excess);
         }
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     *
+     * @return array<string, mixed>
+     */
+    private function applySearchBodyProcessors(array $body, string $indexName): array
+    {
+        foreach ($this->searchBodyProcessors as $searchBodyProcessor) {
+            $body = $searchBodyProcessor->process($body, $indexName);
+        }
+
+        return $body;
     }
 
     private function isWindowTooLarge(Exception $e): bool
