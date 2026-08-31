@@ -651,7 +651,6 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         return $result['count'] ?? 0;
     }
 
-
     /**
      * @throws SwitchIndexAliasException
      */

@@ -137,7 +137,6 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
         }
     }
 
-
     private function isWindowTooLarge(Exception $e): bool
     {
         try {
