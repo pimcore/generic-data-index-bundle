@@ -182,3 +182,33 @@ After registering an event subscriber, rebuild the search index:
 ```bash
 bin/console generic-data-index:update:index -r
 ```
+
+## Search Body Processors
+
+A search body processor transforms the fully serialized search body (the array produced by
+`toArray()`) inside `search()` and `getCount()`, receiving the body in the same shape on both
+paths — useful for constructs that only exist once the search is fully composed (e.g., relocating
+composed bool filters into a kNN clause for engine-side pre-filtering).
+
+Boundaries to be aware of: processor output is not the final request payload — the search path
+appends `track_total_hits` afterward, and the count path strips keys `_count` does not accept
+(`_source`, `sort`, `from`, `size`, `aggs`) afterward. Because the same output is sent to both
+endpoints, it must stay valid for both — in practice, transform the `query` subtree only. Raw
+client calls that bypass the adapter search (e.g. `countByAttributeValue()`) do not run processors.
+
+Implement `SearchBodyProcessorInterface`; the implementation is tagged automatically
+(`pimcore.generic_data_index.search_body_processor`). Processors must be side-effect-free and must
+return the (transformed or unchanged) body — never null.
+
+```php
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorInterface;
+
+final readonly class MySearchBodyProcessor implements SearchBodyProcessorInterface
+{
+    public function process(array $body, string $indexName): array
+    {
+        // inspect/transform $body['query'] here
+        return $body;
+    }
+}
+```

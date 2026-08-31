@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\SearchFailedEx
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Debug\SearchInformation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorPipeline;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer;
 use Pimcore\SearchClient\SearchClientInterface;
 use Symfony\Component\Stopwatch\Stopwatch;
@@ -39,6 +40,7 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
         private readonly SearchResultDenormalizer $searchResultDenormalizer,
         private readonly SearchClientInterface $client,
         private readonly bool $debugMode,
+        private readonly SearchBodyProcessorPipeline $searchBodyProcessorPipeline = new SearchBodyProcessorPipeline(),
     ) {
     }
 
@@ -56,7 +58,7 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
 
             $searchParams = [
                 'index' => $indexName,
-                'body' => $search->toArray(),
+                'body' => $this->searchBodyProcessorPipeline->process($search->toArray(), $indexName),
             ];
 
             if ($trackTotalHits !== null) {
@@ -134,6 +136,7 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
             array_splice($this->executedSearches, 0, $excess);
         }
     }
+
 
     private function isWindowTooLarge(Exception $e): bool
     {

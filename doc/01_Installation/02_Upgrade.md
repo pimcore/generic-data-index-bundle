@@ -7,6 +7,9 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 ## Upgrade to 2026.3.0
 
+- [Searching] Added the `SearchBodyProcessorInterface` extension point (tag
+  `pimcore.generic_data_index.search_body_processor`, autoconfigured) to transform the serialized
+  search body for every search and count request.
 - [Elasticsearch] Raised the minimum supported Elasticsearch server version to `8.12.2`
   (`pimcore/elasticsearch-client` `^2026.3` now requires the `elasticsearch/elasticsearch` client library `^8.12`).
 - Added command `generic-data-index:cleanup:unused-indices` to delete managed indices not referenced by any alias.

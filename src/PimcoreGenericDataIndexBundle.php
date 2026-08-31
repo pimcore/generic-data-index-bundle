@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\SearchMod
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\ServiceLocatorPass;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\PimcoreGenericDataIndexExtension;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\ServiceTag;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorInterface;
 use Pimcore\Bundle\OpenSearchClientBundle\PimcoreOpenSearchClientBundle;
 use Pimcore\Bundle\StaticResolverBundle\PimcoreStaticResolverBundle;
 use Pimcore\Extension\Bundle\AbstractPimcoreBundle;
@@ -46,6 +47,10 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements Dep
     public function build(ContainerBuilder $container): void
     {
         $this->registerSearchModifierAttribute($container);
+
+        $container
+            ->registerForAutoconfiguration(SearchBodyProcessorInterface::class)
+            ->addTag(ServiceTag::SEARCH_BODY_PROCESSOR->value);
 
         $container
             ->addCompilerPass(new ServiceLocatorPass())

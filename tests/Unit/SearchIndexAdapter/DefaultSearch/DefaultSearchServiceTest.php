@@ -17,10 +17,13 @@ use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorPipeline;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\SearchClient\SearchClientInterface;
+use stdClass;
 
 /**
  * @internal
@@ -258,6 +261,97 @@ final class DefaultSearchServiceTest extends Unit
         );
     }
 
+    public function testGetCountAppliesSearchBodyProcessorsBeforeStrippingDisallowedKeys(): void
+    {
+        // Processors must keep the body valid for BOTH _search and _count — transform the query
+        // subtree only (a top-level knn, for example, would be rejected by a real _count).
+        $processor = $this->makeEmpty(SearchBodyProcessorInterface::class, [
+            'process' => function (array $body, string $indexName): array {
+                $body['query'] = ['term' => ['processed_for' => $indexName]];
+
+                return $body;
+            },
+        ]);
+
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                'count' => Expected::once(function (array $params) {
+                    $body = $params['body'];
+                    $this->assertSame('test_index', $body['query']['term']['processed_for']);
+
+                    return ['count' => 7];
+                }),
+            ]),
+            searchBodyProcessors: [$processor],
+        );
+
+        $search = $this->makeEmpty(AdapterSearchInterface::class, [
+            'toArray' => ['query' => ['match_all' => new stdClass()]],
+        ]);
+
+        $this->assertSame(7, $service->getCount($search, 'test_index'));
+    }
+
+    public function testGetCountAppliesSearchBodyProcessorsInIterationOrder(): void
+    {
+        $capturedBody = null;
+
+        $appendProcessor = static function (string $marker) {
+            return function (array $body) use ($marker): array {
+                $body['trace'][] = $marker;
+
+                return $body;
+            };
+        };
+
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                'count' => Expected::once(function (array $params) use (&$capturedBody) {
+                    $capturedBody = $params['body'];
+
+                    return ['count' => 1];
+                }),
+            ]),
+            searchBodyProcessors: [
+                $this->makeEmpty(SearchBodyProcessorInterface::class, ['process' => $appendProcessor('first')]),
+                $this->makeEmpty(SearchBodyProcessorInterface::class, ['process' => $appendProcessor('second')]),
+            ],
+        );
+
+        $search = $this->makeEmpty(AdapterSearchInterface::class, ['toArray' => []]);
+
+        $service->getCount($search, 'test_index');
+
+        $this->assertSame(['first', 'second'], $capturedBody['trace']);
+    }
+
+    public function testGetCountWithNoSearchBodyProcessorsLeavesBodyUnchanged(): void
+    {
+        $capturedBody = null;
+
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                'count' => Expected::once(function (array $params) use (&$capturedBody) {
+                    $capturedBody = $params['body'];
+
+                    return ['count' => 3];
+                }),
+            ]),
+        );
+
+        $search = $this->makeEmpty(AdapterSearchInterface::class, [
+            'toArray' => ['query' => ['match_all' => new stdClass()]],
+        ]);
+
+        $service->getCount($search, 'test_index');
+
+        $this->assertArrayHasKey('query', $capturedBody);
+        $this->assertCount(1, $capturedBody);
+    }
+
+    /**
+     * @param iterable<SearchBodyProcessorInterface> $searchBodyProcessors
+     */
     private function createService(
         ?SearchIndexConfigServiceInterface $configService = null,
         ?SearchExecutionServiceInterface $searchExecutionService = null,
@@ -265,6 +359,7 @@ final class DefaultSearchServiceTest extends Unit
         ?SearchClientInterface $client = null,
         int $reindexMaxPolls = 10,
         int $reindexPollIntervalSeconds = 5,
+        iterable $searchBodyProcessors = [],
     ): DefaultSearchService {
         return new DefaultSearchService(
             $configService ?? $this->makeEmpty(SearchIndexConfigServiceInterface::class),
@@ -273,6 +368,7 @@ final class DefaultSearchServiceTest extends Unit
             $client ?? $this->makeEmpty(SearchClientInterface::class),
             $reindexMaxPolls,
             $reindexPollIntervalSeconds,
+            new SearchBodyProcessorPipeline($searchBodyProcessors),
         );
     }
 }
