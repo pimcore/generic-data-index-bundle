@@ -18,6 +18,7 @@ use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorPipeline;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -262,9 +263,11 @@ final class DefaultSearchServiceTest extends Unit
 
     public function testGetCountAppliesSearchBodyProcessorsBeforeStrippingDisallowedKeys(): void
     {
+        // Processors must keep the body valid for BOTH _search and _count — transform the query
+        // subtree only (a top-level knn, for example, would be rejected by a real _count).
         $processor = $this->makeEmpty(SearchBodyProcessorInterface::class, [
             'process' => function (array $body, string $indexName): array {
-                $body['knn'] = ['field' => 'embedding', 'index' => $indexName];
+                $body['query'] = ['term' => ['processed_for' => $indexName]];
 
                 return $body;
             },
@@ -274,8 +277,7 @@ final class DefaultSearchServiceTest extends Unit
             client: $this->makeEmpty(SearchClientInterface::class, [
                 'count' => Expected::once(function (array $params) {
                     $body = $params['body'];
-                    $this->assertArrayHasKey('knn', $body);
-                    $this->assertSame('test_index', $body['knn']['index']);
+                    $this->assertSame('test_index', $body['query']['term']['processed_for']);
 
                     return ['count' => 7];
                 }),
@@ -366,7 +368,7 @@ final class DefaultSearchServiceTest extends Unit
             $client ?? $this->makeEmpty(SearchClientInterface::class),
             $reindexMaxPolls,
             $reindexPollIntervalSeconds,
-            $searchBodyProcessors,
+            new SearchBodyProcessorPipeline($searchBodyProcessors),
         );
     }
 }

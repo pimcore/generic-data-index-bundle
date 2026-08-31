@@ -24,7 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInter
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorPipeline;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -60,9 +60,6 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
     use LoggerAwareTrait;
 
-    /**
-     * @param iterable<SearchBodyProcessorInterface> $searchBodyProcessors
-     */
     public function __construct(
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly SearchExecutionServiceInterface $searchExecutionService,
@@ -70,7 +67,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         private readonly SearchClientInterface $client,
         private readonly int $reindexMaxPolls,
         private readonly int $reindexPollIntervalSeconds,
-        private readonly iterable $searchBodyProcessors = [],
+        private readonly SearchBodyProcessorPipeline $searchBodyProcessorPipeline = new SearchBodyProcessorPipeline(),
     ) {
         if (!isset($this->logger)) {
             $this->logger = new NullLogger();
@@ -630,7 +627,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
     public function getCount(AdapterSearchInterface $search, string $indexName): int
     {
-        $body = $this->applySearchBodyProcessors($search->toArray(), $indexName);
+        $body = $this->searchBodyProcessorPipeline->process($search->toArray(), $indexName);
 
         // Remove not allowed keys
         $body = array_diff_key(
@@ -654,19 +651,6 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         return $result['count'] ?? 0;
     }
 
-    /**
-     * @param array<string, mixed> $body
-     *
-     * @return array<string, mixed>
-     */
-    private function applySearchBodyProcessors(array $body, string $indexName): array
-    {
-        foreach ($this->searchBodyProcessors as $searchBodyProcessor) {
-            $body = $searchBodyProcessor->process($body, $indexName);
-        }
-
-        return $body;
-    }
 
     /**
      * @throws SwitchIndexAliasException

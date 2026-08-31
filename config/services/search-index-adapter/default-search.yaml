@@ -8,11 +8,14 @@ services:
         autoconfigure: true
         public: false
 
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorPipeline:
+        arguments:
+            $searchBodyProcessors: !tagged_iterator pimcore.generic_data_index.search_body_processor
+
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService
         arguments:
             $client: "@generic-data-index.search-client"
-            $searchBodyProcessors: !tagged_iterator pimcore.generic_data_index.search_body_processor
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\IndexAliasService
@@ -24,7 +27,6 @@ services:
         arguments:
             $client: "@generic-data-index.search-client"
             $debugMode: "%kernel.debug%"
-            $searchBodyProcessors: !tagged_iterator pimcore.generic_data_index.search_body_processor
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\BulkOperationService

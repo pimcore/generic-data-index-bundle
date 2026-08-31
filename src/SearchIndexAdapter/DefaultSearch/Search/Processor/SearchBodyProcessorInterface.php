@@ -14,8 +14,9 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor;
 
 /**
- * Transforms the fully serialized search body; runs for every search and count request.
- * Implementations must be side-effect-free.
+ * Transforms the fully serialized search body; runs for every search and count request, so the
+ * returned body must stay valid for BOTH endpoints — in practice, transform the `query` subtree
+ * only. Implementations must be side-effect-free.
  */
 interface SearchBodyProcessorInterface
 {
