@@ -55,6 +55,42 @@ final class TableAdapter extends AbstractAdapter
         );
     }
 
+    public function normalize(mixed $value): mixed
+    {
+        $value = parent::normalize($value);
+
+        if (
+            !is_array($value)
+            || !$this->isColumnConfigActivated()
+            || $this->hasIntegerColumnsOnly()
+        ) {
+            return $value;
+        }
+
+        $columnKeys = array_map(
+            static fn (array $columnConfig): string => (string)$columnConfig['key'],
+            $this->getColumnConfig()
+        );
+
+        $columnCount = count($columnKeys);
+
+        $rows = [];
+        foreach ($value as $row) {
+            if (!is_array($row) || !array_is_list($row)) {
+                $rows[] = $row;
+
+                continue;
+            }
+
+            $rows[] = array_combine(
+                $columnKeys,
+                array_slice(array_pad($row, $columnCount, null), 0, $columnCount)
+            );
+        }
+
+        return $rows;
+    }
+
     private function hasIntegerColumnsOnly(): bool
     {
         foreach ($this->getColumnConfig() as $columnConfig) {
