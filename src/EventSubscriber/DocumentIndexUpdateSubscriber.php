@@ -13,19 +13,22 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Messenger\TransportName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
-use Pimcore\Bundle\GenericDataIndexBundle\Installer;
+use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateSiblingsMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\SearchHelper;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexElementIndexServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcherInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Event\DocumentEvents;
 use Pimcore\Event\Model\DocumentEvent;
+use Pimcore\Extension\Bundle\Installer\InstallerInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Messenger\Stamp\TransportNamesStamp;
 
 /**
  * @internal
@@ -34,12 +37,12 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
 {
     public function __construct(
         private IndexQueueServiceInterface $indexQueueService,
-        private IndexElementIndexServiceInterface $indexElementIndexService,
-        private Installer $installer,
-        private QueueMessagesDispatcher $queueMessagesDispatcher,
+        private InstallerInterface $installer,
+        private QueueMessagesDispatcherInterface $queueMessagesDispatcher,
         private RuntimeCacheResolverInterface $runtimeCacheResolver,
         private SynchronousProcessingServiceInterface $synchronousProcessing,
-        private SynchronousProcessingRelatedIdsServiceInterface $synchronousProcessingRelatedIds
+        private SynchronousProcessingRelatedIdsServiceInterface $synchronousProcessingRelatedIds,
+        private MessageBusInterface $messageBus
     ) {
     }
 
@@ -59,7 +62,23 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
 
     public function updateDocument(DocumentEvent $event): void
     {
-        $this->indexElementIndexService->updateSiblings($event->getDocument(), ElementType::DOCUMENT->value);
+        if (!$this->installer->isInstalled()) {
+            return;
+        }
+
+        $this->messageBus->dispatch(
+            new UpdateSiblingsMessage(
+                $event->getDocument()->getId(),
+                ElementType::DOCUMENT,
+                false
+            ),
+            // In synchronous mode (e.g. CLI, tests) route to the sync transport so
+            // siblings are reindexed immediately; otherwise process on the async queue.
+            $this->synchronousProcessing->isEnabled()
+                ? [new TransportNamesStamp(TransportName::SYNC->value)]
+                : []
+        );
+
         $this->updateData($event);
     }
 

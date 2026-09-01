@@ -27,12 +27,12 @@ interface IndexQueueServiceInterface
         bool $processSynchronously = false,
         bool $enqueueRelatedItems = true,
         bool $enqueueRelatedItemsAsync = false
-    ): IndexQueueService;
+    ): IndexQueueServiceInterface;
 
     /**
      * @param IndexQueue[] $entries
      */
     public function handleIndexQueueEntries(array $entries): void;
 
-    public function commit(?string $refreshIndex = null): IndexQueueService;
+    public function commit(?string $refreshIndex = null): IndexQueueServiceInterface;
 }
