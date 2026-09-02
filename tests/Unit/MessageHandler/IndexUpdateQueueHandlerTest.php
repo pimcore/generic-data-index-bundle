@@ -85,10 +85,16 @@ final class IndexUpdateQueueHandlerTest extends Unit
     public function testTemporaryFilesAreDeletedAfterProcessingABatch(): void
     {
         $longRunningHelper = $this->createLongRunningHelper();
-        $tmpFilePath = $this->createTemporaryFile($longRunningHelper);
+        $tmpFilePath = $this->createTemporaryFile();
 
         $handler = new IndexUpdateQueueHandler(
-            $this->makeEmpty(IndexQueueServiceInterface::class),
+            $this->makeEmpty(IndexQueueServiceInterface::class, [
+                // register during batch processing, like asset text extraction does —
+                // a cleanup running before the batch would not see this file
+                'handleIndexQueueEntries' => Expected::once(
+                    static fn () => $longRunningHelper->addTmpFilePath($tmpFilePath)
+                ),
+            ]),
             $this->createRepositoryInstance(),
             $longRunningHelper,
         );
@@ -106,12 +112,16 @@ final class IndexUpdateQueueHandlerTest extends Unit
     public function testTemporaryFilesAreDeletedEvenWhenProcessingFails(): void
     {
         $longRunningHelper = $this->createLongRunningHelper();
-        $tmpFilePath = $this->createTemporaryFile($longRunningHelper);
+        $tmpFilePath = $this->createTemporaryFile();
 
         $handler = new IndexUpdateQueueHandler(
             $this->makeEmpty(IndexQueueServiceInterface::class, [
                 'handleIndexQueueEntries' => Expected::once(
-                    static fn () => throw new Exception('processing failed')
+                    static function () use ($longRunningHelper, $tmpFilePath): void {
+                        $longRunningHelper->addTmpFilePath($tmpFilePath);
+
+                        throw new Exception('processing failed');
+                    }
                 ),
             ]),
             $this->createRepositoryInstance(),
@@ -130,11 +140,10 @@ final class IndexUpdateQueueHandlerTest extends Unit
         );
     }
 
-    private function createTemporaryFile(LongRunningHelper $longRunningHelper): string
+    private function createTemporaryFile(): string
     {
         $tmpFilePath = tempnam(sys_get_temp_dir(), 'gdi-queue-handler-test-');
         $this->assertNotFalse($tmpFilePath);
-        $longRunningHelper->addTmpFilePath($tmpFilePath);
 
         return $tmpFilePath;
     }
