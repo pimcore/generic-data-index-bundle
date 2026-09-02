@@ -82,6 +82,72 @@ final class IndexUpdateQueueHandlerTest extends Unit
         );
     }
 
+    public function testTemporaryFilesAreDeletedAfterProcessingABatch(): void
+    {
+        $longRunningHelper = $this->createLongRunningHelper();
+        $tmpFilePath = $this->createTemporaryFile();
+
+        $handler = new IndexUpdateQueueHandler(
+            $this->makeEmpty(IndexQueueServiceInterface::class, [
+                // register during batch processing, like asset text extraction does —
+                // a cleanup running before the batch would not see this file
+                'handleIndexQueueEntries' => Expected::once(
+                    static fn () => $longRunningHelper->addTmpFilePath($tmpFilePath)
+                ),
+            ]),
+            $this->createRepositoryInstance(),
+            $longRunningHelper,
+        );
+
+        $handler(new IndexUpdateQueueMessage([]));
+
+        $this->assertFileDoesNotExist(
+            $tmpFilePath,
+            'Temp files registered via LongRunningHelper::addTmpFilePath() during batch processing ' .
+            '(e.g. local copies of assets for text extraction) must be deleted after the batch, ' .
+            'otherwise long-running queue workers fill up the system temp directory'
+        );
+    }
+
+    public function testTemporaryFilesAreDeletedEvenWhenProcessingFails(): void
+    {
+        $longRunningHelper = $this->createLongRunningHelper();
+        $tmpFilePath = $this->createTemporaryFile();
+
+        $handler = new IndexUpdateQueueHandler(
+            $this->makeEmpty(IndexQueueServiceInterface::class, [
+                'handleIndexQueueEntries' => Expected::once(
+                    static function () use ($longRunningHelper, $tmpFilePath): void {
+                        $longRunningHelper->addTmpFilePath($tmpFilePath);
+
+                        throw new Exception('processing failed');
+                    }
+                ),
+            ]),
+            $this->createRepositoryInstance(),
+            $longRunningHelper,
+        );
+
+        try {
+            $handler(new IndexUpdateQueueMessage([]));
+        } catch (Exception) {
+            // the processing exception must propagate for messenger retry handling
+        }
+
+        $this->assertFileDoesNotExist(
+            $tmpFilePath,
+            'Temp files must be deleted even when batch processing fails'
+        );
+    }
+
+    private function createTemporaryFile(): string
+    {
+        $tmpFilePath = tempnam(sys_get_temp_dir(), 'gdi-queue-handler-test-');
+        $this->assertNotFalse($tmpFilePath);
+
+        return $tmpFilePath;
+    }
+
     private function createLongRunningHelper(): LongRunningHelper
     {
         $longRunningHelper = new LongRunningHelper(
