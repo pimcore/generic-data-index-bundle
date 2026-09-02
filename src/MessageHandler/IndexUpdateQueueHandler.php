@@ -50,6 +50,10 @@ final readonly class IndexUpdateQueueHandler
             // cleanup between batches long-running queue workers grow until the messenger
             // memory limit restarts them.
             $this->longRunningHelper->cleanUp();
+            // Asset processing (e.g. text extraction from documents) creates local temp copies
+            // registered via LongRunningHelper::addTmpFilePath(); cleanUp() does not remove
+            // them, so delete them explicitly or long-running workers fill the temp directory.
+            $this->longRunningHelper->deleteTemporaryFiles();
         }
     }
 }
