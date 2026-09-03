@@ -13,21 +13,20 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter;
 
-use Pimcore\Model\DataObject\ClassDefinition\Data\Numeric;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 
 /**
+ * Integer fields are stored as 64-bit long and everything else as 64-bit double, so
+ * large identifiers or high-precision decimals are not collapsed by float32 rounding.
+ *
  * @internal
  */
-final class NumericAdapter extends AbstractAdapter
+trait NumericMappingTrait
 {
-    use NumericMappingTrait;
-
-    public function getIndexMapping(): array
+    private function getNumericMapping(bool $integer): array
     {
-        $fieldDefinition = $this->getFieldDefinition();
-
-        return $this->getNumericMapping(
-            $fieldDefinition instanceof Numeric && $fieldDefinition->getInteger()
-        );
+        return [
+            'type' => $integer ? AttributeType::LONG->value : AttributeType::DOUBLE->value,
+        ];
     }
 }

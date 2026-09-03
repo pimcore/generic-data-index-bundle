@@ -14,27 +14,57 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\DataObject\FieldDefinitionAdapter;
 
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\NumericAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Numeric;
 
-/**
- * @internal
- */
 final class NumericAdapterTest extends Unit
 {
-    public function testGetSearchIndexMapping(): void
+    public function testIntegerFieldIsMappedAsLong(): void
     {
-        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
-        $adapter = new NumericAdapter(
-            $searchIndexConfigServiceInterfaceMock,
-            $fieldDefinitionServiceInterfaceMock
-        );
+        $numeric = new Numeric();
+        $numeric->setInteger(true);
 
-        $mapping = $adapter->getIndexMapping();
-        $this->assertSame([
-            'type' => 'float',
-        ], $mapping);
+        $this->assertSame(
+            ['type' => AttributeType::LONG->value],
+            $this->createAdapter($numeric)->getIndexMapping()
+        );
+    }
+
+    public function testDecimalFieldIsMappedAsDouble(): void
+    {
+        $numeric = new Numeric();
+        $numeric->setInteger(false);
+
+        $this->assertSame(
+            ['type' => AttributeType::DOUBLE->value],
+            $this->createAdapter($numeric)->getIndexMapping()
+        );
+    }
+
+    public function testFieldWithDecimalPrecisionIsMappedAsDouble(): void
+    {
+        $numeric = new Numeric();
+        $numeric->setInteger(false);
+        $numeric->setDecimalSize(20);
+        $numeric->setDecimalPrecision(4);
+
+        $this->assertSame(
+            ['type' => AttributeType::DOUBLE->value],
+            $this->createAdapter($numeric)->getIndexMapping()
+        );
+    }
+
+    private function createAdapter(Numeric $fieldDefinition): NumericAdapter
+    {
+        $adapter = new NumericAdapter(
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
+            $this->makeEmpty(FieldDefinitionServiceInterface::class)
+        );
+        $adapter->setFieldDefinition($fieldDefinition);
+
+        return $adapter;
     }
 }
