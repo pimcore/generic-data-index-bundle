@@ -39,5 +39,7 @@ interface WorkspaceServiceInterface
         string $path
     ): array;
 
+    public function mergeWorkspacesByPath(array $workspaces): array;
+
     public function getDeepestWorkspace(array $workspaces): WorkspaceInterface;
 }
