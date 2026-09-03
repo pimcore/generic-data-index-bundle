@@ -9,8 +9,8 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 ### Re-indexing required
 
-- [Indexing] `Numeric`, `NumericRange` and `QuantityValue` fields are no longer mapped as 32-bit `float`.
-  Fields configured as integer are now mapped as `long`, all other ones as `double`. This prevents
+- [Indexing] `Numeric`, `NumericRange`, `QuantityValue` and `Slider` fields are no longer mapped as 32-bit `float`.
+  Fields configured as integer are now mapped as `long`, all other ones (including `Slider`) as `double`. This prevents
   exact-match filters on large integers (for example customer or account IDs above 2^24) from returning
   neighbouring values that shared the same rounded `float` representation.
 - The mapping change is applied by `bin/console generic-data-index:update:index`, which recreates the

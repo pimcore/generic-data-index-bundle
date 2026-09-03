@@ -18,7 +18,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\Attribu
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\NumericAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Numeric;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Slider;
 
 final class NumericAdapterTest extends Unit
 {
@@ -57,7 +59,15 @@ final class NumericAdapterTest extends Unit
         );
     }
 
-    private function createAdapter(Numeric $fieldDefinition): NumericAdapter
+    public function testSliderFieldIsMappedAsDouble(): void
+    {
+        $this->assertSame(
+            ['type' => AttributeType::DOUBLE->value],
+            $this->createAdapter(new Slider())->getIndexMapping()
+        );
+    }
+
+    private function createAdapter(Data $fieldDefinition): NumericAdapter
     {
         $adapter = new NumericAdapter(
             $this->makeEmpty(SearchIndexConfigServiceInterface::class),
