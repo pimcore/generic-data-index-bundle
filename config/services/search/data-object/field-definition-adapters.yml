@@ -12,7 +12,6 @@ services:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "select" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "multiselect" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "input" }
-            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "calculatedValue" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "country" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "countrymultiselect" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "language" }
@@ -23,6 +22,11 @@ services:
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "lastname" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "email" }
             - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "gender" }
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\CalculatedValueAdapter:
+        shared: false
+        tags:
+            - { name: "pimcore.generic_data_index.data-object.search_index_field_definition", type: "calculatedValue" }
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\NumericAdapter:
         shared: false
