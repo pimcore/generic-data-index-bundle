@@ -14,34 +14,56 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\DataObject\FieldDefinitionAdapter;
 
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\QuantityValueAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Model\DataObject\ClassDefinition\Data\QuantityValue;
 
-/**
- * @internal
- */
 final class QuantityValueAdapterTest extends Unit
 {
-    public function testGetSearchIndexMapping(): void
+    public function testIntegerValueIsMappedAsLong(): void
     {
-        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
-        $adapter = new QuantityValueAdapter(
-            $searchIndexConfigServiceInterfaceMock,
-            $fieldDefinitionServiceInterfaceMock
-        );
+        $quantityValue = new QuantityValue();
+        $quantityValue->setInteger(true);
 
-        $mapping = $adapter->getIndexMapping();
         $this->assertSame([
             'properties' => [
                 'value' => [
-                    'type' => 'float',
+                    'type' => AttributeType::LONG->value,
                 ],
                 'unitId' => [
-                    'type' => 'text',
+                    'type' => AttributeType::TEXT->value,
                 ],
             ],
-        ], $mapping);
+        ], $this->createAdapter($quantityValue)->getIndexMapping());
+    }
+
+    public function testDecimalValueIsMappedAsDouble(): void
+    {
+        $quantityValue = new QuantityValue();
+        $quantityValue->setInteger(false);
+
+        $this->assertSame([
+            'properties' => [
+                'value' => [
+                    'type' => AttributeType::DOUBLE->value,
+                ],
+                'unitId' => [
+                    'type' => AttributeType::TEXT->value,
+                ],
+            ],
+        ], $this->createAdapter($quantityValue)->getIndexMapping());
+    }
+
+    private function createAdapter(QuantityValue $fieldDefinition): QuantityValueAdapter
+    {
+        $adapter = new QuantityValueAdapter(
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
+            $this->makeEmpty(FieldDefinitionServiceInterface::class)
+        );
+        $adapter->setFieldDefinition($fieldDefinition);
+
+        return $adapter;
     }
 }

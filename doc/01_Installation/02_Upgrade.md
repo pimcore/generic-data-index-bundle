@@ -5,6 +5,17 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 # Upgrade Information
 
+## Upgrade to 2026.2.8
+
+### Re-indexing required
+
+- [Indexing] `Numeric`, `NumericRange`, `QuantityValue` and `Slider` fields are no longer mapped as 32-bit `float`.
+  Fields configured as integer are now mapped as `long`, all other ones (including `Slider`) as `double`. This prevents
+  exact-match filters on large integers (for example customer or account IDs above 2^24) from returning
+  neighbouring values that shared the same rounded `float` representation.
+- The mapping change is applied by `bin/console generic-data-index:update:index`, which recreates the
+  affected data object indices and queues all elements for re-indexing.
+
 ## Upgrade to 2026.1.0
 
 ### PHP and Dependency Requirements
