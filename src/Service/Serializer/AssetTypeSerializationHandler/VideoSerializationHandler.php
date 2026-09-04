@@ -26,6 +26,8 @@ class VideoSerializationHandler extends AbstractHandler
 {
     use LoggerAwareTrait;
 
+    private const ERROR_SEPARATOR = ' error ';
+
     public function getAdditionalSystemFields(Asset $asset): array
     {
         if (!$asset instanceof Video) {
@@ -56,7 +58,7 @@ class VideoSerializationHandler extends AbstractHandler
         } catch (Throwable $e) {
             $this->logger->error('Thumbnail generation failed for video asset: ' .
                 $video->getId() .
-                ' error ' .
+                self::ERROR_SEPARATOR .
                 $e->getMessage()
             );
         }
@@ -71,7 +73,7 @@ class VideoSerializationHandler extends AbstractHandler
         } catch (Throwable $e) {
             $this->logger->error('Duration extraction failed for video asset: ' .
                 $video->getId() .
-                ' error ' .
+                self::ERROR_SEPARATOR .
                 $e->getMessage()
             );
         }
@@ -86,7 +88,7 @@ class VideoSerializationHandler extends AbstractHandler
         } catch (Throwable $e) {
             $this->logger->error('Width extraction failed for video asset: ' .
                 $video->getId() .
-                ' error ' .
+                self::ERROR_SEPARATOR .
                 $e->getMessage()
             );
         }
@@ -101,7 +103,7 @@ class VideoSerializationHandler extends AbstractHandler
         } catch (Throwable $e) {
             $this->logger->error('Height extraction failed for video asset: ' .
                 $video->getId() .
-                ' error ' .
+                self::ERROR_SEPARATOR .
                 $e->getMessage()
             );
         }
