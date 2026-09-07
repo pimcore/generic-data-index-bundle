@@ -41,7 +41,7 @@ class GenericDataIndex extends \Codeception\Module
         parent::__construct($moduleContainer, $config);
     }
 
-    public function runCommand(string $command, array $parameters = [], array $consoleInputs = [], int $expectedExitCode = 0): string
+    public function runConsoleCommand(string $command, array $parameters = [], array $consoleInputs = [], int $expectedExitCode = 0): string
     {
         /** @var Pimcore $pimcoreModule */
         $pimcoreModule = $this->getModule('\\' . Pimcore::class);
@@ -261,6 +261,6 @@ class GenericDataIndex extends \Codeception\Module
 
     public function consume(): void
     {
-        $this->runCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+        $this->runConsoleCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
     }
 }
