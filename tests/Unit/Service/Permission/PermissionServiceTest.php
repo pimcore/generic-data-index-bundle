@@ -43,6 +43,11 @@ final class PermissionServiceTest extends Unit
 
     private ?User\UserRole $role = null;
 
+    /**
+     * @var array<int, User\UserRole>
+     */
+    private array $roles = [];
+
     private AssetSearchResultItem $assetSearchResult;
 
     private DataObjectSearchResultItem $dataObjectSearchResult;
@@ -51,6 +56,7 @@ final class PermissionServiceTest extends Unit
 
     public function _before(): void
     {
+        $this->roles = [];
         $this->user = new User();
         $this->assetSearchResult = (new AssetSearchResultItem())->setParentId(1);
         $this->dataObjectSearchResult = (new DataObjectSearchResultItem())->setParentId(1);
@@ -465,6 +471,103 @@ final class PermissionServiceTest extends Unit
         }
 
         return $workspace;
+    }
+
+    public function testDocumentPermissionWithMultipleRolesOnSamePath(): void
+    {
+        $roleA = new User\Role();
+        $roleA->setId(2);
+        $roleA->setWorkspacesDocument(
+            [
+                $this->getWorkspace(
+                    path: '/parentFolder',
+                    permissions: ['list', 'view'],
+                    type: DocumentWorkspace::WORKSPACE_TYPE
+                ),
+            ]
+        );
+        $roleB = new User\Role();
+        $roleB->setId(3);
+        $roleB->setWorkspacesDocument(
+            [
+                $this->getWorkspace(
+                    path: '/parentFolder',
+                    permissions: ['list', 'view', 'publish', 'delete'],
+                    type: DocumentWorkspace::WORKSPACE_TYPE
+                ),
+            ]
+        );
+        $this->roles = [2 => $roleA, 3 => $roleB];
+
+        // grants are additive across roles, independent of role assignment order
+        foreach ([[2, 3], [3, 2]] as $roleOrder) {
+            $this->user->setRoles($roleOrder);
+            $permissions = $this->getPermissionServiceWithRoles()->getDocumentPermissions(
+                $this->documentSearchResultItem->setFullPath('/parentFolder/document'),
+                $this->user
+            );
+
+            $this->assertTrue($permissions->isList());
+            $this->assertTrue($permissions->isView());
+            $this->assertTrue($permissions->isPublish());
+            $this->assertTrue($permissions->isDelete());
+            $this->assertFalse($permissions->isRename());
+        }
+    }
+
+    public function testDocumentPermissionWithMultipleRolesOnDifferentPaths(): void
+    {
+        $roleA = new User\Role();
+        $roleA->setId(2);
+        $roleA->setWorkspacesDocument(
+            [
+                $this->getWorkspace(
+                    path: '/',
+                    permissions: ['list', 'view', 'publish', 'delete', 'rename'],
+                    type: DocumentWorkspace::WORKSPACE_TYPE
+                ),
+            ]
+        );
+        $roleB = new User\Role();
+        $roleB->setId(3);
+        $roleB->setWorkspacesDocument(
+            [
+                $this->getWorkspace(
+                    path: '/parentFolder',
+                    permissions: ['list', 'view'],
+                    type: DocumentWorkspace::WORKSPACE_TYPE
+                ),
+            ]
+        );
+        $this->roles = [2 => $roleA, 3 => $roleB];
+
+        // the deepest workspace wins entirely; broader grants on parent paths do not merge in
+        foreach ([[2, 3], [3, 2]] as $roleOrder) {
+            $this->user->setRoles($roleOrder);
+            $permissions = $this->getPermissionServiceWithRoles()->getDocumentPermissions(
+                $this->documentSearchResultItem->setFullPath('/parentFolder/document'),
+                $this->user
+            );
+
+            $this->assertTrue($permissions->isList());
+            $this->assertTrue($permissions->isView());
+            $this->assertFalse($permissions->isPublish());
+            $this->assertFalse($permissions->isDelete());
+            $this->assertFalse($permissions->isRename());
+        }
+    }
+
+    private function getPermissionServiceWithRoles(): PermissionService
+    {
+        return new PermissionService(
+            $this->getEventService(),
+            $this->makeEmpty(LanguageServiceInterface::class),
+            new WorkspaceService(
+                $this->makeEmpty(UserRoleResolverInterface::class, [
+                    'getById' => fn (int $id) => $this->roles[$id] ?? null,
+                ])
+            )
+        );
     }
 
     private function getPermissionServiceWithUser(): PermissionService

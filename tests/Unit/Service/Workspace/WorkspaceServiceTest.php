@@ -210,6 +210,75 @@ final class WorkspaceServiceTest extends Unit
         );
     }
 
+    public function testMergeWorkspacesByPath(): void
+    {
+        $roleAWorkspace = $this->workspaceHelper->getUserWorkspace(Workspace\Document::class, '/parentFolder');
+        $roleAWorkspace->setList(true);
+        $roleAWorkspace->setView(true);
+        $roleBWorkspace = $this->workspaceHelper->getUserWorkspace(Workspace\Document::class, '/parentFolder');
+        $roleBWorkspace->setPublish(true);
+        $otherWorkspace = $this->workspaceHelper->getUserWorkspace(Workspace\Document::class, '/otherFolder');
+        $otherWorkspace->setList(true);
+
+        $merged = $this->getWorkspaceService()->mergeWorkspacesByPath([
+            new DocumentWorkspace($roleAWorkspace),
+            new DocumentWorkspace($roleBWorkspace),
+            new DocumentWorkspace($otherWorkspace),
+        ]);
+
+        $this->assertCount(2, $merged);
+        $permissions = $merged['/parentFolder']->getPermissions();
+        $this->assertTrue($permissions->isList());
+        $this->assertTrue($permissions->isView());
+        $this->assertTrue($permissions->isPublish());
+        $this->assertFalse($permissions->isDelete());
+        $this->assertTrue($merged['/otherFolder']->getPermissions()->isList());
+        $this->assertFalse($merged['/otherFolder']->getPermissions()->isView());
+    }
+
+    public function testGetDeepestWorkspaceMergesGrantsOnSamePath(): void
+    {
+        $roleAWorkspace = $this->workspaceHelper->getUserWorkspace(Workspace\Document::class, '/parentFolder');
+        $roleAWorkspace->setList(true);
+        $roleAWorkspace->setView(true);
+        $roleBWorkspace = $this->workspaceHelper->getUserWorkspace(Workspace\Document::class, '/parentFolder');
+        $roleBWorkspace->setPublish(true);
+        $roleBWorkspace->setDelete(true);
+        $parentWorkspace = $this->workspaceHelper->getUserWorkspace(Workspace\Document::class, '/');
+        $parentWorkspace->setRename(true);
+
+        $deepest = $this->getWorkspaceService()->getDeepestWorkspace([
+            new DocumentWorkspace($roleAWorkspace),
+            new DocumentWorkspace($roleBWorkspace),
+            new DocumentWorkspace($parentWorkspace),
+        ]);
+
+        $this->assertSame('/parentFolder', $deepest->getPath());
+        $permissions = $deepest->getPermissions();
+        $this->assertTrue($permissions->isList());
+        $this->assertTrue($permissions->isView());
+        $this->assertTrue($permissions->isPublish());
+        $this->assertTrue($permissions->isDelete());
+        $this->assertFalse($permissions->isRename());
+    }
+
+    public function testGetDeepestWorkspaceMergesLanguagePermissions(): void
+    {
+        $roleAWorkspace = $this->workspaceHelper->getUserWorkspace(Workspace\DataObject::class, '/objects');
+        $roleAWorkspace->setLView('en,de');
+        $roleBWorkspace = $this->workspaceHelper->getUserWorkspace(Workspace\DataObject::class, '/objects');
+        $roleBWorkspace->setLView('en,fr');
+        $roleBWorkspace->setLEdit('de');
+
+        $deepest = $this->getWorkspaceService()->getDeepestWorkspace([
+            new DataObjectWorkspace($roleAWorkspace),
+            new DataObjectWorkspace($roleBWorkspace),
+        ]);
+
+        $this->assertSame('en,de,fr', $deepest->getPermissions()->isLocalizedView());
+        $this->assertSame('de', $deepest->getPermissions()->isLocalizedEdit());
+    }
+
     public function testGetDeepestWorkspaces(): void
     {
         $workSpaces = [
