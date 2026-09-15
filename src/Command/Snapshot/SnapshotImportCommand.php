@@ -89,6 +89,9 @@ final class SnapshotImportCommand extends AbstractCommand
                 return self::FAILURE;
             }
             $only = array_values(array_filter(array_map('trim', explode(',', (string) ($input->getOption('only') ?? '')))));
+            if ($only !== []) {
+                $this->io->warning('Importing a subset of indices can leave the local indices inconsistent with each other. Use --only for targeted repairs only.');
+            }
             $options = new ImportOptions(force: (bool) $input->getOption('force'), only: $only, dryRun: (bool) $input->getOption('dry-run'));
 
             $queued = $this->indexStatsService->getStats()->getCountIndexQueueEntries();
@@ -127,7 +130,7 @@ final class SnapshotImportCommand extends AbstractCommand
             $this->io->table(
                 ['class', 'id', 'manifest checksum', 'stored', 'computed from local definition'],
                 array_map(static fn (ClassCompatibility $c) => [$c->className ?? '', $c->classId, $c->manifestChecksum, $c->storedChecksum ?? '', $c->computedChecksum ?? ''],
-                    array_filter($e->report->classes, static fn (ClassCompatibility $c) => $c->status === ClassCompatibilityStatus::INCOMPATIBLE))
+                    array_filter($e->report->classes, static fn (ClassCompatibility $c) => $c->status === ClassCompatibilityStatus::INCOMPATIBLE || $c->status === ClassCompatibilityStatus::UNVERIFIED))
             );
             $this->io->writeln('Import the database dump that belongs to this snapshot, or pass --force to skip these classes.');
 

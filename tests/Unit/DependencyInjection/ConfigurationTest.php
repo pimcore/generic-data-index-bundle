@@ -41,6 +41,7 @@ final class ConfigurationTest extends Unit
         $this->assertSame('pimcore.customer_snapshots.storage', $config['snapshot']['storage']);
         $this->assertSame(0, $config['snapshot']['keep']);
         $this->assertSame(250, $config['snapshot']['page_size']);
+        $this->assertSame(500, $config['snapshot']['bulk_size']);
     }
 
     public function testNegativeKeepIsRejected(): void

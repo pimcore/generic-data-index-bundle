@@ -27,9 +27,22 @@ final class SnapshotStorageTest extends Unit
 {
     private Filesystem $filesystem;
 
+    /** @var string[] local temp files created by a test, removed in _after() */
+    private array $tempFiles = [];
+
     protected function _before(): void
     {
         $this->filesystem = new Filesystem(new InMemoryFilesystemAdapter());
+    }
+
+    protected function _after(): void
+    {
+        foreach ($this->tempFiles as $path) {
+            if (file_exists($path)) {
+                unlink($path);
+            }
+        }
+        $this->tempFiles = [];
     }
 
     public function testOnlyCompleteSnapshotsAreListedNewestFirst(): void
@@ -75,9 +88,11 @@ final class SnapshotStorageTest extends Unit
     {
         $storage = new SnapshotStorage($this->filesystem, 0);
         $local = tempnam(sys_get_temp_dir(), 'gdi-test-');
+        $this->tempFiles[] = $local;
         file_put_contents($local, 'payload');
         $storage->writeFile('snap', 'asset.ndjson.gz', $local);
         $back = tempnam(sys_get_temp_dir(), 'gdi-test-');
+        $this->tempFiles[] = $back;
         $storage->readFileToLocal('snap', 'asset.ndjson.gz', $back);
 
         $this->assertSame('payload', file_get_contents($back));
@@ -85,8 +100,6 @@ final class SnapshotStorageTest extends Unit
         $storage->deleteSnapshot('snap');
         $this->assertFalse($this->filesystem->fileExists('snap/asset.ndjson.gz'));
         $storage->deleteSnapshot('snap'); // second delete is silent
-        unlink($local);
-        unlink($back);
     }
 
     public function testReadManifestOfMissingSnapshotThrows(): void

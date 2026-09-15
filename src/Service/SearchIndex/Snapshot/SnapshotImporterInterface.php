@@ -41,8 +41,9 @@ interface SnapshotImporterInterface
      *
      * @throws InvalidSnapshotException when the snapshot's manifest itself cannot be read
      * @throws SnapshotIncompatibleException when the class definitions do not match and $options->force is false
-     * @throws SnapshotImportException when an `only` name is unknown, or an index file is corrupted,
-     *                                  truncated, or could not be replayed
+     * @throws SnapshotImportException when an `only` name is unknown, an index file has an unsafe
+     *                                  or unexpected name, or an index file is corrupted, truncated,
+     *                                  could not be read from storage, or could not be replayed
      */
     public function import(
         SnapshotStorageInterface $storage,

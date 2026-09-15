@@ -131,12 +131,12 @@ final class SnapshotExporter implements SnapshotExporterInterface
             // JsonException) must still delete the partial directory and surface as
             // SnapshotExportException, same as an index export failure.
             $storage->writeManifest($name, $manifest);
-            $this->logger?->info(sprintf('Index snapshot "%s" written: %d indices in %d s', $name, count($indices), $manifest->durationSeconds));
         } catch (Throwable $e) {
             $storage->deleteSnapshot($name);
 
             throw new SnapshotExportException(sprintf('Snapshot export "%s" aborted: %s', $name, $e->getMessage()), 0, $e);
         }
+        $this->logger?->info(sprintf('Index snapshot "%s" written: %d indices in %d s', $name, count($indices), $manifest->durationSeconds));
 
         try {
             $deleted = $storage->rotate();

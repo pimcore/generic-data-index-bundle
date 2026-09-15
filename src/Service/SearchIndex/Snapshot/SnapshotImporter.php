@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 
+use League\Flysystem\FilesystemException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
@@ -94,6 +95,11 @@ final class SnapshotImporter implements SnapshotImporterInterface
 
                 continue;
             }
+            if ($target->isClassIndex() && $report->statusOf((string) $target->getClassId()) === ClassCompatibilityStatus::UNVERIFIED) {
+                $skipped[$entry->shortName] = 'no class mapping checksum in the manifest, skipped because of --force';
+
+                continue;
+            }
             $plan[] = [$entry, $target];
         }
 
@@ -129,7 +135,16 @@ final class SnapshotImporter implements SnapshotImporterInterface
         return array_values(array_filter($manifest->indices, static fn (ManifestIndex $i) => in_array($i->shortName, $only, true)));
     }
 
-    private function provision(IndexTarget $target): void
+    /**
+     * Provisions (recreates) the local index for the target. Returns the freshly computed class
+     * mapping checksum for a class index, or null otherwise; the caller is responsible for
+     * stamping it into the settings store, and only once the replay has actually succeeded (see
+     * {@see replay()}). Stamping it here, before the documents are replayed, would mark the
+     * mapping as current even if the subsequent bulk import fails, leaving an empty or partial
+     * index that {@see \Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService}
+     * would then never self-heal.
+     */
+    private function provision(IndexTarget $target): ?int
     {
         $handler = $this->handlerFor($target);
         $context = $target->classDefinition;
@@ -138,14 +153,18 @@ final class SnapshotImporter implements SnapshotImporterInterface
         }
         $mappingProperties = $handler->getMappingProperties($context);
         $handler->updateMapping(context: $context, forceCreateIndex: true, mappingProperties: $mappingProperties);
-        if ($target->isClassIndex()) {
-            $this->settingsStoreService->storeClassMapping((string) $target->getClassId(), $handler->getClassMappingCheckSum($mappingProperties));
-        }
+
+        return $target->isClassIndex() ? $handler->getClassMappingCheckSum($mappingProperties) : null;
     }
 
     private function replay(SnapshotStorageInterface $storage, string $name, ManifestIndex $entry, IndexTarget $target): ImportedIndex
     {
+        if (preg_match('/^[A-Za-z0-9._-]+$/', $entry->file) !== 1) {
+            throw new SnapshotImportException(sprintf('Invalid file name "%s" in manifest', $entry->file));
+        }
+
         $local = $this->documentFileReader->temporaryPath();
+        $classMappingChecksum = null;
 
         try {
             // Download and verify BEFORE touching the live index: a truncated or corrupted
@@ -153,31 +172,36 @@ final class SnapshotImporter implements SnapshotImporterInterface
             $storage->readFileToLocal($name, $entry->file, $local);
             $this->documentFileReader->verifyHash($local, $entry->sha256);
 
-            $this->provision($target);
+            $classMappingChecksum = $this->provision($target);
 
-            try {
-                $pending = 0;
-                foreach ($this->documentFileReader->read($local) as $document) {
-                    $id = $document[FieldCategory::SYSTEM_FIELDS->value][SystemField::ID->value] ?? null;
-                    if (!is_int($id)) {
-                        throw new SnapshotImportException(sprintf('Document without integer system_fields.id in "%s"', $entry->file));
-                    }
-                    $this->bulkOperationService->add($target->aliasName, $id, $document);
-                    if (++$pending >= $this->bulkSize) {
-                        $this->bulkOperationService->commit();
-                        $pending = 0;
-                    }
+            $pending = 0;
+            foreach ($this->documentFileReader->read($local) as $document) {
+                $id = $document[FieldCategory::SYSTEM_FIELDS->value][SystemField::ID->value] ?? null;
+                if (!is_int($id)) {
+                    throw new SnapshotImportException(sprintf('Document without integer system_fields.id in "%s"', $entry->file));
                 }
-                $this->bulkOperationService->commit();
-            } catch (InvalidSnapshotException|BulkOperationException $e) {
-                throw new SnapshotImportException(sprintf('Import of index "%s" failed: %s', $target->shortName, $e->getMessage()), 0, $e);
+                $this->bulkOperationService->add($target->aliasName, $id, $document);
+                if (++$pending >= $this->bulkSize) {
+                    $this->bulkOperationService->commit();
+                    $pending = 0;
+                }
             }
+            $this->bulkOperationService->commit();
+        } catch (InvalidSnapshotException|BulkOperationException|FilesystemException $e) {
+            throw new SnapshotImportException(sprintf('Import of index "%s" failed: %s', $target->shortName, $e->getMessage()), 0, $e);
         } finally {
             @unlink($local);
         }
         $this->searchIndexService->refreshIndex($target->aliasName);
         $actual = $this->searchIndexService->getCount(new Search(), $target->aliasName);
         $this->logger?->info(sprintf('Imported %d/%d documents into %s', $actual, $entry->documentCount, $target->aliasName));
+
+        // Stamp the checksum only now: the bulk commit above succeeded and the index has been
+        // counted, so the settings store is only ever updated once the mapping it describes is
+        // actually backed by a fully-replayed index.
+        if ($target->isClassIndex() && $classMappingChecksum !== null) {
+            $this->settingsStoreService->storeClassMapping((string) $target->getClassId(), $classMappingChecksum);
+        }
 
         return new ImportedIndex($target->shortName, $target->aliasName, $entry->documentCount, $actual);
     }

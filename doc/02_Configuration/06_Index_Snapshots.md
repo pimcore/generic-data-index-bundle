@@ -82,6 +82,7 @@ definitions:
 | equals the local settings store | imported |
 | equals the checksum of the local class definition, store differs | imported, store re-stamped |
 | matches neither | refused; `--force` skips that class |
+| no checksum in the manifest for a class that has an index | refused; `--force` skips that class |
 
 A class that is present in the manifest but no longer defined locally has no local index to import
 into and is always skipped, independently of `--force`. If the check finds a mismatch and

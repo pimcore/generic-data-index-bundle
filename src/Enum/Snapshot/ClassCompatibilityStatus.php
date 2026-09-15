@@ -22,4 +22,5 @@ enum ClassCompatibilityStatus: string
     case STALE_STORE = 'stale_store';
     case INCOMPATIBLE = 'incompatible';
     case MISSING_LOCALLY = 'missing_locally';
+    case UNVERIFIED = 'unverified';
 }

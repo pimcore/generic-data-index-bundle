@@ -106,7 +106,8 @@ final class SnapshotExporterTest extends Unit
     {
         $this->tester->createFullyFledgedObjectSimple('snapshot-gate-', true, true, 9);
         Db::get()->executeStatement(
-            'INSERT INTO generic_data_index_queue (elementId, elementType, elementIndexName, operation, operationTime, dispatched) VALUES (999999, "dataObject", "simple", "update", 1, 0)'
+            'INSERT INTO generic_data_index_queue (elementId, elementType, elementIndexName, operation, operationTime, dispatched) VALUES (?, \'dataObject\', \'simple\', \'update\', 1, 0)',
+            [999999]
         );
         $storage = new SnapshotStorage(new Filesystem(new InMemoryFilesystemAdapter()), 0);
         /** @var SnapshotExporterInterface $exporter */

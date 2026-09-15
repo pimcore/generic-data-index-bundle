@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Snapshot;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Snapshot\ClassCompatibilityStatus;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\Manifest;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\CompatibilityCheckerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
@@ -98,6 +99,20 @@ final class CompatibilityCheckerTest extends Unit
         $report = $this->checker()->check($this->manifest(['12' => 1]));
 
         $this->assertSame(ClassCompatibilityStatus::MISSING_LOCALLY, $report->statusOf('12'));
+    }
+
+    public function testIndexWithoutManifestChecksumIsUnverified(): void
+    {
+        $manifest = $this->manifest([]);
+        $index = new ManifestIndex(
+            'data-object_simple', 'dataObject', $this->simple->getId(), 'pimcore_simple-1',
+            3, 'data-object_simple.ndjson.gz', 123, 'deadbeef'
+        );
+
+        $report = $this->checker()->check($manifest->withIndices([$index]));
+
+        $this->assertSame(ClassCompatibilityStatus::UNVERIFIED, $report->statusOf($this->simple->getId()));
+        $this->assertFalse($report->isCompatible());
     }
 
     private function checker(): CompatibilityCheckerInterface

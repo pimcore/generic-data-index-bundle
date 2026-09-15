@@ -24,12 +24,15 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ExportOptions;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportedIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportOptions;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorage;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Tests\Support\Util\TestHelper;
@@ -63,6 +66,23 @@ final class SnapshotRoundTripTest extends Unit
         $this->queueRepository = $this->tester->grabService(IndexQueueRepository::class);
         $this->simpleAlias = $this->tester->grabService(DataObjectTypeAdapter::class)
             ->getAliasIndexName(ClassDefinition::getByName('simple'));
+        // TestHelper::cleanUp() (in a previous test's _after()) truncates the settings store, so
+        // every class definition's mapping checksum is gone even though its index still exists
+        // from suite bootstrap. A real installation always has a checksum from the moment a class
+        // definition is saved (IndexUpdateService::updateClassDefinition()); restamp it here so
+        // export()/check() see the same state as a healthy installation, and only the class a
+        // test deliberately corrupts ends up incompatible/unverified.
+        $this->restampAllClassMappingChecksums();
+    }
+
+    private function restampAllClassMappingChecksums(): void
+    {
+        $settingsStore = $this->tester->grabService(SettingsStoreServiceInterface::class);
+        $handler = $this->tester->grabService(DataObjectIndexHandler::class);
+        foreach ((new ClassDefinition\Listing())->load() as $classDefinition) {
+            $mappingProperties = $handler->getMappingProperties($classDefinition);
+            $settingsStore->storeClassMapping($classDefinition->getId(), $handler->getClassMappingCheckSum($mappingProperties));
+        }
     }
 
     protected function _after(): void
@@ -124,7 +144,10 @@ final class SnapshotRoundTripTest extends Unit
         $this->exporter()->export($this->storage, 'bad', new ExportOptions());
         $manifest = $this->storage->readManifest('bad');
         $classId = ClassDefinition::getByName('simple')->getId();
-        $this->storage->writeManifest('bad', $manifest->withClassMappingChecksums([$classId => 999]));
+        // Override only "simple"'s checksum, keep the others: withClassMappingChecksums() replaces
+        // the whole map, and dropping the other classes' entries entirely would make them
+        // UNVERIFIED too (a different, unrelated failure mode from the one under test here).
+        $this->storage->writeManifest('bad', $manifest->withClassMappingChecksums([...$manifest->classMappingChecksums, $classId => 999]));
         $countBefore = $this->searchIndexService->getCount(new Search(), $this->simpleAlias);
 
         try {
@@ -144,7 +167,10 @@ final class SnapshotRoundTripTest extends Unit
         $this->tester->flushIndex();
         $this->exporter()->export($this->storage, 'forced', new ExportOptions());
         $classId = ClassDefinition::getByName('simple')->getId();
-        $this->storage->writeManifest('forced', $this->storage->readManifest('forced')->withClassMappingChecksums([$classId => 999]));
+        $manifest = $this->storage->readManifest('forced');
+        // Override only "simple"'s checksum, keep the others (see comment in
+        // testImportRefusesOnChecksumMismatchAndWritesNothing() above).
+        $this->storage->writeManifest('forced', $manifest->withClassMappingChecksums([...$manifest->classMappingChecksums, $classId => 999]));
 
         $result = $this->importer()->import($this->storage, 'forced', new ImportOptions(force: true));
 
@@ -163,6 +189,9 @@ final class SnapshotRoundTripTest extends Unit
         $object = $this->tester->createFullyFledgedObjectSimple('snapshot-corrupt-', true, true, 6);
         $this->tester->flushIndex();
         $this->exporter()->export($this->storage, 'corrupt', new ExportOptions());
+        $classId = ClassDefinition::getByName('simple')->getId();
+        $settingsStore = $this->tester->grabService(SettingsStoreServiceInterface::class);
+        $checksumBefore = $settingsStore->getClassMappingCheckSum($classId);
         $this->filesystem->write('corrupt/data-object_simple.ndjson.gz', gzencode("{\"system_fields\":{\"id\":1}}\n"));
 
         try {
@@ -173,6 +202,90 @@ final class SnapshotRoundTripTest extends Unit
         }
         // the checksum is verified before the live index is touched: it must still be intact
         $this->assertTrue($this->searchIndexService->existsAlias($this->simpleAlias));
+        $this->tester->checkIndexEntry($object->getId(), $this->simpleAlias);
+        $this->assertSame($checksumBefore, $settingsStore->getClassMappingCheckSum($classId), 'a rejected import must not stamp the class mapping checksum');
+    }
+
+    public function testFailedReplayDoesNotStampClassMappingChecksum(): void
+    {
+        // Unlike testCorruptedFileIsRejectedBeforeIndexing() above, where the checksum verification
+        // itself fails before the index is ever touched, this reaches the real regression: the
+        // index is provisioned (recreated with the current mapping) and only THEN does replaying
+        // the documents fail, because the file's checksum is valid but its content isn't. Stamping
+        // the class mapping checksum during provisioning (the old behavior) would then mark the
+        // mapping as current even though the index ends up empty.
+        $this->tester->createFullyFledgedObjectSimple('snapshot-stamp-fail-', true, true, 11);
+        $this->tester->flushIndex();
+        $this->exporter()->export($this->storage, 'stamp-fail', new ExportOptions());
+        $classId = ClassDefinition::getByName('simple')->getId();
+        $settingsStore = $this->tester->grabService(SettingsStoreServiceInterface::class);
+        $checksumBefore = $settingsStore->getClassMappingCheckSum($classId);
+        $this->assertNotNull($checksumBefore);
+
+        $badContent = gzencode("{\"standard_fields\":{}}\n");
+        $this->filesystem->write('stamp-fail/data-object_simple.ndjson.gz', $badContent);
+        $manifest = $this->storage->readManifest('stamp-fail');
+        $entry = $manifest->getIndex('data-object_simple');
+        $fixedEntry = new ManifestIndex(
+            $entry->shortName, $entry->elementType, $entry->classId, $entry->sourceIndex,
+            $entry->documentCount, $entry->file, strlen($badContent), hash('sha256', $badContent)
+        );
+        $this->storage->writeManifest('stamp-fail', $manifest->withIndices(
+            array_map(static fn (ManifestIndex $i) => $i->shortName === 'data-object_simple' ? $fixedEntry : $i, $manifest->indices)
+        ));
+
+        try {
+            $this->importer()->import($this->storage, 'stamp-fail', new ImportOptions(only: ['data-object_simple']));
+            $this->fail('expected SnapshotImportException');
+        } catch (SnapshotImportException $e) {
+            $this->assertStringContainsString('Document without integer system_fields.id', $e->getMessage());
+        }
+        $this->assertSame($checksumBefore, $settingsStore->getClassMappingCheckSum($classId), 'a failed replay must not stamp the class mapping checksum');
+    }
+
+    public function testInvalidManifestFileNameIsRejected(): void
+    {
+        $this->tester->createFullyFledgedObjectSimple('snapshot-badname-', true, true, 12);
+        $this->tester->flushIndex();
+        $this->exporter()->export($this->storage, 'badname', new ExportOptions());
+        $manifest = $this->storage->readManifest('badname');
+        $entry = $manifest->getIndex('data-object_simple');
+        $tampered = new ManifestIndex(
+            $entry->shortName, $entry->elementType, $entry->classId, $entry->sourceIndex,
+            $entry->documentCount, '../etc/passwd', $entry->bytes, $entry->sha256
+        );
+        $this->storage->writeManifest('badname', $manifest->withIndices(
+            array_map(static fn (ManifestIndex $i) => $i->shortName === 'data-object_simple' ? $tampered : $i, $manifest->indices)
+        ));
+
+        try {
+            $this->importer()->import($this->storage, 'badname', new ImportOptions(only: ['data-object_simple']));
+            $this->fail('expected SnapshotImportException');
+        } catch (SnapshotImportException $e) {
+            $this->assertStringContainsString('Invalid file name', $e->getMessage());
+        }
+    }
+
+    public function testMissingChecksumInManifestIsUnverifiedAndGatesUnlessForced(): void
+    {
+        $object = $this->tester->createFullyFledgedObjectSimple('snapshot-unverified-', true, true, 13);
+        $this->tester->flushIndex();
+        $this->exporter()->export($this->storage, 'unverified', new ExportOptions());
+        $manifest = $this->storage->readManifest('unverified');
+        $this->storage->writeManifest('unverified', $manifest->withClassMappingChecksums([]));
+
+        try {
+            $this->importer()->import($this->storage, 'unverified', new ImportOptions());
+            $this->fail('expected SnapshotIncompatibleException');
+        } catch (SnapshotIncompatibleException) {
+            // expected: a class index without a manifest checksum is UNVERIFIED, which gates the
+            // import the same way an INCOMPATIBLE checksum would
+        }
+
+        $result = $this->importer()->import($this->storage, 'unverified', new ImportOptions(force: true));
+
+        $this->assertArrayHasKey('data-object_simple', $result->skipped);
+        $this->assertStringContainsString('no class mapping checksum', $result->skipped['data-object_simple']);
         $this->tester->checkIndexEntry($object->getId(), $this->simpleAlias);
     }
 
