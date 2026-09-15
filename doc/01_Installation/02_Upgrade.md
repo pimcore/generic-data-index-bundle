@@ -5,6 +5,18 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 # Upgrade Information
 
+## Upgrade to 2026.2.9
+
+### Re-indexing required
+
+- [Indexing] `CalculatedValue` fields are no longer always mapped as text/keyword: fields configured with
+  element type `boolean` are now mapped as `boolean`, `numeric` as `double` and `date` as `date`
+  (`strict_date_time_no_millis`). The text-based element types (`input`, `textarea`, `html` — including the
+  default) keep the existing text/keyword mapping. This makes term filters, aggregations and the Studio grid
+  filters work on typed calculated fields.
+- The mapping change is applied by `bin/console generic-data-index:update:index`, which recreates the
+  affected data object indices and queues all elements for re-indexing.
+
 ## Upgrade to 2026.2.8
 
 ### Re-indexing required

@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter;
 
+use Carbon\Carbon;
+use Carbon\Exceptions\InvalidFormatException;
 use DateTimeInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
@@ -29,6 +31,8 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\CalculatedValue;
  */
 final class CalculatedValueAdapter extends AbstractAdapter
 {
+    use NumericMappingTrait;
+
     private const ELEMENT_TYPE_BOOLEAN = 'boolean';
 
     private const ELEMENT_TYPE_NUMERIC = 'numeric';
@@ -52,9 +56,8 @@ final class CalculatedValueAdapter extends AbstractAdapter
             self::ELEMENT_TYPE_BOOLEAN => [
                 'type' => AttributeType::BOOLEAN->value,
             ],
-            self::ELEMENT_TYPE_NUMERIC => [
-                'type' => AttributeType::FLOAT->value,
-            ],
+            // no integer flag on calculated fields, so always 64-bit double
+            self::ELEMENT_TYPE_NUMERIC => $this->getNumericMapping(integer: false),
             self::ELEMENT_TYPE_DATE => [
                 'type' => AttributeType::DATE->value,
                 'format' => 'strict_date_time_no_millis',
@@ -70,11 +73,29 @@ final class CalculatedValueAdapter extends AbstractAdapter
         return match ($this->getElementType()) {
             self::ELEMENT_TYPE_BOOLEAN => $this->normalizeBoolean($value),
             self::ELEMENT_TYPE_NUMERIC => is_numeric($value) ? (float) $value : null,
-            self::ELEMENT_TYPE_DATE => $value instanceof DateTimeInterface
-                ? $value->format(DateTimeInterface::ATOM)
-                : null,
+            self::ELEMENT_TYPE_DATE => $this->normalizeDate($value),
             default => $this->normalizeText($value),
         };
+    }
+
+    private function normalizeDate(mixed $value): ?string
+    {
+        if ($value instanceof DateTimeInterface) {
+            return $value->format(DateTimeInterface::ATOM);
+        }
+
+        // Class calculators are typed to return strings and the query store only
+        // yields strings, so date objects rarely reach this point; unparseable
+        // values degrade to null instead of failing the whole document.
+        if (is_string($value) && trim($value) !== '') {
+            try {
+                return (new Carbon($value))->format(DateTimeInterface::ATOM);
+            } catch (InvalidFormatException) {
+                return null;
+            }
+        }
+
+        return null;
     }
 
     private function normalizeBoolean(mixed $value): ?bool

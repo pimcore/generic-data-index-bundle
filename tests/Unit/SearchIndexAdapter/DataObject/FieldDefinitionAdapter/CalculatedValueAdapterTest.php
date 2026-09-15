@@ -40,7 +40,7 @@ final class CalculatedValueAdapterTest extends Unit
         $adapter = $this->createAdapter('numeric');
 
         $this->assertSame([
-            'type' => 'float',
+            'type' => 'double',
         ], $adapter->getIndexMapping());
     }
 
@@ -114,8 +114,26 @@ final class CalculatedValueAdapterTest extends Unit
             '2024-06-15T10:30:00+00:00',
             $adapter->normalize(Carbon::create(2024, 6, 15, 10, 30, 0, 'UTC'))
         );
-        $this->assertNull($adapter->normalize('2024-06-15'));
+        $this->assertSame(
+            '2024-06-15T10:30:00+02:00',
+            $adapter->normalize('2024-06-15T10:30:00+02:00')
+        );
+        $this->assertNull($adapter->normalize('not a date'));
+        $this->assertNull($adapter->normalize(''));
         $this->assertNull($adapter->normalize(null));
+    }
+
+    /**
+     * Class calculators are typed to return strings and the query store casts every
+     * value to string, so date strings without timezone information (e.g. a stored
+     * Carbon "Y-m-d H:i:s" representation) are the common case and must be indexed.
+     */
+    public function testNormalizeParsesDateStringsWithoutTimezone(): void
+    {
+        $adapter = $this->createAdapter('date');
+
+        $this->assertStringStartsWith('2024-06-15T10:30:00', $adapter->normalize('2024-06-15 10:30:00'));
+        $this->assertStringStartsWith('2024-06-15T00:00:00', $adapter->normalize('2024-06-15'));
     }
 
     public function testNormalizeKeepsTextElementTypeBehavior(): void
