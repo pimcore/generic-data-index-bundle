@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\DispatchQueueMessagesHa
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -141,6 +142,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $storage->setArgument('$keep', $snapshotSettings['keep']);
 
         $container->getDefinition(SnapshotExporterInterface::class)->setArgument('$pageSize', $snapshotSettings['page_size']);
+        $container->getDefinition(SnapshotImporterInterface::class)->setArgument('$bulkSize', $snapshotSettings['bulk_size']);
     }
 
     private function getIndexSettings(array $indexSettings): array

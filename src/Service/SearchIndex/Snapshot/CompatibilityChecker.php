@@ -36,6 +36,7 @@ final class CompatibilityChecker implements CompatibilityCheckerInterface
     {
         $classes = [];
         foreach ($manifest->classMappingChecksums as $classId => $manifestChecksum) {
+            $classId = (string) $classId;
             $classDefinition = ClassDefinition::getById($classId);
             if ($classDefinition === null) {
                 $classes[] = new ClassCompatibility(
