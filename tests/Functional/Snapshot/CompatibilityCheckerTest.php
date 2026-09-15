@@ -115,6 +115,23 @@ final class CompatibilityCheckerTest extends Unit
         $this->assertFalse($report->isCompatible());
     }
 
+    public function testIndexForClassMissingLocallyWithoutManifestChecksumIsMissingLocallyNotUnverified(): void
+    {
+        // A class id that no longer exists locally must not gate the import as UNVERIFIED: the
+        // importer already skips such an index unconditionally ("no local counterpart"), so the
+        // compatibility gate must agree it's harmless, independent of --force.
+        $manifest = $this->manifest([]);
+        $index = new ManifestIndex(
+            'data-object_nope', 'dataObject', 'NOPE', 'pimcore_nope-1',
+            3, 'data-object_nope.ndjson.gz', 123, 'deadbeef'
+        );
+
+        $report = $this->checker()->check($manifest->withIndices([$index]));
+
+        $this->assertSame(ClassCompatibilityStatus::MISSING_LOCALLY, $report->statusOf('NOPE'));
+        $this->assertTrue($report->isCompatible());
+    }
+
     private function checker(): CompatibilityCheckerInterface
     {
         return $this->tester->grabService(CompatibilityCheckerInterface::class);

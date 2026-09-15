@@ -87,7 +87,9 @@ final class CompatibilityChecker implements CompatibilityCheckerInterface
         // A class index whose class has no entry in the manifest's class_mapping_checksums (an
         // older snapshot, or a manifest hand-edited to drop it) cannot be verified at all: treat
         // it as UNVERIFIED rather than silently importable, so the gate closes the same way an
-        // INCOMPATIBLE checksum would.
+        // INCOMPATIBLE checksum would. A class that no longer exists locally at all is a
+        // different situation: the importer always skips it as "no local counterpart",
+        // independent of --force, so it must not gate the import as UNVERIFIED either.
         foreach ($manifest->indices as $index) {
             if ($index->elementType !== ElementType::DATA_OBJECT->value || $index->classId === null) {
                 continue;
@@ -97,9 +99,22 @@ final class CompatibilityChecker implements CompatibilityCheckerInterface
                 continue;
             }
             $seenClassIds[$classId] = true;
+            $classDefinition = ClassDefinition::getById($classId);
+            if ($classDefinition === null) {
+                $classes[] = new ClassCompatibility(
+                    $classId,
+                    null,
+                    ClassCompatibilityStatus::MISSING_LOCALLY,
+                    0,
+                    null,
+                    null
+                );
+
+                continue;
+            }
             $classes[] = new ClassCompatibility(
                 $classId,
-                ClassDefinition::getById($classId)?->getName(),
+                $classDefinition->getName(),
                 ClassCompatibilityStatus::UNVERIFIED,
                 0,
                 $this->settingsStoreService->getClassMappingCheckSum($classId),

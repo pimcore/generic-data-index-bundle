@@ -243,6 +243,44 @@ final class SnapshotRoundTripTest extends Unit
         $this->assertSame($checksumBefore, $settingsStore->getClassMappingCheckSum($classId), 'a failed replay must not stamp the class mapping checksum');
     }
 
+    public function testIncompleteReplayDoesNotStampClassMappingChecksum(): void
+    {
+        // The replay itself succeeds (the file's checksum and contents are valid), but the
+        // manifest's declared document count no longer matches what was actually replayed -
+        // simulating a manifest that was hand-edited, or a source index that changed between
+        // export and import. Stamping the checksum here would mark the mapping "current" even
+        // though the index is short a document, and self-healing would never kick in.
+        for ($i = 1; $i <= 2; $i++) {
+            $this->tester->createFullyFledgedObjectSimple('snapshot-incomplete-', true, true, 20 + $i);
+        }
+        $this->tester->flushIndex();
+        $this->exporter()->export($this->storage, 'incomplete', new ExportOptions());
+        $classId = ClassDefinition::getByName('simple')->getId();
+        $settingsStore = $this->tester->grabService(SettingsStoreServiceInterface::class);
+        $checksumBefore = $settingsStore->getClassMappingCheckSum($classId);
+        $this->assertNotNull($checksumBefore);
+
+        $manifest = $this->storage->readManifest('incomplete');
+        $entry = $manifest->getIndex('data-object_simple');
+        $bumpedEntry = new ManifestIndex(
+            $entry->shortName, $entry->elementType, $entry->classId, $entry->sourceIndex,
+            3, $entry->file, $entry->bytes, $entry->sha256
+        );
+        $this->storage->writeManifest('incomplete', $manifest->withIndices(
+            array_map(static fn (ManifestIndex $i) => $i->shortName === 'data-object_simple' ? $bumpedEntry : $i, $manifest->indices)
+        ));
+        $settingsStore->storeClassMapping($classId, 424242);
+
+        try {
+            $result = $this->importer()->import($this->storage, 'incomplete', new ImportOptions(only: ['data-object_simple']));
+
+            $this->assertFalse($result->isSuccessful(), 'expected the mismatched document count to be reported as unsuccessful');
+            $this->assertSame(424242, $settingsStore->getClassMappingCheckSum($classId), 'an incomplete replay must not stamp the class mapping checksum');
+        } finally {
+            $settingsStore->storeClassMapping($classId, $checksumBefore);
+        }
+    }
+
     public function testInvalidManifestFileNameIsRejected(): void
     {
         $this->tester->createFullyFledgedObjectSimple('snapshot-badname-', true, true, 12);

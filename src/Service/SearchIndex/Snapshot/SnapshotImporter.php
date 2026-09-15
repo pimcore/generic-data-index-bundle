@@ -159,7 +159,7 @@ final class SnapshotImporter implements SnapshotImporterInterface
 
     private function replay(SnapshotStorageInterface $storage, string $name, ManifestIndex $entry, IndexTarget $target): ImportedIndex
     {
-        if (preg_match('/^[A-Za-z0-9._-]+$/', $entry->file) !== 1) {
+        if (preg_match('/^[A-Za-z0-9._-]+$/D', $entry->file) !== 1 || in_array($entry->file, ['.', '..'], true)) {
             throw new SnapshotImportException(sprintf('Invalid file name "%s" in manifest', $entry->file));
         }
 
@@ -198,9 +198,18 @@ final class SnapshotImporter implements SnapshotImporterInterface
 
         // Stamp the checksum only now: the bulk commit above succeeded and the index has been
         // counted, so the settings store is only ever updated once the mapping it describes is
-        // actually backed by a fully-replayed index.
+        // actually backed by a fully-replayed index. An incomplete replay (actual count doesn't
+        // match the manifest's expected count) must not stamp the checksum either: a partial
+        // index would otherwise look "current" and the self-healing reindex would never fix it.
         if ($target->isClassIndex() && $classMappingChecksum !== null) {
-            $this->settingsStoreService->storeClassMapping((string) $target->getClassId(), $classMappingChecksum);
+            if ($actual === $entry->documentCount) {
+                $this->settingsStoreService->storeClassMapping((string) $target->getClassId(), $classMappingChecksum);
+            } else {
+                $this->logger?->warning(sprintf(
+                    'Not stamping class mapping checksum for %s: replay imported %d/%d documents',
+                    $target->aliasName, $actual, $entry->documentCount
+                ));
+            }
         }
 
         return new ImportedIndex($target->shortName, $target->aliasName, $entry->documentCount, $actual);
