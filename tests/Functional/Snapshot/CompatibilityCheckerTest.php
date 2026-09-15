@@ -75,6 +75,19 @@ final class CompatibilityCheckerTest extends Unit
         $this->assertSame([$this->simple->getId()], $report->incompatibleClassIds());
     }
 
+    public function testStoredMatchButChangedDefinitionIsIncompatible(): void
+    {
+        // The stored checksum can lag an asynchronously dispatched class-mapping update. Even
+        // when the stored value matches the manifest, the computed checksum from the current
+        // class definition is what decides compatibility.
+        $this->settingsStore->storeClassMapping($this->simple->getId(), 999);
+
+        $report = $this->checker()->check($this->manifest([$this->simple->getId() => 999]));
+
+        $this->assertFalse($report->isCompatible());
+        $this->assertSame([$this->simple->getId()], $report->incompatibleClassIds());
+    }
+
     public function testClassMissingLocallyIsReportedNotFatal(): void
     {
         $report = $this->checker()->check($this->manifest(['NOPE' => 1]));

@@ -39,6 +39,33 @@ final class QueueGateTest extends Unit
         $this->assertSame([5, 5], $slept);
     }
 
+    public function testSleepsOnlyForTheRemainingBudget(): void
+    {
+        $slept = [];
+        $gate = new QueueGate($this->statsService([500, 500, 50]), static function (int $s) use (&$slept): void {
+            $slept[] = $s;
+        }, 5);
+
+        $this->assertSame(50, $gate->await(100, 7));
+        $this->assertSame([5, 2], $slept);
+    }
+
+    public function testWaitOfOneSleepsOnceThenThrows(): void
+    {
+        $slept = [];
+        $gate = new QueueGate($this->statsService([500, 500]), static function (int $s) use (&$slept): void {
+            $slept[] = $s;
+        }, 5);
+
+        $this->expectException(SnapshotExportException::class);
+
+        try {
+            $gate->await(100, 1);
+        } finally {
+            $this->assertSame([1], $slept);
+        }
+    }
+
     public function testThrowsWhenStillAboveThresholdAfterWait(): void
     {
         $gate = new QueueGate($this->statsService([500, 500, 500, 500]), static fn (int $s) => null, 5);

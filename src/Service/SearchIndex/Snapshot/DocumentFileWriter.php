@@ -85,7 +85,8 @@ final class DocumentFileWriter
      * Closes the file and returns its final stats. May only be called once, and never after
      * {@see abort()}.
      *
-     * @throws SnapshotExportException if the writer was already finished or aborted
+     * @throws SnapshotExportException if the writer was already finished or aborted, or if
+     *                                  gzclose() failed to finalize the gzip stream
      */
     public function finish(): WrittenFile
     {
@@ -95,10 +96,7 @@ final class DocumentFileWriter
         if ($this->finished) {
             throw new SnapshotExportException('Writer is already finished');
         }
-        if ($this->handle !== null) {
-            gzclose($this->handle);
-            $this->handle = null;
-        }
+        $this->closeGzipStreamOrFail();
         $this->finished = true;
         clearstatcache(true, $this->path);
 
@@ -108,6 +106,27 @@ final class DocumentFileWriter
             bytes: (int) filesize($this->path),
             sha256: (string) hash_file('sha256', $this->path),
         );
+    }
+
+    /**
+     * @throws SnapshotExportException if gzclose() reports the gzip stream could not be
+     *                                  finalized; the partial output file is unlinked in that case
+     */
+    private function closeGzipStreamOrFail(): void
+    {
+        if ($this->handle === null) {
+            return;
+        }
+        $closed = gzclose($this->handle);
+        $this->handle = null;
+        if ($closed === false) {
+            $this->finished = true;
+            if (file_exists($this->path)) {
+                unlink($this->path);
+            }
+
+            throw new SnapshotExportException(sprintf('Failed to finalize gzip stream for "%s"', $this->path));
+        }
     }
 
     /**

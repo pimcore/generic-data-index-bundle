@@ -69,8 +69,11 @@ final class SnapshotExportCommand extends AbstractCommand
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        if (!$this->lock()) {
-            $this->io->error('Another snapshot export is already running.');
+        // Shared name with SnapshotImportCommand: export and import must be mutually
+        // exclusive, since a concurrent import could read a half-written snapshot or race
+        // the class-mapping checksum stamping the export/import cycle depends on.
+        if (!$this->lock('generic-data-index:snapshot')) {
+            $this->io->error('Another snapshot export or import is already running.');
 
             return self::FAILURE;
         }

@@ -180,9 +180,10 @@ final class SnapshotExporter implements SnapshotExporterInterface
                 // `false` is not usable here: with track_total_hits disabled the search engine
                 // omits "hits.total" entirely, but SearchResultDenormalizer::denormalize()
                 // unconditionally reads $searchResult['hits']['total']['value'] and throws.
-                // An integer bound isn't used either, because the total count is irrelevant to
-                // search_after pagination (it only compares hit-count to page size).
-                $result = $this->searchIndexService->search($search, $target->aliasName, true);
+                // An integer bound (rather than `true`) is enough: search_after pagination only
+                // needs "hits.total" to exist, never its exact value, so `1` avoids the engine
+                // counting every match on each page.
+                $result = $this->searchIndexService->search($search, $target->aliasName, 1);
                 $hits = $result->getHits();
                 foreach ($hits as $hit) {
                     $writer->write($hit->getSource());

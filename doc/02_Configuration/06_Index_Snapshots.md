@@ -65,6 +65,14 @@ storage and deletes the rest. If that rotation step itself fails (e.g. a storage
 deleting an old snapshot), the command prints a warning — the newly written snapshot is still
 valid and the command still exits successfully; only the cleanup did not fully complete.
 
+The export pages through each live alias without taking a point-in-time snapshot of it, so
+elements that are created, changed, or deleted while the export is running can be reflected
+inconsistently across documents (or across pages of the same index). Run the export in a quiet
+window — right after the database dump, with `--max-queue-entries` and idle messenger consumers —
+to keep this window as small as possible, and treat the manifest's `queue_entries_before` and
+`queue_entries_after` counts as the indicator of how clean the resulting baseline is: the closer
+both are to zero, the less concurrent activity the export could have raced.
+
 ## Import
 
 ```bash

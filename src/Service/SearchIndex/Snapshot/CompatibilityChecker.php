@@ -72,33 +72,34 @@ final class CompatibilityChecker implements CompatibilityCheckerInterface
             );
         }
 
+        // Class-mapping updates are dispatched asynchronously, so the stored checksum can lag
+        // behind the actual class definition. Always compute the checksum from the current
+        // definition and let it decide compatibility; a stored value that happens to match the
+        // manifest is not proof the mapping is still compatible.
         $stored = $this->settingsStoreService->getClassMappingCheckSum($classId);
-        if ($stored === $manifestChecksum) {
-            return new ClassCompatibility(
-                $classId,
-                $classDefinition->getName(),
-                ClassCompatibilityStatus::COMPATIBLE,
-                $manifestChecksum,
-                $stored,
-                null,
-            );
-        }
-
         $computed = $this->dataObjectIndexHandler->getClassMappingCheckSum(
             $this->dataObjectIndexHandler->getMappingProperties($classDefinition),
         );
-        $status = $computed === $manifestChecksum
-            ? ClassCompatibilityStatus::STALE_STORE
-            : ClassCompatibilityStatus::INCOMPATIBLE;
 
         return new ClassCompatibility(
             $classId,
             $classDefinition->getName(),
-            $status,
+            $this->resolveStatus($computed, $stored, $manifestChecksum),
             $manifestChecksum,
             $stored,
             $computed,
         );
+    }
+
+    private function resolveStatus(int $computed, ?int $stored, int $manifestChecksum): ClassCompatibilityStatus
+    {
+        if ($computed !== $manifestChecksum) {
+            return ClassCompatibilityStatus::INCOMPATIBLE;
+        }
+
+        return $stored === $manifestChecksum
+            ? ClassCompatibilityStatus::COMPATIBLE
+            : ClassCompatibilityStatus::STALE_STORE;
     }
 
     /**

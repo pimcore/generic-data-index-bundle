@@ -59,10 +59,23 @@ final readonly class ManifestIndex
             elementType: (string) $data['element_type'],
             classId: isset($data['class_id']) ? (string) $data['class_id'] : null,
             sourceIndex: (string) $data['source_index'],
-            documentCount: (int) $data['document_count'],
+            documentCount: self::requireNonNegativeInt($data, 'document_count'),
             file: (string) $data['file'],
-            bytes: (int) $data['bytes'],
+            bytes: self::requireNonNegativeInt($data, 'bytes'),
             sha256: (string) $data['sha256'],
         );
+    }
+
+    private static function requireNonNegativeInt(array $data, string $key): int
+    {
+        $value = $data[$key];
+        if (!is_int($value) || $value < 0) {
+            throw new InvalidSnapshotException(sprintf(
+                'Manifest index entry "%s" must be a non-negative integer',
+                $key
+            ));
+        }
+
+        return $value;
     }
 }

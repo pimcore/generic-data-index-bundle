@@ -47,8 +47,9 @@ final class QueueGate
         }
         $waited = 0;
         while ($count > $maxQueueEntries && $waited < $waitSeconds) {
-            ($this->sleep)($this->pollIntervalSeconds);
-            $waited += $this->pollIntervalSeconds;
+            $sleepSeconds = min($this->pollIntervalSeconds, $waitSeconds - $waited);
+            ($this->sleep)($sleepSeconds);
+            $waited += $sleepSeconds;
             $count = $this->count();
         }
         if ($count > $maxQueueEntries) {

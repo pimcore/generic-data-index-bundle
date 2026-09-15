@@ -137,16 +137,7 @@ final readonly class Manifest
             }
         }
 
-        $checksums = [];
-        foreach ($data['class_mapping_checksums'] as $classId => $checksum) {
-            if (!is_int($checksum) && !(is_string($checksum) && ctype_digit($checksum))) {
-                throw new InvalidSnapshotException(sprintf(
-                    'Manifest "class_mapping_checksums" value for "%s" must be int-like',
-                    (string) $classId
-                ));
-            }
-            $checksums[(string) $classId] = (int) $checksum;
-        }
+        $checksums = self::requireIntChecksums($data['class_mapping_checksums']);
 
         return new self(
             createdAt: (string) $data['created_at'],
@@ -154,12 +145,41 @@ final readonly class Manifest
             pimcoreVersion: (string) $data['pimcore_version'],
             clientType: (string) $data['client_type'],
             indexPrefix: (string) $data['index_prefix'],
-            queueEntriesBefore: (int) $data['queue_entries_before'],
-            queueEntriesAfter: (int) $data['queue_entries_after'],
-            durationSeconds: (int) $data['duration_seconds'],
+            queueEntriesBefore: self::requireNonNegativeInt($data, 'queue_entries_before'),
+            queueEntriesAfter: self::requireNonNegativeInt($data, 'queue_entries_after'),
+            durationSeconds: self::requireNonNegativeInt($data, 'duration_seconds'),
             classMappingChecksums: $checksums,
             indices: array_map(static fn (array $index) => ManifestIndex::fromArray($index), $data['indices']),
             formatVersion: self::FORMAT_VERSION,
         );
+    }
+
+    private static function requireNonNegativeInt(array $data, string $key): int
+    {
+        $value = $data[$key];
+        if (!is_int($value) || $value < 0) {
+            throw new InvalidSnapshotException(sprintf('Manifest "%s" must be a non-negative integer', $key));
+        }
+
+        return $value;
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private static function requireIntChecksums(array $classMappingChecksums): array
+    {
+        $checksums = [];
+        foreach ($classMappingChecksums as $classId => $checksum) {
+            if (!is_int($checksum)) {
+                throw new InvalidSnapshotException(sprintf(
+                    'Manifest "class_mapping_checksums" value for "%s" must be an integer',
+                    (string) $classId
+                ));
+            }
+            $checksums[(string) $classId] = $checksum;
+        }
+
+        return $checksums;
     }
 }

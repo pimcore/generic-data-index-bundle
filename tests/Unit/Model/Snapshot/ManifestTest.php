@@ -74,6 +74,36 @@ final class ManifestTest extends Unit
         Manifest::fromArray($data);
     }
 
+    public function testRejectsNonIntegerDocumentCount(): void
+    {
+        $data = $this->manifest()->toArray();
+        $data['indices'][0]['document_count'] = '1oops';
+
+        $this->expectException(InvalidSnapshotException::class);
+        $this->expectExceptionMessage('document_count');
+        Manifest::fromArray($data);
+    }
+
+    public function testRejectsNegativeBytes(): void
+    {
+        $data = $this->manifest()->toArray();
+        $data['indices'][0]['bytes'] = -1;
+
+        $this->expectException(InvalidSnapshotException::class);
+        $this->expectExceptionMessage('bytes');
+        Manifest::fromArray($data);
+    }
+
+    public function testRejectsNonIntegerQueueEntriesBefore(): void
+    {
+        $data = $this->manifest()->toArray();
+        $data['queue_entries_before'] = '3';
+
+        $this->expectException(InvalidSnapshotException::class);
+        $this->expectExceptionMessage('queue_entries_before');
+        Manifest::fromArray($data);
+    }
+
     private function manifest(): Manifest
     {
         return new Manifest(
