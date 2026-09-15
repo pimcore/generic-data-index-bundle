@@ -20,3 +20,5 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotIndexResolverInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotIndexResolver
         public: true
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\QueueGate: ~
