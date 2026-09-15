@@ -2,6 +2,17 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 2.5.12
+- [Commands] Added `generic-data-index:snapshot:export` and `generic-data-index:snapshot:import`. Export writes every
+  search index into a portable, gzipped JSON-lines bundle (plus a manifest) in a configurable Flysystem storage, so a
+  bundle can be moved between installations without a full reindex. Import recreates the local indices from the
+  bundle and replays the documents through the bulk API; it never enqueues elements, and refuses the import (unless
+  `--force` is given) when a class's mapping checksum in the manifest does not match the local class definition. See
+  [Index snapshots](../02_Configuration/06_Index_Snapshots.md) for the commands and configuration.
+- [Configuration] Added the `pimcore_generic_data_index.snapshot` node (`storage`, `keep`, `page_size`, `bulk_size`)
+  and a default private Flysystem storage `pimcore.generic_data_index_snapshot.storage` under
+  `var/generic-data-index/snapshots`.
+
 ## Upgrade to 2.5.9
 - [Indexing] Moving or renaming an element with children now rewrites the children's `path`/`fullPath` in the search
   index for **all** element types: data objects are rewritten across all per-class indexes (previously only the
