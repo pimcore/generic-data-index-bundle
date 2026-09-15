@@ -21,17 +21,31 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentF
 
 final class DocumentFileTest extends Unit
 {
+    /** @var string[] paths created by a test, always removed in _after() regardless of how the test exits */
+    private array $paths = [];
+
+    protected function _after(): void
+    {
+        foreach ($this->paths as $path) {
+            if (file_exists($path)) {
+                unlink($path);
+            }
+        }
+        $this->paths = [];
+    }
+
     public function testRoundTripPreservesNestedLocalizedDocument(): void
     {
         $documents = [
             ['system_fields' => ['id' => 7, 'key' => 'käse/über'], 'standard_fields' => ['loc_name' => ['de' => 'Käse', 'en' => 'Cheese']]],
-            ['system_fields' => ['id' => 8], 'standard_fields' => ['tags' => [], 'price' => 12.5, 'flag' => null]],
+            ['system_fields' => ['id' => 8], 'standard_fields' => ['tags' => [], 'price' => 12.5, 'ratio' => 1.0, 'flag' => null]],
         ];
         $writer = DocumentFileWriter::createTemporary();
         foreach ($documents as $document) {
             $writer->write($document);
         }
         $written = $writer->finish();
+        $this->paths[] = $written->path;
 
         $this->assertSame(2, $written->documentCount);
         $this->assertSame(filesize($written->path), $written->bytes);
@@ -40,8 +54,9 @@ final class DocumentFileTest extends Unit
 
         $reader = new DocumentFileReader();
         $reader->verifyHash($written->path, $written->sha256);
-        $this->assertSame($documents, iterator_to_array($reader->read($written->path), false));
-        unlink($written->path);
+        $roundTripped = iterator_to_array($reader->read($written->path), false);
+        $this->assertSame($documents, $roundTripped);
+        $this->assertIsFloat($roundTripped[1]['standard_fields']['ratio'], 'whole-number float must not round-trip as int');
     }
 
     public function testHashMismatchIsRejectedBeforeReading(): void
@@ -49,22 +64,22 @@ final class DocumentFileTest extends Unit
         $writer = DocumentFileWriter::createTemporary();
         $writer->write(['system_fields' => ['id' => 1]]);
         $written = $writer->finish();
+        $this->paths[] = $written->path;
 
         $this->expectException(SnapshotImportException::class);
         (new DocumentFileReader())->verifyHash($written->path, str_repeat('0', 64));
-        unlink($written->path);
     }
 
     public function testMalformedLineThrows(): void
     {
         $path = tempnam(sys_get_temp_dir(), 'gdi-test-');
+        $this->paths[] = $path;
         $handle = gzopen($path, 'wb');
         gzwrite($handle, "{\"system_fields\":{\"id\":1}}\nnot json\n");
         gzclose($handle);
 
         $this->expectException(InvalidSnapshotException::class);
         iterator_to_array((new DocumentFileReader())->read($path), false);
-        unlink($path);
     }
 
     public function testAbortRemovesTemporaryFile(): void
@@ -72,8 +87,21 @@ final class DocumentFileTest extends Unit
         $writer = DocumentFileWriter::createTemporary();
         $writer->write(['system_fields' => ['id' => 1]]);
         $path = $writer->getPath();
+        $this->paths[] = $path;
         $writer->abort();
 
         $this->assertFileDoesNotExist($path);
+    }
+
+    public function testAbortAfterFinishDoesNotDeleteOutput(): void
+    {
+        $writer = DocumentFileWriter::createTemporary();
+        $writer->write(['system_fields' => ['id' => 1]]);
+        $written = $writer->finish();
+        $this->paths[] = $written->path;
+
+        $writer->abort();
+
+        $this->assertFileExists($written->path);
     }
 }

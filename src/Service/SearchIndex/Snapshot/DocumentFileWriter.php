@@ -21,12 +21,16 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\WrittenFile;
  */
 final class DocumentFileWriter
 {
-    private const JSON_FLAGS = JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES;
+    private const JSON_FLAGS = JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION;
 
     /** @var resource|null */
     private $handle;
 
     private int $documentCount = 0;
+
+    private bool $finished = false;
+
+    private bool $aborted = false;
 
     private function __construct(private readonly string $path)
     {
@@ -57,21 +61,42 @@ final class DocumentFileWriter
         return $this->path;
     }
 
+    /**
+     * @throws SnapshotExportException if the writer was already closed via {@see finish()} or
+     *                                  {@see abort()}, or if the document could not be fully written
+     */
     public function write(array $document): void
     {
         if ($this->handle === null) {
             throw new SnapshotExportException('Writer is already closed');
         }
-        gzwrite($this->handle, json_encode($document, self::JSON_FLAGS) . "\n");
+        $line = json_encode($document, self::JSON_FLAGS) . "\n";
+        $written = gzwrite($this->handle, $line);
+        if ($written === false || $written !== strlen($line)) {
+            throw new SnapshotExportException(sprintf('Failed to write document to "%s"', $this->path));
+        }
         $this->documentCount++;
     }
 
+    /**
+     * Closes the file and returns its final stats. May only be called once, and never after
+     * {@see abort()}.
+     *
+     * @throws SnapshotExportException if the writer was already finished or aborted
+     */
     public function finish(): WrittenFile
     {
+        if ($this->aborted) {
+            throw new SnapshotExportException('Writer was already aborted');
+        }
+        if ($this->finished) {
+            throw new SnapshotExportException('Writer is already finished');
+        }
         if ($this->handle !== null) {
             gzclose($this->handle);
             $this->handle = null;
         }
+        $this->finished = true;
         clearstatcache(true, $this->path);
 
         return new WrittenFile(
@@ -82,14 +107,25 @@ final class DocumentFileWriter
         );
     }
 
+    /**
+     * Closes the handle (if still open) and unlinks the temporary file. A no-op with respect to
+     * the file once {@see finish()} has already succeeded, so it never deletes a finished output
+     * file.
+     */
     public function abort(): void
     {
         if ($this->handle !== null) {
             gzclose($this->handle);
             $this->handle = null;
         }
+        if ($this->finished) {
+            $this->aborted = true;
+
+            return;
+        }
         if (file_exists($this->path)) {
             unlink($this->path);
         }
+        $this->aborted = true;
     }
 }
