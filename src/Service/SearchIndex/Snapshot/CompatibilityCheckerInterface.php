@@ -11,21 +11,15 @@ declare(strict_types=1);
  *  @license    Pimcore Open Core License (POCL)
  */
 
-namespace Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot;
+namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\GenericDataIndexBundleExceptionInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\CompatibilityReport;
-use RuntimeException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\Manifest;
 
 /**
  * @internal
  */
-final class SnapshotIncompatibleException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
+interface CompatibilityCheckerInterface
 {
-    public function __construct(
-        string $message,
-        public readonly CompatibilityReport $report,
-    ) {
-        parent::__construct($message);
-    }
+    public function check(Manifest $manifest): CompatibilityReport;
 }

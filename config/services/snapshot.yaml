@@ -23,3 +23,8 @@ services:
         public: true
         arguments:
             $pageSize: 1000
+
+    # public until the importer (Task 10) consumes it; otherwise the container prunes it before tests can grab it
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\CompatibilityCheckerInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\CompatibilityChecker
+        public: true
