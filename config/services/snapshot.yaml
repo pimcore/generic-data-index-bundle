@@ -17,10 +17,8 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\QueueGate: ~
 
-    # public until the export command (Task 11) consumes it; otherwise the container prunes it before tests can grab it
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporter
-        public: true
         arguments:
             $pageSize: 1000
 

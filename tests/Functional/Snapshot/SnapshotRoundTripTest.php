@@ -186,6 +186,17 @@ final class SnapshotRoundTripTest extends Unit
         $this->assertSame($countBefore, $this->searchIndexService->getCount(new Search(), $this->simpleAlias), 'dry run writes nothing');
     }
 
+    public function testExportCommandRunsEndToEnd(): void
+    {
+        $this->tester->createFullyFledgedObjectSimple('snapshot-cmd-', true, true, 8);
+        $this->tester->flushIndex();
+
+        $output = $this->tester->runConsoleCommand('generic-data-index:snapshot:export', ['--name' => 'cmd-test', '--dry-run' => true]);
+
+        $this->assertStringContainsString('data-object_simple', $output);
+        $this->assertStringContainsString('Nothing written', $output);
+    }
+
     private function exporter(): SnapshotExporterInterface
     {
         return $this->tester->grabService(SnapshotExporterInterface::class);
