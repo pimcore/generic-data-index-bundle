@@ -17,6 +17,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Snapshot\ClassCompatibilityStatus;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\BulkOperationException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotIncompatibleException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search;
@@ -103,8 +105,8 @@ final class SnapshotImporter implements SnapshotImporterInterface
 
         $imported = [];
         foreach ($plan as [$entry, $target]) {
-            $this->provision($target);
-            $imported[] = $index = $this->replay($storage, $name, $entry, $target);
+            $index = $this->replay($storage, $name, $entry, $target);
+            $imported[] = $index;
             if ($onIndexImported !== null) {
                 $onIndexImported($index);
             }
@@ -146,21 +148,30 @@ final class SnapshotImporter implements SnapshotImporterInterface
         $local = $this->documentFileReader->temporaryPath();
 
         try {
+            // Download and verify BEFORE touching the live index: a truncated or corrupted
+            // file must be rejected while the previous, still-good index is untouched.
             $storage->readFileToLocal($name, $entry->file, $local);
             $this->documentFileReader->verifyHash($local, $entry->sha256);
-            $pending = 0;
-            foreach ($this->documentFileReader->read($local) as $document) {
-                $id = $document[FieldCategory::SYSTEM_FIELDS->value][SystemField::ID->value] ?? null;
-                if (!is_int($id)) {
-                    throw new SnapshotImportException(sprintf('Document without integer system_fields.id in "%s"', $entry->file));
+
+            $this->provision($target);
+
+            try {
+                $pending = 0;
+                foreach ($this->documentFileReader->read($local) as $document) {
+                    $id = $document[FieldCategory::SYSTEM_FIELDS->value][SystemField::ID->value] ?? null;
+                    if (!is_int($id)) {
+                        throw new SnapshotImportException(sprintf('Document without integer system_fields.id in "%s"', $entry->file));
+                    }
+                    $this->bulkOperationService->add($target->aliasName, $id, $document);
+                    if (++$pending >= $this->bulkSize) {
+                        $this->bulkOperationService->commit();
+                        $pending = 0;
+                    }
                 }
-                $this->bulkOperationService->add($target->aliasName, $id, $document);
-                if (++$pending >= $this->bulkSize) {
-                    $this->bulkOperationService->commit();
-                    $pending = 0;
-                }
+                $this->bulkOperationService->commit();
+            } catch (InvalidSnapshotException|BulkOperationException $e) {
+                throw new SnapshotImportException(sprintf('Import of index "%s" failed: %s', $target->shortName, $e->getMessage()), 0, $e);
             }
-            $this->bulkOperationService->commit();
         } finally {
             @unlink($local);
         }

@@ -99,6 +99,7 @@ final class SnapshotRoundTripTest extends Unit
             'index' => $this->simpleAlias,
             'body' => ['query' => ['match' => ['standard_fields.loc_name.de' => $value]]],
         ]);
+        $this->assertCount(1, $hits['hits']['hits']);
         $this->assertSame($objects[0]->getId(), (int) $hits['hits']['hits'][0]['_id']);
         $this->assertSame(3, $this->searchIndexService->getCount(new Search(), $this->simpleAlias));
     }
@@ -126,7 +127,7 @@ final class SnapshotRoundTripTest extends Unit
 
     public function testForceSkipsOnlyTheIncompatibleClass(): void
     {
-        $this->tester->createFullyFledgedObjectSimple('snapshot-force-', true, true, 5);
+        $object = $this->tester->createFullyFledgedObjectSimple('snapshot-force-', true, true, 5);
         $this->tester->flushIndex();
         $this->exporter()->export($this->storage, 'forced', new ExportOptions());
         $classId = ClassDefinition::getByName('simple')->getId();
@@ -135,21 +136,31 @@ final class SnapshotRoundTripTest extends Unit
         $result = $this->importer()->import($this->storage, 'forced', new ImportOptions(force: true));
 
         $this->assertArrayHasKey('data-object_simple', $result->skipped);
+        $this->assertCount(1, $result->skipped);
+        $this->assertStringContainsString('incompatible', $result->skipped['data-object_simple']);
         $importedNames = array_map(static fn (ImportedIndex $i) => $i->shortName, $result->imported);
         $this->assertContains('asset', $importedNames);
         $this->assertNotContains('data-object_simple', $importedNames);
+        // --force must never provision/replay the skipped index: the pre-existing object is untouched
+        $this->tester->checkIndexEntry($object->getId(), $this->simpleAlias);
     }
 
     public function testCorruptedFileIsRejectedBeforeIndexing(): void
     {
-        $this->tester->createFullyFledgedObjectSimple('snapshot-corrupt-', true, true, 6);
+        $object = $this->tester->createFullyFledgedObjectSimple('snapshot-corrupt-', true, true, 6);
         $this->tester->flushIndex();
         $this->exporter()->export($this->storage, 'corrupt', new ExportOptions());
         $this->filesystem->write('corrupt/data-object_simple.ndjson.gz', gzencode("{\"system_fields\":{\"id\":1}}\n"));
 
-        $this->expectException(SnapshotImportException::class);
-        $this->expectExceptionMessage('Checksum mismatch');
-        $this->importer()->import($this->storage, 'corrupt', new ImportOptions(only: ['data-object_simple']));
+        try {
+            $this->importer()->import($this->storage, 'corrupt', new ImportOptions(only: ['data-object_simple']));
+            $this->fail('expected SnapshotImportException');
+        } catch (SnapshotImportException $e) {
+            $this->assertStringContainsString('Checksum mismatch', $e->getMessage());
+        }
+        // the checksum is verified before the live index is touched: it must still be intact
+        $this->assertTrue($this->searchIndexService->existsAlias($this->simpleAlias));
+        $this->tester->checkIndexEntry($object->getId(), $this->simpleAlias);
     }
 
     public function testUnknownOnlyNameIsRejected(): void
@@ -158,6 +169,21 @@ final class SnapshotRoundTripTest extends Unit
 
         $this->expectException(SnapshotImportException::class);
         $this->importer()->import($this->storage, 'only', new ImportOptions(only: ['does_not_exist']));
+    }
+
+    public function testDryRunIsSuccessfulAndWritesNothing(): void
+    {
+        $this->tester->createFullyFledgedObjectSimple('snapshot-dry-', true, true, 7);
+        $this->tester->flushIndex();
+        $this->exporter()->export($this->storage, 'dry', new ExportOptions());
+        $countBefore = $this->searchIndexService->getCount(new Search(), $this->simpleAlias);
+
+        $result = $this->importer()->import($this->storage, 'dry', new ImportOptions(dryRun: true));
+
+        $this->assertTrue($result->dryRun);
+        $this->assertTrue($result->isSuccessful(), 'a dry run plan has no counts to compare and is always successful');
+        $this->tester->flushIndex();
+        $this->assertSame($countBefore, $this->searchIndexService->getCount(new Search(), $this->simpleAlias), 'dry run writes nothing');
     }
 
     private function exporter(): SnapshotExporterInterface

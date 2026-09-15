@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotIncompatibleException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportedIndex;
@@ -25,11 +26,23 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportResult;
 interface SnapshotImporterInterface
 {
     /**
-     * @param callable(ImportedIndex): void|null $onIndexImported called after each index has been replayed
+     * Replays a snapshot's indices into the local search engine, one index at a time: for
+     * each planned index the file is downloaded and its checksum verified BEFORE that index
+     * is provisioned (deleted and recreated), so a corrupted or truncated file never destroys
+     * a good, live index.
      *
+     * Not atomic across indices: if replaying one index fails, every index replayed before it
+     * is complete; the failing index itself has already been recreated and is left partially
+     * filled; indices not yet reached are untouched (their previous contents, if any, are
+     * unaffected). Re-running the import repairs a partial import, since every index is
+     * provisioned from scratch again.
+     *
+     * @param (callable(ImportedIndex): void)|null $onIndexImported called after each index has been replayed
+     *
+     * @throws InvalidSnapshotException when the snapshot's manifest itself cannot be read
      * @throws SnapshotIncompatibleException when the class definitions do not match and $options->force is false
-     * @throws SnapshotImportException when the snapshot is corrupted, an `only` name is unknown, or an index
-     *                                  could not be provisioned or replayed
+     * @throws SnapshotImportException when an `only` name is unknown, or an index file is corrupted,
+     *                                  truncated, or could not be replayed
      */
     public function import(
         SnapshotStorageInterface $storage,

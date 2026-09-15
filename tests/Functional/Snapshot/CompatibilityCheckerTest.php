@@ -89,6 +89,17 @@ final class CompatibilityCheckerTest extends Unit
         $this->assertContains('simple', $report->missingInManifest);
     }
 
+    public function testNumericClassIdKeyIsHandledAsString(): void
+    {
+        // a numeric-string class id key ('12') is coerced to int(12) by PHP once it passes
+        // through the manifest's class_mapping_checksums array; check() must cast it back to
+        // string before comparing/looking up, or ClassDefinition::getById() TypeErrors under
+        // strict_types
+        $report = $this->checker()->check($this->manifest(['12' => 1]));
+
+        $this->assertSame(ClassCompatibilityStatus::MISSING_LOCALLY, $report->statusOf('12'));
+    }
+
     private function checker(): CompatibilityCheckerInterface
     {
         return $this->tester->grabService(CompatibilityCheckerInterface::class);

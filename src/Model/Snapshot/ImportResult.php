@@ -34,8 +34,16 @@ final readonly class ImportResult
     ) {
     }
 
+    /**
+     * True when every imported index is complete. A dry run always reports true: it only
+     * plans what would be imported and has no actual counts to compare.
+     */
     public function isSuccessful(): bool
     {
+        if ($this->dryRun) {
+            return true;
+        }
+
         foreach ($this->imported as $index) {
             if (!$index->isComplete()) {
                 return false;
