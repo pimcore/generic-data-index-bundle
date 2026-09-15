@@ -19,13 +19,18 @@ use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotExportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ExportOptions;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\Manifest;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileReader;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileWriter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorage;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
 use Pimcore\Db;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Tests\Support\Util\TestHelper;
+use RuntimeException;
+use Throwable;
 
 final class SnapshotExporterTest extends Unit
 {
@@ -114,5 +119,125 @@ final class SnapshotExporterTest extends Unit
         }
         $this->assertSame([], $storage->listSnapshots());
         $this->tester->clearQueue();
+    }
+
+    public function testManifestWriteFailureRemovesPartialSnapshot(): void
+    {
+        $this->tester->createFullyFledgedObjectSimple('snapshot-manifest-fail-', true, true, 7);
+        $this->tester->flushIndex();
+
+        $tempDir = DocumentFileWriter::temporaryDirectory();
+        $before = glob($tempDir . '/gdi-snapshot-*') ?: [];
+
+        $filesystem = new Filesystem(new InMemoryFilesystemAdapter());
+        $inner = new SnapshotStorage($filesystem, 0);
+        $storage = new DelegatingFailingSnapshotStorage($inner, 'writeManifest', new RuntimeException('disk full'));
+        /** @var SnapshotExporterInterface $exporter */
+        $exporter = $this->tester->grabService(SnapshotExporterInterface::class);
+
+        try {
+            $exporter->export($storage, 'manifest-fail', new ExportOptions());
+            $this->fail('expected SnapshotExportException');
+        } catch (SnapshotExportException $e) {
+            $this->assertStringContainsString('disk full', $e->getMessage());
+        }
+
+        $this->assertSame([], $inner->listSnapshots());
+        $this->assertFalse($filesystem->directoryExists('manifest-fail'));
+
+        $after = glob($tempDir . '/gdi-snapshot-*') ?: [];
+        $this->assertSame([], array_diff($after, $before), 'no leftover snapshot temp files after a manifest-write failure');
+    }
+
+    public function testRotationFailureDoesNotFailTheExport(): void
+    {
+        $filesystem = new Filesystem(new InMemoryFilesystemAdapter());
+        $inner = new SnapshotStorage($filesystem, 0);
+        $storage = new DelegatingFailingSnapshotStorage($inner, 'rotate', new RuntimeException('rotate boom'));
+        /** @var SnapshotExporterInterface $exporter */
+        $exporter = $this->tester->grabService(SnapshotExporterInterface::class);
+
+        $result = $exporter->export($storage, 'rotate-fail', new ExportOptions());
+
+        $this->assertNotNull($result->rotationError);
+        $this->assertStringContainsString('rotate boom', $result->rotationError);
+        $this->assertSame([], $result->deletedSnapshots);
+        $this->assertTrue($inner->hasSnapshot('rotate-fail'));
+    }
+}
+
+/**
+ * Delegates every SnapshotStorageInterface call to a real, in-memory-backed SnapshotStorage,
+ * except one named method, which always throws a given exception instead of delegating — used to
+ * exercise the exporter's failure-cleanup and rotation-failure paths.
+ */
+final class DelegatingFailingSnapshotStorage implements SnapshotStorageInterface
+{
+    public function __construct(
+        private readonly SnapshotStorageInterface $inner,
+        private readonly string $failingMethod,
+        private readonly Throwable $failure,
+    ) {
+    }
+
+    public function listSnapshots(): array
+    {
+        return $this->inner->listSnapshots();
+    }
+
+    public function latestSnapshotName(): ?string
+    {
+        return $this->inner->latestSnapshotName();
+    }
+
+    public function hasSnapshot(string $name): bool
+    {
+        return $this->inner->hasSnapshot($name);
+    }
+
+    public function readManifest(string $name): Manifest
+    {
+        return $this->inner->readManifest($name);
+    }
+
+    public function writeManifest(string $name, Manifest $manifest): void
+    {
+        $this->maybeFail(__FUNCTION__);
+        $this->inner->writeManifest($name, $manifest);
+    }
+
+    public function writeFile(string $name, string $file, string $localPath): void
+    {
+        $this->maybeFail(__FUNCTION__);
+        $this->inner->writeFile($name, $file, $localPath);
+    }
+
+    public function readFileToLocal(string $name, string $file, string $localPath): void
+    {
+        $this->inner->readFileToLocal($name, $file, $localPath);
+    }
+
+    public function deleteSnapshot(string $name): void
+    {
+        $this->inner->deleteSnapshot($name);
+    }
+
+    public function rotate(): array
+    {
+        $this->maybeFail(__FUNCTION__);
+
+        return $this->inner->rotate();
+    }
+
+    public static function assertValidName(string $name): void
+    {
+        SnapshotStorage::assertValidName($name);
+    }
+
+    private function maybeFail(string $method): void
+    {
+        if ($method === $this->failingMethod) {
+            throw $this->failure;
+        }
     }
 }

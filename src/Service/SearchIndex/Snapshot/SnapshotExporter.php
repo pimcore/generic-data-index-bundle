@@ -114,26 +114,29 @@ final class SnapshotExporter implements SnapshotExporterInterface
                     $onIndexExported($target, $written->documentCount);
                 }
             }
+
+            $manifest = new Manifest(
+                createdAt: $manifest->createdAt,
+                genericDataIndexVersion: $manifest->genericDataIndexVersion,
+                pimcoreVersion: $manifest->pimcoreVersion,
+                clientType: $manifest->clientType,
+                indexPrefix: $manifest->indexPrefix,
+                queueEntriesBefore: $queueBefore,
+                queueEntriesAfter: $this->queueGate->count(),
+                durationSeconds: (int) round(microtime(true) - $started),
+                classMappingChecksums: $checksums,
+                indices: $indices,
+            );
+            // writeManifest() must stay inside this try: any failure here (Flysystem write error,
+            // JsonException) must still delete the partial directory and surface as
+            // SnapshotExportException, same as an index export failure.
+            $storage->writeManifest($name, $manifest);
+            $this->logger?->info(sprintf('Index snapshot "%s" written: %d indices in %d s', $name, count($indices), $manifest->durationSeconds));
         } catch (Throwable $e) {
             $storage->deleteSnapshot($name);
 
             throw new SnapshotExportException(sprintf('Snapshot export "%s" aborted: %s', $name, $e->getMessage()), 0, $e);
         }
-
-        $manifest = new Manifest(
-            createdAt: $manifest->createdAt,
-            genericDataIndexVersion: $manifest->genericDataIndexVersion,
-            pimcoreVersion: $manifest->pimcoreVersion,
-            clientType: $manifest->clientType,
-            indexPrefix: $manifest->indexPrefix,
-            queueEntriesBefore: $queueBefore,
-            queueEntriesAfter: $this->queueGate->count(),
-            durationSeconds: (int) round(microtime(true) - $started),
-            classMappingChecksums: $checksums,
-            indices: $indices,
-        );
-        $storage->writeManifest($name, $manifest);
-        $this->logger?->info(sprintf('Index snapshot "%s" written: %d indices in %d s', $name, count($indices), $manifest->durationSeconds));
 
         try {
             $deleted = $storage->rotate();
@@ -156,11 +159,11 @@ final class SnapshotExporter implements SnapshotExporterInterface
             $searchAfter = null;
             do {
                 $search->setSearchAfter($searchAfter);
-                // `false` is not usable here: with track_total_hits disabled the search
-                // engine omits "hits.total" entirely and SearchResultDenormalizer::denormalize()
-                // unconditionally reads $searchResult['hits']['total']['value'], which throws.
-                // We do not need an accurate total anyway (search_after pagination only looks at
-                // page size), so ask for it at the cheapest accurate setting.
+                // `false` is not usable here: with track_total_hits disabled the search engine
+                // omits "hits.total" entirely, but SearchResultDenormalizer::denormalize()
+                // unconditionally reads $searchResult['hits']['total']['value'] and throws.
+                // An integer bound isn't used either, because the total count is irrelevant to
+                // search_after pagination (it only compares hit-count to page size).
                 $result = $this->searchIndexService->search($search, $target->aliasName, true);
                 $hits = $result->getHits();
                 foreach ($hits as $hit) {
