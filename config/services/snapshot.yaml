@@ -12,13 +12,14 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileReader: ~
 
-    # public: this service has no consumer yet (the exporter/importer land in Tasks 8/10), so
-    # Symfony's container compiler prunes it as unused before Codeception's test.service_container
-    # can pick it up; without this it is unreachable from SnapshotIndexResolverTest via grabService()
-    # (see https://symfony.com/doc/current/service_container/alias_private.html#marking-services-as-public-private).
-    # Revisit once a real consumer autowires it — it can likely go back to private then.
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotIndexResolverInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotIndexResolver
-        public: true
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\QueueGate: ~
+
+    # public until the export command (Task 11) consumes it; otherwise the container prunes it before tests can grab it
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporter
+        public: true
+        arguments:
+            $pageSize: 1000
