@@ -65,6 +65,15 @@ final class ManifestTest extends Unit
         Manifest::fromArray($data);
     }
 
+    public function testRejectsNonArrayIndexEntry(): void
+    {
+        $data = $this->manifest()->toArray();
+        $data['indices'] = [1, 2];
+
+        $this->expectException(InvalidSnapshotException::class);
+        Manifest::fromArray($data);
+    }
+
     private function manifest(): Manifest
     {
         return new Manifest(

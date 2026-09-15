@@ -14,8 +14,11 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\Snapshot;
 
 use Codeception\Test\Unit;
+use League\Flysystem\DirectoryListing;
 use League\Flysystem\Filesystem;
+use League\Flysystem\FilesystemOperator;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
+use League\Flysystem\UnableToDeleteDirectory;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\Manifest;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorage;
@@ -106,6 +109,72 @@ final class SnapshotStorageTest extends Unit
         return [['../etc'], ['a/b'], [''], ['.hidden'], [str_repeat('x', 129)]];
     }
 
+    public function testEmptyStorageHasNoSnapshots(): void
+    {
+        $storage = new SnapshotStorage($this->filesystem, 0);
+
+        $this->assertSame([], $storage->listSnapshots());
+        $this->assertNull($storage->latestSnapshotName());
+    }
+
+    public function testForeignDirectoriesWithInvalidNamesAreSkipped(): void
+    {
+        $storage = new SnapshotStorage($this->filesystem, 1);
+        $storage->writeManifest('valid', $this->manifest('2026-09-01T00:00:00+00:00'));
+        $this->filesystem->write('.trash/x.txt', 'x');
+        $this->filesystem->write('bad name/x.txt', 'x');
+
+        $this->assertSame(['valid'], $storage->listSnapshots());
+        $this->assertSame([], $storage->rotate());
+        $this->assertTrue($this->filesystem->fileExists('.trash/x.txt'));
+        $this->assertTrue($this->filesystem->fileExists('bad name/x.txt'));
+    }
+
+    public function testManifestWithNonArrayIndexEntryIsTreatedAsIncomplete(): void
+    {
+        $storage = new SnapshotStorage($this->filesystem, 0);
+        $corrupted = $this->manifest('2026-09-01T00:00:00+00:00')->toArray();
+        $corrupted['indices'] = [1, 2];
+        $this->filesystem->write(
+            'corrupt/' . SnapshotStorage::MANIFEST_FILE,
+            json_encode($corrupted, JSON_THROW_ON_ERROR)
+        );
+        $storage->writeManifest('good', $this->manifest('2026-09-02T00:00:00+00:00'));
+
+        $this->assertSame(['good'], $storage->listSnapshots());
+        $this->assertSame('good', $storage->latestSnapshotName());
+
+        $this->expectException(InvalidSnapshotException::class);
+        $storage->readManifest('corrupt');
+    }
+
+    public function testDeleteSnapshotPropagatesRealDeleteFailure(): void
+    {
+        $storage = new SnapshotStorage($this->filesystem, 0);
+        $storage->writeManifest('snap', $this->manifest('2026-09-01T00:00:00+00:00'));
+        $failing = new SnapshotStorage(new FailingDeleteFilesystemOperator($this->filesystem), 0);
+
+        $this->expectException(UnableToDeleteDirectory::class);
+        $failing->deleteSnapshot('snap');
+    }
+
+    public function testRotateDoesNotReportAFailedDeleteAsDeleted(): void
+    {
+        $storage = new SnapshotStorage($this->filesystem, 1);
+        $storage->writeManifest('old', $this->manifest('2026-09-01T00:00:00+00:00'));
+        $storage->writeManifest('new', $this->manifest('2026-09-02T00:00:00+00:00'));
+        $failing = new SnapshotStorage(new FailingDeleteFilesystemOperator($this->filesystem), 1);
+
+        try {
+            $failing->rotate();
+            $this->fail('Expected UnableToDeleteDirectory to propagate from rotate()');
+        } catch (UnableToDeleteDirectory) {
+            // expected: a real delete failure must propagate, not be swallowed and reported as deleted
+        }
+
+        $this->assertTrue($storage->hasSnapshot('old'), 'snapshot must still exist after a failed delete');
+    }
+
     private function manifest(string $createdAt): Manifest
     {
         return new Manifest(
@@ -120,5 +189,106 @@ final class SnapshotStorageTest extends Unit
             classMappingChecksums: [],
             indices: [],
         );
+    }
+}
+
+/**
+ * Test double: delegates every operation to a wrapped filesystem except
+ * `deleteDirectory()`, which always fails, to prove real delete failures propagate.
+ */
+final class FailingDeleteFilesystemOperator implements FilesystemOperator
+{
+    public function __construct(private readonly FilesystemOperator $inner)
+    {
+    }
+
+    public function fileExists(string $location): bool
+    {
+        return $this->inner->fileExists($location);
+    }
+
+    public function directoryExists(string $location): bool
+    {
+        return $this->inner->directoryExists($location);
+    }
+
+    public function has(string $location): bool
+    {
+        return $this->inner->has($location);
+    }
+
+    public function read(string $location): string
+    {
+        return $this->inner->read($location);
+    }
+
+    public function readStream(string $location)
+    {
+        return $this->inner->readStream($location);
+    }
+
+    public function listContents(string $location, bool $deep = self::LIST_SHALLOW): DirectoryListing
+    {
+        return $this->inner->listContents($location, $deep);
+    }
+
+    public function lastModified(string $path): int
+    {
+        return $this->inner->lastModified($path);
+    }
+
+    public function fileSize(string $path): int
+    {
+        return $this->inner->fileSize($path);
+    }
+
+    public function mimeType(string $path): string
+    {
+        return $this->inner->mimeType($path);
+    }
+
+    public function visibility(string $path): string
+    {
+        return $this->inner->visibility($path);
+    }
+
+    public function write(string $location, string $contents, array $config = []): void
+    {
+        $this->inner->write($location, $contents, $config);
+    }
+
+    public function writeStream(string $location, $contents, array $config = []): void
+    {
+        $this->inner->writeStream($location, $contents, $config);
+    }
+
+    public function setVisibility(string $path, string $visibility): void
+    {
+        $this->inner->setVisibility($path, $visibility);
+    }
+
+    public function delete(string $location): void
+    {
+        $this->inner->delete($location);
+    }
+
+    public function deleteDirectory(string $location): void
+    {
+        throw UnableToDeleteDirectory::atLocation($location, 'simulated failure for testing');
+    }
+
+    public function createDirectory(string $location, array $config = []): void
+    {
+        $this->inner->createDirectory($location, $config);
+    }
+
+    public function move(string $source, string $destination, array $config = []): void
+    {
+        $this->inner->move($source, $destination, $config);
+    }
+
+    public function copy(string $source, string $destination, array $config = []): void
+    {
+        $this->inner->copy($source, $destination, $config);
     }
 }

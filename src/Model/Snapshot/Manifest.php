@@ -115,8 +115,20 @@ final readonly class Manifest
             throw new InvalidSnapshotException('Manifest "indices" and "class_mapping_checksums" must be arrays');
         }
 
+        foreach ($data['indices'] as $index) {
+            if (!is_array($index)) {
+                throw new InvalidSnapshotException('Manifest "indices" entries must be arrays');
+            }
+        }
+
         $checksums = [];
         foreach ($data['class_mapping_checksums'] as $classId => $checksum) {
+            if (!is_int($checksum) && !(is_string($checksum) && ctype_digit($checksum))) {
+                throw new InvalidSnapshotException(sprintf(
+                    'Manifest "class_mapping_checksums" value for "%s" must be int-like',
+                    (string) $classId
+                ));
+            }
             $checksums[(string) $classId] = (int) $checksum;
         }
 

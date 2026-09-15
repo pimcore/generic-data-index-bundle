@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 
-use League\Flysystem\FilesystemException;
 use League\Flysystem\FilesystemOperator;
 use League\Flysystem\StorageAttributes;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
@@ -49,14 +48,14 @@ final class SnapshotStorage implements SnapshotStorageInterface
                 continue;
             }
             $name = $item->path();
-            if (!$this->hasSnapshot($name)) {
-                continue;
-            }
 
             try {
+                if (!$this->hasSnapshot($name)) {
+                    continue;
+                }
                 $byCreatedAt[$name] = $this->readManifest($name)->createdAt;
             } catch (InvalidSnapshotException) {
-                continue; // unreadable manifest: treat as incomplete
+                continue; // invalid name or unreadable manifest: treat as incomplete
             }
         }
         uksort($byCreatedAt, static fn (string $a, string $b) => strcmp($byCreatedAt[$b], $byCreatedAt[$a]) ?: strcmp($b, $a));
@@ -93,7 +92,13 @@ final class SnapshotStorage implements SnapshotStorageInterface
             throw new InvalidSnapshotException(sprintf('Snapshot "%s" manifest is not a JSON object', $name));
         }
 
-        return Manifest::fromArray($data);
+        try {
+            return Manifest::fromArray($data);
+        } catch (InvalidSnapshotException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            throw new InvalidSnapshotException(sprintf('Snapshot "%s" manifest is invalid: %s', $name, $e->getMessage()));
+        }
     }
 
     public function writeManifest(string $name, Manifest $manifest): void
@@ -125,19 +130,23 @@ final class SnapshotStorage implements SnapshotStorageInterface
     public function readFileToLocal(string $name, string $file, string $localPath): void
     {
         self::assertValidName($name);
-        $source = $this->filesystem->readStream($name . '/' . $file);
         $target = fopen($localPath, 'wb');
         if ($target === false) {
             throw new InvalidSnapshotException(sprintf('Cannot open "%s" for writing', $localPath));
         }
 
         try {
-            stream_copy_to_stream($source, $target);
+            $source = $this->filesystem->readStream($name . '/' . $file);
+
+            try {
+                stream_copy_to_stream($source, $target);
+            } finally {
+                if (is_resource($source)) {
+                    fclose($source);
+                }
+            }
         } finally {
             fclose($target);
-            if (is_resource($source)) {
-                fclose($source);
-            }
         }
     }
 
@@ -145,12 +154,8 @@ final class SnapshotStorage implements SnapshotStorageInterface
     {
         self::assertValidName($name);
 
-        try {
-            if ($this->filesystem->directoryExists($name)) {
-                $this->filesystem->deleteDirectory($name);
-            }
-        } catch (FilesystemException) {
-            // absent already
+        if ($this->filesystem->directoryExists($name)) {
+            $this->filesystem->deleteDirectory($name);
         }
     }
 
