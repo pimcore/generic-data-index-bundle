@@ -19,11 +19,13 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ClientType;
 use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\DispatchQueueMessagesHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
+use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
@@ -53,6 +55,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $loader->load('services.yaml');
 
         $this->registerIndexServiceParams($container, $config['index_service']);
+        $this->registerSnapshotParams($container, $config['snapshot']);
     }
 
     /**
@@ -79,6 +82,20 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         if ($container->hasExtension('monolog')) {
             $container->prependExtensionConfig('monolog', [
                 'channels' => ['pimcore_generic_data_index'],
+            ]);
+        }
+
+        if ($container->hasExtension('flysystem')) {
+            $container->prependExtensionConfig('flysystem', [
+                'storages' => [
+                    'pimcore.generic_data_index_snapshot.storage' => [
+                        'adapter' => 'local',
+                        'visibility' => 'private',
+                        'options' => [
+                            'directory' => '%kernel.project_dir%/var/generic-data-index/snapshots',
+                        ],
+                    ],
+                ],
             ]);
         }
     }
@@ -114,6 +131,13 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
             $definition->setArgument('$reindexMaxPolls', $indexSettings['reindex_settings']['max_polls']);
             $definition->setArgument('$reindexPollIntervalSeconds', $indexSettings['reindex_settings']['poll_interval']);
         }
+    }
+
+    private function registerSnapshotParams(ContainerBuilder $container, array $snapshotSettings): void
+    {
+        $storage = $container->getDefinition(SnapshotStorageInterface::class);
+        $storage->setArgument('$filesystem', new Reference($snapshotSettings['storage']));
+        $storage->setArgument('$keep', $snapshotSettings['keep']);
     }
 
     private function getIndexSettings(array $indexSettings): array
