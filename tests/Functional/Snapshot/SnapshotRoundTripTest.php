@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Snapshot;
 
 use Codeception\Test\Unit;
+use FilesystemIterator;
 use League\Flysystem\Filesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use League\Flysystem\Local\LocalFilesystemAdapter;
@@ -32,6 +33,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotS
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Tests\Support\Util\TestHelper;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 
 final class SnapshotRoundTripTest extends Unit
 {
@@ -46,6 +49,9 @@ final class SnapshotRoundTripTest extends Unit
     private IndexQueueRepository $queueRepository;
 
     private string $simpleAlias;
+
+    /** @var string[] directories created by a test, removed in _after() */
+    private array $tempPaths = [];
 
     protected function _before(): void
     {
@@ -65,6 +71,12 @@ final class SnapshotRoundTripTest extends Unit
         $this->tester->flushIndex();
         $this->tester->cleanupIndex();
         $this->tester->flushIndex();
+        foreach ($this->tempPaths as $path) {
+            if (is_dir($path)) {
+                $this->removeDirectory($path);
+            }
+        }
+        $this->tempPaths = [];
     }
 
     public function testExportDeleteImportRestoresIdenticalDocumentsWithoutEnqueueing(): void
@@ -203,6 +215,7 @@ final class SnapshotRoundTripTest extends Unit
         $object = $this->tester->createFullyFledgedObjectSimple('snapshot-import-cmd-', true, true, 9);
         $this->tester->flushIndex();
         $dir = sys_get_temp_dir() . '/gdi-snapshot-func-' . uniqid();
+        $this->tempPaths[] = $dir;
         mkdir($dir, 0777, true);
         $this->exporter()->export(new SnapshotStorage(new Filesystem(new LocalFilesystemAdapter($dir)), 0), 'local', new ExportOptions());
         $this->tester->cleanupIndex();
@@ -223,5 +236,17 @@ final class SnapshotRoundTripTest extends Unit
     private function importer(): SnapshotImporterInterface
     {
         return $this->tester->grabService(SnapshotImporterInterface::class);
+    }
+
+    private function removeDirectory(string $dir): void
+    {
+        $items = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($items as $item) {
+            $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
+        }
+        rmdir($dir);
     }
 }

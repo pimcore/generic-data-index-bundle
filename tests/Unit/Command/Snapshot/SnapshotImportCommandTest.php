@@ -14,6 +14,8 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Command\Snapshot;
 
 use Codeception\Test\Unit;
+use FilesystemIterator;
+use LogicException;
 use Pimcore\Bundle\GenericDataIndexBundle\Command\Snapshot\SnapshotImportCommand;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Snapshot\ClassCompatibilityStatus;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotIncompatibleException;
@@ -28,11 +30,29 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceIn
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use RuntimeException;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 
 final class SnapshotImportCommandTest extends Unit
 {
+    /** @var string[] files or directories created by a test, removed in _after() */
+    private array $tempPaths = [];
+
+    protected function _after(): void
+    {
+        foreach ($this->tempPaths as $path) {
+            if (is_dir($path)) {
+                $this->removeDirectory($path);
+            } elseif (file_exists($path)) {
+                unlink($path);
+            }
+        }
+        $this->tempPaths = [];
+    }
+
     public function testUsesLatestSnapshotWhenNoNameGiven(): void
     {
         $storage = $this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'latest-one']);
@@ -61,6 +81,7 @@ final class SnapshotImportCommandTest extends Unit
     public function testFromPathBuildsLocalStorageAndPassesOptions(): void
     {
         $dir = sys_get_temp_dir() . '/gdi-snapshot-cmd-' . uniqid();
+        $this->tempPaths[] = $dir;
         mkdir($dir . '/snap', 0777, true);
         file_put_contents($dir . '/snap/manifest.json', json_encode((new Manifest('2026-09-10T00:00:00+00:00', 'dev', 'dev', 'openSearch', 'pimcore_', 0, 0, 0, [], []))->toArray()));
         $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
@@ -121,6 +142,51 @@ final class SnapshotImportCommandTest extends Unit
         $this->assertStringContainsString('42', $display);
     }
 
+    public function testNonDirectoryFromPathIsFailure(): void
+    {
+        $file = tempnam(sys_get_temp_dir(), 'gdi-snapshot-cmd-');
+        $this->tempPaths[] = $file;
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => static function (): never {
+                throw new LogicException('must not be called');
+            },
+        ]);
+        $tester = new CommandTester($this->command($this->makeEmpty(SnapshotStorageInterface::class), $importer));
+
+        $this->assertSame(Command::FAILURE, $tester->execute(['--from-path' => $file]));
+        $this->assertStringContainsString('is not a directory', $tester->getDisplay());
+    }
+
+    public function testUnexpectedExceptionIsFailure(): void
+    {
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => static function (): never {
+                throw new RuntimeException('engine down');
+            },
+        ]);
+        $tester = new CommandTester($this->command($this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']), $importer));
+
+        $this->assertSame(Command::FAILURE, $tester->execute([]));
+        $this->assertStringContainsString('engine down', $tester->getDisplay());
+    }
+
+    public function testDryRunPrintsNothingWritten(): void
+    {
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => function (SnapshotStorageInterface $s, string $name): ImportResult {
+                $manifest = new Manifest('2026-09-10T00:00:00+00:00', 'dev', 'dev', 'openSearch', 'pimcore_', 0, 0, 0, [], []);
+
+                return new ImportResult($name, $manifest, new CompatibilityReport([], []), [new ImportedIndex('asset', 'pimcore_asset', 5, 0)], [], [], true);
+            },
+        ]);
+        $tester = new CommandTester($this->command($this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']), $importer));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute([]));
+        $display = $tester->getDisplay();
+        $this->assertStringContainsString('Dry run of snapshot', $display);
+        $this->assertStringContainsString('Nothing written', $display);
+    }
+
     private function command(SnapshotStorageInterface $storage, SnapshotImporterInterface $importer, int $queueCount = 0): SnapshotImportCommand
     {
         return new SnapshotImportCommand($storage, $importer, $this->makeEmpty(IndexStatsServiceInterface::class, [
@@ -133,5 +199,17 @@ final class SnapshotImportCommandTest extends Unit
         $manifest = new Manifest('2026-09-10T00:00:00+00:00', 'dev', 'dev', 'openSearch', 'pimcore_', 0, 0, 0, [], []);
 
         return new ImportResult($name, $manifest, new CompatibilityReport([], []), $imported, [], [], false);
+    }
+
+    private function removeDirectory(string $dir): void
+    {
+        $items = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($items as $item) {
+            $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
+        }
+        rmdir($dir);
     }
 }
