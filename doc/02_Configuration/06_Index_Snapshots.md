@@ -83,13 +83,15 @@ Without `NAME` the newest complete snapshot in the configured storage is used. `
 the snapshot from an already-downloaded local directory instead of the configured storage (for
 example after copying it down from object storage by hand). Before writing anything the command
 compares the class mapping checksums in the manifest with the local settings store and class
-definitions:
+definitions. The local class definition is always the reference for compatibility; the settings
+store only decides between an already-consistent index and one that merely has a stale checksum
+stamp:
 
 | Manifest checksum | Result |
 |---|---|
-| equals the local settings store | imported |
-| equals the checksum of the local class definition, store differs | imported, store re-stamped |
-| matches neither | refused; `--force` skips that class |
+| computed from the local class definition equals the manifest and the settings store matches | imported |
+| computed equals the manifest, settings store differs (stale) | imported, store re-stamped |
+| computed differs from the manifest | refused; `--force` skips that class |
 | no checksum in the manifest for a class that has an index | refused; `--force` skips that class |
 
 A class that is present in the manifest but no longer defined locally has no local index to import

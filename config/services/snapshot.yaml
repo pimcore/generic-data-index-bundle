@@ -25,6 +25,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\CompatibilityCheckerInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\CompatibilityChecker
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\IndexProvisionerInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\IndexProvisioner
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporter
         arguments:

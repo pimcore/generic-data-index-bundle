@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 
 use League\Flysystem\FilesystemException;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Snapshot\ClassCompatibilityStatus;
@@ -33,12 +32,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DocumentIndexHandler;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 
 /**
@@ -54,10 +48,7 @@ final class SnapshotImporter implements SnapshotImporterInterface
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly SearchIndexServiceInterface $searchIndexService,
         private readonly BulkOperationServiceInterface $bulkOperationService,
-        private readonly SettingsStoreServiceInterface $settingsStoreService,
-        private readonly DataObjectIndexHandler $dataObjectIndexHandler,
-        private readonly AssetIndexHandler $assetIndexHandler,
-        private readonly DocumentIndexHandler $documentIndexHandler,
+        private readonly IndexProvisionerInterface $indexProvisioner,
         private readonly DocumentFileReader $documentFileReader,
         private readonly int $bulkSize,
     ) {
@@ -193,27 +184,6 @@ final class SnapshotImporter implements SnapshotImporterInterface
         ));
     }
 
-    /**
-     * Provisions (recreates) the local index for the target. Returns the freshly computed class
-     * mapping checksum for a class index, or null otherwise; the caller is responsible for
-     * stamping it into the settings store, and only once the replay has actually succeeded (see
-     * {@see replay()}). Stamping it here, before the documents are replayed, would mark the
-     * mapping as current even if the subsequent bulk import fails, leaving an empty or partial
-     * index that {@see ClassDefinitionReindexService} would then never self-heal.
-     */
-    private function provision(IndexTarget $target): ?int
-    {
-        $handler = $this->handlerFor($target);
-        $context = $target->classDefinition;
-        if ($this->searchIndexService->existsAlias($target->aliasName)) {
-            $handler->deleteIndex($context);
-        }
-        $mappingProperties = $handler->getMappingProperties($context);
-        $handler->updateMapping(context: $context, forceCreateIndex: true, mappingProperties: $mappingProperties);
-
-        return $target->isClassIndex() ? $handler->getClassMappingCheckSum($mappingProperties) : null;
-    }
-
     private function replay(
         SnapshotStorageInterface $storage,
         string $name,
@@ -236,7 +206,13 @@ final class SnapshotImporter implements SnapshotImporterInterface
             $storage->readFileToLocal($name, $entry->file, $local);
             $this->documentFileReader->verifyHash($local, $entry->sha256);
 
-            $classMappingChecksum = $this->provision($target);
+            // The checksum is computed here, before the documents are replayed, but only ever
+            // stamped into the settings store below, once the replay has actually succeeded.
+            // Stamping it now, before the bulk import, would mark the mapping as current even if
+            // the import subsequently fails, leaving an empty or partial index that
+            // {@see ClassDefinitionReindexService} would then never self-heal.
+            $this->indexProvisioner->provision($target);
+            $classMappingChecksum = $this->indexProvisioner->computeClassMappingChecksum($target);
 
             $pending = 0;
             foreach ($this->documentFileReader->read($local) as $document) {
@@ -278,7 +254,7 @@ final class SnapshotImporter implements SnapshotImporterInterface
         // index would otherwise look "current" and the self-healing reindex would never fix it.
         if ($target->isClassIndex() && $classMappingChecksum !== null) {
             if ($actual === $entry->documentCount) {
-                $this->settingsStoreService->storeClassMapping((string) $target->getClassId(), $classMappingChecksum);
+                $this->indexProvisioner->stampClassMapping($target, $classMappingChecksum);
             } else {
                 $this->logger?->warning(sprintf(
                     'Not stamping class mapping checksum for %s: replay imported %d/%d documents',
@@ -290,15 +266,5 @@ final class SnapshotImporter implements SnapshotImporterInterface
         }
 
         return new ImportedIndex($target->shortName, $target->aliasName, $entry->documentCount, $actual);
-    }
-
-    private function handlerFor(IndexTarget $target): IndexHandlerInterface
-    {
-        return match ($target->elementType) {
-            ElementType::ASSET->value => $this->assetIndexHandler,
-            ElementType::DOCUMENT->value => $this->documentIndexHandler,
-            ElementType::DATA_OBJECT->value => $this->dataObjectIndexHandler,
-            default => throw new SnapshotImportException(sprintf('Unknown element type "%s"', $target->elementType)),
-        };
     }
 }
