@@ -85,10 +85,15 @@ final class TreeSortHandlers
 
         $invertedSortList = $this->getInvertedSortList($sortListItems);
         if (!empty($invertedSortList)) {
+            $isLastPage = $currentPage === $lastPage;
+
             $contextSearch
                 ->setReverseItemOrder(true)
-                ->setFrom($pageSize * ($lastPage - $currentPage))
-                ->setSize($currentPage === $lastPage ? $totalItems - ($pageSize * ($lastPage - 1)) : $pageSize)
+                // Read from the end: the offset is the number of items that follow the requested
+                // page. Deriving it from the page count instead would shift the whole window
+                // towards the beginning by the number of items missing from the last page.
+                ->setFrom($isLastPage ? 0 : $totalItems - ($pageSize * $currentPage))
+                ->setSize($isLastPage ? $totalItems - ($pageSize * ($lastPage - 1)) : $pageSize)
                 ->setSortList(new FieldSortList($invertedSortList));
         }
     }

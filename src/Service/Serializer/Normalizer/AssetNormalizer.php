@@ -108,6 +108,7 @@ final class AssetNormalizer implements NormalizerInterface
 
         if (!$skipLazyLoadedFields) {
             $pathLevels = $this->extractPathLevels($asset);
+            $tags = $this->getTagsByElement($asset);
 
             $systemFields = array_merge($systemFields, [
                 SystemField::FILE_SIZE->value => $asset->getFileSize(),
@@ -117,8 +118,8 @@ final class AssetNormalizer implements NormalizerInterface
                     $this->workflowService->hasWorkflowWithPermissions($asset),
                 SystemField::PATH_LEVELS->value => $pathLevels,
                 SystemField::PATH_LEVEL->value => count($pathLevels),
-                SystemField::TAGS->value => $this->extractTagIds($asset),
-                SystemField::PARENT_TAGS->value => $this->extractParentTagIds($asset),
+                SystemField::TAGS->value => $this->extractTagIds($tags),
+                SystemField::PARENT_TAGS->value => $this->extractParentTagIds($tags),
             ]);
         }
 

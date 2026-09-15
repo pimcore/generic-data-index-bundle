@@ -14,34 +14,56 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\DataObject\FieldDefinitionAdapter;
 
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\NumericRangeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Model\DataObject\ClassDefinition\Data\NumericRange;
 
-/**
- * @internal
- */
 final class NumericRangeAdapterTest extends Unit
 {
-    public function testExceptionIsThrownWhenWrongFieldDefinition()
+    public function testIntegerRangeIsMappedAsLong(): void
     {
-        $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $fieldDefinitionServiceInterfaceMock = $this->makeEmpty(FieldDefinitionServiceInterface::class);
-        $adapter = new NumericRangeAdapter(
-            $searchIndexConfigServiceInterfaceMock,
-            $fieldDefinitionServiceInterfaceMock
-        );
+        $numericRange = new NumericRange();
+        $numericRange->setInteger(true);
 
-        $mapping = $adapter->getIndexMapping();
         $this->assertSame([
             'properties' => [
                 'maximum' => [
-                    'type' => 'float',
+                    'type' => AttributeType::LONG->value,
                 ],
                 'minimum' => [
-                    'type' => 'float',
+                    'type' => AttributeType::LONG->value,
                 ],
             ],
-        ], $mapping);
+        ], $this->createAdapter($numericRange)->getIndexMapping());
+    }
+
+    public function testDecimalRangeIsMappedAsDouble(): void
+    {
+        $numericRange = new NumericRange();
+        $numericRange->setInteger(false);
+
+        $this->assertSame([
+            'properties' => [
+                'maximum' => [
+                    'type' => AttributeType::DOUBLE->value,
+                ],
+                'minimum' => [
+                    'type' => AttributeType::DOUBLE->value,
+                ],
+            ],
+        ], $this->createAdapter($numericRange)->getIndexMapping());
+    }
+
+    private function createAdapter(NumericRange $fieldDefinition): NumericRangeAdapter
+    {
+        $adapter = new NumericRangeAdapter(
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
+            $this->makeEmpty(FieldDefinitionServiceInterface::class)
+        );
+        $adapter->setFieldDefinition($fieldDefinition);
+
+        return $adapter;
     }
 }

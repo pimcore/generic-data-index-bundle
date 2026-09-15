@@ -16,7 +16,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\De
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\PathService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\SearchClient\SearchClientInterface;
 use ReflectionMethod;
 
@@ -60,7 +59,6 @@ final class PathServiceTest extends Unit
         $service = new PathService(
             $this->makeEmpty(SearchClientInterface::class),
             $this->makeEmpty(AdapterServiceInterface::class),
-            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
         );
 
         $method = new ReflectionMethod(PathService::class, 'encodePathSegments');

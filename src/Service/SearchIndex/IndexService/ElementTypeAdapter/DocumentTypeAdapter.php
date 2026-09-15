@@ -58,7 +58,8 @@ final class DocumentTypeAdapter extends AbstractElementTypeAdapter
 
     public function childrenPathRewriteNeeded(ElementInterface $element): bool
     {
-        return $element instanceof Document\Folder;
+        // any document type can have children, not just folders
+        return $element instanceof Document && $element->hasChildren(includingUnpublished: true);
     }
 
     public function getNormalizer(): NormalizerInterface

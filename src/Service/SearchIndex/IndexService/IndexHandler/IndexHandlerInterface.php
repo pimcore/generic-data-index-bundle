@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Model\DataObject\ClassDefinition;
 
 /**
@@ -30,6 +31,10 @@ interface IndexHandlerInterface
         ?array $mappingProperties = null
     ): void;
 
+    /**
+     * @throws Exception
+     * @throws ReindexFailedException
+     */
     public function reindexMapping(
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null

@@ -110,14 +110,16 @@ final class DocumentNormalizer implements NormalizerInterface
         }
 
         if (!$skipLazyLoadedFields) {
+            $tags = $this->getTagsByElement($document);
+
             $systemFields = array_merge($systemFields, [
                 SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
                     $this->workflowService->hasWorkflowWithPermissions($document),
                 SystemField::DEPENDENCIES->value => $this->dependencyService->getRequiresDependencies($document),
                 SystemField::PATH_LEVELS->value => $pathLevels,
                 SystemField::PATH_LEVEL->value => count($pathLevels),
-                SystemField::TAGS->value => $this->extractTagIds($document),
-                SystemField::PARENT_TAGS->value => $this->extractParentTagIds($document),
+                SystemField::TAGS->value => $this->extractTagIds($tags),
+                SystemField::PARENT_TAGS->value => $this->extractParentTagIds($tags),
             ]);
         }
 

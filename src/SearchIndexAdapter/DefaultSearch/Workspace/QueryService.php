@@ -102,13 +102,17 @@ final class QueryService implements QueryServiceInterface
             $groupedWorkspaces[$userWorkspace->getPath()] = $userWorkspace;
         }
 
+        $roleWorkspaces = [];
         foreach ($user->getRoles() as $roleId) {
-            $roleWorkspaces = $this->workspaceService->getRoleWorkspaces($workspaceType, $roleId);
-            /** @var WorkspaceInterface $roleWorkspace */
-            foreach ($roleWorkspaces as $roleWorkspace) {
-                if (!isset($groupedWorkspaces[$roleWorkspace->getPath()])) {
-                    $groupedWorkspaces[$roleWorkspace->getPath()] = $roleWorkspace;
-                }
+            foreach ($this->workspaceService->getRoleWorkspaces($workspaceType, $roleId) as $roleWorkspace) {
+                $roleWorkspaces[] = $roleWorkspace;
+            }
+        }
+
+        // merge per path so grants from all roles apply; an explicit user workspace still takes precedence
+        foreach ($this->workspaceService->mergeWorkspacesByPath($roleWorkspaces) as $path => $roleWorkspace) {
+            if (!isset($groupedWorkspaces[$path])) {
+                $groupedWorkspaces[$path] = $roleWorkspace;
             }
         }
 

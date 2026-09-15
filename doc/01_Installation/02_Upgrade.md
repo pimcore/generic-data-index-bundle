@@ -5,6 +5,17 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 # Upgrade Information
 
+## Upgrade to 2026.2.8
+
+### Re-indexing required
+
+- [Indexing] `Numeric`, `NumericRange`, `QuantityValue` and `Slider` fields are no longer mapped as 32-bit `float`.
+  Fields configured as integer are now mapped as `long`, all other ones (including `Slider`) as `double`. This prevents
+  exact-match filters on large integers (for example customer or account IDs above 2^24) from returning
+  neighbouring values that shared the same rounded `float` representation.
+- The mapping change is applied by `bin/console generic-data-index:update:index`, which recreates the
+  affected data object indices and queues all elements for re-indexing.
+
 ## Upgrade to 2026.1.0
 
 ### PHP and Dependency Requirements
@@ -34,6 +45,52 @@ description: Version-specific upgrade instructions and breaking changes for the 
 - The messenger transport DSN is now configurable via the `%pimcore.messenger.transport_dsn_prefix%`
   container parameter (env: `PIMCORE_MESSENGER_TRANSPORT_DSN_PREFIX`) instead of being hardcoded to
   `doctrine://default`.
+
+## Upgrade to 2.5.9
+- [Indexing] Moving or renaming an element with children now rewrites the children's `path`/`fullPath` in the search
+  index for **all** element types: data objects are rewritten across all per-class indexes (previously only the
+  folder index was updated, so concrete objects kept their old path after a folder move), and documents are
+  rewritten for any parent document type (previously only moves of document *folders* were handled, so children of
+  a moved/renamed page kept their old path). Stale index paths also affected path-based workspace permission
+  filtering of search results.
+- [Configuration] **BC break:** the undocumented `max_synchronous_children_rename_limit` setting
+  (`pimcore_generic_data_index.index_service.search_settings`) was removed, together with
+  `SearchIndexConfigServiceInterface::getMaxSynchronousChildrenRenameLimit()` (`@internal`). Above that limit the
+  children path rewrite was silently skipped and never performed by any asynchronous process, leaving the index
+  permanently stale — the rewrite now always runs. Remove the setting from your configuration if you had set it;
+  Symfony will otherwise fail with an "Unrecognized option" error on container build.
+- [Commands] `generic-data-index:update:index` now exits with a non-zero status code when one or more of its
+  update sections (class definition, asset index, full update) fail, instead of always returning `0`. All sections
+  are still attempted and the queue is still dispatched; the command only reports the failure at the end. Deployment
+  pipelines that treated a partial failure as success will now fail visibly — this mirrors the same change made for
+  `generic-data-index:deployment:reindex` and `generic-data-index:reindex` in 2.5.6.
+- [Commands] Added a read-only `generic-data-index:status` command that reports the index queue depth (and whether
+  items are still pending dispatch), every live index with its document count and size, and a warning for any index
+  present in both the `-even` and `-odd` version at once (the fingerprint of an interrupted reindex).
+- [Logging] Generic Data Index now logs to a dedicated `pimcore_generic_data_index` Monolog channel, so its output
+  can be filtered, raised to debug, or routed separately. Handlers without a channel restriction pick it up
+  automatically; if you restrict a handler to an explicit channel allow-list (e.g. `channels: ["pimcore"]`), add
+  `pimcore_generic_data_index` to that list so its records are not dropped.
+- [Logging] Failure paths (index checksum read, queue enqueue, dispatch handler) now log with structured context and
+  the original exception, a claimed queue batch's dispatch id is logged across dispatch and processing for
+  correlation, and the per-class mapping-checksum reindex decision (skip vs. reindex, with stored vs. current
+  checksum) is logged.
+
+## Upgrade to 2.5.8
+- [Indexing] The class mapping checksum is now calculated independently of the array key order, so that a changed
+  order of e.g. the configured system languages no longer marks unchanged class definitions as changed and triggers
+  a native reindex. Checksums stored by earlier versions are recognised and updated automatically, so upgrading by
+  itself does **not** reindex existing class definitions. Only if the mapping actually changes in the same
+  deployment as the upgrade — including a changed key order, since the previous checksum still depends on it — are
+  the affected class definitions reindexed once, as they would have been before. From then on, order-only changes
+  no longer trigger a reindex.
+- [Indexing] A failed native reindex no longer triggers a forced recreation of the live index. Recreation now only
+  happens when the reindex reports that the existing documents are incompatible with the new mapping (e.g. after a
+  field type change); genuine errors — unreachable search cluster, timeouts, rejected requests — propagate and fail
+  the operation instead, so a transient connection failure during deployment can no longer purge the index.
+- [Indexing] Transient failures of single task-status requests during a long-running reindex are now retried instead
+  of aborting the reindex, and an aborted reindex cancels the server-side task before cleaning up its target index.
+- [Indexing] `SearchIndexServiceInterface::reindex()` (`@internal`) now returns a `ReindexResult` enum instead of `void`.
 
 ## Upgrade to 2.5.6
 - [Commands] `generic-data-index:deployment:reindex` and `generic-data-index:reindex` now exit with a non-zero status

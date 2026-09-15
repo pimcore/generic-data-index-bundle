@@ -13,17 +13,21 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Numeric;
 
 /**
  * @internal
  */
 final class NumericAdapter extends AbstractAdapter
 {
+    use NumericMappingTrait;
+
     public function getIndexMapping(): array
     {
-        return [
-            'type' => AttributeType::FLOAT->value,
-        ];
+        $fieldDefinition = $this->getFieldDefinition();
+
+        return $this->getNumericMapping(
+            $fieldDefinition instanceof Numeric && $fieldDefinition->getInteger()
+        );
     }
 }

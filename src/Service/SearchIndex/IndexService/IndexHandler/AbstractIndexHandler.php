@@ -15,6 +15,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Exception;
 use JsonException;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -27,6 +29,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
 {
     use LoggerAwareTrait;
 
+    private const MAX_REINDEX_ATTEMPTS = 3;
+
     public function __construct(
         protected readonly SearchIndexServiceInterface $searchIndexService,
         protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
@@ -35,10 +39,27 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     ) {
     }
 
+    /**
+     * @throws ReindexFailedException
+     */
     public function updateMapping(
         mixed $context = null,
         bool $forceCreateIndex = false,
         ?array $mappingProperties = null
+    ): void {
+        $this->doUpdateMappingFull($context, $forceCreateIndex, $mappingProperties, 0);
+    }
+
+    /**
+     * Depth-aware implementation of updateMapping(); called internally so that
+     * doReindexMapping() can forward the current recursion depth without exposing
+     * the counter through the public interface.
+     */
+    private function doUpdateMappingFull(
+        mixed $context,
+        bool $forceCreateIndex,
+        ?array $mappingProperties,
+        int $reindexDepth
     ): void {
         $aliasName = $this->getAliasIndexName($context);
 
@@ -71,47 +92,68 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             $this->doUpdateMapping($context);
         } catch (Exception $e) {
             $this->logger->info($e);
-            //try recreating index
-            $this->reindexMapping($context, $mappingProperties);
+            //try recreating index — ReindexFailedException propagates to the caller.
+            $this->doReindexMapping($context, $mappingProperties, $reindexDepth + 1, $e);
         }
     }
 
     /**
      * @throws Exception
+     * @throws ReindexFailedException
      */
     public function reindexMapping(
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): void {
+        $this->doReindexMapping($context, $mappingProperties, 0);
+    }
+
+    /**
+     * @throws Exception
+     * @throws ReindexFailedException
+     */
+    private function doReindexMapping(
+        ?ClassDefinition $context,
+        ?array $mappingProperties,
+        int $depth,
+        ?\Throwable $cause = null
+    ): void {
+        if ($depth >= self::MAX_REINDEX_ATTEMPTS) {
+            throw new ReindexFailedException(
+                'Max reindex attempts reached, aborting to prevent infinite recursion.',
+                0,
+                $cause
+            );
+        }
+
         $alias = $this->getAliasIndexName($context);
         $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
 
         if (!$this->searchIndexService->existsAlias($alias)) {
-            $this->updateMapping(
+            $this->doUpdateMappingFull(
                 context: $context,
-                mappingProperties: $mappingProperties
+                forceCreateIndex: false,
+                mappingProperties: $mappingProperties,
+                reindexDepth: $depth
             );
         } else {
-            try {
-                $this->searchIndexService->reindex(
-                    $alias,
-                    $mappingProperties
-                );
-            } catch (Exception $e) {
-                try {
-                    $this->updateMapping($context, true, $mappingProperties);
-                } catch (Exception $fallbackException) {
-                    // Both the reindex and the fallback recreation failed: rethrow so the
-                    // failure reaches the caller instead of the mapping checksum being
-                    // stored as if the reindex had succeeded.
-                    $this->logger->error(sprintf(
-                        'Reindexing failed due to following error: %s (initial reindex failure: %s)',
-                        $fallbackException,
-                        $e->getMessage()
-                    ));
+            $reindexResult = $this->searchIndexService->reindex(
+                $alias,
+                $mappingProperties
+            );
 
-                    throw $fallbackException;
-                }
+            if ($reindexResult === ReindexResult::MAPPING_INCOMPATIBLE) {
+                // The new mapping cannot be applied to the existing documents (e.g.
+                // after a field type change): recreate the index with the new mapping;
+                // its content is re-populated from the index queue. Genuine reindex
+                // errors (unreachable cluster, timeouts) are thrown by reindex() and
+                // propagate — recreating the live index in reaction to a transient
+                // failure would destroy all indexed data.
+                $this->logger->warning(sprintf(
+                    'Recreating index for alias "%s": the new mapping is incompatible with the indexed documents',
+                    $alias
+                ));
+                $this->doUpdateMappingFull($context, true, $mappingProperties, $depth);
             }
         }
 
@@ -143,7 +185,28 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
      */
     public function getClassMappingCheckSum(array $properties): int
     {
-        return crc32(json_encode($properties, JSON_THROW_ON_ERROR));
+        return crc32(json_encode($this->normalizeForCheckSum($properties), JSON_THROW_ON_ERROR));
+    }
+
+    private function normalizeForCheckSum(mixed $value): mixed
+    {
+        if (!is_array($value)) {
+            return $value;
+        }
+
+        $normalizedValue = [];
+        foreach ($value as $key => $item) {
+            $normalizedValue[$key] = $this->normalizeForCheckSum($item);
+        }
+
+        if (!array_is_list($normalizedValue)) {
+            // SORT_STRING: the default SORT_REGULAR compares numeric keys numerically,
+            // so distinct keys like 1 and '01' would compare equal and keep their
+            // insertion order instead of being sorted deterministically.
+            ksort($normalizedValue, SORT_STRING);
+        }
+
+        return $normalizedValue;
     }
 
     abstract protected function extractMappingProperties(mixed $context = null): array;
@@ -155,15 +218,17 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
      */
     private function doUpdateMapping(mixed $context): void
     {
+        $mappingProperties = $this->extractMappingProperties($context);
+        $body = [
+            '_source' => ['enabled' => true],
+        ];
+        if (!empty($mappingProperties)) {
+            $body['properties'] = $mappingProperties;
+        }
         $response = $this->searchIndexService->putMapping(
             [
                 'index' => $this->getCurrentFullIndexName($context),
-                'body' => [
-                    '_source' => [
-                        'enabled' => true,
-                    ],
-                    'properties' => $this->extractMappingProperties($context),
-                ],
+                'body' => $body,
             ]
         );
         $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));

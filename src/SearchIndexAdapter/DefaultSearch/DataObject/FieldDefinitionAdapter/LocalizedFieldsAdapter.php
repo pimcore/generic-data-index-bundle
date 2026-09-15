@@ -14,10 +14,15 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\CalculatedFieldsIndexMode;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolverInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedValueQueryStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
+use Pimcore\Model\DataObject\ClassDefinition\Data\CalculatedValue;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Localizedfield;
+use Pimcore\Normalizer\NormalizerInterface;
 use Symfony\Contracts\Service\Attribute\Required;
 
 /**
@@ -26,6 +31,10 @@ use Symfony\Contracts\Service\Attribute\Required;
 final class LocalizedFieldsAdapter extends AbstractAdapter
 {
     private LanguageServiceInterface $languageService;
+
+    private CalculatedFieldsIndexModeResolverInterface $calculatedFieldsIndexModeResolver;
+
+    private CalculatedValueQueryStoreServiceInterface $calculatedValueQueryStoreService;
 
     public function getIndexMapping(): array
     {
@@ -68,18 +77,30 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
      */
     public function normalize(mixed $value): ?array
     {
-        $indexData = $this->getIndexData($value);
-        if (empty($indexData)) {
+        [$languages, $attributes] = $this->getLanguagesAndAttributes($value);
+        if ($languages === []) {
             return null;
         }
 
-        $languages = array_keys($indexData);
-        $attributes = array_keys(reset($indexData));
+        $dataObject = $value->getObject();
         $result = [];
         foreach ($attributes as $attribute) {
+            $fieldDefinition = $value->getFieldDefinition($attribute);
+            // In query_store mode localized calculated values come from the localized query
+            // table (save-time snapshot, per language); the calculator never runs here. This
+            // is the dominant saving on many-language installations.
+            $useQueryStore = $dataObject instanceof Concrete
+                && $fieldDefinition instanceof CalculatedValue
+                && $this->calculatedFieldsIndexModeResolver->getMode() === CalculatedFieldsIndexMode::QUERY_STORE;
+
             foreach ($languages as $language) {
-                $localizedValue = $value->getLocalizedValue($attribute, $language);
-                $fieldDefinition = $value->getFieldDefinition($attribute);
+                $localizedValue = $useQueryStore
+                    ? $this->calculatedValueQueryStoreService->getLocalizedValue(
+                        $dataObject,
+                        $fieldDefinition,
+                        $language
+                    )
+                    : $value->getLocalizedValue($attribute, $language);
                 $localizedValue =  $this->fieldDefinitionService->normalizeValue($fieldDefinition, $localizedValue);
                 $result[$attribute][$language] = $localizedValue;
             }
@@ -96,14 +117,20 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         ?string $language = null,
         ?callable $callback = null
     ): array {
-        $indexData = $this->getIndexData($value);
-        if (empty($indexData)) {
+        [$languages, $attributes] = $this->getLanguagesAndAttributes($value);
+        if ($languages === []) {
             return [];
         }
-        $languages = array_keys($indexData);
-        $attributes = array_keys(reset($indexData));
+        $queryStore = $this->calculatedFieldsIndexModeResolver->getMode() === CalculatedFieldsIndexMode::QUERY_STORE;
         $result = [];
         foreach ($attributes as $attribute) {
+            // In query_store mode calculated values come from the query table (handled in
+            // normalize()); the inheritance pass must not call getLocalizedValue() for them,
+            // which would execute the calculator and defeat the mode.
+            if ($queryStore && $value->getFieldDefinition($attribute) instanceof CalculatedValue) {
+                continue;
+            }
+
             foreach ($languages as $indexDataLanguage) {
                 $data = $this->getInheritedDataForAdapter(
                     $dataObject,
@@ -131,12 +158,10 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         string $key,
         string $type
     ): array {
-        $indexData = $this->getIndexData($value);
-        if (empty($indexData)) {
+        [$languages, $attributes] = $this->getLanguagesAndAttributes($value);
+        if ($languages === []) {
             return [];
         }
-        $languages = array_keys($indexData);
-        $attributes = array_keys(reset($indexData));
         $result = [];
         $brickGetter = 'get' . ucfirst($type);
         foreach ($attributes as $attribute) {
@@ -166,18 +191,40 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
 
     }
 
-    private function getIndexData(mixed $value): ?array
+    /**
+     * The stored localized data is only needed for its language and attribute keys —
+     * the values are resolved via getLocalizedValue(). Deriving the keys from the
+     * internal data avoids running the full Localizedfields::normalize() pass over
+     * every stored value (per element, once here and once in the inheritance pass).
+     *
+     * @return array{0: string[], 1: string[]} languages and attributes
+     */
+    private function getLanguagesAndAttributes(mixed $value): array
     {
         if (!$value instanceof Localizedfield) {
-            return [];
+            return [[], []];
         }
 
-        $value->loadLazyData();
+        // getInternalData(true) loads lazy localized fields, as the previous full
+        // normalize pass (via loadLazyData()) did
+        $internalData = $value->getInternalData(true);
+        if (empty($internalData)) {
+            return [[], []];
+        }
 
         /** @var Data\Localizedfields $fieldDefinition */
         $fieldDefinition = $this->getFieldDefinition();
 
-        return $fieldDefinition->normalize($value);
+        $attributes = [];
+        foreach (array_keys(reset($internalData)) as $attribute) {
+            // same inclusion rule as Localizedfields::normalize(): attributes whose
+            // definition is gone (changed class definition) or not normalizable are skipped
+            if ($fieldDefinition->getFieldDefinition($attribute) instanceof NormalizerInterface) {
+                $attributes[] = $attribute;
+            }
+        }
+
+        return [array_keys($internalData), $attributes];
     }
 
     /**
@@ -217,5 +264,19 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
     public function setLanguageService(LanguageServiceInterface $languageService): void
     {
         $this->languageService = $languageService;
+    }
+
+    #[Required]
+    public function setCalculatedFieldsIndexModeResolver(
+        CalculatedFieldsIndexModeResolverInterface $calculatedFieldsIndexModeResolver
+    ): void {
+        $this->calculatedFieldsIndexModeResolver = $calculatedFieldsIndexModeResolver;
+    }
+
+    #[Required]
+    public function setCalculatedValueQueryStoreService(
+        CalculatedValueQueryStoreServiceInterface $calculatedValueQueryStoreService
+    ): void {
+        $this->calculatedValueQueryStoreService = $calculatedValueQueryStoreService;
     }
 }

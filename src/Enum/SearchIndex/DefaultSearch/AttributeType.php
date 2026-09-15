@@ -19,6 +19,7 @@ enum AttributeType: string
     case KEYWORD = 'keyword';
     case DATE = 'date';
     case FLOAT = 'float';
+    case DOUBLE = 'double';
     case INTEGER = 'integer';
     case LONG = 'long';
     case NESTED = 'nested';

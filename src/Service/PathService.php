@@ -23,7 +23,11 @@ final class PathService implements PathServiceInterface
 {
     public function isSubPath(string $path, string $parentPath): bool
     {
-        return $path !== $parentPath && str_starts_with($path, $parentPath);
+        // Compare on segment boundaries, otherwise a sibling whose name merely starts with the
+        // parent path's last segment counts as a child (e.g. "/Catalog_Archive" under "/Catalog").
+        // For the root path the rtrim leaves "/", which every absolute path starts with.
+        return $path !== $parentPath
+            && str_starts_with($path, rtrim($parentPath, '/') . '/');
     }
 
     public function containsSubPath(string $path, array $paths): bool

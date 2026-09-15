@@ -57,7 +57,7 @@ final class DispatchQueueMessagesHandler
                 $realMaxBatchSize
             );
         } catch (Exception $e) {
-            $this->logger->warning('Dispatching Queue Message failed: ' . $e);
+            $this->logger->warning('Dispatching queue messages failed', ['exception' => $e]);
         } finally {
             $this->queueMessagesDispatcher->clearPendingState();
         }

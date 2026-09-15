@@ -58,7 +58,13 @@ final class IndexService implements IndexServiceInterface
             $originalChecksum =
                 $indexDocument['_source'][FieldCategory::SYSTEM_FIELDS->value][SystemField::CHECKSUM->value] ?? -1;
         } catch (Exception $e) {
-            $this->logger->error($e->getMessage());
+            // Could not read the existing document to compare checksums; fall back to always
+            // writing. Log with context + the exception so the cause is not lost.
+            $this->logger->error('Failed to read existing index document for checksum comparison', [
+                'indexName' => $indexName,
+                'elementId' => $element->getId(),
+                'exception' => $e,
+            ]);
             $originalChecksum = -1;
         }
 

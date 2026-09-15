@@ -14,6 +14,9 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Workspace;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\WorkspaceNotFoundException;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DataObjectPermissions;
+use Pimcore\Bundle\GenericDataIndexBundle\Permission\DocumentPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
@@ -101,13 +104,66 @@ final readonly class WorkspaceService implements WorkspaceServiceInterface
         return $workspaces;
     }
 
+    public function mergeWorkspacesByPath(array $workspaces): array
+    {
+        $byPath = [];
+        foreach ($workspaces as $workspace) {
+            if (!$workspace instanceof WorkspaceInterface) {
+                throw new WorkspaceNotFoundException(
+                    'Provided workspace has unknown type!'
+                );
+            }
+            $path = $workspace->getPath();
+            if (!isset($byPath[$path])) {
+                $byPath[$path] = $workspace;
+
+                continue;
+            }
+            $this->addGrants($byPath[$path]->getPermissions(), $workspace->getPermissions());
+        }
+
+        return $byPath;
+    }
+
     public function getDeepestWorkspace(array $workspaces): WorkspaceInterface
     {
+        // merging first makes same-path grants (multiple roles) additive,
+        // matching the classic permission system
+        $workspaces = array_values($this->mergeWorkspacesByPath($workspaces));
         usort($workspaces, static function (WorkspaceInterface $a, WorkspaceInterface $b) {
             return strcmp($b->getPath(), $a->getPath());
         });
 
         return $workspaces[0];
+    }
+
+    // role grants are additive: a permission granted by any role wins over roles not granting it
+    private function addGrants(
+        AssetPermissions|DataObjectPermissions|DocumentPermissions $target,
+        AssetPermissions|DataObjectPermissions|DocumentPermissions $source
+    ): void {
+        foreach ($target->getClassProperties() as $property => $value) {
+            $getter = 'is' . ucfirst($property);
+            $setter = 'set' . ucfirst($property);
+            if (!method_exists($source, $getter) || !method_exists($target, $setter)) {
+                continue;
+            }
+            $sourceValue = $source->$getter();
+            if (is_bool($value)) {
+                if ($sourceValue === true) {
+                    $target->$setter(true);
+                }
+
+                continue;
+            }
+            if (is_string($sourceValue) && $sourceValue !== '') {
+                $merged = array_unique(array_filter(array_merge(
+                    explode(',', (string) $value),
+                    explode(',', $sourceValue)
+                )));
+                $target->$setter(implode(',', $merged));
+            }
+        }
     }
 
     /**

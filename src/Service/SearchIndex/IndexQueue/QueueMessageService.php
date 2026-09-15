@@ -43,15 +43,25 @@ final class QueueMessageService implements QueueMessageServiceInterface
             );
             $amountOfEntries = count($entries);
             if ($amountOfEntries > 0) {
+                // The dispatch id was just stamped on this claimed batch by getUnhandledIndexQueueEntries().
+                // Logging it here - on the dispatch side - lets a batch be correlated with the matching
+                // "Processing index queue batch" log even when the message is never handled (worker died,
+                // transport dropped it), which the processing-side log alone cannot show.
+                $dispatchId = $entries[0]['dispatched'] ?? null;
+
                 try {
+                    $this->logger->info('Dispatching index queue batch', [
+                        'dispatchId' => $dispatchId,
+                        'entries' => $amountOfEntries,
+                    ]);
                     $this->messageBus->dispatch(new IndexUpdateQueueMessage($entries));
                 } catch (Exception $exception) {
-                    $this->logger->error(
-                        'Dispatching IndexUpdateQueueMessage failed! ' .
-                        get_class($exception) . ': ' . $exception->getMessage()
-                    );
+                    $this->logger->error('Dispatching IndexUpdateQueueMessage failed', [
+                        'dispatchId' => $dispatchId,
+                        'entries' => $amountOfEntries,
+                        'exception' => $exception,
+                    ]);
 
-                    $dispatchId = $entries[0]['dispatched'] ?? null;
                     if ($dispatchId !== null) {
                         $this->indexQueueRepository->resetDispatchedItems($dispatchId);
                     }

@@ -18,7 +18,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\SearchClient\SearchClientInterface;
@@ -33,13 +32,12 @@ final class PathService implements PathServiceInterface
     public function __construct(
         private readonly SearchClientInterface $client,
         private readonly AdapterServiceInterface $typeAdapterService,
-        private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
     ) {
     }
 
     /**
-     * Directly update children paths in OpenSearch for assets as otherwise you might get strange results
-     * if you rename a folder in the portal engine frontend.
+     * Directly update children paths in the search index when an element with children
+     * was moved or renamed, as the children are not re-indexed individually.
      *
      * @throws Exception
      */
@@ -57,26 +55,11 @@ final class PathService implements PathServiceInterface
             return;
         }
 
-        $indexName = $typeAdapter->getAliasIndexNameByElement($element);
+        $indexName = $typeAdapter->getPathRewriteIndexName($element);
 
         $countResult = $this->countDocumentsByPath($indexName, $oldFullPath);
 
         if ($countResult === 0) {
-            return;
-        }
-
-        if ($countResult > $this->searchIndexConfigService->getMaxSynchronousChildrenRenameLimit()) {
-            $msg = sprintf(
-                'Direct rewrite of children paths in OpenSearch was skipped as more than %s
-                items need an update (%s items).
-                The index will be updated asynchronously via index update queue command cronjob.',
-                $this->searchIndexConfigService->getMaxSynchronousChildrenRenameLimit(),
-                $countResult
-            );
-            $this->logger->info(
-                $msg
-            );
-
             return;
         }
 

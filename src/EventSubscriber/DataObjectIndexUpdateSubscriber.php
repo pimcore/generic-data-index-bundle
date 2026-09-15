@@ -64,6 +64,10 @@ final class DataObjectIndexUpdateSubscriber implements EventSubscriberInterface
 
     public function updateDataObject(DataObjectEvent $event): void
     {
+        if (!$this->installer->isInstalled()) {
+            return;
+        }
+
         $this->indexElementIndexService->updateSiblings($event->getObject(), ElementType::DATA_OBJECT->value);
         if ($event->getObject()->getChildrenSortBy() === AbstractObject::OBJECT_CHILDREN_SORT_BY_INDEX) {
             $this->indexElementIndexService->resetChildrenIndexBy($event->getObject());

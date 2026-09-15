@@ -119,6 +119,54 @@ final class SortModifierTest extends Unit
         $this->assetSearchService->search($assetSearch);
     }
 
+    public function testHandleSortByPageNumberWithPartiallyFilledLastPage(): void
+    {
+        $assets = $this->createAssets();
+        $fullPaths = [];
+        foreach ($assets as $asset) {
+            $fullPaths[] = $asset->getFullPath();
+        }
+        sort($fullPaths);
+
+        /** @var SearchIndexConfigServiceInterface $searchIndexConfigService */
+        $searchIndexConfigService = $this->tester->grabService(SearchIndexConfigServiceInterface::class);
+        /** @var TreeSortHandlers $treeSort */
+        $treeSort = $this->tester->grabService(TreeSortHandlers::class);
+
+        // A result window smaller than the offset of the requested page makes sure the page is
+        // really read from the end - reading it from the start would exceed the window.
+        $indexName = $searchIndexConfigService->getIndexName('asset');
+        $this->tester->setIndexResultWindow($indexName, 6);
+        $treeSort->setItemsLimit(2);
+        $this->indexSettingsChanged = true;
+
+        // 10 items with a page size of 3 leave a single item on the last page, so the pages read
+        // from the end are not aligned to the page size.
+        $assetSearch = $this->searchProvider
+            ->createAssetSearch()
+            ->setPageSize(3)
+            ->setPage(3)
+            ->addModifier(new OrderByFullPath())
+        ;
+        $searchResult = $this->assetSearchService->search($assetSearch);
+
+        $this->assertCount(3, $searchResult->getItems());
+        $this->assertSame($fullPaths[6], $searchResult->getItems()[0]->getFullPath());
+        $this->assertSame($fullPaths[7], $searchResult->getItems()[1]->getFullPath());
+        $this->assertSame($fullPaths[8], $searchResult->getItems()[2]->getFullPath());
+
+        $assetSearch = $this->searchProvider
+            ->createAssetSearch()
+            ->setPageSize(3)
+            ->setPage(4)
+            ->addModifier(new OrderByFullPath())
+        ;
+        $searchResult = $this->assetSearchService->search($assetSearch);
+
+        $this->assertCount(1, $searchResult->getItems());
+        $this->assertSame($fullPaths[9], $searchResult->getItems()[0]->getFullPath());
+    }
+
     // tests
     public function testOrderByFullPath(): void
     {

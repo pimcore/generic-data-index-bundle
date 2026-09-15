@@ -41,10 +41,12 @@ trait ElementNormalizerTrait
         return $result;
     }
 
-    private function extractTagIds(ElementInterface $element): array
+    /**
+     * @param Tag[] $tags
+     */
+    private function extractTagIds(array $tags): array
     {
         $ids = [];
-        $tags = $this->getTagsByElement($element);
         foreach ($tags as $tag) {
             $ids[] = $tag->getId();
         }
@@ -52,10 +54,12 @@ trait ElementNormalizerTrait
         return $ids;
     }
 
-    private function extractParentTagIds(ElementInterface $element): array
+    /**
+     * @param Tag[] $tags
+     */
+    private function extractParentTagIds(array $tags): array
     {
         $ids = [];
-        $tags = $this->getTagsByElement($element);
 
         foreach ($tags as $tag) {
             $ids = $this->getAllTagParentsIds($tag, $ids);

@@ -32,6 +32,12 @@ final class PathServiceTest extends Unit
         $this->assertFalse($pathService->isSubPath('/', '/foo'));
         $this->assertFalse($pathService->isSubPath('/foo', '/foo/bar'));
         $this->assertFalse($pathService->isSubPath('/foo', '/asdf'));
+
+        // a sibling whose name starts with the parent path is not a sub path
+        $this->assertFalse($pathService->isSubPath('/foobar', '/foo'));
+        $this->assertFalse($pathService->isSubPath('/foo_bar', '/foo'));
+        $this->assertFalse($pathService->isSubPath('/foo/barbaz', '/foo/bar'));
+        $this->assertTrue($pathService->isSubPath('/foobar', '/'));
     }
 
     public function testContainsSubPath(): void
@@ -79,6 +85,11 @@ final class PathServiceTest extends Unit
         $this->assertEquals(
             ['/asdf', '/foo/bar'],
             $pathService->removeSubPaths(['/foo/bar', '/asdf'])
+        );
+        // a sibling sharing a leading string with another path must be kept
+        $this->assertEquals(
+            ['/foo', '/foo_bar'],
+            $pathService->removeSubPaths(['/foo', '/foo_bar'])
         );
     }
 

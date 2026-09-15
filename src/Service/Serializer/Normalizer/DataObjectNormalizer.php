@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\CalculatedFieldsIndexMode;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\StandardField;
@@ -22,9 +23,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectNormalizerException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolverInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedValueQueryStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
 use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\DataObject\ClassDefinition\Data\CalculatedValue;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Folder;
 use Pimcore\Model\DataObject\Localizedfield;
@@ -41,6 +45,8 @@ final class DataObjectNormalizer implements NormalizerInterface
         private readonly FieldDefinitionServiceInterface $fieldDefinitionService,
         private readonly WorkflowServiceInterface $workflowService,
         private readonly DependencyServiceInterface $dependencyService,
+        private readonly CalculatedFieldsIndexModeResolverInterface $calculatedFieldsIndexModeResolver,
+        private readonly CalculatedValueQueryStoreServiceInterface $calculatedValueQueryStoreService,
     ) {
     }
 
@@ -132,14 +138,16 @@ final class DataObjectNormalizer implements NormalizerInterface
         }
 
         if (!$skipLazyLoadedFields) {
+            $tags = $this->getTagsByElement($dataObject);
+
             $result = array_merge($result, [
                 SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->value =>
                     $this->workflowService->hasWorkflowWithPermissions($dataObject),
                 SystemField::DEPENDENCIES->value => $this->dependencyService->getRequiresDependencies($dataObject),
                 SystemField::PATH_LEVELS->value => $pathLevels,
                 SystemField::PATH_LEVEL->value => count($pathLevels),
-                SystemField::TAGS->value => $this->extractTagIds($dataObject),
-                SystemField::PARENT_TAGS->value => $this->extractParentTagIds($dataObject),
+                SystemField::TAGS->value => $this->extractTagIds($tags),
+                SystemField::PARENT_TAGS->value => $this->extractParentTagIds($tags),
             ]);
         }
 
@@ -168,9 +176,19 @@ final class DataObjectNormalizer implements NormalizerInterface
             }
 
             foreach ($fieldDefinitions as $key => $fieldDefinition) {
+                // In query_store mode calculated values come from the object's query table
+                // (save-time snapshot) and the calculator is deliberately never executed here.
+                if ($fieldDefinition instanceof CalculatedValue
+                    && $this->calculatedFieldsIndexModeResolver->getMode() === CalculatedFieldsIndexMode::QUERY_STORE
+                ) {
+                    $value = $this->calculatedValueQueryStoreService->getValue($dataObject, $fieldDefinition);
+                } else {
+                    $value = $dataObject->get($key);
+                }
+
                 $normalizedValue = $this->fieldDefinitionService->normalizeValue(
                     $fieldDefinition,
-                    $dataObject->get($key)
+                    $value
                 );
                 $result[$key] = $normalizedValue;
             }

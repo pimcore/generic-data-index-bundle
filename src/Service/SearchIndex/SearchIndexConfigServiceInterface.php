@@ -40,7 +40,5 @@ interface SearchIndexConfigServiceInterface
 
     public function getSearchAnalyzerAttributes(): array;
 
-    public function getMaxSynchronousChildrenRenameLimit(): int;
-
     public function getSystemFieldsSettings(string $elementType): array;
 }

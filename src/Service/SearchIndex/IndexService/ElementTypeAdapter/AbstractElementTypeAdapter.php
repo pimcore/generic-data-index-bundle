@@ -51,6 +51,16 @@ abstract class AbstractElementTypeAdapter
         );
     }
 
+    /**
+     * Index or alias targeted by the children path rewrite when the element was moved or renamed.
+     *
+     * @throws Exception
+     */
+    public function getPathRewriteIndexName(ElementInterface $element): string
+    {
+        return $this->getAliasIndexNameByElement($element);
+    }
+
     abstract public function getIndexNameShort(mixed $context): string;
 
     abstract public function getIndexNameShortByElement(ElementInterface $element): string;
