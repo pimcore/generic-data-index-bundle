@@ -58,7 +58,10 @@ final class SnapshotStorage implements SnapshotStorageInterface
                 continue; // invalid name or unreadable manifest: treat as incomplete
             }
         }
-        uksort($byCreatedAt, static fn (string $a, string $b) => strcmp($byCreatedAt[$b], $byCreatedAt[$a]) ?: strcmp($b, $a));
+        uksort(
+            $byCreatedAt,
+            static fn (string $a, string $b) => strcmp($byCreatedAt[$b], $byCreatedAt[$a]) ?: strcmp($b, $a),
+        );
 
         return array_keys($byCreatedAt);
     }
@@ -86,7 +89,9 @@ final class SnapshotStorage implements SnapshotStorageInterface
         try {
             $data = json_decode($this->filesystem->read($path), true, 512, JSON_THROW_ON_ERROR);
         } catch (Throwable $e) {
-            throw new InvalidSnapshotException(sprintf('Snapshot "%s" manifest is not valid JSON: %s', $name, $e->getMessage()));
+            throw new InvalidSnapshotException(
+                sprintf('Snapshot "%s" manifest is not valid JSON: %s', $name, $e->getMessage()),
+            );
         }
         if (!is_array($data)) {
             throw new InvalidSnapshotException(sprintf('Snapshot "%s" manifest is not a JSON object', $name));
@@ -97,7 +102,9 @@ final class SnapshotStorage implements SnapshotStorageInterface
         } catch (InvalidSnapshotException $e) {
             throw $e;
         } catch (Throwable $e) {
-            throw new InvalidSnapshotException(sprintf('Snapshot "%s" manifest is invalid: %s', $name, $e->getMessage()));
+            throw new InvalidSnapshotException(
+                sprintf('Snapshot "%s" manifest is invalid: %s', $name, $e->getMessage()),
+            );
         }
     }
 

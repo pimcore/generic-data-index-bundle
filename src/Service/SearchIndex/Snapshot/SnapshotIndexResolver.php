@@ -36,18 +36,27 @@ final class SnapshotIndexResolver implements SnapshotIndexResolverInterface
 
     public function resolveAll(): array
     {
-        $targets = [$this->target($this->dataObjectTypeAdapter->getAliasIndexName(), $this->dataObjectTypeAdapter->getElementType())];
+        $targets = [$this->target(
+            $this->dataObjectTypeAdapter->getAliasIndexName(),
+            $this->dataObjectTypeAdapter->getElementType(),
+        )];
 
         foreach ((new ClassDefinition\Listing())->load() as $classDefinition) {
             $targets[] = $this->target(
                 $this->dataObjectTypeAdapter->getAliasIndexName($classDefinition),
                 $this->dataObjectTypeAdapter->getElementType(),
-                $classDefinition
+                $classDefinition,
             );
         }
 
-        $targets[] = $this->target($this->assetTypeAdapter->getAliasIndexName(), $this->assetTypeAdapter->getElementType());
-        $targets[] = $this->target($this->documentTypeAdapter->getAliasIndexName(), $this->documentTypeAdapter->getElementType());
+        $targets[] = $this->target(
+            $this->assetTypeAdapter->getAliasIndexName(),
+            $this->assetTypeAdapter->getElementType(),
+        );
+        $targets[] = $this->target(
+            $this->documentTypeAdapter->getAliasIndexName(),
+            $this->documentTypeAdapter->getElementType(),
+        );
 
         return $targets;
     }
@@ -71,18 +80,27 @@ final class SnapshotIndexResolver implements SnapshotIndexResolverInterface
             return null;
         }
 
-        return $this->target($this->dataObjectTypeAdapter->getAliasIndexName($classDefinition), $index->elementType, $classDefinition);
+        return $this->target(
+            $this->dataObjectTypeAdapter->getAliasIndexName($classDefinition),
+            $index->elementType,
+            $classDefinition,
+        );
     }
 
     public function shortName(string $aliasName): string
     {
         $prefix = $this->searchIndexConfigService->getIndexPrefix();
 
-        return $prefix !== '' && str_starts_with($aliasName, $prefix) ? substr($aliasName, strlen($prefix)) : $aliasName;
+        return $prefix !== '' && str_starts_with($aliasName, $prefix)
+            ? substr($aliasName, strlen($prefix))
+            : $aliasName;
     }
 
-    private function target(string $aliasName, string $elementType, ?ClassDefinition $classDefinition = null): IndexTarget
-    {
+    private function target(
+        string $aliasName,
+        string $elementType,
+        ?ClassDefinition $classDefinition = null,
+    ): IndexTarget {
         return new IndexTarget($this->shortName($aliasName), $aliasName, $elementType, $classDefinition);
     }
 }

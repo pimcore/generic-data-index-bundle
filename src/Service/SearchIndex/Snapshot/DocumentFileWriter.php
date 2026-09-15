@@ -21,7 +21,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\WrittenFile;
  */
 final class DocumentFileWriter
 {
-    private const JSON_FLAGS = JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION;
+    private const JSON_FLAGS = JSON_THROW_ON_ERROR
+        | JSON_UNESCAPED_UNICODE
+        | JSON_UNESCAPED_SLASHES
+        | JSON_PRESERVE_ZERO_FRACTION;
 
     /** @var resource|null */
     private $handle;

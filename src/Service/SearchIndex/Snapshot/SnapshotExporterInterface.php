@@ -30,5 +30,10 @@ interface SnapshotExporterInterface
      * @throws SnapshotExportException when the snapshot name already exists, the queue threshold is
      *                                  exceeded, or an index could not be exported
      */
-    public function export(SnapshotStorageInterface $storage, string $name, ExportOptions $options, ?callable $onIndexExported = null): ExportResult;
+    public function export(
+        SnapshotStorageInterface $storage,
+        string $name,
+        ExportOptions $options,
+        ?callable $onIndexExported = null,
+    ): ExportResult;
 }

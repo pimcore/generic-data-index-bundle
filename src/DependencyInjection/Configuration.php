@@ -92,7 +92,10 @@ class Configuration implements ConfigurationInterface
                                 ->integerNode('max_polls')
                                     ->min(1)
                                     ->defaultValue(720)
-                                    ->info('Maximum number of polling attempts when waiting for an async reindex task (default: 720 = 1 hour at 5-second intervals).')
+                                    ->info(
+                                        'Maximum number of polling attempts when waiting for an async reindex '
+                                        . 'task (default: 720 = 1 hour at 5-second intervals).',
+                                    )
                                 ->end()
                                 ->integerNode('poll_interval')
                                     ->min(1)
@@ -139,7 +142,10 @@ class Configuration implements ConfigurationInterface
                     ->end()
                 ->end()
                 ->arrayNode('snapshot')
-                    ->info('Export/import of the whole search index as a portable file bundle (generic-data-index:snapshot:*).')
+                    ->info(
+                        'Export/import of the whole search index as a portable file bundle '
+                        . '(generic-data-index:snapshot:*).',
+                    )
                     ->addDefaultsIfNotSet()
                     ->children()
                         ->scalarNode('storage')

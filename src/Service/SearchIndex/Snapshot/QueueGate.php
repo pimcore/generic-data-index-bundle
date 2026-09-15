@@ -53,9 +53,10 @@ final class QueueGate
         }
         if ($count > $maxQueueEntries) {
             throw new SnapshotExportException(sprintf(
-                'Index queue holds %d entries, more than the allowed %d. Wait for the consumers or raise --max-queue-entries.',
+                'Index queue holds %d entries, more than the allowed %d. '
+                . 'Wait for the consumers or raise --max-queue-entries.',
                 $count,
-                $maxQueueEntries
+                $maxQueueEntries,
             ));
         }
 

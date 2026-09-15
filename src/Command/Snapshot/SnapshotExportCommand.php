@@ -47,10 +47,23 @@ final class SnapshotExportCommand extends AbstractCommand
     {
         $this
             ->setName('generic-data-index:snapshot:export')
-            ->setDescription('Export all search indices into a portable snapshot bundle for import on another installation.')
+            ->setDescription(
+                'Export all search indices into a portable snapshot bundle for import on another installation.',
+            )
             ->addOption('name', null, InputOption::VALUE_REQUIRED, 'Snapshot name (directory). Default: UTC timestamp.')
-            ->addOption('max-queue-entries', null, InputOption::VALUE_REQUIRED, 'Refuse to export while the index queue holds more entries than this.')
-            ->addOption('wait', null, InputOption::VALUE_REQUIRED, 'With --max-queue-entries: seconds to wait for the queue to drain before giving up.', '0')
+            ->addOption(
+                'max-queue-entries',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Refuse to export while the index queue holds more entries than this.',
+            )
+            ->addOption(
+                'wait',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'With --max-queue-entries: seconds to wait for the queue to drain before giving up.',
+                '0',
+            )
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Resolve indices and counts, write nothing.');
     }
 
@@ -70,16 +83,37 @@ final class SnapshotExportCommand extends AbstractCommand
                 waitSeconds: (int) $input->getOption('wait'),
                 dryRun: (bool) $input->getOption('dry-run'),
             );
-            $result = $this->snapshotExporter->export($this->snapshotStorage, $name, $options, function (IndexTarget $target, int $count): void {
-                $this->io->writeln(sprintf('  %s: %d documents', $target->shortName, $count));
-            });
+            $result = $this->snapshotExporter->export(
+                $this->snapshotStorage,
+                $name,
+                $options,
+                function (IndexTarget $target, int $count): void {
+                    $this->io->writeln(sprintf('  %s: %d documents', $target->shortName, $count));
+                },
+            );
             $manifest = $result->manifest;
-            $this->io->section($result->dryRun ? sprintf('Dry run of snapshot "%s"', $name) : sprintf('Snapshot "%s"', $name));
+            $this->io->section(
+                $result->dryRun ? sprintf('Dry run of snapshot "%s"', $name) : sprintf('Snapshot "%s"', $name),
+            );
             $this->io->table(
                 ['index', 'element type', 'class', 'documents', 'bytes'],
-                array_map(static fn (ManifestIndex $i) => [$i->shortName, $i->elementType, $i->classId ?? '', $i->documentCount, $i->bytes], $manifest->indices)
+                array_map(
+                    static fn (ManifestIndex $i) => [
+                        $i->shortName,
+                        $i->elementType,
+                        $i->classId ?? '',
+                        $i->documentCount,
+                        $i->bytes,
+                    ],
+                    $manifest->indices,
+                ),
             );
-            $this->io->writeln(sprintf('queue entries before: %d, after: %d, duration: %d s', $manifest->queueEntriesBefore, $manifest->queueEntriesAfter, $manifest->durationSeconds));
+            $this->io->writeln(sprintf(
+                'queue entries before: %d, after: %d, duration: %d s',
+                $manifest->queueEntriesBefore,
+                $manifest->queueEntriesAfter,
+                $manifest->durationSeconds,
+            ));
             if ($result->deletedSnapshots !== []) {
                 $this->io->writeln('rotated out: ' . implode(', ', $result->deletedSnapshots));
             }

@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotIncompatibl
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ClassCompatibility;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportedIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportOptions;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorage;
@@ -55,12 +56,39 @@ final class SnapshotImportCommand extends AbstractCommand
     {
         $this
             ->setName('generic-data-index:snapshot:import')
-            ->setDescription('Import a snapshot bundle into the local search indices without reindexing from the database.')
-            ->addArgument('name', InputArgument::OPTIONAL, 'Snapshot name. Default: newest complete snapshot in the configured storage.')
-            ->addOption('from-path', null, InputOption::VALUE_REQUIRED, 'Read the snapshot from this local directory instead of the configured storage.')
-            ->addOption('force', null, InputOption::VALUE_NONE, 'Continue when class mappings do not match; mismatched classes are skipped.')
-            ->addOption('only', null, InputOption::VALUE_REQUIRED, 'Comma-separated short index names to import (e.g. "asset,data-object_product"). Other indices stay untouched.')
-            ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Run the compatibility check and print the plan, write nothing.');
+            ->setDescription(
+                'Import a snapshot bundle into the local search indices without reindexing from the database.',
+            )
+            ->addArgument(
+                'name',
+                InputArgument::OPTIONAL,
+                'Snapshot name. Default: newest complete snapshot in the configured storage.',
+            )
+            ->addOption(
+                'from-path',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Read the snapshot from this local directory instead of the configured storage.',
+            )
+            ->addOption(
+                'force',
+                null,
+                InputOption::VALUE_NONE,
+                'Continue when class mappings do not match; mismatched classes are skipped.',
+            )
+            ->addOption(
+                'only',
+                null,
+                InputOption::VALUE_REQUIRED,
+                'Comma-separated short index names to import (e.g. "asset,data-object_product"). '
+                . 'Other indices stay untouched.',
+            )
+            ->addOption(
+                'dry-run',
+                null,
+                InputOption::VALUE_NONE,
+                'Run the compatibility check and print the plan, write nothing.',
+            );
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
@@ -72,51 +100,51 @@ final class SnapshotImportCommand extends AbstractCommand
         }
 
         try {
-            $storage = $this->snapshotStorage;
-            $fromPath = $input->getOption('from-path');
-            if ($fromPath !== null) {
-                if (!is_dir($fromPath)) {
-                    $this->io->error(sprintf('"%s" is not a directory.', $fromPath));
-
-                    return self::FAILURE;
-                }
-                $storage = new SnapshotStorage(new Filesystem(new LocalFilesystemAdapter($fromPath)), 0);
+            $storage = $this->resolveStorage($input);
+            if ($storage === null) {
+                return self::FAILURE;
             }
             $name = $input->getArgument('name') ?? $storage->latestSnapshotName();
             if ($name === null) {
-                $this->io->error('No snapshot found in the storage. Run generic-data-index:snapshot:export first or pass a name.');
+                $this->io->error(
+                    'No snapshot found in the storage. Run generic-data-index:snapshot:export first or pass a name.',
+                );
 
                 return self::FAILURE;
             }
-            $only = array_values(array_filter(array_map('trim', explode(',', (string) ($input->getOption('only') ?? '')))));
+            $only = array_values(array_filter(
+                array_map('trim', explode(',', (string) ($input->getOption('only') ?? ''))),
+            ));
             if ($only !== []) {
-                $this->io->warning('Importing a subset of indices can leave the local indices inconsistent with each other. Use --only for targeted repairs only.');
+                $this->io->warning(
+                    'Importing a subset of indices can leave the local indices inconsistent with each other. '
+                    . 'Use --only for targeted repairs only.',
+                );
             }
-            $options = new ImportOptions(force: (bool) $input->getOption('force'), only: $only, dryRun: (bool) $input->getOption('dry-run'));
+            $options = new ImportOptions(
+                force: (bool) $input->getOption('force'),
+                only: $only,
+                dryRun: (bool) $input->getOption('dry-run'),
+            );
 
             $queued = $this->indexStatsService->getStats()->getCountIndexQueueEntries();
             if ($queued > 0) {
-                $this->io->warning(sprintf('The local index queue holds %d entries. Stop messenger consumers during the import to avoid interleaved writes.', $queued));
+                $this->io->warning(sprintf(
+                    'The local index queue holds %d entries. '
+                    . 'Stop messenger consumers during the import to avoid interleaved writes.',
+                    $queued,
+                ));
             }
 
-            $result = $this->snapshotImporter->import($storage, (string) $name, $options, function (ImportedIndex $index): void {
-                $this->io->writeln(sprintf('  %s: %d/%d documents', $index->shortName, $index->actualCount, $index->expectedCount));
+            $result = $this->snapshotImporter->import($storage, (string) $name, $options, function (
+                ImportedIndex $index,
+            ): void {
+                $this->io->writeln(
+                    sprintf('  %s: %d/%d documents', $index->shortName, $index->actualCount, $index->expectedCount),
+                );
             });
 
-            foreach ($result->notices as $notice) {
-                $this->io->note($notice);
-            }
-            $this->io->section($result->dryRun ? sprintf('Dry run of snapshot "%s"', $result->name) : sprintf('Imported snapshot "%s"', $result->name));
-            $this->io->table(
-                ['index', 'alias', 'expected', 'actual', 'ok'],
-                array_map(static fn (ImportedIndex $i) => [$i->shortName, $i->aliasName, $i->expectedCount, $i->actualCount, $i->isComplete() ? 'yes' : 'NO'], $result->imported)
-            );
-            foreach ($result->skipped as $shortName => $reason) {
-                $this->io->writeln(sprintf('skipped %s: %s', $shortName, $reason));
-            }
-            if ($result->report->missingInManifest !== []) {
-                $this->io->note('Local classes without data in the snapshot: ' . implode(', ', $result->report->missingInManifest));
-            }
+            $this->renderResult($result);
             if (!$result->isSuccessful()) {
                 $this->io->error('Document counts do not match the manifest for at least one index.');
 
@@ -126,13 +154,7 @@ final class SnapshotImportCommand extends AbstractCommand
 
             return self::SUCCESS;
         } catch (SnapshotIncompatibleException $e) {
-            $this->io->error($e->getMessage());
-            $this->io->table(
-                ['class', 'id', 'manifest checksum', 'stored', 'computed from local definition'],
-                array_map(static fn (ClassCompatibility $c) => [$c->className ?? '', $c->classId, $c->manifestChecksum, $c->storedChecksum ?? '', $c->computedChecksum ?? ''],
-                    array_filter($e->report->classes, static fn (ClassCompatibility $c) => $c->status === ClassCompatibilityStatus::INCOMPATIBLE || $c->status === ClassCompatibilityStatus::UNVERIFIED))
-            );
-            $this->io->writeln('Import the database dump that belongs to this snapshot, or pass --force to skip these classes.');
+            $this->renderIncompatible($e);
 
             return self::FAILURE;
         } catch (Throwable $e) {
@@ -142,5 +164,75 @@ final class SnapshotImportCommand extends AbstractCommand
         } finally {
             $this->release();
         }
+    }
+
+    private function resolveStorage(InputInterface $input): ?SnapshotStorageInterface
+    {
+        $fromPath = $input->getOption('from-path');
+        if ($fromPath === null) {
+            return $this->snapshotStorage;
+        }
+        if (!is_dir($fromPath)) {
+            $this->io->error(sprintf('"%s" is not a directory.', $fromPath));
+
+            return null;
+        }
+
+        return new SnapshotStorage(new Filesystem(new LocalFilesystemAdapter($fromPath)), 0);
+    }
+
+    private function renderResult(ImportResult $result): void
+    {
+        foreach ($result->notices as $notice) {
+            $this->io->note($notice);
+        }
+        $this->io->section(
+            $result->dryRun
+                ? sprintf('Dry run of snapshot "%s"', $result->name)
+                : sprintf('Imported snapshot "%s"', $result->name),
+        );
+        $this->io->table(
+            ['index', 'alias', 'expected', 'actual', 'ok'],
+            array_map(static fn (ImportedIndex $i) => [
+                $i->shortName,
+                $i->aliasName,
+                $i->expectedCount,
+                $i->actualCount,
+                $i->isComplete() ? 'yes' : 'NO',
+            ], $result->imported),
+        );
+        foreach ($result->skipped as $shortName => $reason) {
+            $this->io->writeln(sprintf('skipped %s: %s', $shortName, $reason));
+        }
+        if ($result->report->missingInManifest !== []) {
+            $this->io->note(
+                'Local classes without data in the snapshot: ' . implode(', ', $result->report->missingInManifest),
+            );
+        }
+    }
+
+    private function renderIncompatible(SnapshotIncompatibleException $e): void
+    {
+        $this->io->error($e->getMessage());
+        $this->io->table(
+            ['class', 'id', 'manifest checksum', 'stored', 'computed from local definition'],
+            array_map(
+                static fn (ClassCompatibility $c) => [
+                    $c->className ?? '',
+                    $c->classId,
+                    $c->manifestChecksum,
+                    $c->storedChecksum ?? '',
+                    $c->computedChecksum ?? '',
+                ],
+                array_filter(
+                    $e->report->classes,
+                    static fn (ClassCompatibility $c) => $c->status === ClassCompatibilityStatus::INCOMPATIBLE
+                        || $c->status === ClassCompatibilityStatus::UNVERIFIED,
+                ),
+            ),
+        );
+        $this->io->writeln(
+            'Import the database dump that belongs to this snapshot, or pass --force to skip these classes.',
+        );
     }
 }

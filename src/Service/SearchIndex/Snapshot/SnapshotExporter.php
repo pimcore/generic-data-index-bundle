@@ -52,8 +52,12 @@ final class SnapshotExporter implements SnapshotExporterInterface
     ) {
     }
 
-    public function export(SnapshotStorageInterface $storage, string $name, ExportOptions $options, ?callable $onIndexExported = null): ExportResult
-    {
+    public function export(
+        SnapshotStorageInterface $storage,
+        string $name,
+        ExportOptions $options,
+        ?callable $onIndexExported = null,
+    ): ExportResult {
         SnapshotStorage::assertValidName($name);
         if ($storage->hasSnapshot($name)) {
             throw new SnapshotExportException(sprintf('Snapshot "%s" already exists', $name));
@@ -63,7 +67,7 @@ final class SnapshotExporter implements SnapshotExporterInterface
 
         $targets = array_values(array_filter(
             $this->indexResolver->resolveAll(),
-            fn (IndexTarget $target) => $this->searchIndexService->existsAlias($target->aliasName)
+            fn (IndexTarget $target) => $this->searchIndexService->existsAlias($target->aliasName),
         ));
 
         $checksums = [];
@@ -92,7 +96,12 @@ final class SnapshotExporter implements SnapshotExporterInterface
         if ($options->dryRun) {
             $indices = [];
             foreach ($targets as $target) {
-                $indices[] = $this->manifestIndex($target, $this->searchIndexService->getCount(new Search(), $target->aliasName), 0, '');
+                $indices[] = $this->manifestIndex(
+                    $target,
+                    $this->searchIndexService->getCount(new Search(), $target->aliasName),
+                    0,
+                    '',
+                );
             }
 
             return new ExportResult($name, $manifest->withIndices($indices), [], true);
@@ -134,9 +143,18 @@ final class SnapshotExporter implements SnapshotExporterInterface
         } catch (Throwable $e) {
             $storage->deleteSnapshot($name);
 
-            throw new SnapshotExportException(sprintf('Snapshot export "%s" aborted: %s', $name, $e->getMessage()), 0, $e);
+            throw new SnapshotExportException(
+                sprintf('Snapshot export "%s" aborted: %s', $name, $e->getMessage()),
+                0,
+                $e,
+            );
         }
-        $this->logger?->info(sprintf('Index snapshot "%s" written: %d indices in %d s', $name, count($indices), $manifest->durationSeconds));
+        $this->logger?->info(sprintf(
+            'Index snapshot "%s" written: %d indices in %d s',
+            $name,
+            count($indices),
+            $manifest->durationSeconds,
+        ));
 
         try {
             $deleted = $storage->rotate();

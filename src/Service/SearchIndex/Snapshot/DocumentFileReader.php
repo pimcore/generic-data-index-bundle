@@ -38,7 +38,9 @@ final class DocumentFileReader
         if ($actual === false || !hash_equals($expectedSha256, $actual)) {
             throw new SnapshotImportException(sprintf(
                 'Checksum mismatch for "%s": manifest says %s, file has %s',
-                basename($path), $expectedSha256, (string) $actual
+                basename($path),
+                $expectedSha256,
+                (string) $actual,
             ));
         }
     }
@@ -63,10 +65,17 @@ final class DocumentFileReader
                 try {
                     $document = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
                 } catch (JsonException $e) {
-                    throw new InvalidSnapshotException(sprintf('Line %d of "%s" is not valid JSON: %s', $lineNumber, basename($path), $e->getMessage()));
+                    throw new InvalidSnapshotException(sprintf(
+                        'Line %d of "%s" is not valid JSON: %s',
+                        $lineNumber,
+                        basename($path),
+                        $e->getMessage(),
+                    ));
                 }
                 if (!is_array($document)) {
-                    throw new InvalidSnapshotException(sprintf('Line %d of "%s" is not a JSON object', $lineNumber, basename($path)));
+                    throw new InvalidSnapshotException(
+                        sprintf('Line %d of "%s" is not a JSON object', $lineNumber, basename($path)),
+                    );
                 }
                 yield $document;
             }

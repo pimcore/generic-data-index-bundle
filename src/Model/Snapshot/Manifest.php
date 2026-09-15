@@ -62,9 +62,17 @@ final readonly class Manifest
     public function withIndices(array $indices): self
     {
         return new self(
-            $this->createdAt, $this->genericDataIndexVersion, $this->pimcoreVersion, $this->clientType,
-            $this->indexPrefix, $this->queueEntriesBefore, $this->queueEntriesAfter, $this->durationSeconds,
-            $this->classMappingChecksums, array_values($indices), $this->formatVersion
+            createdAt: $this->createdAt,
+            genericDataIndexVersion: $this->genericDataIndexVersion,
+            pimcoreVersion: $this->pimcoreVersion,
+            clientType: $this->clientType,
+            indexPrefix: $this->indexPrefix,
+            queueEntriesBefore: $this->queueEntriesBefore,
+            queueEntriesAfter: $this->queueEntriesAfter,
+            durationSeconds: $this->durationSeconds,
+            classMappingChecksums: $this->classMappingChecksums,
+            indices: array_values($indices),
+            formatVersion: $this->formatVersion,
         );
     }
 
@@ -72,9 +80,17 @@ final readonly class Manifest
     public function withClassMappingChecksums(array $classMappingChecksums): self
     {
         return new self(
-            $this->createdAt, $this->genericDataIndexVersion, $this->pimcoreVersion, $this->clientType,
-            $this->indexPrefix, $this->queueEntriesBefore, $this->queueEntriesAfter, $this->durationSeconds,
-            $classMappingChecksums, $this->indices, $this->formatVersion
+            createdAt: $this->createdAt,
+            genericDataIndexVersion: $this->genericDataIndexVersion,
+            pimcoreVersion: $this->pimcoreVersion,
+            clientType: $this->clientType,
+            indexPrefix: $this->indexPrefix,
+            queueEntriesBefore: $this->queueEntriesBefore,
+            queueEntriesAfter: $this->queueEntriesAfter,
+            durationSeconds: $this->durationSeconds,
+            classMappingChecksums: $classMappingChecksums,
+            indices: $this->indices,
+            formatVersion: $this->formatVersion,
         );
     }
 

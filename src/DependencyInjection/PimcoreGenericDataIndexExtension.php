@@ -17,6 +17,7 @@ use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ClientType;
 use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\DispatchQueueMessagesHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
@@ -129,9 +130,12 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $definition->setArgument('$queueSettings', $indexSettings['queue_settings']);
 
         $definition = $container->getDefinition(SearchIndexServiceInterface::class);
-        if ($definition->getClass() === \Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService::class) {
+        if ($definition->getClass() === DefaultSearchService::class) {
             $definition->setArgument('$reindexMaxPolls', $indexSettings['reindex_settings']['max_polls']);
-            $definition->setArgument('$reindexPollIntervalSeconds', $indexSettings['reindex_settings']['poll_interval']);
+            $definition->setArgument(
+                '$reindexPollIntervalSeconds',
+                $indexSettings['reindex_settings']['poll_interval'],
+            );
         }
     }
 
@@ -141,8 +145,10 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $storage->setArgument('$filesystem', new Reference($snapshotSettings['storage']));
         $storage->setArgument('$keep', $snapshotSettings['keep']);
 
-        $container->getDefinition(SnapshotExporterInterface::class)->setArgument('$pageSize', $snapshotSettings['page_size']);
-        $container->getDefinition(SnapshotImporterInterface::class)->setArgument('$bulkSize', $snapshotSettings['bulk_size']);
+        $container->getDefinition(SnapshotExporterInterface::class)
+            ->setArgument('$pageSize', $snapshotSettings['page_size']);
+        $container->getDefinition(SnapshotImporterInterface::class)
+            ->setArgument('$bulkSize', $snapshotSettings['bulk_size']);
     }
 
     private function getIndexSettings(array $indexSettings): array

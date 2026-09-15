@@ -42,7 +42,10 @@ final readonly class CompatibilityReport
     {
         $ids = [];
         foreach ($this->classes as $class) {
-            if ($class->status === ClassCompatibilityStatus::INCOMPATIBLE || $class->status === ClassCompatibilityStatus::UNVERIFIED) {
+            if (
+                $class->status === ClassCompatibilityStatus::INCOMPATIBLE
+                || $class->status === ClassCompatibilityStatus::UNVERIFIED
+            ) {
                 $ids[] = $class->classId;
             }
         }

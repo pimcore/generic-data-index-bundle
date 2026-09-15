@@ -23,6 +23,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotExce
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotIncompatibleException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\CompatibilityReport;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportedIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportOptions;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportResult;
@@ -31,6 +32,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\Manifest;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DocumentIndexHandler;
@@ -61,50 +63,35 @@ final class SnapshotImporter implements SnapshotImporterInterface
     ) {
     }
 
-    public function import(SnapshotStorageInterface $storage, string $name, ImportOptions $options, ?callable $onIndexImported = null): ImportResult
-    {
+    public function import(
+        SnapshotStorageInterface $storage,
+        string $name,
+        ImportOptions $options,
+        ?callable $onIndexImported = null,
+    ): ImportResult {
         $manifest = $storage->readManifest($name);
-        $notices = [];
-        if ($manifest->clientType !== $this->searchIndexConfigService->getClientType()) {
-            $notices[] = sprintf('Snapshot was taken on %s, this installation runs %s. Mappings are regenerated locally, documents are portable.', $manifest->clientType, $this->searchIndexConfigService->getClientType());
-        }
-        if ($manifest->indexPrefix !== $this->searchIndexConfigService->getIndexPrefix()) {
-            $notices[] = sprintf('Snapshot index prefix "%s" differs from local "%s"; local names are used.', $manifest->indexPrefix, $this->searchIndexConfigService->getIndexPrefix());
-        }
+        $notices = $this->collectNotices($manifest);
 
         $report = $this->compatibilityChecker->check($manifest);
         if (!$report->isCompatible() && !$options->force) {
             throw new SnapshotIncompatibleException(sprintf(
-                'Snapshot "%s" does not match the local class definitions for class ids [%s]. Import the matching database dump or pass --force to skip these classes.',
-                $name, implode(', ', $report->incompatibleClassIds())
+                'Snapshot "%s" does not match the local class definitions for class ids [%s]. '
+                . 'Import the matching database dump or pass --force to skip these classes.',
+                $name,
+                implode(', ', $report->incompatibleClassIds()),
             ), $report);
         }
 
-        $entries = $this->selectEntries($manifest, $options->only);
         $skipped = [];
-        $plan = [];
-        foreach ($entries as $entry) {
-            $target = $this->indexResolver->resolveManifestIndex($entry);
-            if ($target === null) {
-                $skipped[$entry->shortName] = 'no local counterpart (class definition missing or unknown element type)';
-
-                continue;
-            }
-            if ($target->isClassIndex() && $report->statusOf((string) $target->getClassId()) === ClassCompatibilityStatus::INCOMPATIBLE) {
-                $skipped[$entry->shortName] = 'class mapping incompatible, skipped because of --force';
-
-                continue;
-            }
-            if ($target->isClassIndex() && $report->statusOf((string) $target->getClassId()) === ClassCompatibilityStatus::UNVERIFIED) {
-                $skipped[$entry->shortName] = 'no class mapping checksum in the manifest, skipped because of --force';
-
-                continue;
-            }
-            $plan[] = [$entry, $target];
-        }
+        $plan = $this->plan($manifest, $report, $options, $skipped);
 
         if ($options->dryRun) {
-            $imported = array_map(static fn (array $pair) => new ImportedIndex($pair[1]->shortName, $pair[1]->aliasName, $pair[0]->documentCount, 0), $plan);
+            $imported = array_map(static fn (array $pair) => new ImportedIndex(
+                $pair[1]->shortName,
+                $pair[1]->aliasName,
+                $pair[0]->documentCount,
+                0,
+            ), $plan);
 
             return new ImportResult($name, $manifest, $report, $imported, $skipped, $notices, true);
         }
@@ -121,6 +108,74 @@ final class SnapshotImporter implements SnapshotImporterInterface
         return new ImportResult($name, $manifest, $report, $imported, $skipped, $notices, false);
     }
 
+    /**
+     * @return string[]
+     */
+    private function collectNotices(Manifest $manifest): array
+    {
+        $notices = [];
+        if ($manifest->clientType !== $this->searchIndexConfigService->getClientType()) {
+            $notices[] = sprintf(
+                'Snapshot was taken on %s, this installation runs %s. '
+                . 'Mappings are regenerated locally, documents are portable.',
+                $manifest->clientType,
+                $this->searchIndexConfigService->getClientType(),
+            );
+        }
+        if ($manifest->indexPrefix !== $this->searchIndexConfigService->getIndexPrefix()) {
+            $notices[] = sprintf(
+                'Snapshot index prefix "%s" differs from local "%s"; local names are used.',
+                $manifest->indexPrefix,
+                $this->searchIndexConfigService->getIndexPrefix(),
+            );
+        }
+
+        return $notices;
+    }
+
+    /**
+     * Resolves the entries selected via {@see selectEntries()} to local index targets and
+     * decides, per entry, whether it can be imported or must be skipped (no local counterpart,
+     * or an incompatible/unverified class mapping). $skipped is populated with the skip reason
+     * for every entry left out of the returned plan.
+     *
+     * @param array<string, string> $skipped short index name => reason, populated by reference
+     *
+     * @return array<int, array{0: ManifestIndex, 1: IndexTarget}>
+     */
+    private function plan(
+        Manifest $manifest,
+        CompatibilityReport $report,
+        ImportOptions $options,
+        array &$skipped,
+    ): array {
+        $entries = $this->selectEntries($manifest, $options->only);
+        $plan = [];
+        foreach ($entries as $entry) {
+            $target = $this->indexResolver->resolveManifestIndex($entry);
+            if ($target === null) {
+                $skipped[$entry->shortName] = 'no local counterpart '
+                    . '(class definition missing or unknown element type)';
+
+                continue;
+            }
+            $classStatus = $target->isClassIndex() ? $report->statusOf((string) $target->getClassId()) : null;
+            if ($classStatus === ClassCompatibilityStatus::INCOMPATIBLE) {
+                $skipped[$entry->shortName] = 'class mapping incompatible, skipped because of --force';
+
+                continue;
+            }
+            if ($classStatus === ClassCompatibilityStatus::UNVERIFIED) {
+                $skipped[$entry->shortName] = 'no class mapping checksum in the manifest, skipped because of --force';
+
+                continue;
+            }
+            $plan[] = [$entry, $target];
+        }
+
+        return $plan;
+    }
+
     /** @return ManifestIndex[] */
     private function selectEntries(Manifest $manifest, array $only): array
     {
@@ -132,7 +187,10 @@ final class SnapshotImporter implements SnapshotImporterInterface
             throw new SnapshotImportException(sprintf('Snapshot has no indices named [%s]', implode(', ', $unknown)));
         }
 
-        return array_values(array_filter($manifest->indices, static fn (ManifestIndex $i) => in_array($i->shortName, $only, true)));
+        return array_values(array_filter(
+            $manifest->indices,
+            static fn (ManifestIndex $i) => in_array($i->shortName, $only, true),
+        ));
     }
 
     /**
@@ -141,8 +199,7 @@ final class SnapshotImporter implements SnapshotImporterInterface
      * stamping it into the settings store, and only once the replay has actually succeeded (see
      * {@see replay()}). Stamping it here, before the documents are replayed, would mark the
      * mapping as current even if the subsequent bulk import fails, leaving an empty or partial
-     * index that {@see \Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService}
-     * would then never self-heal.
+     * index that {@see ClassDefinitionReindexService} would then never self-heal.
      */
     private function provision(IndexTarget $target): ?int
     {
@@ -157,8 +214,15 @@ final class SnapshotImporter implements SnapshotImporterInterface
         return $target->isClassIndex() ? $handler->getClassMappingCheckSum($mappingProperties) : null;
     }
 
-    private function replay(SnapshotStorageInterface $storage, string $name, ManifestIndex $entry, IndexTarget $target): ImportedIndex
-    {
+    private function replay(
+        SnapshotStorageInterface $storage,
+        string $name,
+        ManifestIndex $entry,
+        IndexTarget $target,
+    ): ImportedIndex {
+        // Deliberately ASCII-only: manifest file names are always generated by the exporter
+        // from ASCII short index names (see SnapshotExporter::exportIndex()), never from
+        // user input, so a Unicode-aware character class would only weaken this validation.
         if (preg_match('/^[A-Za-z0-9._-]+$/D', $entry->file) !== 1 || in_array($entry->file, ['.', '..'], true)) {
             throw new SnapshotImportException(sprintf('Invalid file name "%s" in manifest', $entry->file));
         }
@@ -178,7 +242,9 @@ final class SnapshotImporter implements SnapshotImporterInterface
             foreach ($this->documentFileReader->read($local) as $document) {
                 $id = $document[FieldCategory::SYSTEM_FIELDS->value][SystemField::ID->value] ?? null;
                 if (!is_int($id)) {
-                    throw new SnapshotImportException(sprintf('Document without integer system_fields.id in "%s"', $entry->file));
+                    throw new SnapshotImportException(
+                        sprintf('Document without integer system_fields.id in "%s"', $entry->file),
+                    );
                 }
                 $this->bulkOperationService->add($target->aliasName, $id, $document);
                 if (++$pending >= $this->bulkSize) {
@@ -188,13 +254,22 @@ final class SnapshotImporter implements SnapshotImporterInterface
             }
             $this->bulkOperationService->commit();
         } catch (InvalidSnapshotException|BulkOperationException|FilesystemException $e) {
-            throw new SnapshotImportException(sprintf('Import of index "%s" failed: %s', $target->shortName, $e->getMessage()), 0, $e);
+            throw new SnapshotImportException(
+                sprintf('Import of index "%s" failed: %s', $target->shortName, $e->getMessage()),
+                0,
+                $e,
+            );
         } finally {
             @unlink($local);
         }
         $this->searchIndexService->refreshIndex($target->aliasName);
         $actual = $this->searchIndexService->getCount(new Search(), $target->aliasName);
-        $this->logger?->info(sprintf('Imported %d/%d documents into %s', $actual, $entry->documentCount, $target->aliasName));
+        $this->logger?->info(sprintf(
+            'Imported %d/%d documents into %s',
+            $actual,
+            $entry->documentCount,
+            $target->aliasName,
+        ));
 
         // Stamp the checksum only now: the bulk commit above succeeded and the index has been
         // counted, so the settings store is only ever updated once the mapping it describes is
@@ -207,7 +282,9 @@ final class SnapshotImporter implements SnapshotImporterInterface
             } else {
                 $this->logger?->warning(sprintf(
                     'Not stamping class mapping checksum for %s: replay imported %d/%d documents',
-                    $target->aliasName, $actual, $entry->documentCount
+                    $target->aliasName,
+                    $actual,
+                    $entry->documentCount,
                 ));
             }
         }
