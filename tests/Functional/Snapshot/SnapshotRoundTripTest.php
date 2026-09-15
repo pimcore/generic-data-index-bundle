@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Snapshot;
 use Codeception\Test\Unit;
 use League\Flysystem\Filesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
+use League\Flysystem\Local\LocalFilesystemAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotIncompatibleException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search;
@@ -195,6 +196,23 @@ final class SnapshotRoundTripTest extends Unit
 
         $this->assertStringContainsString('data-object_simple', $output);
         $this->assertStringContainsString('Nothing written', $output);
+    }
+
+    public function testImportCommandRunsEndToEndFromLocalPath(): void
+    {
+        $object = $this->tester->createFullyFledgedObjectSimple('snapshot-import-cmd-', true, true, 9);
+        $this->tester->flushIndex();
+        $dir = sys_get_temp_dir() . '/gdi-snapshot-func-' . uniqid();
+        mkdir($dir, 0777, true);
+        $this->exporter()->export(new SnapshotStorage(new Filesystem(new LocalFilesystemAdapter($dir)), 0), 'local', new ExportOptions());
+        $this->tester->cleanupIndex();
+        $this->tester->flushIndex();
+
+        $output = $this->tester->runConsoleCommand('generic-data-index:snapshot:import', ['name' => 'local', '--from-path' => $dir]);
+
+        $this->assertStringContainsString('Snapshot imported', $output);
+        $this->tester->flushIndex();
+        $this->tester->checkIndexEntry($object->getId(), $this->simpleAlias);
     }
 
     private function exporter(): SnapshotExporterInterface

@@ -25,9 +25,7 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\CompatibilityCheckerInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\CompatibilityChecker
 
-    # public until the import command (Task 12) consumes it; otherwise the container prunes it before tests can grab it
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporter
-        public: true
         arguments:
             $bulkSize: 1000
