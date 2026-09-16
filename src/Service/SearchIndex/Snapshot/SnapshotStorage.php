@@ -41,29 +41,33 @@ final class SnapshotStorage implements SnapshotStorageInterface
 
     public function listSnapshots(): array
     {
-        $byCreatedAt = [];
+        // Rows are collected as a list, never as array keys: a numeric-only snapshot name
+        // (e.g. "123") is a valid NAME_PATTERN match, but PHP silently casts a numeric string
+        // array key to int, which would make this method return ints instead of strings.
+        $rows = [];
         foreach ($this->filesystem->listContents('', false) as $item) {
             /** @var StorageAttributes $item */
             if (!$item->isDir()) {
                 continue;
             }
-            $name = $item->path();
+            $name = (string) $item->path();
 
             try {
                 if (!$this->hasSnapshot($name)) {
                     continue;
                 }
-                $byCreatedAt[$name] = $this->readManifest($name)->createdAt;
+                $rows[] = ['name' => $name, 'createdAt' => $this->readManifest($name)->createdAt];
             } catch (InvalidSnapshotException) {
                 continue; // invalid name or unreadable manifest: treat as incomplete
             }
         }
-        uksort(
-            $byCreatedAt,
-            static fn (string $a, string $b) => strcmp($byCreatedAt[$b], $byCreatedAt[$a]) ?: strcmp($b, $a),
+        usort(
+            $rows,
+            static fn (array $a, array $b) => strcmp($b['createdAt'], $a['createdAt'])
+                ?: strcmp($b['name'], $a['name']),
         );
 
-        return array_keys($byCreatedAt);
+        return array_map(static fn (array $row) => $row['name'], $rows);
     }
 
     public function latestSnapshotName(): ?string

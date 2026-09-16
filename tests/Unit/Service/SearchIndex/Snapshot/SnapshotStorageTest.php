@@ -221,6 +221,24 @@ final class SnapshotStorageTest extends Unit
         $this->assertSame(['good'], $storage->listSnapshots());
     }
 
+    public function testNumericSnapshotNamesStayStrings(): void
+    {
+        // "123" is a valid NAME_PATTERN match; it must never be silently cast to an int by
+        // being used as an array key internally (listSnapshots/latestSnapshotName/rotate all
+        // rely on it staying a string).
+        $storage = new SnapshotStorage($this->filesystem, 1);
+        $storage->writeManifest('alpha', $this->manifest('2026-09-01T00:00:00+00:00'));
+        $storage->writeManifest('123', $this->manifest('2026-09-02T00:00:00+00:00'));
+
+        $this->assertTrue($storage->hasSnapshot('123'));
+        $this->assertSame(['123', 'alpha'], $storage->listSnapshots());
+        $this->assertSame('123', $storage->latestSnapshotName());
+
+        $this->assertSame(['alpha'], $storage->rotate());
+        $this->assertFalse($storage->hasSnapshot('alpha'));
+        $this->assertTrue($storage->hasSnapshot('123'));
+    }
+
     private function manifest(string $createdAt): Manifest
     {
         return new Manifest(
