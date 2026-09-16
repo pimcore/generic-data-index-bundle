@@ -190,11 +190,7 @@ final readonly class Manifest
 
     private static function targetIdentity(ManifestIndex $index): string
     {
-        if ($index->elementType === 'dataObject') {
-            return 'dataObject:' . ($index->classId ?? '');
-        }
-
-        return $index->elementType;
+        return IndexIdentity::fromManifestIndex($index)->key();
     }
 
     private static function requireNonNegativeInt(array $data, string $key): int

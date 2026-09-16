@@ -45,13 +45,13 @@ flysystem:
 ## Export
 
 ```bash
-bin/console generic-data-index:snapshot:export [--name=NAME] [--max-queue-entries=N] [--wait=SECONDS] [--dry-run]
+bin/console generic-data-index:snapshot:export [--name=NAME] [--dry-run]
 ```
 
-Run it right after the database dump so both come from the same window. `--max-queue-entries`
-refuses to export while the index queue is deeper than `N`; with `--wait` the command polls the
-queue every 5 seconds until it drains or the timeout is reached. Both queue counts (before the
-export, and after, once it finished) are recorded in the manifest.
+Run it right after the database dump so both come from the same window. Both queue counts (before
+the export, and after, once it finished) are recorded in the manifest; if the queue held any
+entries before the export started, the command prints a note that the index queue was not idle and
+the snapshot may lag the database.
 
 Each index is written to its own file first; the manifest is written last, once every index has
 been exported successfully. If the export fails at any point — including a failure to write the
@@ -65,15 +65,15 @@ Snapshots are kept in the storage until an operator deletes them from it; runnin
 The export pages through each live alias without taking a point-in-time snapshot of it, so
 elements that are created, changed, or deleted while the export is running can be reflected
 inconsistently across documents (or across pages of the same index). Run the export in a quiet
-window — right after the database dump, with `--max-queue-entries` and idle messenger consumers —
-to keep this window as small as possible, and treat the manifest's `queue_entries_before` and
-`queue_entries_after` counts as the indicator of how clean the resulting baseline is: the closer
-both are to zero, the less concurrent activity the export could have raced.
+window — right after the database dump, with idle messenger consumers — to keep this window as
+small as possible, and treat the manifest's `queue_entries_before` and `queue_entries_after` counts
+as the indicator of how clean the resulting baseline is: the closer both are to zero, the less
+concurrent activity the export could have raced.
 
 ## Import
 
 ```bash
-bin/console generic-data-index:snapshot:import [NAME] [--from-path=DIR] [--only=asset,data-object_product] [--force] [--dry-run]
+bin/console generic-data-index:snapshot:import [NAME] [--from-path=DIR] [--force] [--dry-run]
 ```
 
 Without `NAME` the newest complete snapshot in the configured storage is used. `--from-path` reads
@@ -96,17 +96,11 @@ into and is always skipped, independently of `--force`. If the check finds a mis
 `--force` was not given, the command refuses the whole import and lists the affected classes; pass
 `--force` to import everything else and skip only those classes.
 
-`--only` limits the import to the given comma-separated short index names (e.g.
-`asset,data-object_product` for the asset index and the `Product` class index); every other index
-in the snapshot is left untouched. A name that does not exist in the snapshot fails the command
-before anything is written. The compatibility check above only blocks the import for classes that
-are part of the `--only` selection; an incompatible class outside the selection is not refused.
-
 If the local index queue is not empty, the command prints a warning ("Stop messenger consumers
 during the import to avoid interleaved writes.") but still proceeds — stopping the consumers
-yourself is recommended, not enforced. The import then recreates each selected index with the
-local mapping and replays the documents through the bulk API; it does **not** enqueue elements.
-After a class definition change, the normal per-class reindex still applies.
+yourself is recommended, not enforced. The import then recreates each index with the local
+mapping and replays the documents through the bulk API; it does **not** enqueue elements. After a
+class definition change, the normal per-class reindex still applies.
 
 `--dry-run` runs the compatibility check and prints the import plan (which indices, how many
 documents each) without writing anything ("Nothing written."). A real import exits with a non-zero
@@ -125,5 +119,5 @@ crons:
     gdi_snapshot:
         spec: "0 2 * * 0"
         commands:
-            start: "php /app/bin/console generic-data-index:snapshot:export --max-queue-entries=100 --wait=600"
+            start: "php /app/bin/console generic-data-index:snapshot:export"
 ```

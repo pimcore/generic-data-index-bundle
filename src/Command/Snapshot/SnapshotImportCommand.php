@@ -77,13 +77,6 @@ final class SnapshotImportCommand extends AbstractCommand
                 'Continue when class mappings do not match; mismatched classes are skipped.',
             )
             ->addOption(
-                'only',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Comma-separated short index names to import (e.g. "asset,data-object_product"). '
-                . 'Other indices stay untouched.',
-            )
-            ->addOption(
                 'dry-run',
                 null,
                 InputOption::VALUE_NONE,
@@ -115,24 +108,8 @@ final class SnapshotImportCommand extends AbstractCommand
 
                 return self::FAILURE;
             }
-            $onlyOption = $input->getOption('only');
-            $only = $onlyOption === null
-                ? []
-                : array_values(array_filter(array_map('trim', explode(',', (string) $onlyOption))));
-            if ($onlyOption !== null && $only === []) {
-                $this->io->error('--only was given without any index name.');
-
-                return self::FAILURE;
-            }
-            if ($only !== []) {
-                $this->io->warning(
-                    'Importing a subset of indices can leave the local indices inconsistent with each other. '
-                    . 'Use --only for targeted repairs only.',
-                );
-            }
             $options = new ImportOptions(
                 force: (bool) $input->getOption('force'),
-                only: $only,
                 dryRun: (bool) $input->getOption('dry-run'),
             );
 

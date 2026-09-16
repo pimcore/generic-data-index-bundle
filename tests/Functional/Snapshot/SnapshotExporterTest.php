@@ -102,9 +102,8 @@ final class SnapshotExporterTest extends Unit
         $this->assertSame([], $storage->listSnapshots());
     }
 
-    public function testQueueThresholdRefusesAndLeavesNoDirectory(): void
+    public function testQueueCountsAreRecordedInTheManifest(): void
     {
-        $this->tester->createFullyFledgedObjectSimple('snapshot-gate-', true, true, 9);
         Db::get()->executeStatement(
             'INSERT INTO generic_data_index_queue (elementId, elementType, elementIndexName, operation, operationTime, dispatched) VALUES (?, \'dataObject\', \'simple\', \'update\', 1, 0)',
             [999999]
@@ -113,12 +112,9 @@ final class SnapshotExporterTest extends Unit
         /** @var SnapshotExporterInterface $exporter */
         $exporter = $this->tester->grabService(SnapshotExporterInterface::class);
 
-        try {
-            $exporter->export($storage, 'gated', new ExportOptions(maxQueueEntries: 0, waitSeconds: 0));
-            $this->fail('expected SnapshotExportException');
-        } catch (SnapshotExportException) {
-        }
-        $this->assertSame([], $storage->listSnapshots());
+        $result = $exporter->export($storage, 'queue-counts', new ExportOptions());
+
+        $this->assertSame(1, $result->manifest->queueEntriesBefore);
         $this->tester->clearQueue();
     }
 

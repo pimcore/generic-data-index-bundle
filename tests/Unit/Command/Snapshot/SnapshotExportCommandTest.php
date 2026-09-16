@@ -35,20 +35,30 @@ final class SnapshotExportCommandTest extends Unit
         $exporter = $this->makeEmpty(SnapshotExporterInterface::class, [
             'export' => function (SnapshotStorageInterface $storage, string $name, ExportOptions $options) use ($manifest): ExportResult {
                 $this->assertSame('nightly', $name);
-                $this->assertSame(100, $options->maxQueueEntries);
-                $this->assertSame(30, $options->waitSeconds);
 
                 return new ExportResult($name, $manifest, false);
             },
         ]);
         $tester = new CommandTester($this->command($exporter));
 
-        $exitCode = $tester->execute(['--name' => 'nightly', '--max-queue-entries' => '100', '--wait' => '30']);
+        $exitCode = $tester->execute(['--name' => 'nightly']);
 
         $this->assertSame(Command::SUCCESS, $exitCode);
         $display = $tester->getDisplay();
         $this->assertStringContainsString('data-object_simple', $display);
         $this->assertStringContainsString('queue entries before: 3', $display);
+    }
+
+    public function testNonZeroQueueCountBeforeNotesTheIndexIsNotIdle(): void
+    {
+        $manifest = new Manifest('2026-09-10T00:00:00+00:00', 'dev', 'dev', 'openSearch', 'pimcore_', 3, 0, 0, [], []);
+        $exporter = $this->makeEmpty(SnapshotExporterInterface::class, [
+            'export' => static fn (SnapshotStorageInterface $storage, string $name, ExportOptions $options): ExportResult => new ExportResult($name, $manifest, false),
+        ]);
+        $tester = new CommandTester($this->command($exporter));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute([]));
+        $this->assertStringContainsString('not idle', $tester->getDisplay());
     }
 
     public function testDefaultNameIsUtcTimestamp(): void

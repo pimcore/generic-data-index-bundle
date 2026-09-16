@@ -19,8 +19,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot;
 final readonly class ExportOptions
 {
     public function __construct(
-        public ?int $maxQueueEntries = null,
-        public int $waitSeconds = 0,
         public bool $dryRun = false,
     ) {
     }

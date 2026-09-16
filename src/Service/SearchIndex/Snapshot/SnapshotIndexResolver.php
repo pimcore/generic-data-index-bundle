@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexIdentity;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
@@ -63,16 +64,17 @@ final class SnapshotIndexResolver implements SnapshotIndexResolverInterface
 
     public function resolveManifestIndex(ManifestIndex $index): ?IndexTarget
     {
-        if ($index->elementType === $this->assetTypeAdapter->getElementType()) {
+        $identity = IndexIdentity::fromManifestIndex($index);
+        if ($identity->isAsset()) {
             return $this->target($this->assetTypeAdapter->getAliasIndexName(), $index->elementType);
         }
-        if ($index->elementType === $this->documentTypeAdapter->getElementType()) {
+        if ($identity->isDocument()) {
             return $this->target($this->documentTypeAdapter->getAliasIndexName(), $index->elementType);
         }
-        if ($index->elementType !== $this->dataObjectTypeAdapter->getElementType()) {
+        if (!$identity->isDataObject()) {
             return null;
         }
-        if ($index->classId === null) {
+        if ($identity->isDataObjectFolder()) {
             return $this->target($this->dataObjectTypeAdapter->getAliasIndexName(), $index->elementType);
         }
         $classDefinition = ClassDefinition::getById($index->classId);

@@ -51,19 +51,6 @@ final class SnapshotExportCommand extends AbstractCommand
                 'Export all search indices into a portable snapshot bundle for import on another installation.',
             )
             ->addOption('name', null, InputOption::VALUE_REQUIRED, 'Snapshot name (directory). Default: UTC timestamp.')
-            ->addOption(
-                'max-queue-entries',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'Refuse to export while the index queue holds more entries than this.',
-            )
-            ->addOption(
-                'wait',
-                null,
-                InputOption::VALUE_REQUIRED,
-                'With --max-queue-entries: seconds to wait for the queue to drain before giving up.',
-                '0',
-            )
             ->addOption('dry-run', null, InputOption::VALUE_NONE, 'Resolve indices and counts, write nothing.');
     }
 
@@ -80,12 +67,7 @@ final class SnapshotExportCommand extends AbstractCommand
 
         try {
             $name = (string) ($input->getOption('name') ?? gmdate('Y-m-d\TH-i-s\Z'));
-            $maxQueue = $input->getOption('max-queue-entries');
-            $options = new ExportOptions(
-                maxQueueEntries: $maxQueue === null ? null : (int) $maxQueue,
-                waitSeconds: (int) $input->getOption('wait'),
-                dryRun: (bool) $input->getOption('dry-run'),
-            );
+            $options = new ExportOptions(dryRun: (bool) $input->getOption('dry-run'));
             $result = $this->snapshotExporter->export(
                 $this->snapshotStorage,
                 $name,
@@ -117,6 +99,12 @@ final class SnapshotExportCommand extends AbstractCommand
                 $manifest->queueEntriesAfter,
                 $manifest->durationSeconds,
             ));
+            if ($manifest->queueEntriesBefore > 0) {
+                $this->io->note(
+                    'The index queue is not idle: the snapshot may lag the database. '
+                    . 'Stop messenger consumers before exporting for a clean baseline.',
+                );
+            }
             $this->io->success($result->dryRun ? 'Nothing written.' : 'Snapshot written.');
 
             return self::SUCCESS;

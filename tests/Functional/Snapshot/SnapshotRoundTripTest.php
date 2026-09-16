@@ -209,7 +209,7 @@ final class SnapshotRoundTripTest extends Unit
         $this->filesystem->write('corrupt/data-object_simple.ndjson.gz', gzencode("{\"system_fields\":{\"id\":1}}\n"));
 
         try {
-            $this->importer()->import($this->storage, 'corrupt', new ImportOptions(only: ['data-object_simple']));
+            $this->importer()->import($this->storage, 'corrupt', new ImportOptions());
             $this->fail('expected SnapshotImportException');
         } catch (SnapshotImportException $e) {
             $this->assertStringContainsString('data-object_simple', $e->getMessage());
@@ -302,7 +302,7 @@ final class SnapshotRoundTripTest extends Unit
         ));
 
         try {
-            $this->importer()->import($this->storage, 'stamp-fail', new ImportOptions(only: ['data-object_simple']));
+            $this->importer()->import($this->storage, 'stamp-fail', new ImportOptions());
             $this->fail('expected SnapshotImportException');
         } catch (SnapshotImportException $e) {
             $this->assertStringContainsString('Document without integer system_fields.id', $e->getMessage());
@@ -319,10 +319,9 @@ final class SnapshotRoundTripTest extends Unit
         // the checksum here would mark the mapping "current" even though the index is short a
         // document, and self-healing would never kick in.
         //
-        // Note: this snapshot only has one index ('data-object_simple', selected via `only`), so
-        // there is no later-planned index to assert stays untouched by the abort; that part of
-        // the contract is covered by testManifestEntryCannotReferenceAnotherIndexFile() instead,
-        // which aborts partway through a multi-index plan.
+        // Note: coverage for an index later in the plan staying untouched by the abort lives in
+        // testManifestEntryCannotReferenceAnotherIndexFile() and
+        // testCorruptFileLateInThePlanLeavesAllIndicesUntouched() instead.
         for ($i = 1; $i <= 2; $i++) {
             $this->tester->createFullyFledgedObjectSimple('snapshot-incomplete-', true, true, 20 + $i);
         }
@@ -345,7 +344,7 @@ final class SnapshotRoundTripTest extends Unit
         $settingsStore->storeClassMapping($classId, 424242);
 
         try {
-            $this->importer()->import($this->storage, 'incomplete', new ImportOptions(only: ['data-object_simple']));
+            $this->importer()->import($this->storage, 'incomplete', new ImportOptions());
             $this->fail('expected SnapshotImportException');
         } catch (SnapshotImportException $e) {
             $this->assertStringContainsString($this->simpleAlias, $e->getMessage(), 'expected the message to name the index alias');
@@ -375,7 +374,7 @@ final class SnapshotRoundTripTest extends Unit
         ));
 
         try {
-            $this->importer()->import($this->storage, 'badname', new ImportOptions(only: ['data-object_simple']));
+            $this->importer()->import($this->storage, 'badname', new ImportOptions());
             $this->fail('expected InvalidSnapshotException');
         } catch (InvalidSnapshotException $e) {
             $this->assertStringContainsString('must match its "short_name"', $e->getMessage());
@@ -417,7 +416,7 @@ final class SnapshotRoundTripTest extends Unit
         ));
 
         try {
-            $this->importer()->import($this->storage, 'crossref', new ImportOptions(only: ['asset']));
+            $this->importer()->import($this->storage, 'crossref', new ImportOptions());
             $this->fail('expected InvalidSnapshotException or SnapshotImportException');
         } catch (InvalidSnapshotException|SnapshotImportException $e) {
             $this->assertStringContainsString('asset', $e->getMessage());
@@ -452,44 +451,6 @@ final class SnapshotRoundTripTest extends Unit
         $this->assertArrayHasKey('data-object_simple', $result->skipped);
         $this->assertStringContainsString('no class mapping checksum', $result->skipped['data-object_simple']);
         $this->tester->checkIndexEntry($object->getId(), $this->simpleAlias);
-    }
-
-    public function testOnlyScopesTheCompatibilityGate(): void
-    {
-        // "simple" is made incompatible, but --only=asset never touches it: the gate must not
-        // refuse an import that doesn't select the incompatible class, while a plain import
-        // (no --only) still sees the whole report and is refused.
-        $this->tester->createFullyFledgedObjectSimple('snapshot-only-gate-', true, true, 40);
-        $this->tester->flushIndex();
-        $this->exporter()->export($this->storage, 'only-gate', new ExportOptions());
-        $manifest = $this->storage->readManifest('only-gate');
-        $classId = ClassDefinition::getByName('simple')->getId();
-        $this->storage->writeManifest(
-            'only-gate',
-            $manifest->withClassMappingChecksums([...$manifest->classMappingChecksums, $classId => 999]),
-        );
-
-        $result = $this->importer()->import($this->storage, 'only-gate', new ImportOptions(only: ['asset']));
-
-        $this->assertTrue($result->isSuccessful(), print_r($result->imported, true));
-        $this->assertSame([], $result->skipped);
-        $importedNames = array_map(static fn (ImportedIndex $i) => $i->shortName, $result->imported);
-        $this->assertSame(['asset'], $importedNames);
-
-        try {
-            $this->importer()->import($this->storage, 'only-gate', new ImportOptions());
-            $this->fail('expected SnapshotIncompatibleException when the incompatible class is not excluded');
-        } catch (SnapshotIncompatibleException $e) {
-            $this->assertSame([$classId], $e->report->incompatibleClassIds());
-        }
-    }
-
-    public function testUnknownOnlyNameIsRejected(): void
-    {
-        $this->exporter()->export($this->storage, 'only', new ExportOptions());
-
-        $this->expectException(SnapshotImportException::class);
-        $this->importer()->import($this->storage, 'only', new ImportOptions(only: ['does_not_exist']));
     }
 
     public function testDryRunIsSuccessfulAndWritesNothing(): void

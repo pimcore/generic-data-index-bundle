@@ -89,14 +89,13 @@ final class SnapshotImportCommandTest extends Unit
                 $this->assertInstanceOf(SnapshotStorage::class, $storage);
                 $this->assertTrue($storage->hasSnapshot('snap'));
                 $this->assertTrue($options->force);
-                $this->assertSame(['asset', 'data-object_simple'], $options->only);
 
                 return $this->importResult($name, []);
             },
         ]);
         $tester = new CommandTester($this->command($this->makeEmpty(SnapshotStorageInterface::class), $importer));
 
-        $this->assertSame(Command::SUCCESS, $tester->execute(['name' => 'snap', '--from-path' => $dir, '--force' => true, '--only' => 'asset, data-object_simple']));
+        $this->assertSame(Command::SUCCESS, $tester->execute(['name' => 'snap', '--from-path' => $dir, '--force' => true]));
     }
 
     public function testIncompleteIndexIsFailure(): void
@@ -168,64 +167,6 @@ final class SnapshotImportCommandTest extends Unit
 
         $this->assertSame(Command::FAILURE, $tester->execute([]));
         $this->assertStringContainsString('engine down', $tester->getDisplay());
-    }
-
-    public function testOnlyOptionWarnsAboutInconsistentIndices(): void
-    {
-        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
-            'import' => function (SnapshotStorageInterface $s, string $name, ImportOptions $options): ImportResult {
-                $this->assertSame(['asset'], $options->only);
-
-                return $this->importResult($name, [new ImportedIndex('asset', 'pimcore_asset', 5, 5)]);
-            },
-        ]);
-        $tester = new CommandTester($this->command($this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']), $importer));
-
-        $this->assertSame(Command::SUCCESS, $tester->execute(['--only' => 'asset']));
-        $this->assertStringContainsString('inconsistent', $tester->getDisplay());
-    }
-
-    public function testWithoutOnlyOptionDoesNotWarnAboutInconsistentIndices(): void
-    {
-        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
-            'import' => fn (SnapshotStorageInterface $s, string $name): ImportResult => $this->importResult($name, [new ImportedIndex('asset', 'pimcore_asset', 5, 5)]),
-        ]);
-        $tester = new CommandTester($this->command($this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']), $importer));
-
-        $this->assertSame(Command::SUCCESS, $tester->execute([]));
-        $this->assertStringNotContainsString('inconsistent', $tester->getDisplay());
-    }
-
-    public function testEmptyOnlyOptionIsFailure(): void
-    {
-        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
-            'import' => static function (): never {
-                throw new LogicException('must not be called');
-            },
-        ]);
-        $tester = new CommandTester($this->command(
-            $this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']),
-            $importer,
-        ));
-
-        $this->assertSame(Command::FAILURE, $tester->execute(['--only' => '']));
-        $this->assertStringContainsString('--only was given without any index name', $tester->getDisplay());
-    }
-
-    public function testBlankOnlyOptionIsFailure(): void
-    {
-        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
-            'import' => static function (): never {
-                throw new LogicException('must not be called');
-            },
-        ]);
-        $tester = new CommandTester($this->command(
-            $this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']),
-            $importer,
-        ));
-
-        $this->assertSame(Command::FAILURE, $tester->execute(['--only' => ' , ']));
-        $this->assertStringContainsString('--only was given without any index name', $tester->getDisplay());
     }
 
     public function testDryRunPrintsNothingWritten(): void

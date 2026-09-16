@@ -27,8 +27,8 @@ interface SnapshotExporterInterface
      * @param (callable(IndexTarget, int): void)|null $onIndexExported called after each index has been
      *                                                                 written, with the exported document count
      *
-     * @throws SnapshotExportException when the snapshot name already exists, the queue threshold is
-     *                                  exceeded, or an index could not be exported
+     * @throws SnapshotExportException when the snapshot name already exists or an index could
+     *                                  not be exported
      */
     public function export(
         SnapshotStorageInterface $storage,

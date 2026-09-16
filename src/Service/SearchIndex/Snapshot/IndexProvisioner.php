@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -69,10 +68,10 @@ final class IndexProvisioner implements IndexProvisionerInterface
 
     private function handlerFor(IndexTarget $target): IndexHandlerInterface
     {
-        return match ($target->elementType) {
-            ElementType::ASSET->value => $this->assetIndexHandler,
-            ElementType::DOCUMENT->value => $this->documentIndexHandler,
-            ElementType::DATA_OBJECT->value => $this->dataObjectIndexHandler,
+        return match (true) {
+            $target->identity->isAsset() => $this->assetIndexHandler,
+            $target->identity->isDocument() => $this->documentIndexHandler,
+            $target->identity->isDataObject() => $this->dataObjectIndexHandler,
             default => throw new SnapshotImportException(sprintf('Unknown element type "%s"', $target->elementType)),
         };
     }

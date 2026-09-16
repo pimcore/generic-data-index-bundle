@@ -18,10 +18,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot;
  */
 final readonly class ImportOptions
 {
-    /** @param string[] $only short index names; empty means all */
     public function __construct(
         public bool $force = false,
-        public array $only = [],
         public bool $dryRun = false,
     ) {
     }

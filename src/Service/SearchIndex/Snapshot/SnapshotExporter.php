@@ -28,6 +28,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\Manifest;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\WrittenFile;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
@@ -47,7 +48,7 @@ final class SnapshotExporter implements SnapshotExporterInterface
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly SnapshotIndexResolverInterface $indexResolver,
         private readonly SettingsStoreServiceInterface $settingsStoreService,
-        private readonly QueueGate $queueGate,
+        private readonly IndexStatsServiceInterface $indexStatsService,
         private readonly int $pageSize,
     ) {
     }
@@ -63,7 +64,7 @@ final class SnapshotExporter implements SnapshotExporterInterface
             throw new SnapshotExportException(sprintf('Snapshot "%s" already exists', $name));
         }
         $started = microtime(true);
-        $queueBefore = $this->queueGate->await($options->maxQueueEntries, $options->waitSeconds);
+        $queueBefore = $this->queueCount();
 
         $targets = $this->resolveExistingTargets();
         $checksums = $this->collectClassChecksums($targets);
@@ -105,7 +106,7 @@ final class SnapshotExporter implements SnapshotExporterInterface
                 clientType: $manifest->clientType,
                 indexPrefix: $manifest->indexPrefix,
                 queueEntriesBefore: $queueBefore,
-                queueEntriesAfter: $this->queueGate->count(),
+                queueEntriesAfter: $this->queueCount(),
                 durationSeconds: (int) round(microtime(true) - $started),
                 classMappingChecksums: $checksums,
                 indices: $indices,
@@ -140,6 +141,11 @@ final class SnapshotExporter implements SnapshotExporterInterface
         ));
 
         return new ExportResult($name, $manifest, false);
+    }
+
+    private function queueCount(): int
+    {
+        return $this->indexStatsService->getStats()->getCountIndexQueueEntries();
     }
 
     /** @return IndexTarget[] */

@@ -13,10 +13,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Snapshot\ClassCompatibilityStatus;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ClassCompatibility;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\CompatibilityReport;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexIdentity;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\Manifest;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
@@ -112,7 +112,7 @@ final class CompatibilityChecker implements CompatibilityCheckerInterface
     {
         $classes = [];
         foreach ($manifest->indices as $index) {
-            if ($index->elementType !== ElementType::DATA_OBJECT->value || $index->classId === null) {
+            if (!IndexIdentity::fromManifestIndex($index)->isClassIndex()) {
                 continue;
             }
             $classId = (string) $index->classId;
@@ -174,7 +174,7 @@ final class CompatibilityChecker implements CompatibilityCheckerInterface
     {
         $classIds = [];
         foreach ($manifest->indices as $index) {
-            if ($index->elementType === ElementType::DATA_OBJECT->value && $index->classId !== null) {
+            if (IndexIdentity::fromManifestIndex($index)->isClassIndex()) {
                 $classIds[] = (string) $index->classId;
             }
         }

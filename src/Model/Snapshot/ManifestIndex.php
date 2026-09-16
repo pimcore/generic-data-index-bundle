@@ -83,18 +83,20 @@ final readonly class ManifestIndex
      */
     private static function assertValidIdentity(string $shortName, string $elementType, ?string $classId): void
     {
-        if ($elementType === 'dataObject') {
-            self::assertValidDataObjectIdentity($shortName, $classId);
+        $identity = new IndexIdentity($elementType, $classId);
+
+        if ($identity->isDataObject()) {
+            self::assertValidDataObjectIdentity($identity, $shortName);
 
             return;
         }
 
-        self::assertValidSingletonIdentity($shortName, $elementType, $classId);
+        self::assertValidSingletonIdentity($identity, $shortName, $elementType);
     }
 
-    private static function assertValidDataObjectIdentity(string $shortName, ?string $classId): void
+    private static function assertValidDataObjectIdentity(IndexIdentity $identity, string $shortName): void
     {
-        if ($classId === null) {
+        if (!$identity->isClassIndex()) {
             if ($shortName !== IndexName::DATA_OBJECT_FOLDER->value) {
                 throw new InvalidSnapshotException(sprintf(
                     'Manifest index entry "%s" has element_type "dataObject" without a "class_id", ' .
@@ -107,32 +109,29 @@ final readonly class ManifestIndex
             return;
         }
 
-        $prefix = SearchIndexConfigService::CLASS_INDEX_PREFIX;
-        if (!str_starts_with($shortName, $prefix) || $shortName === IndexName::DATA_OBJECT_FOLDER->value) {
+        if (!$identity->acceptsShortName($shortName)) {
             throw new InvalidSnapshotException(sprintf(
                 'Manifest index entry "%s" has element_type "dataObject" with class_id "%s", so its ' .
                 '"short_name" must start with "%s" and must not be the folder index name "%s"',
                 $shortName,
-                $classId,
-                $prefix,
+                $identity->classId,
+                SearchIndexConfigService::CLASS_INDEX_PREFIX,
                 IndexName::DATA_OBJECT_FOLDER->value,
             ));
         }
     }
 
-    private static function assertValidSingletonIdentity(string $shortName, string $elementType, ?string $classId): void
-    {
-        $expectedShortName = match ($elementType) {
-            'asset' => IndexName::ASSET->value,
-            'document' => IndexName::DOCUMENT->value,
-            default => null,
-        };
-
+    private static function assertValidSingletonIdentity(
+        IndexIdentity $identity,
+        string $shortName,
+        string $elementType,
+    ): void {
+        $expectedShortName = $identity->expectedShortName();
         if ($expectedShortName === null) {
             return;
         }
 
-        if ($classId !== null) {
+        if ($identity->classId !== null) {
             throw new InvalidSnapshotException(sprintf(
                 'Manifest index entry "%s" has element_type "%s", which must not have a "class_id"',
                 $shortName,
@@ -140,7 +139,7 @@ final readonly class ManifestIndex
             ));
         }
 
-        if ($shortName !== $expectedShortName) {
+        if (!$identity->acceptsShortName($shortName)) {
             throw new InvalidSnapshotException(sprintf(
                 'Manifest index entry "%s" has element_type "%s", so its "short_name" must be "%s"',
                 $shortName,

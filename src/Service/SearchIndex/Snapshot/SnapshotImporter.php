@@ -65,15 +65,10 @@ final class SnapshotImporter implements SnapshotImporterInterface
         $manifest = $storage->readManifest($name);
         $notices = $this->collectNotices($manifest);
         $report = $this->compatibilityChecker->check($manifest);
-
-        // The compatibility gate only ever blocks classes that are part of the --only selection
-        // (all of them, when --only is empty): an incompatible class the caller never asked to
-        // import must not refuse an import that doesn't touch it.
-        $entries = $this->selectEntries($manifest, $options->only);
-        $this->assertSelectionCompatible($name, $entries, $report, $options);
+        $this->assertCompatible($name, $report, $options);
 
         $skipped = [];
-        $plan = $this->plan($entries, $report, $skipped);
+        $plan = $this->plan($manifest->indices, $report, $skipped);
 
         if ($options->dryRun) {
             return new ImportResult($name, $manifest, $report, $this->plannedIndices($plan), $skipped, $notices, true);
@@ -132,25 +127,13 @@ final class SnapshotImporter implements SnapshotImporterInterface
     }
 
     /**
-     * Throws when the compatibility gate blocks the selection: the intersection of
-     * {@see CompatibilityReport::incompatibleClassIds()} with the class ids of the selected
-     * data-object entries. An incompatible class outside the --only selection must not refuse
-     * an import that never touches it. The exception always carries the full report, not just
-     * the blocking subset, so callers can still see everything that is incompatible.
-     *
-     * @param ManifestIndex[] $entries entries already narrowed down by --only
+     * Throws when the compatibility gate blocks the whole import: the report contains at least
+     * one incompatible or unverified class. The exception always carries the full report, so
+     * callers can see everything that is incompatible.
      */
-    private function assertSelectionCompatible(
-        string $name,
-        array $entries,
-        CompatibilityReport $report,
-        ImportOptions $options,
-    ): void {
-        if ($options->force) {
-            return;
-        }
-        $blocking = array_intersect($report->incompatibleClassIds(), $this->selectedClassIds($entries));
-        if ($blocking === []) {
+    private function assertCompatible(string $name, CompatibilityReport $report, ImportOptions $options): void
+    {
+        if ($options->force || $report->isCompatible()) {
             return;
         }
 
@@ -158,34 +141,17 @@ final class SnapshotImporter implements SnapshotImporterInterface
             'Snapshot "%s" does not match the local class definitions for class ids [%s]. '
             . 'Import the matching database dump or pass --force to skip these classes.',
             $name,
-            implode(', ', $blocking),
+            implode(', ', $report->incompatibleClassIds()),
         ), $report);
     }
 
     /**
+     * Resolves the manifest's entries to local index targets and decides, per entry, whether it
+     * can be imported or must be skipped (no local counterpart, or an incompatible/unverified
+     * class mapping). $skipped is populated with the skip reason for every entry left out of the
+     * returned plan.
+     *
      * @param ManifestIndex[] $entries
-     *
-     * @return string[] class ids of the dataObject entries among $entries
-     */
-    private function selectedClassIds(array $entries): array
-    {
-        $classIds = [];
-        foreach ($entries as $entry) {
-            if ($entry->elementType === 'dataObject' && $entry->classId !== null) {
-                $classIds[] = $entry->classId;
-            }
-        }
-
-        return $classIds;
-    }
-
-    /**
-     * Resolves the entries selected via {@see selectEntries()} to local index targets and
-     * decides, per entry, whether it can be imported or must be skipped (no local counterpart,
-     * or an incompatible/unverified class mapping). $skipped is populated with the skip reason
-     * for every entry left out of the returned plan.
-     *
-     * @param ManifestIndex[] $entries entries already narrowed down by --only
      * @param array<string, string> $skipped short index name => reason, populated by reference
      *
      * @return array<int, array{0: ManifestIndex, 1: IndexTarget}>
@@ -216,23 +182,6 @@ final class SnapshotImporter implements SnapshotImporterInterface
         }
 
         return $plan;
-    }
-
-    /** @return ManifestIndex[] */
-    private function selectEntries(Manifest $manifest, array $only): array
-    {
-        if ($only === []) {
-            return $manifest->indices;
-        }
-        $unknown = array_diff($only, array_map(static fn (ManifestIndex $i) => $i->shortName, $manifest->indices));
-        if ($unknown !== []) {
-            throw new SnapshotImportException(sprintf('Snapshot has no indices named [%s]', implode(', ', $unknown)));
-        }
-
-        return array_values(array_filter(
-            $manifest->indices,
-            static fn (ManifestIndex $i) => in_array($i->shortName, $only, true),
-        ));
     }
 
     /**
