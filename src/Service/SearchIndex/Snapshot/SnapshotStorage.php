@@ -24,7 +24,7 @@ use Throwable;
  */
 final class SnapshotStorage implements SnapshotStorageInterface
 {
-    private const NAME_PATTERN = '/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/';
+    private const NAME_PATTERN = '/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/D';
 
     public function __construct(
         private readonly FilesystemOperator $filesystem,

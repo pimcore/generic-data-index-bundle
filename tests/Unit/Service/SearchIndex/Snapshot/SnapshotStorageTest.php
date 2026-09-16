@@ -119,7 +119,7 @@ final class SnapshotStorageTest extends Unit
 
     public static function invalidNames(): array
     {
-        return [['../etc'], ['a/b'], [''], ['.hidden'], [str_repeat('x', 129)]];
+        return [['../etc'], ['a/b'], [''], ['.hidden'], [str_repeat('x', 129)], ["snapshot\n"]];
     }
 
     public function testEmptyStorageHasNoSnapshots(): void

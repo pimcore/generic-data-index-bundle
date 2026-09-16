@@ -200,6 +200,7 @@ final class SnapshotRoundTripTest extends Unit
             $this->importer()->import($this->storage, 'corrupt', new ImportOptions(only: ['data-object_simple']));
             $this->fail('expected SnapshotImportException');
         } catch (SnapshotImportException $e) {
+            $this->assertStringContainsString('data-object_simple', $e->getMessage());
             $this->assertStringContainsString('Checksum mismatch', $e->getMessage());
         }
         // the checksum is verified before the live index is touched: it must still be intact

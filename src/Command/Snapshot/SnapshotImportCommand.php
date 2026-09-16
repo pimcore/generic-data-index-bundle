@@ -115,9 +115,15 @@ final class SnapshotImportCommand extends AbstractCommand
 
                 return self::FAILURE;
             }
-            $only = array_values(array_filter(
-                array_map('trim', explode(',', (string) ($input->getOption('only') ?? ''))),
-            ));
+            $onlyOption = $input->getOption('only');
+            $only = $onlyOption === null
+                ? []
+                : array_values(array_filter(array_map('trim', explode(',', (string) $onlyOption))));
+            if ($onlyOption !== null && $only === []) {
+                $this->io->error('--only was given without any index name.');
+
+                return self::FAILURE;
+            }
             if ($only !== []) {
                 $this->io->warning(
                     'Importing a subset of indices can leave the local indices inconsistent with each other. '

@@ -196,6 +196,38 @@ final class SnapshotImportCommandTest extends Unit
         $this->assertStringNotContainsString('inconsistent', $tester->getDisplay());
     }
 
+    public function testEmptyOnlyOptionIsFailure(): void
+    {
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => static function (): never {
+                throw new LogicException('must not be called');
+            },
+        ]);
+        $tester = new CommandTester($this->command(
+            $this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']),
+            $importer,
+        ));
+
+        $this->assertSame(Command::FAILURE, $tester->execute(['--only' => '']));
+        $this->assertStringContainsString('--only was given without any index name', $tester->getDisplay());
+    }
+
+    public function testBlankOnlyOptionIsFailure(): void
+    {
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => static function (): never {
+                throw new LogicException('must not be called');
+            },
+        ]);
+        $tester = new CommandTester($this->command(
+            $this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']),
+            $importer,
+        ));
+
+        $this->assertSame(Command::FAILURE, $tester->execute(['--only' => ' , ']));
+        $this->assertStringContainsString('--only was given without any index name', $tester->getDisplay());
+    }
+
     public function testDryRunPrintsNothingWritten(): void
     {
         $importer = $this->makeEmpty(SnapshotImporterInterface::class, [

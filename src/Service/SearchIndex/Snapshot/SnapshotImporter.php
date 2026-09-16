@@ -243,11 +243,11 @@ final class SnapshotImporter implements SnapshotImporterInterface
             // file anywhere in the plan must be rejected before any index has been provisioned.
             $storage->readFileToLocal($name, $entry->file, $local);
             $this->documentFileReader->verifyHash($local, $entry->sha256);
-        } catch (InvalidSnapshotException|FilesystemException $e) {
+        } catch (InvalidSnapshotException|FilesystemException|SnapshotImportException $e) {
             @unlink($local);
 
             throw new SnapshotImportException(
-                sprintf('Verification of index "%s" failed: %s', $target->shortName, $e->getMessage()),
+                sprintf('Import of index "%s" failed: %s', $target->shortName, $e->getMessage()),
                 0,
                 $e,
             );
