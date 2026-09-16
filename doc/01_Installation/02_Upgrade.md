@@ -13,6 +13,8 @@ Following steps are necessary during updating to newer versions.
 - [Configuration] Added the `pimcore_generic_data_index.snapshot` node (`storage`, `page_size`, `bulk_size`)
   and a default private Flysystem storage `pimcore.generic_data_index_snapshot.storage` under
   `var/generic-data-index/snapshots`.
+- [Bug] `generic-data-index:status` (and any caller of `IndexStatsService::getStats()`) no longer fails with
+  "Undefined array key aggregations" when no search index exists yet.
 
 ## Upgrade to 2.5.9
 - [Indexing] Moving or renaming an element with children now rewrites the children's `path`/`fullPath` in the search
