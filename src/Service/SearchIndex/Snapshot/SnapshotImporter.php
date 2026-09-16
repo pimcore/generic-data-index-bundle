@@ -398,33 +398,42 @@ final class SnapshotImporter implements SnapshotImporterInterface
             $target->aliasName,
         ));
 
-        $this->stampIfComplete($target, $classMappingChecksum, $actual, $entry->documentCount);
+        $this->assertReplayComplete($target, $actual, $entry->documentCount);
+        $this->stampClassMapping($target, $classMappingChecksum);
 
         return new ImportedIndex($target->shortName, $target->aliasName, $entry->documentCount, $actual);
     }
 
     /**
-     * Stamp the checksum only once the bulk commit above succeeded and the index has been
-     * counted, so the settings store is only ever updated once the mapping it describes is
-     * actually backed by a fully-replayed index. An incomplete replay (actual count doesn't match
-     * the manifest's expected count) must not stamp the checksum either: a partial index would
-     * otherwise look "current" and the self-healing reindex would never fix it.
+     * An incomplete replay (actual count doesn't match the manifest's expected count) must abort
+     * the import the same way any other replay failure does: a partial index must never be
+     * stamped as current, and indices later in the plan must stay untouched rather than be
+     * provisioned on top of a replay already known to be wrong.
      */
-    private function stampIfComplete(IndexTarget $target, ?int $classMappingChecksum, int $actual, int $expected): void
+    private function assertReplayComplete(IndexTarget $target, int $actual, int $expected): void
     {
-        if (!$target->isClassIndex() || $classMappingChecksum === null) {
-            return;
-        }
         if ($actual === $expected) {
-            $this->indexProvisioner->stampClassMapping($target, $classMappingChecksum);
-
             return;
         }
-        $this->logger?->warning(sprintf(
-            'Not stamping class mapping checksum for %s: replay imported %d/%d documents',
+
+        throw new SnapshotImportException(sprintf(
+            'Replay of index "%s" imported %d/%d documents, aborting import of the remaining indices',
             $target->aliasName,
             $actual,
             $expected,
         ));
+    }
+
+    /**
+     * Stamp the checksum only once the bulk commit above succeeded, the index has been counted,
+     * and {@see assertReplayComplete()} has confirmed the replay is complete, so the settings
+     * store is only ever updated once the mapping it describes is actually backed by a
+     * fully-replayed index.
+     */
+    private function stampClassMapping(IndexTarget $target, ?int $classMappingChecksum): void
+    {
+        if ($target->isClassIndex() && $classMappingChecksum !== null) {
+            $this->indexProvisioner->stampClassMapping($target, $classMappingChecksum);
+        }
     }
 }

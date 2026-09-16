@@ -29,7 +29,7 @@ final class ManifestTest extends Unit
         $this->assertSame($manifest->toArray(), $restored->toArray());
         $this->assertSame(1, $restored->formatVersion);
         $this->assertSame(['PR' => 1830112233], $restored->classMappingChecksums);
-        $index = $restored->getIndex('class_product');
+        $index = $restored->getIndex('data-object_product');
         $this->assertInstanceOf(ManifestIndex::class, $index);
         $this->assertSame('PR', $index->classId);
         $this->assertSame(602114, $index->documentCount);
@@ -108,7 +108,7 @@ final class ManifestTest extends Unit
     {
         $data = $this->manifest()->toArray();
         $data['indices'][] = $this->indexEntry('asset', 'asset', null)->toArray();
-        $data['indices'][] = $this->indexEntry('asset2', 'asset', null)->toArray();
+        $data['indices'][] = $this->indexEntry('asset', 'asset', null)->toArray();
 
         $this->expectException(InvalidSnapshotException::class);
         $this->expectExceptionMessage('asset');
@@ -118,7 +118,7 @@ final class ManifestTest extends Unit
     public function testRejectsDuplicateDataObjectEntriesForTheSameClassId(): void
     {
         $data = $this->manifest()->toArray();
-        $data['indices'][] = $this->indexEntry('class_product_dup', 'dataObject', 'PR')->toArray();
+        $data['indices'][] = $this->indexEntry('data-object_product_dup', 'dataObject', 'PR')->toArray();
 
         $this->expectException(InvalidSnapshotException::class);
         $this->expectExceptionMessage('dataObject:PR');
@@ -128,7 +128,7 @@ final class ManifestTest extends Unit
     public function testAcceptsDataObjectEntriesWithDifferentClassIds(): void
     {
         $data = $this->manifest()->toArray();
-        $data['indices'][] = $this->indexEntry('class_customer', 'dataObject', 'CU')->toArray();
+        $data['indices'][] = $this->indexEntry('data-object_customer', 'dataObject', 'CU')->toArray();
 
         $restored = Manifest::fromArray($data);
 
@@ -150,11 +150,63 @@ final class ManifestTest extends Unit
     public function testRejectsDuplicateShortName(): void
     {
         $data = $this->manifest()->toArray();
-        $data['indices'][] = $this->indexEntry('class_product', 'dataObject', 'CU')->toArray();
+        $data['indices'][] = $this->indexEntry('data-object_product', 'dataObject', 'CU')->toArray();
 
         $this->expectException(InvalidSnapshotException::class);
-        $this->expectExceptionMessage('class_product');
+        $this->expectExceptionMessage('data-object_product');
         Manifest::fromArray($data);
+    }
+
+    public function testRejectsDataObjectEntryWithoutClassIdNotNamedAsTheFolderIndex(): void
+    {
+        $data = $this->manifest()->toArray();
+        $data['indices'][] = $this->indexEntry('data-object_product', 'dataObject', null)->toArray();
+
+        $this->expectException(InvalidSnapshotException::class);
+        $this->expectExceptionMessage('data-object_product');
+        Manifest::fromArray($data);
+    }
+
+    public function testRejectsDataObjectEntryNamedAsTheFolderIndexWithAClassId(): void
+    {
+        $data = $this->manifest()->toArray();
+        $data['indices'][] = $this->indexEntry('data-object-folder', 'dataObject', 'PR')->toArray();
+
+        $this->expectException(InvalidSnapshotException::class);
+        $this->expectExceptionMessage('data-object-folder');
+        Manifest::fromArray($data);
+    }
+
+    public function testRejectsAssetEntryWithAClassId(): void
+    {
+        $data = $this->manifest()->toArray();
+        $data['indices'][] = $this->indexEntry('asset', 'asset', 'PR')->toArray();
+
+        $this->expectException(InvalidSnapshotException::class);
+        $this->expectExceptionMessage('class_id');
+        Manifest::fromArray($data);
+    }
+
+    public function testRejectsAssetEntryNotNamedAsset(): void
+    {
+        $data = $this->manifest()->toArray();
+        $data['indices'][] = $this->indexEntry('assets', 'asset', null)->toArray();
+
+        $this->expectException(InvalidSnapshotException::class);
+        $this->expectExceptionMessage('assets');
+        Manifest::fromArray($data);
+    }
+
+    public function testAcceptsValidFolderAndClassEntries(): void
+    {
+        $data = $this->manifest()->toArray();
+        $data['indices'][] = $this->indexEntry('data-object-folder', 'dataObject', null)->toArray();
+
+        $restored = Manifest::fromArray($data);
+
+        $this->assertCount(2, $restored->indices);
+        $this->assertNotNull($restored->getIndex('data-object-folder'));
+        $this->assertNotNull($restored->getIndex('data-object_product'));
     }
 
     private function indexEntry(string $shortName, string $elementType, ?string $classId): ManifestIndex
@@ -185,12 +237,12 @@ final class ManifestTest extends Unit
             classMappingChecksums: ['PR' => 1830112233],
             indices: [
                 new ManifestIndex(
-                    shortName: 'class_product',
+                    shortName: 'data-object_product',
                     elementType: 'dataObject',
                     classId: 'PR',
-                    sourceIndex: 'pimcore_class_product-even',
+                    sourceIndex: 'pimcore_data-object_product-even',
                     documentCount: 602114,
-                    file: 'class_product.ndjson.gz',
+                    file: 'data-object_product.ndjson.gz',
                     bytes: 188432110,
                     sha256: str_repeat('a', 64),
                 ),

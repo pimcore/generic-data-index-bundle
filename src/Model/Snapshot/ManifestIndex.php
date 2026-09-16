@@ -13,7 +13,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 
 /**
  * @internal
@@ -58,16 +60,94 @@ final readonly class ManifestIndex
         $file = (string) $data['file'];
         self::assertFileMatchesShortName($shortName, $file);
 
+        $elementType = (string) $data['element_type'];
+        $classId = isset($data['class_id']) ? (string) $data['class_id'] : null;
+        self::assertValidIdentity($shortName, $elementType, $classId);
+
         return new self(
             shortName: $shortName,
-            elementType: (string) $data['element_type'],
-            classId: isset($data['class_id']) ? (string) $data['class_id'] : null,
+            elementType: $elementType,
+            classId: $classId,
             sourceIndex: (string) $data['source_index'],
             documentCount: self::requireNonNegativeInt($data, 'document_count'),
             file: $file,
             bytes: self::requireNonNegativeInt($data, 'bytes'),
             sha256: (string) $data['sha256'],
         );
+    }
+
+    /**
+     * A manifest entry's identity (`short_name` + `class_id`) must match what the exporter would
+     * have written for its `element_type`, so a malformed entry cannot be resolved to the wrong
+     * local index (e.g. a class entry without a `class_id` silently recreating the folder index).
+     */
+    private static function assertValidIdentity(string $shortName, string $elementType, ?string $classId): void
+    {
+        if ($elementType === 'dataObject') {
+            self::assertValidDataObjectIdentity($shortName, $classId);
+
+            return;
+        }
+
+        self::assertValidSingletonIdentity($shortName, $elementType, $classId);
+    }
+
+    private static function assertValidDataObjectIdentity(string $shortName, ?string $classId): void
+    {
+        if ($classId === null) {
+            if ($shortName !== IndexName::DATA_OBJECT_FOLDER->value) {
+                throw new InvalidSnapshotException(sprintf(
+                    'Manifest index entry "%s" has element_type "dataObject" without a "class_id", ' .
+                    'so its "short_name" must be "%s"',
+                    $shortName,
+                    IndexName::DATA_OBJECT_FOLDER->value,
+                ));
+            }
+
+            return;
+        }
+
+        $prefix = SearchIndexConfigService::CLASS_INDEX_PREFIX;
+        if (!str_starts_with($shortName, $prefix) || $shortName === IndexName::DATA_OBJECT_FOLDER->value) {
+            throw new InvalidSnapshotException(sprintf(
+                'Manifest index entry "%s" has element_type "dataObject" with class_id "%s", so its ' .
+                '"short_name" must start with "%s" and must not be the folder index name "%s"',
+                $shortName,
+                $classId,
+                $prefix,
+                IndexName::DATA_OBJECT_FOLDER->value,
+            ));
+        }
+    }
+
+    private static function assertValidSingletonIdentity(string $shortName, string $elementType, ?string $classId): void
+    {
+        $expectedShortName = match ($elementType) {
+            'asset' => IndexName::ASSET->value,
+            'document' => IndexName::DOCUMENT->value,
+            default => null,
+        };
+
+        if ($expectedShortName === null) {
+            return;
+        }
+
+        if ($classId !== null) {
+            throw new InvalidSnapshotException(sprintf(
+                'Manifest index entry "%s" has element_type "%s", which must not have a "class_id"',
+                $shortName,
+                $elementType,
+            ));
+        }
+
+        if ($shortName !== $expectedShortName) {
+            throw new InvalidSnapshotException(sprintf(
+                'Manifest index entry "%s" has element_type "%s", so its "short_name" must be "%s"',
+                $shortName,
+                $elementType,
+                $expectedShortName,
+            ));
+        }
     }
 
     /**

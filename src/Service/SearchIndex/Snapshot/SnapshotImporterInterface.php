@@ -33,19 +33,22 @@ interface SnapshotImporterInterface
      * plan, is still untouched. Only once every planned file has verified does the second
      * phase provision (delete and recreate) and replay each index in turn.
      *
-     * The apply phase is not atomic across indices: if replaying one index fails, every index
-     * replayed before it is complete; the failing index itself has already been recreated and
-     * is left partially filled; indices not yet reached are untouched (their previous contents,
-     * if any, are unaffected). Re-running the import repairs a partial import, since every index
-     * is provisioned from scratch again.
+     * The apply phase is not atomic across indices: if replaying one index fails — including a
+     * replayed document count that doesn't match the manifest's — every index replayed before it
+     * is complete; the failing index itself has already been recreated and is left partially
+     * filled; indices not yet reached are untouched (their previous contents, if any, are
+     * unaffected). Re-running the import repairs a partial import, since every index is
+     * provisioned from scratch again.
      *
      * @param (callable(ImportedIndex): void)|null $onIndexImported called after each index has been replayed
      *
      * @throws InvalidSnapshotException when the snapshot's manifest itself cannot be read
      * @throws SnapshotIncompatibleException when the class definitions do not match and $options->force is false
      * @throws SnapshotImportException when an `only` name is unknown, an index file has an unsafe
-     *                                  or unexpected name, or an index file is corrupted, truncated,
-     *                                  could not be read from storage, or could not be replayed
+     *                                  or unexpected name, an index file is corrupted, truncated, or
+     *                                  could not be read from storage, or an index could not be
+     *                                  replayed, including its replayed document count not matching
+     *                                  the manifest's
      */
     public function import(
         SnapshotStorageInterface $storage,
