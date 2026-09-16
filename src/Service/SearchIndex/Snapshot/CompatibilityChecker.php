@@ -147,17 +147,38 @@ final class CompatibilityChecker implements CompatibilityCheckerInterface
     }
 
     /**
+     * A class is "missing in the manifest" when the snapshot has no data-object index entry for
+     * it, independent of whether it happens to have a class_mapping_checksums entry: a checksum
+     * without an index entry still means the class's old local index is left untouched by the
+     * import, which the operator needs to know about.
+     *
      * @return string[] class names
      */
     private function collectClassesMissingInManifest(Manifest $manifest): array
     {
+        $classIdsWithIndex = array_flip($this->classIdsWithDataObjectIndex($manifest));
         $missingInManifest = [];
         foreach ((new ClassDefinition\Listing())->load() as $classDefinition) {
-            if (!array_key_exists($classDefinition->getId(), $manifest->classMappingChecksums)) {
+            if (!array_key_exists((string) $classDefinition->getId(), $classIdsWithIndex)) {
                 $missingInManifest[] = $classDefinition->getName();
             }
         }
 
         return $missingInManifest;
+    }
+
+    /**
+     * @return string[] class ids that have a data-object index entry in the manifest
+     */
+    private function classIdsWithDataObjectIndex(Manifest $manifest): array
+    {
+        $classIds = [];
+        foreach ($manifest->indices as $index) {
+            if ($index->elementType === ElementType::DATA_OBJECT->value && $index->classId !== null) {
+                $classIds[] = (string) $index->classId;
+            }
+        }
+
+        return $classIds;
     }
 }

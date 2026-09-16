@@ -103,6 +103,32 @@ final class CompatibilityCheckerTest extends Unit
         $this->assertContains('simple', $report->missingInManifest);
     }
 
+    public function testClassWithIndexEntryButNoChecksumIsNotMissingInManifest(): void
+    {
+        // An index entry with no checksum makes the class UNVERIFIED, but it does have an index
+        // in the snapshot, so it must not also be reported as "missing in manifest".
+        $manifest = $this->manifest([]);
+        $index = new ManifestIndex(
+            'data-object_simple', 'dataObject', $this->simple->getId(), 'pimcore_simple-1',
+            3, 'data-object_simple.ndjson.gz', 123, 'deadbeef'
+        );
+
+        $report = $this->checker()->check($manifest->withIndices([$index]));
+
+        $this->assertNotContains('simple', $report->missingInManifest);
+        $this->assertSame(ClassCompatibilityStatus::UNVERIFIED, $report->statusOf($this->simple->getId()));
+    }
+
+    public function testClassWithChecksumButNoIndexEntryIsMissingInManifest(): void
+    {
+        // A class_mapping_checksums entry alone does not mean the snapshot actually holds an
+        // index for the class: without a matching index entry, the old local index is left
+        // untouched by the import, which the operator needs to know about via missingInManifest.
+        $report = $this->checker()->check($this->manifest([$this->simple->getId() => $this->realChecksum]));
+
+        $this->assertContains('simple', $report->missingInManifest);
+    }
+
     public function testNumericClassIdKeyIsHandledAsString(): void
     {
         // a numeric-string class id key ('12') is coerced to int(12) by PHP once it passes

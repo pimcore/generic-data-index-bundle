@@ -141,10 +141,19 @@ final class SnapshotExporter implements SnapshotExporterInterface
             // SnapshotExportException, same as an index export failure.
             $storage->writeManifest($name, $manifest);
         } catch (Throwable $e) {
-            $storage->deleteSnapshot($name);
+            // The cleanup delete can itself fail (e.g. the same storage outage that caused the
+            // original failure). Don't let that mask the original error: report both, but keep
+            // the original exception as the cause.
+            $cleanupMessage = '';
+
+            try {
+                $storage->deleteSnapshot($name);
+            } catch (Throwable $cleanupError) {
+                $cleanupMessage = ' Cleanup of the partial snapshot also failed: ' . $cleanupError->getMessage();
+            }
 
             throw new SnapshotExportException(
-                sprintf('Snapshot export "%s" aborted: %s', $name, $e->getMessage()),
+                sprintf('Snapshot export "%s" aborted: %s', $name, $e->getMessage()) . $cleanupMessage,
                 0,
                 $e,
             );

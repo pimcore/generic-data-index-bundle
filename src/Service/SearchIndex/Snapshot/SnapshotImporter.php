@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 use League\Flysystem\FilesystemException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\RefreshIndexMode;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Snapshot\ClassCompatibilityStatus;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\BulkOperationException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
@@ -224,11 +225,15 @@ final class SnapshotImporter implements SnapshotImporterInterface
                 }
                 $this->bulkOperationService->add($target->aliasName, $id, $document);
                 if (++$pending >= $this->bulkSize) {
-                    $this->bulkOperationService->commit();
+                    // Never refresh per batch: the default mode (`wait_for` when synchronous
+                    // processing is disabled) would make every batch commit wait for a refresh,
+                    // even though the single refreshIndex() call below already refreshes once,
+                    // after every document has been replayed.
+                    $this->bulkOperationService->commit(RefreshIndexMode::NOT_REFRESH->value);
                     $pending = 0;
                 }
             }
-            $this->bulkOperationService->commit();
+            $this->bulkOperationService->commit(RefreshIndexMode::NOT_REFRESH->value);
         } catch (InvalidSnapshotException|BulkOperationException|FilesystemException $e) {
             throw new SnapshotImportException(
                 sprintf('Import of index "%s" failed: %s', $target->shortName, $e->getMessage()),

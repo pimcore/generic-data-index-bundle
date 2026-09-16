@@ -132,7 +132,7 @@ final class SnapshotExporterTest extends Unit
 
         $filesystem = new Filesystem(new InMemoryFilesystemAdapter());
         $inner = new SnapshotStorage($filesystem, 0);
-        $storage = new DelegatingFailingSnapshotStorage($inner, 'writeManifest', new RuntimeException('disk full'));
+        $storage = new DelegatingFailingSnapshotStorage($inner, ['writeManifest' => new RuntimeException('disk full')]);
         /** @var SnapshotExporterInterface $exporter */
         $exporter = $this->tester->grabService(SnapshotExporterInterface::class);
 
@@ -150,11 +150,34 @@ final class SnapshotExporterTest extends Unit
         $this->assertSame([], array_diff($after, $before), 'no leftover snapshot temp files after a manifest-write failure');
     }
 
+    public function testCleanupFailureDoesNotMaskTheOriginalExportFailure(): void
+    {
+        $filesystem = new Filesystem(new InMemoryFilesystemAdapter());
+        $inner = new SnapshotStorage($filesystem, 0);
+        $originalFailure = new RuntimeException('disk full');
+        $storage = new DelegatingFailingSnapshotStorage($inner, [
+            'writeManifest' => $originalFailure,
+            'deleteSnapshot' => new RuntimeException('delete boom'),
+        ]);
+        /** @var SnapshotExporterInterface $exporter */
+        $exporter = $this->tester->grabService(SnapshotExporterInterface::class);
+
+        try {
+            $exporter->export($storage, 'cleanup-fail', new ExportOptions());
+            $this->fail('expected SnapshotExportException');
+        } catch (SnapshotExportException $e) {
+            $this->assertStringContainsString('disk full', $e->getMessage());
+            $this->assertStringContainsString('Cleanup of the partial snapshot also failed', $e->getMessage());
+            $this->assertStringContainsString('delete boom', $e->getMessage());
+            $this->assertSame($originalFailure, $e->getPrevious());
+        }
+    }
+
     public function testRotationFailureDoesNotFailTheExport(): void
     {
         $filesystem = new Filesystem(new InMemoryFilesystemAdapter());
         $inner = new SnapshotStorage($filesystem, 0);
-        $storage = new DelegatingFailingSnapshotStorage($inner, 'rotate', new RuntimeException('rotate boom'));
+        $storage = new DelegatingFailingSnapshotStorage($inner, ['rotate' => new RuntimeException('rotate boom')]);
         /** @var SnapshotExporterInterface $exporter */
         $exporter = $this->tester->grabService(SnapshotExporterInterface::class);
 
@@ -169,15 +192,17 @@ final class SnapshotExporterTest extends Unit
 
 /**
  * Delegates every SnapshotStorageInterface call to a real, in-memory-backed SnapshotStorage,
- * except one named method, which always throws a given exception instead of delegating — used to
- * exercise the exporter's failure-cleanup and rotation-failure paths.
+ * except the named methods in $failures, each of which always throws its given exception instead
+ * of delegating — used to exercise the exporter's failure-cleanup and rotation-failure paths.
  */
 final class DelegatingFailingSnapshotStorage implements SnapshotStorageInterface
 {
+    /**
+     * @param array<string, Throwable> $failures method name => exception to throw instead of delegating
+     */
     public function __construct(
         private readonly SnapshotStorageInterface $inner,
-        private readonly string $failingMethod,
-        private readonly Throwable $failure,
+        private readonly array $failures,
     ) {
     }
 
@@ -220,6 +245,7 @@ final class DelegatingFailingSnapshotStorage implements SnapshotStorageInterface
 
     public function deleteSnapshot(string $name): void
     {
+        $this->maybeFail(__FUNCTION__);
         $this->inner->deleteSnapshot($name);
     }
 
@@ -237,8 +263,8 @@ final class DelegatingFailingSnapshotStorage implements SnapshotStorageInterface
 
     private function maybeFail(string $method): void
     {
-        if ($method === $this->failingMethod) {
-            throw $this->failure;
+        if (isset($this->failures[$method])) {
+            throw $this->failures[$method];
         }
     }
 }
