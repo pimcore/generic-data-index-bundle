@@ -102,7 +102,8 @@ into and is always skipped, independently of `--force`. If the check finds a mis
 `--only` limits the import to the given comma-separated short index names (e.g.
 `asset,data-object_product` for the asset index and the `Product` class index); every other index
 in the snapshot is left untouched. A name that does not exist in the snapshot fails the command
-before anything is written.
+before anything is written. The compatibility check above only blocks the import for classes that
+are part of the `--only` selection; an incompatible class outside the selection is not refused.
 
 If the local index queue is not empty, the command prints a warning ("Stop messenger consumers
 during the import to avoid interleaved writes.") but still proceeds — stopping the consumers

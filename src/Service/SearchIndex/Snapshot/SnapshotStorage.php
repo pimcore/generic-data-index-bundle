@@ -86,8 +86,19 @@ final class SnapshotStorage implements SnapshotStorageInterface
             throw new InvalidSnapshotException(sprintf('Snapshot "%s" has no manifest', $name));
         }
 
+        // A read failure (e.g. League\Flysystem\FilesystemException from a transient storage
+        // outage) must propagate as-is, not be reclassified as an invalid manifest: only actual
+        // parsing failures below (bad JSON, or a manifest that fails Manifest::fromArray()) are
+        // a reason to treat the snapshot as malformed/incomplete.
+        $contents = $this->filesystem->read($path);
+
+        return $this->parseManifest($name, $contents);
+    }
+
+    private function parseManifest(string $name, string $contents): Manifest
+    {
         try {
-            $data = json_decode($this->filesystem->read($path), true, 512, JSON_THROW_ON_ERROR);
+            $data = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
         } catch (Throwable $e) {
             throw new InvalidSnapshotException(
                 sprintf('Snapshot "%s" manifest is not valid JSON: %s', $name, $e->getMessage()),

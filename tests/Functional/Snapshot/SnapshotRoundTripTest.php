@@ -382,6 +382,36 @@ final class SnapshotRoundTripTest extends Unit
         $this->tester->checkIndexEntry($object->getId(), $this->simpleAlias);
     }
 
+    public function testOnlyScopesTheCompatibilityGate(): void
+    {
+        // "simple" is made incompatible, but --only=asset never touches it: the gate must not
+        // refuse an import that doesn't select the incompatible class, while a plain import
+        // (no --only) still sees the whole report and is refused.
+        $this->tester->createFullyFledgedObjectSimple('snapshot-only-gate-', true, true, 40);
+        $this->tester->flushIndex();
+        $this->exporter()->export($this->storage, 'only-gate', new ExportOptions());
+        $manifest = $this->storage->readManifest('only-gate');
+        $classId = ClassDefinition::getByName('simple')->getId();
+        $this->storage->writeManifest(
+            'only-gate',
+            $manifest->withClassMappingChecksums([...$manifest->classMappingChecksums, $classId => 999]),
+        );
+
+        $result = $this->importer()->import($this->storage, 'only-gate', new ImportOptions(only: ['asset']));
+
+        $this->assertTrue($result->isSuccessful(), print_r($result->imported, true));
+        $this->assertSame([], $result->skipped);
+        $importedNames = array_map(static fn (ImportedIndex $i) => $i->shortName, $result->imported);
+        $this->assertSame(['asset'], $importedNames);
+
+        try {
+            $this->importer()->import($this->storage, 'only-gate', new ImportOptions());
+            $this->fail('expected SnapshotIncompatibleException when the incompatible class is not excluded');
+        } catch (SnapshotIncompatibleException $e) {
+            $this->assertSame([$classId], $e->report->incompatibleClassIds());
+        }
+    }
+
     public function testUnknownOnlyNameIsRejected(): void
     {
         $this->exporter()->export($this->storage, 'only', new ExportOptions());

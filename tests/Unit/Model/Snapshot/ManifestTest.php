@@ -104,6 +104,61 @@ final class ManifestTest extends Unit
         Manifest::fromArray($data);
     }
 
+    public function testRejectsDuplicateAssetEntries(): void
+    {
+        $data = $this->manifest()->toArray();
+        $data['indices'][] = $this->indexEntry('asset', 'asset', null)->toArray();
+        $data['indices'][] = $this->indexEntry('asset2', 'asset', null)->toArray();
+
+        $this->expectException(InvalidSnapshotException::class);
+        $this->expectExceptionMessage('asset');
+        Manifest::fromArray($data);
+    }
+
+    public function testRejectsDuplicateDataObjectEntriesForTheSameClassId(): void
+    {
+        $data = $this->manifest()->toArray();
+        $data['indices'][] = $this->indexEntry('class_product_dup', 'dataObject', 'PR')->toArray();
+
+        $this->expectException(InvalidSnapshotException::class);
+        $this->expectExceptionMessage('dataObject:PR');
+        Manifest::fromArray($data);
+    }
+
+    public function testAcceptsDataObjectEntriesWithDifferentClassIds(): void
+    {
+        $data = $this->manifest()->toArray();
+        $data['indices'][] = $this->indexEntry('class_customer', 'dataObject', 'CU')->toArray();
+
+        $restored = Manifest::fromArray($data);
+
+        $this->assertCount(2, $restored->indices);
+    }
+
+    public function testRejectsDuplicateShortName(): void
+    {
+        $data = $this->manifest()->toArray();
+        $data['indices'][] = $this->indexEntry('class_product', 'dataObject', 'CU')->toArray();
+
+        $this->expectException(InvalidSnapshotException::class);
+        $this->expectExceptionMessage('class_product');
+        Manifest::fromArray($data);
+    }
+
+    private function indexEntry(string $shortName, string $elementType, ?string $classId): ManifestIndex
+    {
+        return new ManifestIndex(
+            shortName: $shortName,
+            elementType: $elementType,
+            classId: $classId,
+            sourceIndex: 'pimcore_' . $shortName,
+            documentCount: 1,
+            file: $shortName . '.ndjson.gz',
+            bytes: 1,
+            sha256: str_repeat('b', 64),
+        );
+    }
+
     private function manifest(): Manifest
     {
         return new Manifest(

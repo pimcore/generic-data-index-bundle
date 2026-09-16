@@ -16,9 +16,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\S
 use Codeception\Test\Unit;
 use League\Flysystem\DirectoryListing;
 use League\Flysystem\Filesystem;
+use League\Flysystem\FilesystemException;
 use League\Flysystem\FilesystemOperator;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use League\Flysystem\UnableToDeleteDirectory;
+use League\Flysystem\UnableToReadFile;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\Manifest;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorage;
@@ -188,6 +190,37 @@ final class SnapshotStorageTest extends Unit
         $this->assertTrue($storage->hasSnapshot('old'), 'snapshot must still exist after a failed delete');
     }
 
+    public function testReadManifestPropagatesRealReadFailureInsteadOfInvalidSnapshot(): void
+    {
+        $storage = new SnapshotStorage($this->filesystem, 0);
+        $storage->writeManifest('x', $this->manifest('2026-09-01T00:00:00+00:00'));
+        $failing = new SnapshotStorage(new FailingReadFilesystemOperator($this->filesystem), 0);
+
+        $this->expectException(FilesystemException::class);
+        $failing->readManifest('x');
+    }
+
+    public function testListSnapshotsPropagatesRealReadFailureInsteadOfSkippingIt(): void
+    {
+        $storage = new SnapshotStorage($this->filesystem, 0);
+        $storage->writeManifest('x', $this->manifest('2026-09-01T00:00:00+00:00'));
+        $failing = new SnapshotStorage(new FailingReadFilesystemOperator($this->filesystem), 0);
+
+        $this->expectException(FilesystemException::class);
+        $failing->listSnapshots();
+    }
+
+    public function testListSnapshotsStillSkipsAManifestWithInvalidJson(): void
+    {
+        // Existing behaviour, kept covered alongside the new read-failure propagation above:
+        // a manifest that reads fine but fails to parse is still treated as incomplete.
+        $storage = new SnapshotStorage($this->filesystem, 0);
+        $this->filesystem->write('bad-json/' . SnapshotStorage::MANIFEST_FILE, '{not json');
+        $storage->writeManifest('good', $this->manifest('2026-09-02T00:00:00+00:00'));
+
+        $this->assertSame(['good'], $storage->listSnapshots());
+    }
+
     private function manifest(string $createdAt): Manifest
     {
         return new Manifest(
@@ -288,6 +321,108 @@ final class FailingDeleteFilesystemOperator implements FilesystemOperator
     public function deleteDirectory(string $location): void
     {
         throw UnableToDeleteDirectory::atLocation($location, 'simulated failure for testing');
+    }
+
+    public function createDirectory(string $location, array $config = []): void
+    {
+        $this->inner->createDirectory($location, $config);
+    }
+
+    public function move(string $source, string $destination, array $config = []): void
+    {
+        $this->inner->move($source, $destination, $config);
+    }
+
+    public function copy(string $source, string $destination, array $config = []): void
+    {
+        $this->inner->copy($source, $destination, $config);
+    }
+}
+
+/**
+ * Test double: delegates every operation to a wrapped filesystem except `read()`, which always
+ * fails, to prove a real storage read failure propagates instead of being reclassified as an
+ * invalid/incomplete manifest.
+ */
+final class FailingReadFilesystemOperator implements FilesystemOperator
+{
+    public function __construct(private readonly FilesystemOperator $inner)
+    {
+    }
+
+    public function fileExists(string $location): bool
+    {
+        return $this->inner->fileExists($location);
+    }
+
+    public function directoryExists(string $location): bool
+    {
+        return $this->inner->directoryExists($location);
+    }
+
+    public function has(string $location): bool
+    {
+        return $this->inner->has($location);
+    }
+
+    public function read(string $location): string
+    {
+        throw UnableToReadFile::fromLocation($location, 'simulated failure for testing');
+    }
+
+    public function readStream(string $location)
+    {
+        return $this->inner->readStream($location);
+    }
+
+    public function listContents(string $location, bool $deep = self::LIST_SHALLOW): DirectoryListing
+    {
+        return $this->inner->listContents($location, $deep);
+    }
+
+    public function lastModified(string $path): int
+    {
+        return $this->inner->lastModified($path);
+    }
+
+    public function fileSize(string $path): int
+    {
+        return $this->inner->fileSize($path);
+    }
+
+    public function mimeType(string $path): string
+    {
+        return $this->inner->mimeType($path);
+    }
+
+    public function visibility(string $path): string
+    {
+        return $this->inner->visibility($path);
+    }
+
+    public function write(string $location, string $contents, array $config = []): void
+    {
+        $this->inner->write($location, $contents, $config);
+    }
+
+    public function writeStream(string $location, $contents, array $config = []): void
+    {
+        $this->inner->writeStream($location, $contents, $config);
+    }
+
+    public function setVisibility(string $path, string $visibility): void
+    {
+        $this->inner->setVisibility($path, $visibility);
+    }
+
+    public function delete(string $location): void
+    {
+        $this->inner->delete($location);
+    }
+
+    public function deleteDirectory(string $location): void
+    {
+        $this->inner->deleteDirectory($location);
     }
 
     public function createDirectory(string $location, array $config = []): void

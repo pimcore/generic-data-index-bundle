@@ -138,6 +138,8 @@ final readonly class Manifest
         }
 
         $checksums = self::requireIntChecksums($data['class_mapping_checksums']);
+        $indices = array_map(static fn (array $index) => ManifestIndex::fromArray($index), $data['indices']);
+        self::assertNoDuplicateIndices($indices);
 
         return new self(
             createdAt: (string) $data['created_at'],
@@ -149,9 +151,50 @@ final readonly class Manifest
             queueEntriesAfter: self::requireNonNegativeInt($data, 'queue_entries_after'),
             durationSeconds: self::requireNonNegativeInt($data, 'duration_seconds'),
             classMappingChecksums: $checksums,
-            indices: array_map(static fn (array $index) => ManifestIndex::fromArray($index), $data['indices']),
+            indices: $indices,
             formatVersion: self::FORMAT_VERSION,
         );
+    }
+
+    /**
+     * Rejects a manifest whose indices list contains two entries for the same short name, or two
+     * entries that would target the same local index: for `dataObject` entries that's the class
+     * id (or the shared folder index when `class_id` is null), for every other element type the
+     * element type itself is the identity, since those indices are singletons.
+     *
+     * @param ManifestIndex[] $indices
+     */
+    private static function assertNoDuplicateIndices(array $indices): void
+    {
+        $seenShortNames = [];
+        $seenTargets = [];
+        foreach ($indices as $index) {
+            if (isset($seenShortNames[$index->shortName])) {
+                throw new InvalidSnapshotException(sprintf(
+                    'Manifest has more than one index entry named "%s"',
+                    $index->shortName,
+                ));
+            }
+            $seenShortNames[$index->shortName] = true;
+
+            $target = self::targetIdentity($index);
+            if (isset($seenTargets[$target])) {
+                throw new InvalidSnapshotException(sprintf(
+                    'Manifest has more than one index entry for "%s"',
+                    $target,
+                ));
+            }
+            $seenTargets[$target] = true;
+        }
+    }
+
+    private static function targetIdentity(ManifestIndex $index): string
+    {
+        if ($index->elementType === 'dataObject') {
+            return 'dataObject:' . ($index->classId ?? '');
+        }
+
+        return $index->elementType;
     }
 
     private static function requireNonNegativeInt(array $data, string $key): int
