@@ -44,7 +44,14 @@ final class IndexStatsServiceNoIndexTest extends Unit
             $this->markTestSkipped('Index prefix is empty in this test environment; refusing to delete "*".');
         }
 
-        $this->tester->getIndexSearchClient()->deleteIndex(['index' => $prefix . '*']);
+        // OpenSearch/Elasticsearch with `action.destructive_requires_name` enabled (as CI does)
+        // rejects a wildcard delete, so enumerate the matching indices and delete them by name.
+        $searchClient = $this->tester->getIndexSearchClient();
+        $allIndices = $searchClient->getAllIndices(['index' => $prefix . '*']);
+        foreach ($allIndices as $key => $indexInfo) {
+            $indexName = is_array($indexInfo) ? ($indexInfo['index'] ?? $key) : $indexInfo;
+            $searchClient->deleteIndex(['index' => $indexName]);
+        }
 
         $stats = $this->tester->grabService(IndexStatsServiceInterface::class)->getStats();
 
