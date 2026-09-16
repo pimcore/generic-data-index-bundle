@@ -122,7 +122,7 @@ final readonly class IndexIdentity
     public function key(): string
     {
         if ($this->isDataObject()) {
-            return 'dataObject:' . ($this->classId ?? '');
+            return ElementType::DATA_OBJECT->value . ':' . ($this->classId ?? '');
         }
 
         return $this->elementType;

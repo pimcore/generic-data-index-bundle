@@ -91,13 +91,13 @@ final readonly class ManifestIndex
             return;
         }
 
-        self::assertValidSingletonIdentity($identity, $shortName, $elementType);
+        self::assertValidSingletonIdentity($identity, $shortName);
     }
 
     private static function assertValidDataObjectIdentity(IndexIdentity $identity, string $shortName): void
     {
         if (!$identity->isClassIndex()) {
-            if ($shortName !== IndexName::DATA_OBJECT_FOLDER->value) {
+            if (!$identity->acceptsShortName($shortName)) {
                 throw new InvalidSnapshotException(sprintf(
                     'Manifest index entry "%s" has element_type "dataObject" without a "class_id", ' .
                     'so its "short_name" must be "%s"',
@@ -121,11 +121,8 @@ final readonly class ManifestIndex
         }
     }
 
-    private static function assertValidSingletonIdentity(
-        IndexIdentity $identity,
-        string $shortName,
-        string $elementType,
-    ): void {
+    private static function assertValidSingletonIdentity(IndexIdentity $identity, string $shortName): void
+    {
         $expectedShortName = $identity->expectedShortName();
         if ($expectedShortName === null) {
             return;
@@ -135,7 +132,7 @@ final readonly class ManifestIndex
             throw new InvalidSnapshotException(sprintf(
                 'Manifest index entry "%s" has element_type "%s", which must not have a "class_id"',
                 $shortName,
-                $elementType,
+                $identity->elementType,
             ));
         }
 
@@ -143,7 +140,7 @@ final readonly class ManifestIndex
             throw new InvalidSnapshotException(sprintf(
                 'Manifest index entry "%s" has element_type "%s", so its "short_name" must be "%s"',
                 $shortName,
-                $elementType,
+                $identity->elementType,
                 $expectedShortName,
             ));
         }

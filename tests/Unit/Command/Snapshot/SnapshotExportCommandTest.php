@@ -29,7 +29,7 @@ final class SnapshotExportCommandTest extends Unit
 {
     public function testPrintsTableAndReturnsSuccess(): void
     {
-        $manifest = new Manifest('2026-09-10T00:00:00+00:00', 'dev', 'dev', 'openSearch', 'pimcore_', 3, 4, 12, [], [
+        $manifest = new Manifest('2026-09-10T00:00:00+00:00', 'dev', 'dev', 'openSearch', 'pimcore_', 0, 4, 12, [], [
             new ManifestIndex('data-object_simple', 'dataObject', 'SI', 'pimcore_data-object_simple-odd', 3, 'data-object_simple.ndjson.gz', 120, 'abc'),
         ]);
         $exporter = $this->makeEmpty(SnapshotExporterInterface::class, [
@@ -46,7 +46,8 @@ final class SnapshotExportCommandTest extends Unit
         $this->assertSame(Command::SUCCESS, $exitCode);
         $display = $tester->getDisplay();
         $this->assertStringContainsString('data-object_simple', $display);
-        $this->assertStringContainsString('queue entries before: 3', $display);
+        $this->assertStringContainsString('queue entries before: 0', $display);
+        $this->assertStringNotContainsString('not idle', $display);
     }
 
     public function testNonZeroQueueCountBeforeNotesTheIndexIsNotIdle(): void

@@ -107,10 +107,11 @@ final class IndexIdentityTest extends Unit
 
     public function testKeyDistinguishesEveryKind(): void
     {
-        $this->assertSame('dataObject:PR', IndexIdentity::forClass('PR')->key());
-        $this->assertSame('dataObject:', IndexIdentity::forDataObjectFolder()->key());
-        $this->assertSame('asset', IndexIdentity::forAsset()->key());
-        $this->assertSame('document', IndexIdentity::forDocument()->key());
+        $dataObjectPrefix = ElementType::DATA_OBJECT->value . ':';
+        $this->assertSame($dataObjectPrefix . 'PR', IndexIdentity::forClass('PR')->key());
+        $this->assertSame($dataObjectPrefix, IndexIdentity::forDataObjectFolder()->key());
+        $this->assertSame(ElementType::ASSET->value, IndexIdentity::forAsset()->key());
+        $this->assertSame(ElementType::DOCUMENT->value, IndexIdentity::forDocument()->key());
         $this->assertNotSame(IndexIdentity::forClass('PR')->key(), IndexIdentity::forClass('CU')->key());
     }
 

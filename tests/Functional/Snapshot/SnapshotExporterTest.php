@@ -112,10 +112,15 @@ final class SnapshotExporterTest extends Unit
         /** @var SnapshotExporterInterface $exporter */
         $exporter = $this->tester->grabService(SnapshotExporterInterface::class);
 
-        $result = $exporter->export($storage, 'queue-counts', new ExportOptions());
+        try {
+            $result = $exporter->export($storage, 'queue-counts', new ExportOptions());
 
-        $this->assertSame(1, $result->manifest->queueEntriesBefore);
-        $this->tester->clearQueue();
+            $this->assertSame(1, $result->manifest->queueEntriesBefore);
+            $this->assertSame(1, $result->manifest->queueEntriesAfter);
+            $this->assertTrue($storage->hasSnapshot('queue-counts'));
+        } finally {
+            $this->tester->clearQueue();
+        }
     }
 
     public function testManifestWriteFailureRemovesPartialSnapshot(): void
