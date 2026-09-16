@@ -49,7 +49,7 @@ final class SnapshotStorageTest extends Unit
 
     public function testOnlyCompleteSnapshotsAreListedNewestFirst(): void
     {
-        $storage = new SnapshotStorage($this->filesystem, 0);
+        $storage = new SnapshotStorage($this->filesystem);
         $storage->writeManifest('older', $this->manifest('2026-09-01T00:00:00+00:00'));
         $storage->writeManifest('newer', $this->manifest('2026-09-10T00:00:00+00:00'));
         // aborted export: a data file but no manifest
@@ -61,34 +61,9 @@ final class SnapshotStorageTest extends Unit
         $this->assertTrue($storage->hasSnapshot('older'));
     }
 
-    public function testRotateKeepsNewestCompleteAndIgnoresIncomplete(): void
-    {
-        $storage = new SnapshotStorage($this->filesystem, 2);
-        foreach (['a' => '2026-09-01', 'b' => '2026-09-02', 'c' => '2026-09-03'] as $name => $day) {
-            $storage->writeManifest($name, $this->manifest($day . 'T00:00:00+00:00'));
-            $this->filesystem->write($name . '/asset.ndjson.gz', 'x');
-        }
-        $this->filesystem->write('incomplete/asset.ndjson.gz', 'x');
-
-        $this->assertSame(['a'], $storage->rotate());
-        $this->assertSame(['c', 'b'], $storage->listSnapshots());
-        $this->assertFalse($this->filesystem->fileExists('a/asset.ndjson.gz'));
-        $this->assertTrue($this->filesystem->fileExists('incomplete/asset.ndjson.gz'));
-    }
-
-    public function testRotateWithZeroKeepsEverything(): void
-    {
-        $storage = new SnapshotStorage($this->filesystem, 0);
-        $storage->writeManifest('a', $this->manifest('2026-09-01T00:00:00+00:00'));
-        $storage->writeManifest('b', $this->manifest('2026-09-02T00:00:00+00:00'));
-
-        $this->assertSame([], $storage->rotate());
-        $this->assertCount(2, $storage->listSnapshots());
-    }
-
     public function testFileRoundTripAndDelete(): void
     {
-        $storage = new SnapshotStorage($this->filesystem, 0);
+        $storage = new SnapshotStorage($this->filesystem);
         $local = tempnam(sys_get_temp_dir(), 'gdi-test-');
         $this->tempFiles[] = $local;
         file_put_contents($local, 'payload');
@@ -106,7 +81,7 @@ final class SnapshotStorageTest extends Unit
 
     public function testReadManifestOfMissingSnapshotThrows(): void
     {
-        $storage = new SnapshotStorage($this->filesystem, 0);
+        $storage = new SnapshotStorage($this->filesystem);
 
         $this->expectException(InvalidSnapshotException::class);
         $storage->readManifest('missing');
@@ -126,7 +101,7 @@ final class SnapshotStorageTest extends Unit
 
     public function testEmptyStorageHasNoSnapshots(): void
     {
-        $storage = new SnapshotStorage($this->filesystem, 0);
+        $storage = new SnapshotStorage($this->filesystem);
 
         $this->assertSame([], $storage->listSnapshots());
         $this->assertNull($storage->latestSnapshotName());
@@ -134,20 +109,19 @@ final class SnapshotStorageTest extends Unit
 
     public function testForeignDirectoriesWithInvalidNamesAreSkipped(): void
     {
-        $storage = new SnapshotStorage($this->filesystem, 1);
+        $storage = new SnapshotStorage($this->filesystem);
         $storage->writeManifest('valid', $this->manifest('2026-09-01T00:00:00+00:00'));
         $this->filesystem->write('.trash/x.txt', 'x');
         $this->filesystem->write('bad name/x.txt', 'x');
 
         $this->assertSame(['valid'], $storage->listSnapshots());
-        $this->assertSame([], $storage->rotate());
         $this->assertTrue($this->filesystem->fileExists('.trash/x.txt'));
         $this->assertTrue($this->filesystem->fileExists('bad name/x.txt'));
     }
 
     public function testManifestWithNonArrayIndexEntryIsTreatedAsIncomplete(): void
     {
-        $storage = new SnapshotStorage($this->filesystem, 0);
+        $storage = new SnapshotStorage($this->filesystem);
         $corrupted = $this->manifest('2026-09-01T00:00:00+00:00')->toArray();
         $corrupted['indices'] = [1, 2];
         $this->filesystem->write(
@@ -165,36 +139,19 @@ final class SnapshotStorageTest extends Unit
 
     public function testDeleteSnapshotPropagatesRealDeleteFailure(): void
     {
-        $storage = new SnapshotStorage($this->filesystem, 0);
+        $storage = new SnapshotStorage($this->filesystem);
         $storage->writeManifest('snap', $this->manifest('2026-09-01T00:00:00+00:00'));
-        $failing = new SnapshotStorage(new FailingDeleteFilesystemOperator($this->filesystem), 0);
+        $failing = new SnapshotStorage(new FailingDeleteFilesystemOperator($this->filesystem));
 
         $this->expectException(UnableToDeleteDirectory::class);
         $failing->deleteSnapshot('snap');
     }
 
-    public function testRotateDoesNotReportAFailedDeleteAsDeleted(): void
-    {
-        $storage = new SnapshotStorage($this->filesystem, 1);
-        $storage->writeManifest('old', $this->manifest('2026-09-01T00:00:00+00:00'));
-        $storage->writeManifest('new', $this->manifest('2026-09-02T00:00:00+00:00'));
-        $failing = new SnapshotStorage(new FailingDeleteFilesystemOperator($this->filesystem), 1);
-
-        try {
-            $failing->rotate();
-            $this->fail('Expected UnableToDeleteDirectory to propagate from rotate()');
-        } catch (UnableToDeleteDirectory) {
-            // expected: a real delete failure must propagate, not be swallowed and reported as deleted
-        }
-
-        $this->assertTrue($storage->hasSnapshot('old'), 'snapshot must still exist after a failed delete');
-    }
-
     public function testReadManifestPropagatesRealReadFailureInsteadOfInvalidSnapshot(): void
     {
-        $storage = new SnapshotStorage($this->filesystem, 0);
+        $storage = new SnapshotStorage($this->filesystem);
         $storage->writeManifest('x', $this->manifest('2026-09-01T00:00:00+00:00'));
-        $failing = new SnapshotStorage(new FailingReadFilesystemOperator($this->filesystem), 0);
+        $failing = new SnapshotStorage(new FailingReadFilesystemOperator($this->filesystem));
 
         $this->expectException(FilesystemException::class);
         $failing->readManifest('x');
@@ -202,9 +159,9 @@ final class SnapshotStorageTest extends Unit
 
     public function testListSnapshotsPropagatesRealReadFailureInsteadOfSkippingIt(): void
     {
-        $storage = new SnapshotStorage($this->filesystem, 0);
+        $storage = new SnapshotStorage($this->filesystem);
         $storage->writeManifest('x', $this->manifest('2026-09-01T00:00:00+00:00'));
-        $failing = new SnapshotStorage(new FailingReadFilesystemOperator($this->filesystem), 0);
+        $failing = new SnapshotStorage(new FailingReadFilesystemOperator($this->filesystem));
 
         $this->expectException(FilesystemException::class);
         $failing->listSnapshots();
@@ -214,7 +171,7 @@ final class SnapshotStorageTest extends Unit
     {
         // Existing behaviour, kept covered alongside the new read-failure propagation above:
         // a manifest that reads fine but fails to parse is still treated as incomplete.
-        $storage = new SnapshotStorage($this->filesystem, 0);
+        $storage = new SnapshotStorage($this->filesystem);
         $this->filesystem->write('bad-json/' . SnapshotStorage::MANIFEST_FILE, '{not json');
         $storage->writeManifest('good', $this->manifest('2026-09-02T00:00:00+00:00'));
 
@@ -224,19 +181,15 @@ final class SnapshotStorageTest extends Unit
     public function testNumericSnapshotNamesStayStrings(): void
     {
         // "123" is a valid NAME_PATTERN match; it must never be silently cast to an int by
-        // being used as an array key internally (listSnapshots/latestSnapshotName/rotate all
-        // rely on it staying a string).
-        $storage = new SnapshotStorage($this->filesystem, 1);
+        // being used as an array key internally (listSnapshots/latestSnapshotName rely on it
+        // staying a string).
+        $storage = new SnapshotStorage($this->filesystem);
         $storage->writeManifest('alpha', $this->manifest('2026-09-01T00:00:00+00:00'));
         $storage->writeManifest('123', $this->manifest('2026-09-02T00:00:00+00:00'));
 
         $this->assertTrue($storage->hasSnapshot('123'));
         $this->assertSame(['123', 'alpha'], $storage->listSnapshots());
         $this->assertSame('123', $storage->latestSnapshotName());
-
-        $this->assertSame(['alpha'], $storage->rotate());
-        $this->assertFalse($storage->hasSnapshot('alpha'));
-        $this->assertTrue($storage->hasSnapshot('123'));
     }
 
     private function manifest(string $createdAt): Manifest

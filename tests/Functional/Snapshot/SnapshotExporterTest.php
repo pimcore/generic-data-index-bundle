@@ -57,7 +57,7 @@ final class SnapshotExporterTest extends Unit
             $objects[] = $this->tester->createFullyFledgedObjectSimple('snapshot-export-', true, true, $i);
         }
         $this->tester->flushIndex();
-        $storage = new SnapshotStorage(new Filesystem(new InMemoryFilesystemAdapter()), 0);
+        $storage = new SnapshotStorage(new Filesystem(new InMemoryFilesystemAdapter()));
         /** @var SnapshotExporterInterface $exporter */
         $exporter = $this->tester->grabService(SnapshotExporterInterface::class);
 
@@ -92,7 +92,7 @@ final class SnapshotExporterTest extends Unit
 
     public function testDryRunWritesNothing(): void
     {
-        $storage = new SnapshotStorage(new Filesystem(new InMemoryFilesystemAdapter()), 0);
+        $storage = new SnapshotStorage(new Filesystem(new InMemoryFilesystemAdapter()));
         /** @var SnapshotExporterInterface $exporter */
         $exporter = $this->tester->grabService(SnapshotExporterInterface::class);
 
@@ -109,7 +109,7 @@ final class SnapshotExporterTest extends Unit
             'INSERT INTO generic_data_index_queue (elementId, elementType, elementIndexName, operation, operationTime, dispatched) VALUES (?, \'dataObject\', \'simple\', \'update\', 1, 0)',
             [999999]
         );
-        $storage = new SnapshotStorage(new Filesystem(new InMemoryFilesystemAdapter()), 0);
+        $storage = new SnapshotStorage(new Filesystem(new InMemoryFilesystemAdapter()));
         /** @var SnapshotExporterInterface $exporter */
         $exporter = $this->tester->grabService(SnapshotExporterInterface::class);
 
@@ -131,7 +131,7 @@ final class SnapshotExporterTest extends Unit
         $before = glob($tempDir . '/gdi-snapshot-*') ?: [];
 
         $filesystem = new Filesystem(new InMemoryFilesystemAdapter());
-        $inner = new SnapshotStorage($filesystem, 0);
+        $inner = new SnapshotStorage($filesystem);
         $storage = new DelegatingFailingSnapshotStorage($inner, ['writeManifest' => new RuntimeException('disk full')]);
         /** @var SnapshotExporterInterface $exporter */
         $exporter = $this->tester->grabService(SnapshotExporterInterface::class);
@@ -153,7 +153,7 @@ final class SnapshotExporterTest extends Unit
     public function testCleanupFailureDoesNotMaskTheOriginalExportFailure(): void
     {
         $filesystem = new Filesystem(new InMemoryFilesystemAdapter());
-        $inner = new SnapshotStorage($filesystem, 0);
+        $inner = new SnapshotStorage($filesystem);
         $originalFailure = new RuntimeException('disk full');
         $storage = new DelegatingFailingSnapshotStorage($inner, [
             'writeManifest' => $originalFailure,
@@ -172,28 +172,12 @@ final class SnapshotExporterTest extends Unit
             $this->assertSame($originalFailure, $e->getPrevious());
         }
     }
-
-    public function testRotationFailureDoesNotFailTheExport(): void
-    {
-        $filesystem = new Filesystem(new InMemoryFilesystemAdapter());
-        $inner = new SnapshotStorage($filesystem, 0);
-        $storage = new DelegatingFailingSnapshotStorage($inner, ['rotate' => new RuntimeException('rotate boom')]);
-        /** @var SnapshotExporterInterface $exporter */
-        $exporter = $this->tester->grabService(SnapshotExporterInterface::class);
-
-        $result = $exporter->export($storage, 'rotate-fail', new ExportOptions());
-
-        $this->assertNotNull($result->rotationError);
-        $this->assertStringContainsString('rotate boom', $result->rotationError);
-        $this->assertSame([], $result->deletedSnapshots);
-        $this->assertTrue($inner->hasSnapshot('rotate-fail'));
-    }
 }
 
 /**
  * Delegates every SnapshotStorageInterface call to a real, in-memory-backed SnapshotStorage,
  * except the named methods in $failures, each of which always throws its given exception instead
- * of delegating — used to exercise the exporter's failure-cleanup and rotation-failure paths.
+ * of delegating — used to exercise the exporter's failure-cleanup paths.
  */
 final class DelegatingFailingSnapshotStorage implements SnapshotStorageInterface
 {
@@ -247,13 +231,6 @@ final class DelegatingFailingSnapshotStorage implements SnapshotStorageInterface
     {
         $this->maybeFail(__FUNCTION__);
         $this->inner->deleteSnapshot($name);
-    }
-
-    public function rotate(): array
-    {
-        $this->maybeFail(__FUNCTION__);
-
-        return $this->inner->rotate();
     }
 
     public static function assertValidName(string $name): void

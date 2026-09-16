@@ -8,7 +8,6 @@ services:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorage
         arguments:
             $filesystem: '@pimcore.generic_data_index_snapshot.storage'
-            $keep: 3
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileReader: ~
 

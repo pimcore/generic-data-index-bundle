@@ -23,7 +23,6 @@ private location. Never point the storage at a public asset bucket.
 pimcore_generic_data_index:
     snapshot:
         storage: 'pimcore.generic_data_index_snapshot.storage'  # Flysystem storage service id
-        keep: 3            # complete snapshots kept after an export, 0 = unlimited
         page_size: 1000    # documents per page on export
         bulk_size: 1000    # documents per bulk request on import
 ```
@@ -60,10 +59,8 @@ manifest itself — the partial snapshot directory is deleted, so an interrupted
 a snapshot that looks complete. `--dry-run` resolves the indices and their current document counts
 and prints them without writing anything ("Nothing written.").
 
-After a successful export the command keeps only the `keep` newest complete snapshots in the
-storage and deletes the rest. If that rotation step itself fails (e.g. a storage error while
-deleting an old snapshot), the command prints a warning — the newly written snapshot is still
-valid and the command still exits successfully; only the cleanup did not fully complete.
+Snapshots are kept in the storage until an operator deletes them from it; running
+`generic-data-index:snapshot:import` without a name uses the newest one.
 
 The export pages through each live alias without taking a point-in-time snapshot of it, so
 elements that are created, changed, or deleted while the export is running can be reflected

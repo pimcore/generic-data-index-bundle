@@ -187,7 +187,7 @@ final class SnapshotImportCommand extends AbstractCommand
             return null;
         }
 
-        return new SnapshotStorage(new Filesystem(new LocalFilesystemAdapter($fromPath)), 0);
+        return new SnapshotStorage(new Filesystem(new LocalFilesystemAdapter($fromPath)));
     }
 
     private function renderResult(ImportResult $result): void

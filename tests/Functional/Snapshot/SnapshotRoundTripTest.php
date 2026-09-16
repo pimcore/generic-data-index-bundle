@@ -30,6 +30,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileWriter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
@@ -65,7 +66,7 @@ final class SnapshotRoundTripTest extends Unit
         $this->tester->enableSynchronousProcessing();
         $this->tester->clearQueue();
         $this->filesystem = new Filesystem(new InMemoryFilesystemAdapter());
-        $this->storage = new SnapshotStorage($this->filesystem, 0);
+        $this->storage = new SnapshotStorage($this->filesystem);
         $this->searchIndexService = $this->tester->grabService(SearchIndexServiceInterface::class);
         $this->queueRepository = $this->tester->grabService(IndexQueueRepository::class);
         $this->simpleAlias = $this->tester->grabService(DataObjectTypeAdapter::class)
@@ -109,16 +110,21 @@ final class SnapshotRoundTripTest extends Unit
         for ($i = 1; $i <= 3; $i++) {
             $objects[] = $this->tester->createFullyFledgedObjectSimple('snapshot-roundtrip-', true, true, $i);
         }
+        $documentAlias = $this->tester->grabService(DocumentTypeAdapter::class)->getAliasIndexName();
+        $page = TestHelper::createEmptyDocumentPage('snapshot-doc-');
         $this->tester->flushIndex();
         $originals = [];
         foreach ($objects as $object) {
             $originals[$object->getId()] = $this->tester->checkIndexEntry($object->getId(), $this->simpleAlias)['_source'];
         }
+        $originalDocumentSource = $this->tester->checkIndexEntry($page->getId(), $documentAlias)['_source'];
         $this->exporter()->export($this->storage, 'rt', new ExportOptions());
 
-        // destroy the physical index so provisioning is exercised, then import
+        // destroy the physical indices so provisioning is exercised, then import
         $this->searchIndexService->deleteIndex($this->tester->getIndexName('simple', true));
+        $this->searchIndexService->deleteIndex($this->tester->getIndexName('document'));
         $this->assertFalse($this->searchIndexService->existsAlias($this->simpleAlias));
+        $this->assertFalse($this->searchIndexService->existsAlias($documentAlias));
         $this->tester->clearQueue();
         $queueBefore = $this->queueRepository->countIndexQueueEntries();
 
@@ -130,6 +136,10 @@ final class SnapshotRoundTripTest extends Unit
         foreach ($originals as $id => $source) {
             $this->assertSame($source, $this->tester->checkIndexEntry($id, $this->simpleAlias)['_source']);
         }
+        $this->assertSame(
+            $originalDocumentSource,
+            $this->tester->checkIndexEntry($page->getId(), $documentAlias)['_source'],
+        );
         // the restored index is searchable on the localized value, not just populated
         $value = $objects[0]->getLoc_name('de');
         $hits = $this->tester->getIndexSearchClient()->search([
@@ -515,7 +525,8 @@ final class SnapshotRoundTripTest extends Unit
         $dir = sys_get_temp_dir() . '/gdi-snapshot-func-' . uniqid();
         $this->tempPaths[] = $dir;
         mkdir($dir, 0777, true);
-        $this->exporter()->export(new SnapshotStorage(new Filesystem(new LocalFilesystemAdapter($dir)), 0), 'local', new ExportOptions());
+        $localStorage = new SnapshotStorage(new Filesystem(new LocalFilesystemAdapter($dir)));
+        $this->exporter()->export($localStorage, 'local', new ExportOptions());
         $this->tester->cleanupIndex();
         $this->tester->flushIndex();
 

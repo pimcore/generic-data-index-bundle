@@ -117,12 +117,6 @@ final class SnapshotExportCommand extends AbstractCommand
                 $manifest->queueEntriesAfter,
                 $manifest->durationSeconds,
             ));
-            if ($result->deletedSnapshots !== []) {
-                $this->io->writeln('rotated out: ' . implode(', ', $result->deletedSnapshots));
-            }
-            if ($result->rotationError !== null) {
-                $this->io->warning('Snapshot written, but rotation failed: ' . $result->rotationError);
-            }
             $this->io->success($result->dryRun ? 'Nothing written.' : 'Snapshot written.');
 
             return self::SUCCESS;

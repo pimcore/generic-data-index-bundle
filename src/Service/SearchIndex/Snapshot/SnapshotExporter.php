@@ -92,7 +92,7 @@ final class SnapshotExporter implements SnapshotExporterInterface
                 );
             }
 
-            return new ExportResult($name, $manifest->withIndices($indices), [], true);
+            return new ExportResult($name, $manifest->withIndices($indices), true);
         }
 
         try {
@@ -139,14 +139,7 @@ final class SnapshotExporter implements SnapshotExporterInterface
             $manifest->durationSeconds,
         ));
 
-        $rotation = $this->rotateSafely($storage);
-        if ($rotation['error'] !== null) {
-            $this->logger?->warning(sprintf('Index snapshot "%s" rotation failed: %s', $name, $rotation['error']));
-
-            return new ExportResult($name, $manifest, [], false, $rotation['error']);
-        }
-
-        return new ExportResult($name, $manifest, $rotation['deleted'], false);
+        return new ExportResult($name, $manifest, false);
     }
 
     /** @return IndexTarget[] */
@@ -209,18 +202,6 @@ final class SnapshotExporter implements SnapshotExporterInterface
         }
 
         return $indices;
-    }
-
-    /**
-     * @return array{deleted: string[], error: ?string}
-     */
-    private function rotateSafely(SnapshotStorageInterface $storage): array
-    {
-        try {
-            return ['deleted' => $storage->rotate(), 'error' => null];
-        } catch (Throwable $e) {
-            return ['deleted' => [], 'error' => $e->getMessage()];
-        }
     }
 
     private function exportIndex(IndexTarget $target): WrittenFile

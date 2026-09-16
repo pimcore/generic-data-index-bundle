@@ -38,7 +38,7 @@ final class SnapshotExportCommandTest extends Unit
                 $this->assertSame(100, $options->maxQueueEntries);
                 $this->assertSame(30, $options->waitSeconds);
 
-                return new ExportResult($name, $manifest, ['old-one'], false);
+                return new ExportResult($name, $manifest, false);
             },
         ]);
         $tester = new CommandTester($this->command($exporter));
@@ -48,7 +48,6 @@ final class SnapshotExportCommandTest extends Unit
         $this->assertSame(Command::SUCCESS, $exitCode);
         $display = $tester->getDisplay();
         $this->assertStringContainsString('data-object_simple', $display);
-        $this->assertStringContainsString('old-one', $display);
         $this->assertStringContainsString('queue entries before: 3', $display);
     }
 
@@ -58,7 +57,9 @@ final class SnapshotExportCommandTest extends Unit
             'export' => function (SnapshotStorageInterface $storage, string $name, ExportOptions $options): ExportResult {
                 $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z$/', $name);
 
-                return new ExportResult($name, new Manifest('x', 'dev', 'dev', 'openSearch', 'pimcore_', 0, 0, 0, [], []), [], false);
+                $manifest = new Manifest('x', 'dev', 'dev', 'openSearch', 'pimcore_', 0, 0, 0, [], []);
+
+                return new ExportResult($name, $manifest, false);
             },
         ]);
 
@@ -76,26 +77,6 @@ final class SnapshotExportCommandTest extends Unit
 
         $this->assertSame(Command::FAILURE, $tester->execute([]));
         $this->assertStringContainsString('queue too deep', $tester->getDisplay());
-    }
-
-    /**
-     * A rotation failure is a warning, not a run failure: the snapshot itself was written
-     * successfully and the caller must still see a SUCCESS exit code.
-     */
-    public function testRotationFailureIsAWarningNotAFailure(): void
-    {
-        $manifest = new Manifest('x', 'dev', 'dev', 'openSearch', 'pimcore_', 0, 0, 0, [], []);
-        $exporter = $this->makeEmpty(SnapshotExporterInterface::class, [
-            'export' => static fn (): ExportResult => new ExportResult('nightly', $manifest, [], false, 'rotate boom'),
-        ]);
-        $tester = new CommandTester($this->command($exporter));
-
-        $exitCode = $tester->execute([]);
-
-        $this->assertSame(Command::SUCCESS, $exitCode);
-        $display = $tester->getDisplay();
-        $this->assertStringContainsString('rotation failed', $display);
-        $this->assertStringContainsString('rotate boom', $display);
     }
 
     private function command(SnapshotExporterInterface $exporter): SnapshotExportCommand

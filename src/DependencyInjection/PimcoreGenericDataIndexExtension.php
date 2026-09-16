@@ -143,7 +143,6 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
     {
         $storage = $container->getDefinition(SnapshotStorageInterface::class);
         $storage->setArgument('$filesystem', new Reference($snapshotSettings['storage']));
-        $storage->setArgument('$keep', $snapshotSettings['keep']);
 
         $container->getDefinition(SnapshotExporterInterface::class)
             ->setArgument('$pageSize', $snapshotSettings['page_size']);

@@ -28,7 +28,6 @@ final class SnapshotStorage implements SnapshotStorageInterface
 
     public function __construct(
         private readonly FilesystemOperator $filesystem,
-        private readonly int $keep,
     ) {
     }
 
@@ -179,19 +178,5 @@ final class SnapshotStorage implements SnapshotStorageInterface
         if ($this->filesystem->directoryExists($name)) {
             $this->filesystem->deleteDirectory($name);
         }
-    }
-
-    public function rotate(): array
-    {
-        if ($this->keep <= 0) {
-            return [];
-        }
-        $deleted = [];
-        foreach (array_slice($this->listSnapshots(), $this->keep) as $name) {
-            $this->deleteSnapshot($name);
-            $deleted[] = $name;
-        }
-
-        return $deleted;
     }
 }

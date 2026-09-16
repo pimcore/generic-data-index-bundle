@@ -18,15 +18,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot;
  */
 final readonly class ExportResult
 {
-    /**
-     * @param string[] $deletedSnapshots
-     */
     public function __construct(
         public string $name,
         public Manifest $manifest,
-        public array $deletedSnapshots,
         public bool $dryRun,
-        public ?string $rotationError = null,
     ) {
     }
 }

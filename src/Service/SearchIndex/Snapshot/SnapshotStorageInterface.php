@@ -39,8 +39,5 @@ interface SnapshotStorageInterface
 
     public function deleteSnapshot(string $name): void; // silent when absent
 
-    /** @return string[] deleted snapshot names */
-    public function rotate(): array;
-
     public static function assertValidName(string $name): void; // InvalidSnapshotException
 }

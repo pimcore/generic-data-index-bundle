@@ -15,7 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\DependencyInjection;
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Configuration;
-use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
 
 final class ConfigurationTest extends Unit
@@ -26,7 +25,6 @@ final class ConfigurationTest extends Unit
 
         $this->assertSame([
             'storage' => 'pimcore.generic_data_index_snapshot.storage',
-            'keep' => 3,
             'page_size' => 1000,
             'bulk_size' => 1000,
         ], $config['snapshot']);
@@ -35,18 +33,11 @@ final class ConfigurationTest extends Unit
     public function testSnapshotOverrides(): void
     {
         $config = (new Processor())->processConfiguration(new Configuration(), [[
-            'snapshot' => ['storage' => 'pimcore.customer_snapshots.storage', 'keep' => 0, 'page_size' => 250, 'bulk_size' => 500],
+            'snapshot' => ['storage' => 'pimcore.customer_snapshots.storage', 'page_size' => 250, 'bulk_size' => 500],
         ]]);
 
         $this->assertSame('pimcore.customer_snapshots.storage', $config['snapshot']['storage']);
-        $this->assertSame(0, $config['snapshot']['keep']);
         $this->assertSame(250, $config['snapshot']['page_size']);
         $this->assertSame(500, $config['snapshot']['bulk_size']);
-    }
-
-    public function testNegativeKeepIsRejected(): void
-    {
-        $this->expectException(InvalidConfigurationException::class);
-        (new Processor())->processConfiguration(new Configuration(), [['snapshot' => ['keep' => -1]]]);
     }
 }
