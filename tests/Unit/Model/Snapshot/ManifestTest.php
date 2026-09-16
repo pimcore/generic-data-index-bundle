@@ -135,6 +135,18 @@ final class ManifestTest extends Unit
         $this->assertCount(2, $restored->indices);
     }
 
+    public function testRejectsIndexEntryFileNotMatchingShortName(): void
+    {
+        $data = $this->manifest()->toArray();
+        $entry = $this->indexEntry('asset', 'asset', null)->toArray();
+        $entry['file'] = 'document.ndjson.gz';
+        $data['indices'][] = $entry;
+
+        $this->expectException(InvalidSnapshotException::class);
+        $this->expectExceptionMessage('must match its "short_name"');
+        Manifest::fromArray($data);
+    }
+
     public function testRejectsDuplicateShortName(): void
     {
         $data = $this->manifest()->toArray();

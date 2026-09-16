@@ -54,16 +54,37 @@ final readonly class ManifestIndex
             }
         }
 
+        $shortName = (string) $data['short_name'];
+        $file = (string) $data['file'];
+        self::assertFileMatchesShortName($shortName, $file);
+
         return new self(
-            shortName: (string) $data['short_name'],
+            shortName: $shortName,
             elementType: (string) $data['element_type'],
             classId: isset($data['class_id']) ? (string) $data['class_id'] : null,
             sourceIndex: (string) $data['source_index'],
             documentCount: self::requireNonNegativeInt($data, 'document_count'),
-            file: (string) $data['file'],
+            file: $file,
             bytes: self::requireNonNegativeInt($data, 'bytes'),
             sha256: (string) $data['sha256'],
         );
+    }
+
+    /**
+     * A manifest entry's `file` must be exactly `<short_name>.ndjson.gz`, matching what the
+     * exporter writes. This also prevents two entries from pointing at the same file.
+     */
+    private static function assertFileMatchesShortName(string $shortName, string $file): void
+    {
+        $expectedFile = $shortName . '.ndjson.gz';
+        if ($file !== $expectedFile) {
+            throw new InvalidSnapshotException(sprintf(
+                'Manifest index entry "file" ("%s") must match its "short_name" ("%s"), expected "%s"',
+                $file,
+                $shortName,
+                $expectedFile,
+            ));
+        }
     }
 
     private static function requireNonNegativeInt(array $data, string $key): int

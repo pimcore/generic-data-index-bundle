@@ -18,6 +18,7 @@ use FilesystemIterator;
 use League\Flysystem\Filesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use League\Flysystem\Local\LocalFilesystemAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotIncompatibleException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search;
@@ -27,6 +28,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportOptions;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileWriter;
@@ -338,7 +340,10 @@ final class SnapshotRoundTripTest extends Unit
 
     public function testInvalidManifestFileNameIsRejected(): void
     {
-        $this->tester->createFullyFledgedObjectSimple('snapshot-badname-', true, true, 12);
+        // A '../etc/passwd' file name no longer even matches "<short_name>.ndjson.gz", so this
+        // is now caught by Manifest::fromArray() when the tampered manifest is read back, before
+        // the importer's own file-name regex guard is ever reached.
+        $object = $this->tester->createFullyFledgedObjectSimple('snapshot-badname-', true, true, 12);
         $this->tester->flushIndex();
         $this->exporter()->export($this->storage, 'badname', new ExportOptions());
         $manifest = $this->storage->readManifest('badname');
@@ -353,10 +358,59 @@ final class SnapshotRoundTripTest extends Unit
 
         try {
             $this->importer()->import($this->storage, 'badname', new ImportOptions(only: ['data-object_simple']));
-            $this->fail('expected SnapshotImportException');
-        } catch (SnapshotImportException $e) {
-            $this->assertStringContainsString('Invalid file name', $e->getMessage());
+            $this->fail('expected InvalidSnapshotException');
+        } catch (InvalidSnapshotException $e) {
+            $this->assertStringContainsString('must match its "short_name"', $e->getMessage());
         }
+        $this->tester->checkIndexEntry($object->getId(), $this->simpleAlias);
+    }
+
+    public function testManifestEntryCannotReferenceAnotherIndexFile(): void
+    {
+        // A manifest entry naming another index's (valid) file, with that file's real sha256, must
+        // not be accepted just because the file/hash pair checks out: the asset entry must be
+        // bound to its own "asset.ndjson.gz", not able to borrow "data-object_simple.ndjson.gz".
+        $object = $this->tester->createFullyFledgedObjectSimple('snapshot-crossref-', true, true, 14);
+        $this->tester->flushIndex();
+        $this->exporter()->export($this->storage, 'crossref', new ExportOptions());
+        $manifest = $this->storage->readManifest('crossref');
+        $dataObjectEntry = $manifest->getIndex('data-object_simple');
+        $assetEntry = $manifest->getIndex('asset');
+        $this->assertNotNull($dataObjectEntry);
+        $this->assertNotNull($assetEntry);
+        $assetAlias = $this->tester->grabService(AssetTypeAdapter::class)->getAliasIndexName();
+        $assetCountBefore = $this->searchIndexService->getCount(new Search(), $assetAlias);
+
+        $rewrittenAssetEntry = new ManifestIndex(
+            $assetEntry->shortName,
+            $assetEntry->elementType,
+            $assetEntry->classId,
+            $assetEntry->sourceIndex,
+            $dataObjectEntry->documentCount,
+            $dataObjectEntry->file,
+            $dataObjectEntry->bytes,
+            $dataObjectEntry->sha256,
+        );
+        $this->storage->writeManifest('crossref', $manifest->withIndices(
+            array_map(
+                static fn (ManifestIndex $i) => $i->shortName === 'asset' ? $rewrittenAssetEntry : $i,
+                $manifest->indices,
+            )
+        ));
+
+        try {
+            $this->importer()->import($this->storage, 'crossref', new ImportOptions(only: ['asset']));
+            $this->fail('expected InvalidSnapshotException or SnapshotImportException');
+        } catch (InvalidSnapshotException|SnapshotImportException $e) {
+            $this->assertStringContainsString('asset', $e->getMessage());
+        }
+        $this->tester->flushIndex();
+        $this->assertSame(
+            $assetCountBefore,
+            $this->searchIndexService->getCount(new Search(), $assetAlias),
+            'the asset index must be untouched',
+        );
+        $this->tester->checkIndexEntry($object->getId(), $this->simpleAlias);
     }
 
     public function testMissingChecksumInManifestIsUnverifiedAndGatesUnlessForced(): void

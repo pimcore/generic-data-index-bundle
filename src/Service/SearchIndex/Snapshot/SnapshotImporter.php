@@ -277,6 +277,19 @@ final class SnapshotImporter implements SnapshotImporterInterface
             throw new SnapshotImportException(sprintf('Invalid file name "%s" in manifest', $entry->file));
         }
 
+        // Defense in depth: Manifest::fromArray() already enforces this when a manifest is
+        // parsed from a snapshot, but a Manifest can also be built directly in code (e.g. by
+        // Manifest::withIndices()), so the importer must not trust the invariant blindly.
+        $expectedFile = $entry->shortName . '.ndjson.gz';
+        if ($entry->file !== $expectedFile) {
+            throw new SnapshotImportException(sprintf(
+                'Manifest index entry "%s" references file "%s", expected "%s"',
+                $entry->shortName,
+                $entry->file,
+                $expectedFile,
+            ));
+        }
+
         $local = $this->documentFileReader->temporaryPath();
 
         try {
