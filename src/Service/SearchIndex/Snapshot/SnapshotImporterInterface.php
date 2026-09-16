@@ -26,16 +26,18 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportResult;
 interface SnapshotImporterInterface
 {
     /**
-     * Replays a snapshot's indices into the local search engine, one index at a time: for
-     * each planned index the file is downloaded and its checksum verified BEFORE that index
-     * is provisioned (deleted and recreated), so a corrupted or truncated file never destroys
-     * a good, live index.
+     * Replays a snapshot's indices into the local search engine, in two phases. First, every
+     * planned index's file is downloaded and its checksum verified — before any index is
+     * touched, not just before the index it belongs to — so a corrupted or missing file
+     * anywhere in the plan is caught while every live index, including ones earlier in the
+     * plan, is still untouched. Only once every planned file has verified does the second
+     * phase provision (delete and recreate) and replay each index in turn.
      *
-     * Not atomic across indices: if replaying one index fails, every index replayed before it
-     * is complete; the failing index itself has already been recreated and is left partially
-     * filled; indices not yet reached are untouched (their previous contents, if any, are
-     * unaffected). Re-running the import repairs a partial import, since every index is
-     * provisioned from scratch again.
+     * The apply phase is not atomic across indices: if replaying one index fails, every index
+     * replayed before it is complete; the failing index itself has already been recreated and
+     * is left partially filled; indices not yet reached are untouched (their previous contents,
+     * if any, are unaffected). Re-running the import repairs a partial import, since every index
+     * is provisioned from scratch again.
      *
      * @param (callable(ImportedIndex): void)|null $onIndexImported called after each index has been replayed
      *

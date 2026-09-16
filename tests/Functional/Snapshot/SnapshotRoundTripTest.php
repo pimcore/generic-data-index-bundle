@@ -29,8 +29,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileWriter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotIndexResolverInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
@@ -204,6 +206,58 @@ final class SnapshotRoundTripTest extends Unit
         $this->assertTrue($this->searchIndexService->existsAlias($this->simpleAlias));
         $this->tester->checkIndexEntry($object->getId(), $this->simpleAlias);
         $this->assertSame($checksumBefore, $settingsStore->getClassMappingCheckSum($classId), 'a rejected import must not stamp the class mapping checksum');
+    }
+
+    public function testCorruptFileLateInThePlanLeavesAllIndicesUntouched(): void
+    {
+        // Preflight verifies every planned file BEFORE provisioning any index. Corrupting the
+        // LAST entry in the manifest must still be caught before the FIRST entry (already
+        // downloaded and verified during preflight) is ever provisioned/touched.
+        $this->tester->createFullyFledgedObjectSimple('snapshot-preflight-', true, true, 30);
+        $this->tester->flushIndex();
+        $this->exporter()->export($this->storage, 'preflight', new ExportOptions());
+
+        $manifest = $this->storage->readManifest('preflight');
+        $this->assertGreaterThan(1, count($manifest->indices), 'need at least two planned indices to prove ordering');
+        $resolver = $this->tester->grabService(SnapshotIndexResolverInterface::class);
+        $firstEntry = $manifest->indices[0];
+        $lastEntry = $manifest->indices[count($manifest->indices) - 1];
+        $firstTarget = $resolver->resolveManifestIndex($firstEntry);
+        $this->assertNotNull($firstTarget);
+        $firstAlias = $firstTarget->aliasName;
+
+        $countBefore = $this->searchIndexService->getCount(new Search(), $firstAlias);
+        $versionBefore = $this->searchIndexService->getCurrentIndexVersion($firstAlias);
+
+        $this->filesystem->write('preflight/' . $lastEntry->file, gzencode("{\"system_fields\":{\"id\":1}}\n"));
+        $tempDir = DocumentFileWriter::temporaryDirectory();
+        $tempFilesBefore = glob($tempDir . '/gdi-snapshot-in-*') ?: [];
+
+        try {
+            $this->importer()->import($this->storage, 'preflight', new ImportOptions());
+            $this->fail('expected SnapshotImportException');
+        } catch (SnapshotImportException $e) {
+            $this->assertStringContainsString('Checksum mismatch', $e->getMessage());
+        }
+
+        $this->tester->flushIndex();
+        $this->assertSame(
+            $countBefore,
+            $this->searchIndexService->getCount(new Search(), $firstAlias),
+            'the first planned index must still hold its documents',
+        );
+        $this->assertSame(
+            $versionBefore,
+            $this->searchIndexService->getCurrentIndexVersion($firstAlias),
+            'the first planned index must not have been provisioned (recreated)',
+        );
+
+        $tempFilesAfter = glob($tempDir . '/gdi-snapshot-in-*') ?: [];
+        $this->assertSame(
+            [],
+            array_diff($tempFilesAfter, $tempFilesBefore),
+            'no leftover snapshot import temp files after a preflight failure',
+        );
     }
 
     public function testFailedReplayDoesNotStampClassMappingChecksum(): void

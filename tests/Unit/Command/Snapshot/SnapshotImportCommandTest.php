@@ -211,6 +211,8 @@ final class SnapshotImportCommandTest extends Unit
         $display = $tester->getDisplay();
         $this->assertStringContainsString('Dry run of snapshot', $display);
         $this->assertStringContainsString('Nothing written', $display);
+        $this->assertStringContainsString('planned', $display);
+        $this->assertStringNotContainsString('NO', $display);
     }
 
     private function command(SnapshotStorageInterface $storage, SnapshotImporterInterface $importer, int $queueCount = 0): SnapshotImportCommand

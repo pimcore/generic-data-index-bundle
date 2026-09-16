@@ -194,6 +194,39 @@ final class SnapshotImportCommand extends AbstractCommand
                 ? sprintf('Dry run of snapshot "%s"', $result->name)
                 : sprintf('Imported snapshot "%s"', $result->name),
         );
+        if ($result->dryRun) {
+            $this->renderPlannedTable($result);
+        } else {
+            $this->renderImportedTable($result);
+        }
+        foreach ($result->skipped as $shortName => $reason) {
+            $this->io->writeln(sprintf('skipped %s: %s', $shortName, $reason));
+        }
+        if ($result->report->missingInManifest !== []) {
+            $this->io->note(
+                'Local classes without data in the snapshot: ' . implode(', ', $result->report->missingInManifest),
+            );
+        }
+    }
+
+    /**
+     * A dry run never wrote anything, so its table must not read like a failed import: no
+     * actual/ok columns at all, just what would be imported and how many documents are planned.
+     */
+    private function renderPlannedTable(ImportResult $result): void
+    {
+        $this->io->table(
+            ['index', 'alias', 'documents (planned)'],
+            array_map(static fn (ImportedIndex $i) => [
+                $i->shortName,
+                $i->aliasName,
+                $i->expectedCount,
+            ], $result->imported),
+        );
+    }
+
+    private function renderImportedTable(ImportResult $result): void
+    {
         $this->io->table(
             ['index', 'alias', 'expected', 'actual', 'ok'],
             array_map(static fn (ImportedIndex $i) => [
@@ -204,14 +237,6 @@ final class SnapshotImportCommand extends AbstractCommand
                 $i->isComplete() ? 'yes' : 'NO',
             ], $result->imported),
         );
-        foreach ($result->skipped as $shortName => $reason) {
-            $this->io->writeln(sprintf('skipped %s: %s', $shortName, $reason));
-        }
-        if ($result->report->missingInManifest !== []) {
-            $this->io->note(
-                'Local classes without data in the snapshot: ' . implode(', ', $result->report->missingInManifest),
-            );
-        }
     }
 
     private function renderIncompatible(SnapshotIncompatibleException $e): void

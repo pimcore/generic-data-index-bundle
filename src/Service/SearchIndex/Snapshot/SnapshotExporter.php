@@ -65,20 +65,8 @@ final class SnapshotExporter implements SnapshotExporterInterface
         $started = microtime(true);
         $queueBefore = $this->queueGate->await($options->maxQueueEntries, $options->waitSeconds);
 
-        $targets = array_values(array_filter(
-            $this->indexResolver->resolveAll(),
-            fn (IndexTarget $target) => $this->searchIndexService->existsAlias($target->aliasName),
-        ));
-
-        $checksums = [];
-        foreach ($targets as $target) {
-            if ($target->isClassIndex()) {
-                $checksum = $this->settingsStoreService->getClassMappingCheckSum($target->getClassId());
-                if ($checksum !== null) {
-                    $checksums[$target->getClassId()] = $checksum;
-                }
-            }
-        }
+        $targets = $this->resolveExistingTargets();
+        $checksums = $this->collectClassChecksums($targets);
 
         $manifest = new Manifest(
             createdAt: (new DateTimeImmutable('now', new DateTimeZone('UTC')))->format(DATE_ATOM),
@@ -107,22 +95,8 @@ final class SnapshotExporter implements SnapshotExporterInterface
             return new ExportResult($name, $manifest->withIndices($indices), [], true);
         }
 
-        $indices = [];
-
         try {
-            foreach ($targets as $target) {
-                $written = $this->exportIndex($target);
-
-                try {
-                    $storage->writeFile($name, $target->shortName . '.ndjson.gz', $written->path);
-                } finally {
-                    @unlink($written->path);
-                }
-                $indices[] = $this->manifestIndex($target, $written->documentCount, $written->bytes, $written->sha256);
-                if ($onIndexExported !== null) {
-                    $onIndexExported($target, $written->documentCount);
-                }
-            }
+            $indices = $this->exportAllIndices($storage, $name, $targets, $onIndexExported);
 
             $manifest = new Manifest(
                 createdAt: $manifest->createdAt,
@@ -165,15 +139,88 @@ final class SnapshotExporter implements SnapshotExporterInterface
             $manifest->durationSeconds,
         ));
 
-        try {
-            $deleted = $storage->rotate();
-        } catch (Throwable $e) {
-            $this->logger?->warning(sprintf('Index snapshot "%s" rotation failed: %s', $name, $e->getMessage()));
+        $rotation = $this->rotateSafely($storage);
+        if ($rotation['error'] !== null) {
+            $this->logger?->warning(sprintf('Index snapshot "%s" rotation failed: %s', $name, $rotation['error']));
 
-            return new ExportResult($name, $manifest, [], false, $e->getMessage());
+            return new ExportResult($name, $manifest, [], false, $rotation['error']);
         }
 
-        return new ExportResult($name, $manifest, $deleted, false);
+        return new ExportResult($name, $manifest, $rotation['deleted'], false);
+    }
+
+    /** @return IndexTarget[] */
+    private function resolveExistingTargets(): array
+    {
+        return array_values(array_filter(
+            $this->indexResolver->resolveAll(),
+            fn (IndexTarget $target) => $this->searchIndexService->existsAlias($target->aliasName),
+        ));
+    }
+
+    /**
+     * @param IndexTarget[] $targets
+     *
+     * @return array<string, int> class definition id => mapping checksum
+     */
+    private function collectClassChecksums(array $targets): array
+    {
+        $checksums = [];
+        foreach ($targets as $target) {
+            if (!$target->isClassIndex()) {
+                continue;
+            }
+            $checksum = $this->settingsStoreService->getClassMappingCheckSum($target->getClassId());
+            if ($checksum !== null) {
+                $checksums[$target->getClassId()] = $checksum;
+            }
+        }
+
+        return $checksums;
+    }
+
+    /**
+     * Exports every target's documents to a temporary file and streams it into $storage,
+     * unlinking the temp file right away either way.
+     *
+     * @param IndexTarget[] $targets
+     *
+     * @return ManifestIndex[]
+     */
+    private function exportAllIndices(
+        SnapshotStorageInterface $storage,
+        string $name,
+        array $targets,
+        ?callable $onIndexExported,
+    ): array {
+        $indices = [];
+        foreach ($targets as $target) {
+            $written = $this->exportIndex($target);
+
+            try {
+                $storage->writeFile($name, $target->shortName . '.ndjson.gz', $written->path);
+            } finally {
+                @unlink($written->path);
+            }
+            $indices[] = $this->manifestIndex($target, $written->documentCount, $written->bytes, $written->sha256);
+            if ($onIndexExported !== null) {
+                $onIndexExported($target, $written->documentCount);
+            }
+        }
+
+        return $indices;
+    }
+
+    /**
+     * @return array{deleted: string[], error: ?string}
+     */
+    private function rotateSafely(SnapshotStorageInterface $storage): array
+    {
+        try {
+            return ['deleted' => $storage->rotate(), 'error' => null];
+        } catch (Throwable $e) {
+            return ['deleted' => [], 'error' => $e->getMessage()];
+        }
     }
 
     private function exportIndex(IndexTarget $target): WrittenFile
