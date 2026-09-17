@@ -43,6 +43,27 @@ final class SearchExecutionServiceTest extends Unit
         $this->assertNotEmpty($searchInformation->getStackTrace());
     }
 
+    public function testExecutedSearchHistoryIsCappedInDebugMode(): void
+    {
+        $maxExecutedSearches = 500;
+        $service = $this->createService(debugMode: true);
+
+        $searches = [];
+        for ($i = 0; $i < $maxExecutedSearches + 5; $i++) {
+            $searches[] = $search = $this->createSearch();
+            $service->executeSearch($search, 'test_index');
+        }
+
+        $executedSearches = $service->getExecutedSearches();
+        $this->assertCount($maxExecutedSearches, $executedSearches);
+        // the oldest entries are dropped, the most recent ones are kept
+        $this->assertSame($searches[5], $executedSearches[0]->getSearch());
+        $this->assertSame(
+            $searches[$maxExecutedSearches + 4],
+            $executedSearches[$maxExecutedSearches - 1]->getSearch()
+        );
+    }
+
     public function testExecutedSearchesAreNotCollectedOutsideDebugMode(): void
     {
         $service = $this->createService(debugMode: false);
