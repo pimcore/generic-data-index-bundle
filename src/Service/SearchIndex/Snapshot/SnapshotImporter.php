@@ -53,6 +53,7 @@ final class SnapshotImporter implements SnapshotImporterInterface
         private readonly IndexProvisionerInterface $indexProvisioner,
         private readonly DocumentFileReader $documentFileReader,
         private readonly int $bulkSize,
+        private readonly int $bulkBytes,
     ) {
     }
 
@@ -301,6 +302,23 @@ final class SnapshotImporter implements SnapshotImporterInterface
         return $imported;
     }
 
+    /**
+     * Never refresh per batch: the default mode (`wait_for` when synchronous processing is
+     * disabled) would make every batch commit wait for a refresh, even though replay() refreshes
+     * once, after every document has been replayed.
+     *
+     * @throws BulkOperationException
+     */
+    private function commitBulk(IndexTarget $target, int $documents, int $bytes): void
+    {
+        $this->logger?->debug('Snapshot import bulk', [
+            'index' => $target->shortName,
+            'documents' => $documents,
+            'bytes' => $bytes,
+        ]);
+        $this->bulkOperationService->commit(RefreshIndexMode::NOT_REFRESH->value);
+    }
+
     private function replay(ManifestIndex $entry, IndexTarget $target, string $local): ImportedIndex
     {
         // The checksum is computed here, before the documents are replayed, but only ever
@@ -313,7 +331,9 @@ final class SnapshotImporter implements SnapshotImporterInterface
 
         try {
             $pending = 0;
-            foreach ($this->documentFileReader->read($local) as $document) {
+            $pendingBytes = 0;
+            foreach ($this->documentFileReader->readLines($local) as $line) {
+                $document = $line->document;
                 $id = $document[FieldCategory::SYSTEM_FIELDS->value][SystemField::ID->value] ?? null;
                 if (!is_int($id)) {
                     throw new SnapshotImportException(
@@ -321,16 +341,20 @@ final class SnapshotImporter implements SnapshotImporterInterface
                     );
                 }
                 $this->bulkOperationService->add($target->aliasName, $id, $document);
-                if (++$pending >= $this->bulkSize) {
-                    // Never refresh per batch: the default mode (`wait_for` when synchronous
-                    // processing is disabled) would make every batch commit wait for a refresh,
-                    // even though the single refreshIndex() call below already refreshes once,
-                    // after every document has been replayed.
-                    $this->bulkOperationService->commit(RefreshIndexMode::NOT_REFRESH->value);
+                $pending++;
+                $pendingBytes += $line->bytes;
+                // Flush by whichever limit is hit first: large documents reach the byte budget
+                // long before the document count, and one oversized bulk body would exhaust PHP
+                // memory or the search engine's request size limit.
+                if ($pending >= $this->bulkSize || $pendingBytes >= $this->bulkBytes) {
+                    $this->commitBulk($target, $pending, $pendingBytes);
                     $pending = 0;
+                    $pendingBytes = 0;
                 }
             }
-            $this->bulkOperationService->commit(RefreshIndexMode::NOT_REFRESH->value);
+            if ($pending > 0) {
+                $this->commitBulk($target, $pending, $pendingBytes);
+            }
         } catch (InvalidSnapshotException|BulkOperationException $e) {
             throw new SnapshotImportException(
                 sprintf('Import of index "%s" failed: %s', $target->shortName, $e->getMessage()),

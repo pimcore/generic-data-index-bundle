@@ -30,3 +30,4 @@ services:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporter
         arguments:
             $bulkSize: 1000
+            $bulkBytes: 16777216

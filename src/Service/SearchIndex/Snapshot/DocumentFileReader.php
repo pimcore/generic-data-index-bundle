@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\DocumentLine;
 
 /**
  * @internal
@@ -48,6 +49,18 @@ final class DocumentFileReader
     /** @return iterable<array> */
     public function read(string $path): iterable
     {
+        foreach ($this->readLines($path) as $line) {
+            yield $line->document;
+        }
+    }
+
+    /**
+     * @return iterable<DocumentLine> every document with the raw byte size of its line
+     *
+     * @throws InvalidSnapshotException
+     */
+    public function readLines(string $path): iterable
+    {
         $handle = gzopen($path, 'rb');
         if ($handle === false) {
             throw new InvalidSnapshotException(sprintf('Cannot open "%s" for gzip reading', $path));
@@ -57,6 +70,7 @@ final class DocumentFileReader
             $lineNumber = 0;
             while (($line = gzgets($handle)) !== false) {
                 $lineNumber++;
+                $bytes = strlen($line);
                 $line = trim($line);
                 if ($line === '') {
                     continue;
@@ -77,7 +91,7 @@ final class DocumentFileReader
                         sprintf('Line %d of "%s" is not a JSON object', $lineNumber, basename($path)),
                     );
                 }
-                yield $document;
+                yield new DocumentLine($document, $bytes);
             }
         } finally {
             gzclose($handle);

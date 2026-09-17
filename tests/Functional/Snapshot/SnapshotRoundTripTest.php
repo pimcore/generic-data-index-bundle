@@ -18,6 +18,8 @@ use FilesystemIterator;
 use League\Flysystem\Filesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use League\Flysystem\Local\LocalFilesystemAdapter;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotIncompatibleException;
@@ -27,13 +29,19 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportedIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportOptions;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\CompatibilityCheckerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileReader;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileWriter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\IndexProvisionerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotIndexResolverInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorage;
@@ -518,5 +526,47 @@ final class SnapshotRoundTripTest extends Unit
             $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
         }
         rmdir($dir);
+    }
+
+    public function testBulkRequestsAreFlushedByByteBudgetAndStillRestoreEveryDocument(): void
+    {
+        $objects = [];
+        for ($i = 1; $i <= 3; $i++) {
+            $objects[] = $this->tester->createFullyFledgedObjectSimple('snapshot-bulkbytes-', true, true, $i);
+        }
+        $this->tester->flushIndex();
+        $this->exporter()->export($this->storage, 'bb', new ExportOptions());
+        $this->searchIndexService->deleteIndex($this->tester->getIndexName('simple', true));
+
+        // ceiling of 1000 documents, budget of 1 byte: every document must be flushed on its own
+        $importer = new SnapshotImporter(
+            $this->tester->grabService(SnapshotIndexResolverInterface::class),
+            $this->tester->grabService(CompatibilityCheckerInterface::class),
+            $this->tester->grabService(SearchIndexConfigServiceInterface::class),
+            $this->searchIndexService,
+            $this->tester->grabService(BulkOperationServiceInterface::class),
+            $this->tester->grabService(IndexProvisionerInterface::class),
+            new DocumentFileReader(),
+            bulkSize: 1000,
+            bulkBytes: 1,
+        );
+        $log = new TestHandler();
+        $importer->setLogger(new Logger('test', [$log]));
+
+        $result = $importer->import($this->storage, 'bb', new ImportOptions());
+
+        $this->assertTrue($result->isSuccessful(), print_r($result->imported, true));
+        $this->tester->flushIndex();
+        $this->assertSame(3, $this->searchIndexService->getCount(new Search(), $this->simpleAlias));
+        $flushes = array_filter(
+            $log->getRecords(),
+            static fn ($record) => $record->message === 'Snapshot import bulk'
+                && ($record->context['index'] ?? null) === 'data-object_simple',
+        );
+        $this->assertCount(3, $flushes, 'one bulk request per document when the byte budget is 1');
+        foreach ($flushes as $flush) {
+            $this->assertSame(1, $flush->context['documents']);
+            $this->assertGreaterThan(1, $flush->context['bytes'], 'the first document already exceeds the budget');
+        }
     }
 }

@@ -167,8 +167,16 @@ class Configuration implements ConfigurationInterface
                             ->min(1)
                         ->end()
                         ->integerNode('bulk_size')
-                            ->info('Documents per bulk request during import.')
+                            ->info('Maximum documents per bulk request during import.')
                             ->defaultValue(1000)
+                            ->min(1)
+                        ->end()
+                        ->integerNode('bulk_bytes')
+                            ->info(
+                                'Raw JSON byte budget per import bulk request. A request is sent as soon '
+                                . 'as either bulk_size documents or this many bytes are pending.',
+                            )
+                            ->defaultValue(16 * 1024 * 1024)
                             ->min(1)
                         ->end()
                     ->end()

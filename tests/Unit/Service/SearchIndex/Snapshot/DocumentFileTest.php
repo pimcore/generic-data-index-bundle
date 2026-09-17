@@ -126,4 +126,30 @@ final class DocumentFileTest extends Unit
         $written = $writer->finish();
         $this->assertLessThan($expectedBytes + 64, $written->bytes, 'gzip output is unrelated to the raw byte counter');
     }
+
+    public function testReaderReportsTheRawBytesOfEveryLine(): void
+    {
+        $documents = [
+            ['system_fields' => ['id' => 1, 'key' => 'käse']],
+            ['system_fields' => ['id' => 2], 'standard_fields' => ['long' => str_repeat('x', 300)]],
+        ];
+        $writer = DocumentFileWriter::createTemporary();
+        foreach ($documents as $document) {
+            $writer->write($document);
+        }
+        $written = $writer->finish();
+        $this->paths[] = $written->path;
+
+        $lines = iterator_to_array((new DocumentFileReader())->readLines($written->path), false);
+
+        $this->assertCount(2, $lines);
+        $this->assertSame($documents[0], $lines[0]->document);
+        $this->assertSame($documents[1], $lines[1]->document);
+        $this->assertSame(strlen(json_encode($documents[0], JSON_UNESCAPED_UNICODE) . "\n"), $lines[0]->bytes);
+        $this->assertSame(
+            $writer->getRawBytes(),
+            $lines[0]->bytes + $lines[1]->bytes,
+            'reader and writer agree on raw size',
+        );
+    }
 }
