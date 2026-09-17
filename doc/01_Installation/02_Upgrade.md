@@ -10,7 +10,8 @@ Following steps are necessary during updating to newer versions.
   `--force` is given) when a class's mapping checksum in the manifest does not match the local class definition.
   Snapshots are not rotated: they accumulate in the storage until an operator deletes them. See
   [Index snapshots](../02_Configuration/06_Index_Snapshots.md) for the commands and configuration.
-- [Configuration] Added the `pimcore_generic_data_index.snapshot` node (`storage`, `page_size`, `bulk_size`)
+- [Configuration] Added the `pimcore_generic_data_index.snapshot` node (`storage`, `page_size`, `page_bytes`,
+  `bulk_size`, `bulk_bytes`)
   and a default private Flysystem storage `pimcore.generic_data_index_snapshot.storage` under
   `var/generic-data-index/snapshots`.
 - [Bug] `generic-data-index:status` (and any caller of `IndexStatsService::getStats()`) no longer fails with

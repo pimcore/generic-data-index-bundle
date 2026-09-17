@@ -23,8 +23,10 @@ private location. Never point the storage at a public asset bucket.
 pimcore_generic_data_index:
     snapshot:
         storage: 'pimcore.generic_data_index_snapshot.storage'  # Flysystem storage service id
-        page_size: 1000    # documents per page on export
-        bulk_size: 1000    # documents per bulk request on import
+        page_size: 1000      # maximum documents per page on export
+        page_bytes: 16777216 # raw JSON byte budget per export page (16 MiB)
+        bulk_size: 1000      # maximum documents per bulk request on import
+        bulk_bytes: 16777216 # raw JSON byte budget per import bulk request (16 MiB)
 ```
 
 The bundle ships a private local storage under `var/generic-data-index/snapshots`. Override it in
@@ -41,6 +43,28 @@ flysystem:
                 bucket: '%env(S3_SNAPSHOT_BUCKET)%'
                 prefix: 'gdi-snapshots'
 ```
+
+### Memory and page sizing
+
+The size of an indexed document is not known up front, and one page of 1000 large documents can
+exhaust PHP's memory limit on its own. `page_size` and `bulk_size` are therefore ceilings, not
+fixed batch sizes:
+
+- On export, the first page of every index is a 50-document probe. Every following page is sized
+  from the running average of the raw JSON written for that index so far, so that one page stays
+  within `page_bytes`. Small documents still page at `page_size`; 200 KB documents page at about
+  80 with the default budget.
+- On import, a bulk request is sent as soon as either `bulk_size` documents or `bulk_bytes` of raw
+  JSON are pending. Keep `bulk_bytes` well below the search engine's request size limit
+  (`http.max_content_length`, 100 MB by default).
+
+A 16 MiB page decodes to roughly 100–200 MB of PHP memory at its peak. Lower the budgets on hosts
+with a small `memory_limit`; raising them buys little, because the number of requests is rarely
+the bottleneck. Both commands log every page and every bulk flush at debug level.
+
+Run both commands with `--no-debug` (or in the `prod` environment). In debug mode the bundle keeps
+a history of executed searches, including their full responses, for the profiler; on a large
+export this history alone can exhaust the memory limit.
 
 ## Export
 
