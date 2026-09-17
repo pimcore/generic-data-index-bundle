@@ -16,15 +16,23 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Snapshot;
 use Codeception\Test\Unit;
 use League\Flysystem\Filesystem;
 use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
+use Monolog\Handler\TestHandler;
+use Monolog\Logger;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotExportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ExportOptions;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\Manifest;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileReader;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileWriter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotIndexResolverInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
 use Pimcore\Db;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -172,6 +180,42 @@ final class SnapshotExporterTest extends Unit
             $this->assertStringContainsString('delete boom', $e->getMessage());
             $this->assertSame($originalFailure, $e->getPrevious());
         }
+    }
+
+    public function testPagesShrinkToTheByteBudgetAndStillExportEveryDocument(): void
+    {
+        for ($i = 1; $i <= 5; $i++) {
+            $this->tester->createFullyFledgedObjectSimple('snapshot-paged-', true, true, $i);
+        }
+        $this->tester->flushIndex();
+        $storage = new SnapshotStorage(new Filesystem(new InMemoryFilesystemAdapter()));
+        // ceiling of 2 documents, budget of 1 byte: a 2-document probe, then 1 document per page
+        $exporter = new SnapshotExporter(
+            $this->tester->grabService(SearchIndexServiceInterface::class),
+            $this->tester->grabService(SearchIndexConfigServiceInterface::class),
+            $this->tester->grabService(SnapshotIndexResolverInterface::class),
+            $this->tester->grabService(SettingsStoreServiceInterface::class),
+            $this->tester->grabService(IndexStatsServiceInterface::class),
+            pageSize: 2,
+            pageBytes: 1,
+        );
+        $log = new TestHandler();
+        $exporter->setLogger(new Logger('test', [$log]));
+
+        $result = $exporter->export($storage, 'paged', new ExportOptions());
+
+        $simple = $result->manifest->getIndex('data-object_simple');
+        $this->assertNotNull($simple);
+        $this->assertSame(5, $simple->documentCount, 'every document is exported despite the tiny budget');
+
+        $requested = [];
+        foreach ($log->getRecords() as $record) {
+            if (($record->context['index'] ?? null) === 'data-object_simple') {
+                $requested[] = $record->context['requested'];
+            }
+        }
+        // 2 (probe) + 1 + 1 + 1 cover all five documents; the last request returns the empty page that ends the loop
+        $this->assertSame([2, 1, 1, 1, 1], $requested);
     }
 }
 

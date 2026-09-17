@@ -104,4 +104,26 @@ final class DocumentFileTest extends Unit
 
         $this->assertFileExists($written->path);
     }
+
+    public function testWriterTracksDocumentCountAndRawBytesWhileWriting(): void
+    {
+        $writer = DocumentFileWriter::createTemporary();
+        $this->paths[] = $writer->getPath();
+
+        $this->assertSame(0, $writer->getDocumentCount());
+        $this->assertSame(0, $writer->getRawBytes());
+
+        $first = ['system_fields' => ['id' => 1, 'key' => 'käse']];
+        $second = ['system_fields' => ['id' => 2], 'standard_fields' => ['ratio' => 1.0]];
+        $writer->write($first);
+        $writer->write($second);
+
+        $expectedBytes = strlen(json_encode($first, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n")
+            + strlen(json_encode($second, JSON_UNESCAPED_UNICODE | JSON_PRESERVE_ZERO_FRACTION) . "\n");
+        $this->assertSame(2, $writer->getDocumentCount());
+        $this->assertSame($expectedBytes, $writer->getRawBytes(), 'raw bytes are the uncompressed NDJSON size');
+
+        $written = $writer->finish();
+        $this->assertLessThan($expectedBytes + 64, $written->bytes, 'gzip output is unrelated to the raw byte counter');
+    }
 }

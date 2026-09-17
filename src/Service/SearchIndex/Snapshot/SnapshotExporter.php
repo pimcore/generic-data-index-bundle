@@ -50,6 +50,7 @@ final class SnapshotExporter implements SnapshotExporterInterface
         private readonly SettingsStoreServiceInterface $settingsStoreService,
         private readonly IndexStatsServiceInterface $indexStatsService,
         private readonly int $pageSize,
+        private readonly int $pageBytes,
     ) {
     }
 
@@ -215,10 +216,13 @@ final class SnapshotExporter implements SnapshotExporterInterface
         $writer = DocumentFileWriter::createTemporary();
 
         try {
-            $search = new Search(size: $this->pageSize, source: true);
+            $sizer = new PageSizer($this->pageSize, $this->pageBytes);
+            $search = new Search(source: true);
             $search->setSortList(new FieldSortList([new FieldSort(SystemField::ID->getPath())]));
             $searchAfter = null;
             do {
+                $pageSize = $sizer->nextPageSize($writer->getDocumentCount(), $writer->getRawBytes());
+                $search->setSize($pageSize);
                 $search->setSearchAfter($searchAfter);
                 // `false` is not usable here: with track_total_hits disabled the search engine
                 // omits "hits.total" entirely, but SearchResultDenormalizer::denormalize()
@@ -228,12 +232,19 @@ final class SnapshotExporter implements SnapshotExporterInterface
                 // counting every match on each page.
                 $result = $this->searchIndexService->search($search, $target->aliasName, 1);
                 $hits = $result->getHits();
+                $this->logger?->debug('Snapshot export page', [
+                    'index' => $target->shortName,
+                    'requested' => $pageSize,
+                    'received' => count($hits),
+                    'documents_so_far' => $writer->getDocumentCount(),
+                    'raw_bytes_so_far' => $writer->getRawBytes(),
+                ]);
                 foreach ($hits as $hit) {
                     $writer->write($hit->getSource());
                 }
                 $lastHit = $result->getLastHit();
                 $searchAfter = $lastHit?->getSort();
-            } while ($lastHit !== null && $searchAfter !== null && count($hits) === $this->pageSize);
+            } while ($lastHit !== null && $searchAfter !== null && count($hits) === $pageSize);
 
             return $writer->finish();
         } catch (Throwable $e) {

@@ -26,6 +26,7 @@ final class ConfigurationTest extends Unit
         $this->assertSame([
             'storage' => 'pimcore.generic_data_index_snapshot.storage',
             'page_size' => 1000,
+            'page_bytes' => 16 * 1024 * 1024,
             'bulk_size' => 1000,
         ], $config['snapshot']);
     }
@@ -33,11 +34,17 @@ final class ConfigurationTest extends Unit
     public function testSnapshotOverrides(): void
     {
         $config = (new Processor())->processConfiguration(new Configuration(), [[
-            'snapshot' => ['storage' => 'pimcore.customer_snapshots.storage', 'page_size' => 250, 'bulk_size' => 500],
+            'snapshot' => [
+                'storage' => 'pimcore.customer_snapshots.storage',
+                'page_size' => 250,
+                'page_bytes' => 4096,
+                'bulk_size' => 500,
+            ],
         ]]);
 
         $this->assertSame('pimcore.customer_snapshots.storage', $config['snapshot']['storage']);
         $this->assertSame(250, $config['snapshot']['page_size']);
+        $this->assertSame(4096, $config['snapshot']['page_bytes']);
         $this->assertSame(500, $config['snapshot']['bulk_size']);
     }
 }

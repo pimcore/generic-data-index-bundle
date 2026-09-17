@@ -31,6 +31,8 @@ final class DocumentFileWriter
 
     private int $documentCount = 0;
 
+    private int $rawBytes = 0;
+
     private bool $finished = false;
 
     private bool $aborted = false;
@@ -79,6 +81,20 @@ final class DocumentFileWriter
             throw new SnapshotExportException(sprintf('Failed to write document to "%s"', $this->path));
         }
         $this->documentCount++;
+        $this->rawBytes += strlen($line);
+    }
+
+    public function getDocumentCount(): int
+    {
+        return $this->documentCount;
+    }
+
+    /**
+     * Uncompressed NDJSON bytes written so far; the exporter sizes its pages from this.
+     */
+    public function getRawBytes(): int
+    {
+        return $this->rawBytes;
     }
 
     /**

@@ -154,8 +154,16 @@ class Configuration implements ConfigurationInterface
                             ->cannotBeEmpty()
                         ->end()
                         ->integerNode('page_size')
-                            ->info('Documents fetched per search_after page during export.')
+                            ->info('Maximum documents fetched per search_after page during export.')
                             ->defaultValue(1000)
+                            ->min(1)
+                        ->end()
+                        ->integerNode('page_bytes')
+                            ->info(
+                                'Raw JSON byte budget per export page. Pages shrink below page_size '
+                                . 'when documents are large, so one page never exceeds this size.',
+                            )
+                            ->defaultValue(16 * 1024 * 1024)
                             ->min(1)
                         ->end()
                         ->integerNode('bulk_size')
