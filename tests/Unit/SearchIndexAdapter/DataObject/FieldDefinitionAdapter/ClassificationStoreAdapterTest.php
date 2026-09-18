@@ -97,9 +97,13 @@ final class ClassificationStoreAdapterTest extends Unit
 
         $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'normalizeNameSegment');
 
-        $this->assertSame('Size_Drive_Dr', $method->invoke($adapter, 'Size_Drive_Dr.', 'key', 42));
+        $this->assertSame('Size_Drive_Dr', $method->invoke($adapter, 'Size_Drive_Dr.', 'key', 42, true));
         $this->assertCount(1, $logger->records);
         $this->assertSame('info', $logger->records[0]['level']);
+
+        // The document paths run per element and per locale, so they stay silent.
+        $method->invoke($adapter, 'Size_Drive_Dr.', 'key', 42);
+        $this->assertCount(1, $logger->records, 'only the mapping path may report a normalised name');
     }
 
     public function testNameSegmentStartingWithADotIsTrimmed(): void
@@ -130,6 +134,46 @@ final class ClassificationStoreAdapterTest extends Unit
         $this->assertCount(0, $logger->records, 'an unaffected name must not produce log noise');
     }
 
+    /**
+     * A doubled dot inside a name adds the same empty path component as a leading or trailing one, and
+     * the search index rejects it for the same reason.
+     */
+    public function testConsecutiveDotsInsideANameAreCollapsed(): void
+    {
+        $adapter = $this->createAdapter();
+        $adapter->setLogger($this->createCollectingLogger());
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'normalizeNameSegment');
+
+        $this->assertSame('Size.Drive', $method->invoke($adapter, 'Size..Drive', 'key', 42));
+        $this->assertSame('Size.Drive', $method->invoke($adapter, '.Size...Drive.', 'key', 42));
+    }
+
+    /**
+     * Two names that differ only in dot placement normalise to the same segment. Classification store
+     * names are not unique, so without a guard the later entry would overwrite the earlier one.
+     */
+    public function testCollidingNormalizedKeyNameIsSkippedRatherThanOverwritingTheMapping(): void
+    {
+        $adapter = $this->createAdapter();
+        $logger = $this->createCollectingLogger();
+        $adapter->setLogger($logger);
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'isTakenNameSegment');
+
+        $this->assertFalse($method->invoke($adapter, [], 'Size', 'Size', 'key', 42, true));
+        $this->assertCount(0, $logger->records);
+
+        $this->assertTrue($method->invoke($adapter, ['Size' => []], 'Size', 'Size.', 'key', 43, true));
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('warning', $logger->records[0]['level']);
+        $this->assertStringContainsString('already', $logger->records[0]['message']);
+
+        // The document paths stay silent for the same reason as normalizeNameSegment().
+        $this->assertTrue($method->invoke($adapter, ['Size' => []], 'Size', 'Size.', 'key', 43));
+        $this->assertCount(1, $logger->records);
+    }
+
     public function testNameSegmentOfOnlyDotsIsSkippedWithAWarning(): void
     {
         $adapter = $this->createAdapter();
@@ -138,7 +182,7 @@ final class ClassificationStoreAdapterTest extends Unit
 
         $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'normalizeNameSegment');
 
-        $this->assertNull($method->invoke($adapter, '..', 'key', 42));
+        $this->assertNull($method->invoke($adapter, '..', 'key', 42, true));
         $this->assertCount(1, $logger->records);
         $this->assertSame('warning', $logger->records[0]['level']);
         $this->assertStringContainsString('consists only of dots', $logger->records[0]['message']);
