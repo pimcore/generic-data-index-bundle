@@ -99,25 +99,41 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 continue;
             }
 
-            $resultItems[$groupName] = [];
-            $keys = $this->getClassificationStoreKeysFromGroup($groupConfig);
-            foreach ($validLanguages as $validLanguage) {
-                foreach ($keys as $key) {
-                    $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId());
-                    if ($keyName === null) {
-                        continue;
-                    }
+            $resultItems[$groupName] = $this->normalizeGroupValues($value, $groupId, $groupConfig, $validLanguages);
+        }
 
-                    $normalizedValue = $this->getNormalizedValue($value, $groupId, $key, $validLanguage);
+        return $resultItems;
+    }
 
-                    if ($normalizedValue !== null) {
-                        $resultItems[$groupName][$validLanguage][$keyName] = $normalizedValue;
-                    }
+    /**
+     * @param GroupConfig $groupConfig
+     * @param string[] $validLanguages
+     */
+    private function normalizeGroupValues(
+        ClassificationstoreModel $value,
+        int $groupId,
+        GroupConfig $groupConfig,
+        array $validLanguages
+    ): array {
+        $normalizedGroup = [];
+        $keys = $this->getClassificationStoreKeysFromGroup($groupConfig);
+
+        foreach ($validLanguages as $validLanguage) {
+            foreach ($keys as $key) {
+                $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId());
+                if ($keyName === null) {
+                    continue;
+                }
+
+                $normalizedValue = $this->getNormalizedValue($value, $groupId, $key, $validLanguage);
+
+                if ($normalizedValue !== null) {
+                    $normalizedGroup[$validLanguage][$keyName] = $normalizedValue;
                 }
             }
         }
 
-        return $resultItems;
+        return $normalizedGroup;
     }
 
     /**
