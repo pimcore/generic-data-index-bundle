@@ -83,6 +83,75 @@ final class ClassificationStoreAdapterTest extends Unit
         );
     }
 
+    /**
+     * Regression test for pimcore/platform-version#271: a classification store key whose name ends
+     * with a dot produced the field path "<field>.<group>.<key>..<language>", which the search index
+     * rejects with "object field starting or ending with a [.] makes object resolution ambiguous",
+     * failing the whole bulk request.
+     */
+    public function testNameSegmentEndingWithADotIsTrimmed(): void
+    {
+        $adapter = $this->createAdapter();
+        $logger = $this->createCollectingLogger();
+        $adapter->setLogger($logger);
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'normalizeNameSegment');
+
+        $this->assertSame('Size_Drive_Dr', $method->invoke($adapter, 'Size_Drive_Dr.', 'key', 42));
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('info', $logger->records[0]['level']);
+    }
+
+    public function testNameSegmentStartingWithADotIsTrimmed(): void
+    {
+        $adapter = $this->createAdapter();
+        $adapter->setLogger($this->createCollectingLogger());
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'normalizeNameSegment');
+
+        $this->assertSame('Specifications', $method->invoke($adapter, '.Specifications', 'group', 9));
+    }
+
+    public function testNameSegmentWithoutLeadingOrTrailingDotIsUntouchedAndNotLogged(): void
+    {
+        $adapter = $this->createAdapter();
+        $logger = $this->createCollectingLogger();
+        $adapter->setLogger($logger);
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'normalizeNameSegment');
+
+        // A dot inside the name is left alone - only the leading/trailing position is rejected by
+        // the search index, and rewriting anything else would change field names that index today.
+        $this->assertSame(
+            'Regular Socket - Spec.ifications',
+            $method->invoke($adapter, 'Regular Socket - Spec.ifications', 'group', 9)
+        );
+        $this->assertSame('Size_Drive_Dr', $method->invoke($adapter, 'Size_Drive_Dr', 'key', 42));
+        $this->assertCount(0, $logger->records, 'an unaffected name must not produce log noise');
+    }
+
+    public function testNameSegmentOfOnlyDotsIsSkippedWithAWarning(): void
+    {
+        $adapter = $this->createAdapter();
+        $logger = $this->createCollectingLogger();
+        $adapter->setLogger($logger);
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'normalizeNameSegment');
+
+        $this->assertNull($method->invoke($adapter, '..', 'key', 42));
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('warning', $logger->records[0]['level']);
+        $this->assertStringContainsString('consists only of dots', $logger->records[0]['message']);
+    }
+
+    private function createAdapter(): ClassificationStoreAdapter
+    {
+        return new ClassificationStoreAdapter(
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
+            $this->makeEmpty(FieldDefinitionServiceInterface::class)
+        );
+    }
+
     private function createCollectingLogger(): AbstractLogger
     {
         return new class extends AbstractLogger {

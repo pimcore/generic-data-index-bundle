@@ -64,8 +64,13 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
         $groups = $this->getClassificationStoreGroups($classificationStore->getStoreId());
         foreach ($groups as $group) {
+            $groupName = $this->normalizeNameSegment($group->getName(), 'group', $group->getId());
+            if ($groupName === null) {
+                continue;
+            }
+
             $keys = $this->getClassificationStoreKeysFromGroup($group);
-            $mapping[$group->getName()]['properties'] = $this->getMappingForGroupConfig($keys);
+            $mapping[$groupName]['properties'] = $this->getMappingForGroupConfig($keys);
         }
 
         return [
@@ -89,14 +94,24 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $resultItems = [];
 
         foreach ($this->getActiveGroups($value) as $groupId => $groupConfig) {
-            $resultItems[$groupConfig->getName()] = [];
+            $groupName = $this->normalizeNameSegment($groupConfig->getName(), 'group', $groupId);
+            if ($groupName === null) {
+                continue;
+            }
+
+            $resultItems[$groupName] = [];
             $keys = $this->getClassificationStoreKeysFromGroup($groupConfig);
             foreach ($validLanguages as $validLanguage) {
                 foreach ($keys as $key) {
+                    $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId());
+                    if ($keyName === null) {
+                        continue;
+                    }
+
                     $normalizedValue = $this->getNormalizedValue($value, $groupId, $key, $validLanguage);
 
                     if ($normalizedValue !== null) {
-                        $resultItems[$groupConfig->getName()][$validLanguage][$key->getName()] = $normalizedValue;
+                        $resultItems[$groupName][$validLanguage][$keyName] = $normalizedValue;
                     }
                 }
             }
@@ -205,6 +220,47 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         return $activeGroups;
     }
 
+    /**
+     * The search index rejects an object field name that starts or ends with a dot - "object field
+     * starting or ending with a [.] makes object resolution ambiguous" - because the dot is its path
+     * separator. A classification store group or key name may carry one, and a single such name makes
+     * the whole bulk request fail, so no element of the index gets updated at all.
+     *
+     * A name that neither starts nor ends with a dot is returned unchanged, so nothing that indexes
+     * today is affected. A name consisting only of dots cannot be represented at all and is skipped.
+     */
+    private function normalizeNameSegment(string $name, string $type, int|string|null $id): ?string
+    {
+        $normalized = trim($name, '.');
+
+        if ($normalized === $name) {
+            return $normalized;
+        }
+
+        if ($normalized === '') {
+            $this->logger->warning(sprintf(
+                'Skipping classification store %s %s: its name "%s" consists only of dots, ' .
+                'which cannot be used as a search index field name.',
+                $type,
+                (string) $id,
+                $name
+            ));
+
+            return null;
+        }
+
+        $this->logger->info(sprintf(
+            'Classification store %s %s is indexed as "%s": its name "%s" starts or ends with a dot, ' .
+            'which the search index does not allow in a field name.',
+            $type,
+            (string) $id,
+            $normalized,
+            $name
+        ));
+
+        return $normalized;
+    }
+
     private function getInheritancePath(string $key, string $groupName, string $groupKeyName, string $lang): string
     {
         $path = $key . '.' . $groupName . '.' . $groupKeyName;
@@ -232,8 +288,13 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 continue;
             }
 
+            $groupName = $this->normalizeNameSegment($group->getName(), 'group', $group->getId());
+            if ($groupName === null) {
+                continue;
+            }
+
             $mapping[$group->getId()] = [
-                'name' => $group->getName(),
+                'name' => $groupName,
             ];
             $keys = $this->getClassificationStoreKeysFromGroup($group);
             foreach ($keys as $groupKey) {
@@ -241,8 +302,13 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 if ($definition === null) {
                     continue;
                 }
+                $keyName = $this->normalizeNameSegment($groupKey->getName(), 'key', $groupKey->getKeyId());
+                if ($keyName === null) {
+                    continue;
+                }
+
                 $mapping[$groupKey->getGroupId()]['keys'][$groupKey->getKeyId()] = [
-                    'name' => $groupKey->getName(),
+                    'name' => $keyName,
                     'definition' => $definition,
                 ];
             }
@@ -283,8 +349,10 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
             $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($definition);
 
-            if ($adapter) {
-                $groupMapping['default']['properties'][$key->getName()] = $adapter->getIndexMapping();
+            $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId());
+
+            if ($adapter && $keyName !== null) {
+                $groupMapping['default']['properties'][$keyName] = $adapter->getIndexMapping();
             }
         }
 
