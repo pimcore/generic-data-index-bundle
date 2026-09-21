@@ -306,8 +306,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     /**
      * Two names that differ only in dot placement - "A." and "A" - normalize to the same segment, and
      * classification store names are not unique, so the later one would silently overwrite the earlier
-     * one in both the mapping and the document. The first one wins instead; mapping and documents iterate
-     * the same listings in the same order, so both sides drop the same entry.
+     * one in the mapping, the document and the inheritance path. The first one wins instead; all three
+     * iterate the same listings in the same order, so they drop the same entry.
      */
     private function isTakenNameSegment(
         array $existingNames,
@@ -358,38 +358,59 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             return $mapping;
         }
 
+        $usedGroupNames = [];
+
         foreach ($groups as $group) {
             if (!in_array($group->getId(), $activeGroups, true)) {
                 continue;
             }
 
             $groupName = $this->normalizeNameSegment($group->getName(), 'group', $group->getId());
-            if ($groupName === null) {
+            if ($groupName === null
+                || $this->isTakenNameSegment($usedGroupNames, $groupName, $group->getName(), 'group', $group->getId())
+            ) {
                 continue;
             }
 
+            $usedGroupNames[$groupName] = true;
             $mapping[$group->getId()] = [
                 'name' => $groupName,
+                'keys' => $this->getKeyMappingForInheritance($group),
             ];
-            $keys = $this->getClassificationStoreKeysFromGroup($group);
-            foreach ($keys as $groupKey) {
-                $definition = $this->getFieldDefinitionForKey($groupKey);
-                if ($definition === null) {
-                    continue;
-                }
-                $keyName = $this->normalizeNameSegment($groupKey->getName(), 'key', $groupKey->getKeyId());
-                if ($keyName === null) {
-                    continue;
-                }
-
-                $mapping[$groupKey->getGroupId()]['keys'][$groupKey->getKeyId()] = [
-                    'name' => $keyName,
-                    'definition' => $definition,
-                ];
-            }
         }
 
         return $mapping;
+    }
+
+    /**
+     * @return array<int, array{name: string, definition: Data}>
+     */
+    private function getKeyMappingForInheritance(GroupConfig $group): array
+    {
+        $keyMapping = [];
+        $usedKeyNames = [];
+
+        foreach ($this->getClassificationStoreKeysFromGroup($group) as $groupKey) {
+            $definition = $this->getFieldDefinitionForKey($groupKey);
+            if ($definition === null) {
+                continue;
+            }
+
+            $keyName = $this->normalizeNameSegment($groupKey->getName(), 'key', $groupKey->getKeyId());
+            if ($keyName === null
+                || $this->isTakenNameSegment($usedKeyNames, $keyName, $groupKey->getName(), 'key', $groupKey->getKeyId())
+            ) {
+                continue;
+            }
+
+            $usedKeyNames[$keyName] = true;
+            $keyMapping[$groupKey->getKeyId()] = [
+                'name' => $keyName,
+                'definition' => $definition,
+            ];
+        }
+
+        return $keyMapping;
     }
 
     /**

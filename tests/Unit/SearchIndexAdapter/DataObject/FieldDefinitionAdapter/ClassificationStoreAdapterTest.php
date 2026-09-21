@@ -124,8 +124,8 @@ final class ClassificationStoreAdapterTest extends Unit
 
         $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'normalizeNameSegment');
 
-        // A dot inside the name is left alone - only the leading/trailing position is rejected by
-        // the search index, and rewriting anything else would change field names that index today.
+        // A single dot inside the name is left alone: it creates a nested sub-object, which the search
+        // index accepts, and rewriting it would change field names that index today.
         $this->assertSame(
             'Regular Socket - Spec.ifications',
             $method->invoke($adapter, 'Regular Socket - Spec.ifications', 'group', 9)
