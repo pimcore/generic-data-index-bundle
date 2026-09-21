@@ -164,10 +164,12 @@ final class SnapshotExporterTest extends Unit
         $filesystem = new Filesystem(new InMemoryFilesystemAdapter());
         $inner = new SnapshotStorage($filesystem);
         $originalFailure = new RuntimeException('disk full');
+        // the first deleteSnapshot() call is the pre-export clearing of leftovers and must
+        // succeed; the second one is the cleanup after the manifest failure, which is under test
         $storage = new DelegatingFailingSnapshotStorage($inner, [
             'writeManifest' => $originalFailure,
             'deleteSnapshot' => new RuntimeException('delete boom'),
-        ]);
+        ], ['deleteSnapshot' => 2]);
         /** @var SnapshotExporterInterface $exporter */
         $exporter = $this->tester->grabService(SnapshotExporterInterface::class);
 
@@ -245,17 +247,23 @@ final class SnapshotExporterTest extends Unit
 
 /**
  * Delegates every SnapshotStorageInterface call to a real, in-memory-backed SnapshotStorage,
- * except the named methods in $failures, each of which always throws its given exception instead
- * of delegating — used to exercise the exporter's failure-cleanup paths.
+ * except the named methods in $failures, each of which throws its given exception instead of
+ * delegating — from its first call, or from the call number given in $failFromCall — used to
+ * exercise the exporter's failure-cleanup paths.
  */
 final class DelegatingFailingSnapshotStorage implements SnapshotStorageInterface
 {
+    /** @var array<string, int> method name => calls seen so far */
+    private array $calls = [];
+
     /**
      * @param array<string, Throwable> $failures method name => exception to throw instead of delegating
+     * @param array<string, int> $failFromCall method name => first call (1-based) that fails; default 1
      */
     public function __construct(
         private readonly SnapshotStorageInterface $inner,
         private readonly array $failures,
+        private readonly array $failFromCall = [],
     ) {
     }
 
@@ -309,7 +317,8 @@ final class DelegatingFailingSnapshotStorage implements SnapshotStorageInterface
 
     private function maybeFail(string $method): void
     {
-        if (isset($this->failures[$method])) {
+        $this->calls[$method] = ($this->calls[$method] ?? 0) + 1;
+        if (isset($this->failures[$method]) && $this->calls[$method] >= ($this->failFromCall[$method] ?? 1)) {
             throw $this->failures[$method];
         }
     }

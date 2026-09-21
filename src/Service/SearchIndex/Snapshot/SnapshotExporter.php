@@ -97,12 +97,9 @@ final class SnapshotExporter implements SnapshotExporterInterface
             return new ExportResult($name, $manifest->withIndices($indices), true);
         }
 
+        $this->clearAbortedRun($storage, $name);
+
         try {
-            // hasSnapshot() only looks for the manifest, so a directory left behind by an aborted
-            // run (no manifest, some index files) passes the check above. Clear it before writing,
-            // otherwise files of indices that no longer exist would sit beside the new manifest
-            // and travel along with the bundle. deleteSnapshot() is silent when there is nothing.
-            $storage->deleteSnapshot($name);
             $indices = $this->exportAllIndices($storage, $name, $targets, $onIndexExported);
 
             $manifest = new Manifest(
@@ -147,6 +144,28 @@ final class SnapshotExporter implements SnapshotExporterInterface
         ));
 
         return new ExportResult($name, $manifest, false);
+    }
+
+    /**
+     * hasSnapshot() only looks for the manifest, so a directory left behind by an aborted run (no
+     * manifest, some index files) is not "an existing snapshot" and must not block a retry. It
+     * must not be reused as-is either: files of indices the retry does not write again would sit
+     * beside the new manifest and travel along with the bundle. deleteSnapshot() is silent when
+     * there is nothing to remove.
+     *
+     * @throws SnapshotExportException
+     */
+    private function clearAbortedRun(SnapshotStorageInterface $storage, string $name): void
+    {
+        try {
+            $storage->deleteSnapshot($name);
+        } catch (Throwable $e) {
+            throw new SnapshotExportException(
+                sprintf('Cannot clear the leftovers of an aborted export "%s": %s', $name, $e->getMessage()),
+                0,
+                $e,
+            );
+        }
     }
 
     private function queueCount(): int
