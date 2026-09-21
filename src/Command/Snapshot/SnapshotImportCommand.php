@@ -23,14 +23,15 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportOptions;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotLock;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
 use Pimcore\Console\AbstractCommand;
-use Symfony\Component\Console\Command\LockableTrait;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Lock\LockFactory;
 use Throwable;
 
 /**
@@ -41,12 +42,11 @@ use Throwable;
  */
 final class SnapshotImportCommand extends AbstractCommand
 {
-    use LockableTrait;
-
     public function __construct(
         private readonly SnapshotStorageInterface $snapshotStorage,
         private readonly SnapshotImporterInterface $snapshotImporter,
         private readonly IndexStatsServiceInterface $indexStatsService,
+        private readonly LockFactory $lockFactory,
         ?string $name = null,
     ) {
         parent::__construct($name);
@@ -86,10 +86,8 @@ final class SnapshotImportCommand extends AbstractCommand
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        // Shared name with SnapshotExportCommand: export and import must be mutually
-        // exclusive, since a concurrent export could read a half-written snapshot or race
-        // the class-mapping checksum stamping the export/import cycle depends on.
-        if (!$this->lock('generic-data-index:snapshot')) {
+        $lock = SnapshotLock::create($this->lockFactory);
+        if (!$lock->acquire()) {
             $this->io->error('Another snapshot export or import is already running.');
 
             return self::FAILURE;
@@ -124,7 +122,8 @@ final class SnapshotImportCommand extends AbstractCommand
 
             $result = $this->snapshotImporter->import($storage, (string) $name, $options, function (
                 ImportedIndex $index,
-            ): void {
+            ) use ($lock): void {
+                $lock->refresh();
                 $this->io->writeln(
                     sprintf('  %s: %d/%d documents', $index->shortName, $index->actualCount, $index->expectedCount),
                 );
@@ -148,7 +147,7 @@ final class SnapshotImportCommand extends AbstractCommand
 
             return self::FAILURE;
         } finally {
-            $this->release();
+            $lock->release();
         }
     }
 

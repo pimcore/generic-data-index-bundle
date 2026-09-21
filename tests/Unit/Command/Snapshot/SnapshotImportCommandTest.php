@@ -28,6 +28,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\Manifest;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Stats\IndexStats;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotLock;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
 use RecursiveDirectoryIterator;
@@ -35,6 +36,8 @@ use RecursiveIteratorIterator;
 use RuntimeException;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Lock\Store\InMemoryStore;
 
 final class SnapshotImportCommandTest extends Unit
 {
@@ -188,11 +191,18 @@ final class SnapshotImportCommandTest extends Unit
         $this->assertStringNotContainsString('NO', $display);
     }
 
-    private function command(SnapshotStorageInterface $storage, SnapshotImporterInterface $importer, int $queueCount = 0): SnapshotImportCommand
-    {
-        return new SnapshotImportCommand($storage, $importer, $this->makeEmpty(IndexStatsServiceInterface::class, [
-            'getStats' => new IndexStats($queueCount, []),
-        ]));
+    private function command(
+        SnapshotStorageInterface $storage,
+        SnapshotImporterInterface $importer,
+        int $queueCount = 0,
+        ?LockFactory $lockFactory = null,
+    ): SnapshotImportCommand {
+        return new SnapshotImportCommand(
+            $storage,
+            $importer,
+            $this->makeEmpty(IndexStatsServiceInterface::class, ['getStats' => new IndexStats($queueCount, [])]),
+            $lockFactory ?? new LockFactory(new InMemoryStore()),
+        );
     }
 
     private function importResult(string $name, array $imported): ImportResult
@@ -237,5 +247,24 @@ final class SnapshotImportCommandTest extends Unit
             $display,
             'the manifest checksum cell stays empty for an unverified class',
         );
+    }
+
+    public function testRefusesToRunWhileAnExportHoldsTheSharedLock(): void
+    {
+        // Export and import share one lock resource, so an export on any node of the
+        // installation excludes the import for as long as the lock store is shared.
+        $lockFactory = new LockFactory(new InMemoryStore());
+        $export = SnapshotLock::create($lockFactory);
+        $this->assertTrue($export->acquire());
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => static function (): never {
+                throw new RuntimeException('must not import while an export holds the lock');
+            },
+        ]);
+        $storage = $this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']);
+        $tester = new CommandTester($this->command($storage, $importer, 0, $lockFactory));
+
+        $this->assertSame(Command::FAILURE, $tester->execute([]));
+        $this->assertStringContainsString('already running', $tester->getDisplay());
     }
 }

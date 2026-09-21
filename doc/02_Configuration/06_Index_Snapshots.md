@@ -66,6 +66,11 @@ afterwards. A 16 MiB page decodes to roughly 100–200 MB of PHP memory at its p
 with a small `memory_limit`; raising them buys little, because the number of requests is rarely
 the bottleneck. Both commands log every page and every bulk flush at debug level.
 
+Export and import share one lock, so they never run at the same time. The lock is taken from
+Symfony's lock component (`framework.lock`), whose default store is a host-local file lock. On an
+installation with several application nodes, configure a shared lock store (for example Redis or
+the database) so that an export on one node also excludes an import on another.
+
 Run both commands with `--no-debug` (or in the `prod` environment). In debug mode the bundle keeps
 a history of executed searches, including their full responses, for the profiler; on a large
 export this history alone can exhaust the memory limit.

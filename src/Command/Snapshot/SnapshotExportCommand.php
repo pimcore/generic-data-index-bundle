@@ -17,12 +17,13 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ExportOptions;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotLock;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
 use Pimcore\Console\AbstractCommand;
-use Symfony\Component\Console\Command\LockableTrait;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Lock\LockFactory;
 use Throwable;
 
 /**
@@ -33,11 +34,10 @@ use Throwable;
  */
 final class SnapshotExportCommand extends AbstractCommand
 {
-    use LockableTrait;
-
     public function __construct(
         private readonly SnapshotStorageInterface $snapshotStorage,
         private readonly SnapshotExporterInterface $snapshotExporter,
+        private readonly LockFactory $lockFactory,
         ?string $name = null,
     ) {
         parent::__construct($name);
@@ -56,10 +56,8 @@ final class SnapshotExportCommand extends AbstractCommand
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
-        // Shared name with SnapshotImportCommand: export and import must be mutually
-        // exclusive, since a concurrent import could read a half-written snapshot or race
-        // the class-mapping checksum stamping the export/import cycle depends on.
-        if (!$this->lock('generic-data-index:snapshot')) {
+        $lock = SnapshotLock::create($this->lockFactory);
+        if (!$lock->acquire()) {
             $this->io->error('Another snapshot export or import is already running.');
 
             return self::FAILURE;
@@ -72,7 +70,8 @@ final class SnapshotExportCommand extends AbstractCommand
                 $this->snapshotStorage,
                 $name,
                 $options,
-                function (IndexTarget $target, int $count): void {
+                function (IndexTarget $target, int $count) use ($lock): void {
+                    $lock->refresh();
                     $this->io->writeln(sprintf('  %s: %d documents', $target->shortName, $count));
                 },
             );
@@ -113,7 +112,7 @@ final class SnapshotExportCommand extends AbstractCommand
 
             return self::FAILURE;
         } finally {
-            $this->release();
+            $lock->release();
         }
     }
 }
