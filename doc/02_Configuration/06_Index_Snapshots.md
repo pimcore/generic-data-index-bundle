@@ -50,15 +50,19 @@ The size of an indexed document is not known up front, and one page of 1000 larg
 exhaust PHP's memory limit on its own. `page_size` and `bulk_size` are therefore ceilings, not
 fixed batch sizes:
 
-- On export, the first page of every index is a 50-document probe. Every following page is sized
-  from the running average of the raw JSON written for that index so far, so that one page stays
-  within `page_bytes`. Small documents still page at `page_size`; 200 KB documents page at about
-  80 with the default budget.
+- On export, the first page of every index requests a single document, so that a page cannot
+  exceed the budget before anything is known about document size. Every following page is sized
+  from the larger of two estimates: the average over the documents written for that index so far,
+  and the average of the most recent page. The second one makes a run of larger documents shrink
+  the next page immediately, while a single outlier does not collapse the page size. Small
+  documents still page at `page_size`; 200 KB documents page at about 80 with the default budget.
 - On import, a bulk request is sent as soon as either `bulk_size` documents or `bulk_bytes` of raw
   JSON are pending. Keep `bulk_bytes` well below the search engine's request size limit
   (`http.max_content_length`, 100 MB by default).
 
-A 16 MiB page decodes to roughly 100–200 MB of PHP memory at its peak. Lower the budgets on hosts
+The budget is a target rather than a guarantee, because the search engine cannot be asked for "at
+most N bytes": a page whose documents are larger than everything seen before is only corrected
+afterwards. A 16 MiB page decodes to roughly 100–200 MB of PHP memory at its peak. Lower the budgets on hosts
 with a small `memory_limit`; raising them buys little, because the number of requests is rarely
 the bottleneck. Both commands log every page and every bulk flush at debug level.
 

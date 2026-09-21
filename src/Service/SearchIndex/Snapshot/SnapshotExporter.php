@@ -221,7 +221,7 @@ final class SnapshotExporter implements SnapshotExporterInterface
             $search->setSortList(new FieldSortList([new FieldSort(SystemField::ID->getPath())]));
             $searchAfter = null;
             do {
-                $pageSize = $sizer->nextPageSize($writer->getDocumentCount(), $writer->getRawBytes());
+                $pageSize = $sizer->nextPageSize();
                 $search->setSize($pageSize);
                 $search->setSearchAfter($searchAfter);
                 // `false` is not usable here: with track_total_hits disabled the search engine
@@ -232,6 +232,11 @@ final class SnapshotExporter implements SnapshotExporterInterface
                 // counting every match on each page.
                 $result = $this->searchIndexService->search($search, $target->aliasName, 1);
                 $hits = $result->getHits();
+                $bytesBefore = $writer->getRawBytes();
+                foreach ($hits as $hit) {
+                    $writer->write($hit->getSource());
+                }
+                $sizer->recordPage(count($hits), $writer->getRawBytes() - $bytesBefore);
                 $this->logger?->debug('Snapshot export page', [
                     'index' => $target->shortName,
                     'requested' => $pageSize,
@@ -239,9 +244,6 @@ final class SnapshotExporter implements SnapshotExporterInterface
                     'documents_so_far' => $writer->getDocumentCount(),
                     'raw_bytes_so_far' => $writer->getRawBytes(),
                 ]);
-                foreach ($hits as $hit) {
-                    $writer->write($hit->getSource());
-                }
                 $lastHit = $result->getLastHit();
                 $searchAfter = $lastHit?->getSort();
             } while ($lastHit !== null && $searchAfter !== null && count($hits) === $pageSize);

@@ -214,8 +214,9 @@ final class SnapshotExporterTest extends Unit
                 $requested[] = $record->context['requested'];
             }
         }
-        // 2 (probe) + 1 + 1 + 1 cover all five documents; the last request returns the empty page that ends the loop
-        $this->assertSame([2, 1, 1, 1, 1], $requested);
+        // a 1-document probe, then 1 per page because the budget allows nothing more; the last
+        // request returns the empty page that ends the loop
+        $this->assertSame([1, 1, 1, 1, 1, 1], $requested);
     }
 }
 
