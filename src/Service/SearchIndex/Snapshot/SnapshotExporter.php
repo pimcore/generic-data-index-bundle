@@ -98,6 +98,11 @@ final class SnapshotExporter implements SnapshotExporterInterface
         }
 
         try {
+            // hasSnapshot() only looks for the manifest, so a directory left behind by an aborted
+            // run (no manifest, some index files) passes the check above. Clear it before writing,
+            // otherwise files of indices that no longer exist would sit beside the new manifest
+            // and travel along with the bundle. deleteSnapshot() is silent when there is nothing.
+            $storage->deleteSnapshot($name);
             $indices = $this->exportAllIndices($storage, $name, $targets, $onIndexExported);
 
             $manifest = new Manifest(

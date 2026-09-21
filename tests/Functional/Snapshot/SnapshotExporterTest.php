@@ -218,6 +218,29 @@ final class SnapshotExporterTest extends Unit
         // request returns the empty page that ends the loop
         $this->assertSame([1, 1, 1, 1, 1, 1], $requested);
     }
+
+    public function testAnAbortedExportDirectoryIsClearedBeforeTheRetry(): void
+    {
+        // A directory without manifest.json is an aborted export; hasSnapshot() correctly says
+        // "no snapshot", but the retry must not leave that run's files beside the new manifest,
+        // where they would carry stale indexed data along when the bundle is copied.
+        $this->tester->createFullyFledgedObjectSimple('snapshot-retry-', true, true, 1);
+        $this->tester->flushIndex();
+        $filesystem = new Filesystem(new InMemoryFilesystemAdapter());
+        $storage = new SnapshotStorage($filesystem);
+        $filesystem->write('retry/data-object_gone.ndjson.gz', 'stale');
+        $this->assertFalse($storage->hasSnapshot('retry'));
+        /** @var SnapshotExporterInterface $exporter */
+        $exporter = $this->tester->grabService(SnapshotExporterInterface::class);
+
+        $exporter->export($storage, 'retry', new ExportOptions());
+
+        $this->assertTrue($storage->hasSnapshot('retry'));
+        $this->assertFalse(
+            $filesystem->fileExists('retry/data-object_gone.ndjson.gz'),
+            'stale file from the aborted run is gone',
+        );
+    }
 }
 
 /**

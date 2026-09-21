@@ -41,6 +41,12 @@ final class DocumentFileWriter
     {
         $handle = gzopen($path, 'wb6');
         if ($handle === false) {
+            // tempnam() already created the file and no writer exists yet to abort(): remove it
+            // here, or every failed attempt would leave an orphaned temp file behind.
+            if (file_exists($path)) {
+                unlink($path);
+            }
+
             throw new SnapshotExportException(sprintf('Cannot open "%s" for gzip writing', $path));
         }
         $this->handle = $handle;
