@@ -52,6 +52,15 @@ final class DocumentReplayer implements DocumentReplayerInterface
                         sprintf('Document without integer system_fields.id in "%s"', $entry->file),
                     );
                 }
+                // Unlike export paging, the size of the next document is known before it is
+                // added: flush what is pending if this line would push the request over the byte
+                // budget, so a bulk body never exceeds it by a document. A single document larger
+                // than the whole budget still goes out on its own (post-add check below).
+                if ($pending > 0 && $pendingBytes + $line->bytes > $this->bulkBytes) {
+                    $this->commit($target, $pending, $pendingBytes);
+                    $pending = 0;
+                    $pendingBytes = 0;
+                }
                 $this->bulkOperationService->add($target->aliasName, $id, $document);
                 $pending++;
                 $pendingBytes += $line->bytes;

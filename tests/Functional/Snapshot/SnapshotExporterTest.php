@@ -189,7 +189,7 @@ final class SnapshotExporterTest extends Unit
         }
         $this->tester->flushIndex();
         $storage = new SnapshotStorage(new Filesystem(new InMemoryFilesystemAdapter()));
-        // ceiling of 2 documents, budget of 1 byte: a 2-document probe, then 1 document per page
+        // ceiling of 2 documents, budget of 1 byte: a 1-document probe, then 1 document per page
         $exporter = new SnapshotExporter(
             $this->tester->grabService(SearchIndexServiceInterface::class),
             $this->tester->grabService(SearchIndexConfigServiceInterface::class),

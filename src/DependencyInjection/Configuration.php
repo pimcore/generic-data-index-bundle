@@ -160,8 +160,9 @@ class Configuration implements ConfigurationInterface
                         ->end()
                         ->integerNode('page_bytes')
                             ->info(
-                                'Raw JSON byte budget per export page. Pages shrink below page_size '
-                                . 'when documents are large, so one page never exceeds this size.',
+                                'Adaptive raw JSON byte target per export page: pages shrink below page_size '
+                                . 'as documents get larger. Not a hard ceiling, since document size is only '
+                                . 'known after a page was fetched.',
                             )
                             ->defaultValue(16 * 1024 * 1024)
                             ->min(1)
