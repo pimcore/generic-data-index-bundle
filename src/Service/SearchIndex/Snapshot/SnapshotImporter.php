@@ -14,11 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 
 use League\Flysystem\FilesystemException;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\RefreshIndexMode;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Snapshot\ClassCompatibilityStatus;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\BulkOperationException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotIncompatibleException;
@@ -30,7 +26,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\Manifest;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -49,11 +44,9 @@ final class SnapshotImporter implements SnapshotImporterInterface
         private readonly CompatibilityCheckerInterface $compatibilityChecker,
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly SearchIndexServiceInterface $searchIndexService,
-        private readonly BulkOperationServiceInterface $bulkOperationService,
         private readonly IndexProvisionerInterface $indexProvisioner,
         private readonly DocumentFileReader $documentFileReader,
-        private readonly int $bulkSize,
-        private readonly int $bulkBytes,
+        private readonly DocumentReplayerInterface $documentReplayer,
     ) {
     }
 
@@ -302,23 +295,6 @@ final class SnapshotImporter implements SnapshotImporterInterface
         return $imported;
     }
 
-    /**
-     * Never refresh per batch: the default mode (`wait_for` when synchronous processing is
-     * disabled) would make every batch commit wait for a refresh, even though replay() refreshes
-     * once, after every document has been replayed.
-     *
-     * @throws BulkOperationException
-     */
-    private function commitBulk(IndexTarget $target, int $documents, int $bytes): void
-    {
-        $this->logger?->debug('Snapshot import bulk', [
-            'index' => $target->shortName,
-            'documents' => $documents,
-            'bytes' => $bytes,
-        ]);
-        $this->bulkOperationService->commit(RefreshIndexMode::NOT_REFRESH->value);
-    }
-
     private function replay(ManifestIndex $entry, IndexTarget $target, string $local): ImportedIndex
     {
         // The checksum is computed here, before the documents are replayed, but only ever
@@ -329,39 +305,7 @@ final class SnapshotImporter implements SnapshotImporterInterface
         $this->indexProvisioner->provision($target);
         $classMappingChecksum = $this->indexProvisioner->computeClassMappingChecksum($target);
 
-        try {
-            $pending = 0;
-            $pendingBytes = 0;
-            foreach ($this->documentFileReader->readLines($local) as $line) {
-                $document = $line->document;
-                $id = $document[FieldCategory::SYSTEM_FIELDS->value][SystemField::ID->value] ?? null;
-                if (!is_int($id)) {
-                    throw new SnapshotImportException(
-                        sprintf('Document without integer system_fields.id in "%s"', $entry->file),
-                    );
-                }
-                $this->bulkOperationService->add($target->aliasName, $id, $document);
-                $pending++;
-                $pendingBytes += $line->bytes;
-                // Flush by whichever limit is hit first: large documents reach the byte budget
-                // long before the document count, and one oversized bulk body would exhaust PHP
-                // memory or the search engine's request size limit.
-                if ($pending >= $this->bulkSize || $pendingBytes >= $this->bulkBytes) {
-                    $this->commitBulk($target, $pending, $pendingBytes);
-                    $pending = 0;
-                    $pendingBytes = 0;
-                }
-            }
-            if ($pending > 0) {
-                $this->commitBulk($target, $pending, $pendingBytes);
-            }
-        } catch (InvalidSnapshotException|BulkOperationException $e) {
-            throw new SnapshotImportException(
-                sprintf('Import of index "%s" failed: %s', $target->shortName, $e->getMessage()),
-                0,
-                $e,
-            );
-        }
+        $this->documentReplayer->replay($target, $entry, $local);
         $this->searchIndexService->refreshIndex($target->aliasName);
         $actual = $this->searchIndexService->getCount(new Search(), $target->aliasName);
         $this->logger?->info(sprintf(

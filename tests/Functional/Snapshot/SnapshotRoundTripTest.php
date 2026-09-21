@@ -39,6 +39,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\CompatibilityCheckerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileReader;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileWriter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentReplayer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\IndexProvisionerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporter;
@@ -119,20 +120,25 @@ final class SnapshotRoundTripTest extends Unit
             $objects[] = $this->tester->createFullyFledgedObjectSimple('snapshot-roundtrip-', true, true, $i);
         }
         $documentAlias = $this->tester->grabService(DocumentTypeAdapter::class)->getAliasIndexName();
+        $assetAlias = $this->tester->grabService(AssetTypeAdapter::class)->getAliasIndexName();
         $page = TestHelper::createEmptyDocumentPage('snapshot-doc-');
+        $asset = TestHelper::createImageAsset('snapshot-asset-');
         $this->tester->flushIndex();
         $originals = [];
         foreach ($objects as $object) {
             $originals[$object->getId()] = $this->tester->checkIndexEntry($object->getId(), $this->simpleAlias)['_source'];
         }
         $originalDocumentSource = $this->tester->checkIndexEntry($page->getId(), $documentAlias)['_source'];
+        $originalAssetSource = $this->tester->checkIndexEntry($asset->getId(), $assetAlias)['_source'];
         $this->exporter()->export($this->storage, 'rt', new ExportOptions());
 
         // destroy the physical indices so provisioning is exercised, then import
         $this->searchIndexService->deleteIndex($this->tester->getIndexName('simple', true));
         $this->searchIndexService->deleteIndex($this->tester->getIndexName('document'));
+        $this->searchIndexService->deleteIndex($this->tester->getIndexName('asset'));
         $this->assertFalse($this->searchIndexService->existsAlias($this->simpleAlias));
         $this->assertFalse($this->searchIndexService->existsAlias($documentAlias));
+        $this->assertFalse($this->searchIndexService->existsAlias($assetAlias));
         $this->tester->clearQueue();
         $queueBefore = $this->queueRepository->countIndexQueueEntries();
 
@@ -147,6 +153,11 @@ final class SnapshotRoundTripTest extends Unit
         $this->assertSame(
             $originalDocumentSource,
             $this->tester->checkIndexEntry($page->getId(), $documentAlias)['_source'],
+        );
+        $this->assertSame(
+            $originalAssetSource,
+            $this->tester->checkIndexEntry($asset->getId(), $assetAlias)['_source'],
+            'the asset index is provisioned and replayed like every other index',
         );
         // the restored index is searchable on the localized value, not just populated
         $value = $objects[0]->getLoc_name('de');
@@ -539,18 +550,23 @@ final class SnapshotRoundTripTest extends Unit
         $this->searchIndexService->deleteIndex($this->tester->getIndexName('simple', true));
 
         // ceiling of 1000 documents, budget of 1 byte: every document must be flushed on its own
-        $importer = new SnapshotImporter(
-            $this->tester->grabService(SnapshotIndexResolverInterface::class),
-            $this->tester->grabService(CompatibilityCheckerInterface::class),
-            $this->tester->grabService(SearchIndexConfigServiceInterface::class),
-            $this->searchIndexService,
+        $replayer = new DocumentReplayer(
             $this->tester->grabService(BulkOperationServiceInterface::class),
-            $this->tester->grabService(IndexProvisionerInterface::class),
             new DocumentFileReader(),
             bulkSize: 1000,
             bulkBytes: 1,
         );
         $log = new TestHandler();
+        $replayer->setLogger(new Logger('test', [$log]));
+        $importer = new SnapshotImporter(
+            $this->tester->grabService(SnapshotIndexResolverInterface::class),
+            $this->tester->grabService(CompatibilityCheckerInterface::class),
+            $this->tester->grabService(SearchIndexConfigServiceInterface::class),
+            $this->searchIndexService,
+            $this->tester->grabService(IndexProvisionerInterface::class),
+            new DocumentFileReader(),
+            $replayer,
+        );
         $importer->setLogger(new Logger('test', [$log]));
 
         $result = $importer->import($this->storage, 'bb', new ImportOptions());

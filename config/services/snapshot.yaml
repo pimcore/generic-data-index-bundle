@@ -26,8 +26,11 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\IndexProvisionerInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\IndexProvisioner
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface:
-        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporter
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentReplayerInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentReplayer
         arguments:
             $bulkSize: 1000
             $bulkBytes: 16777216
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporter

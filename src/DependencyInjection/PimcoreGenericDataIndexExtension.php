@@ -20,8 +20,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\DispatchQueueMessagesHa
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentReplayerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -147,7 +147,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         $container->getDefinition(SnapshotExporterInterface::class)
             ->setArgument('$pageSize', $snapshotSettings['page_size'])
             ->setArgument('$pageBytes', $snapshotSettings['page_bytes']);
-        $container->getDefinition(SnapshotImporterInterface::class)
+        $container->getDefinition(DocumentReplayerInterface::class)
             ->setArgument('$bulkSize', $snapshotSettings['bulk_size'])
             ->setArgument('$bulkBytes', $snapshotSettings['bulk_bytes']);
     }
