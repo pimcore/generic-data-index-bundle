@@ -396,15 +396,16 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 continue;
             }
 
-            $keyName = $this->normalizeNameSegment($groupKey->getName(), 'key', $groupKey->getKeyId());
+            $keyId = $groupKey->getKeyId();
+            $keyName = $this->normalizeNameSegment($groupKey->getName(), 'key', $keyId);
             if ($keyName === null
-                || $this->isTakenNameSegment($usedKeyNames, $keyName, $groupKey->getName(), 'key', $groupKey->getKeyId())
+                || $this->isTakenNameSegment($usedKeyNames, $keyName, $groupKey->getName(), 'key', $keyId)
             ) {
                 continue;
             }
 
             $usedKeyNames[$keyName] = true;
-            $keyMapping[$groupKey->getKeyId()] = [
+            $keyMapping[$keyId] = [
                 'name' => $keyName,
                 'definition' => $definition,
             ];
