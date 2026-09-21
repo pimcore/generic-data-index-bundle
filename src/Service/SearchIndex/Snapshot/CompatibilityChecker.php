@@ -37,8 +37,15 @@ final class CompatibilityChecker implements CompatibilityCheckerInterface
     {
         $classes = [];
         $seenClassIds = [];
+        $classIdsWithIndex = array_flip($this->classIdsWithDataObjectIndex($manifest));
         foreach ($manifest->classMappingChecksums as $classId => $manifestChecksum) {
             $classId = (string) $classId;
+            // A checksum for a class without an index entry gates nothing: the import never
+            // touches that class's index, so its local definition may differ freely. The class
+            // is still listed in missingInManifest below.
+            if (!array_key_exists($classId, $classIdsWithIndex)) {
+                continue;
+            }
             $seenClassIds[$classId] = true;
             $classes[] = $this->checkClass($classId, (int) $manifestChecksum);
         }

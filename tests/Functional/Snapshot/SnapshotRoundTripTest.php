@@ -31,6 +31,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter;
@@ -326,7 +327,17 @@ final class SnapshotRoundTripTest extends Unit
         } catch (SnapshotImportException $e) {
             $this->assertStringContainsString('Document without integer system_fields.id', $e->getMessage());
         }
-        $this->assertSame($checksumBefore, $settingsStore->getClassMappingCheckSum($classId), 'a failed replay must not stamp the class mapping checksum');
+        $this->assertNull(
+            $settingsStore->getClassMappingCheckSum($classId),
+            'the checksum is removed before the destructive recreation and never re-stamped after a failed replay',
+        );
+        // ... which is exactly what lets GDI's own per-class reindex repair the now-empty index:
+        // with a stored checksum equal to the current one it would skip the class as unchanged.
+        $reindexService = $this->tester->grabService(ClassDefinitionReindexServiceInterface::class);
+        $this->assertTrue(
+            $reindexService->reindexClassDefinition(ClassDefinition::getByName('simple'), true),
+            'the per-class reindex must not skip a class whose index was emptied by a failed import',
+        );
     }
 
     public function testIncompleteReplayDoesNotStampClassMappingChecksum(): void
@@ -368,7 +379,10 @@ final class SnapshotRoundTripTest extends Unit
         } catch (SnapshotImportException $e) {
             $this->assertStringContainsString($this->simpleAlias, $e->getMessage(), 'expected the message to name the index alias');
             $this->assertStringContainsString('2/3', $e->getMessage(), 'expected the message to name the actual and expected counts');
-            $this->assertSame(424242, $settingsStore->getClassMappingCheckSum($classId), 'an incomplete replay must not stamp the class mapping checksum');
+            $this->assertNull(
+                $settingsStore->getClassMappingCheckSum($classId),
+                'an incomplete replay must leave no checksum, so the per-class reindex repairs the index',
+            );
         } finally {
             $settingsStore->storeClassMapping($classId, $checksumBefore);
         }

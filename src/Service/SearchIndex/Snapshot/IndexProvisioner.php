@@ -27,6 +27,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
  * for a snapshot import target, independent of the import decision logic (verify before
  * provision, stamp only on complete replay), which stays in {@see SnapshotImporter}.
  *
+ * Provisioning a class index first removes the class's stored mapping checksum: the recreation
+ * destroys the index content, and if the replay then fails, a stored checksum that still equals
+ * the current one would make the per-class reindex skip the class as "unchanged" and leave the
+ * empty index in place. Without a stored checksum that reindex runs and repairs it.
+ *
  * @internal
  */
 final class IndexProvisioner implements IndexProvisionerInterface
@@ -44,6 +49,9 @@ final class IndexProvisioner implements IndexProvisionerInterface
     {
         $handler = $this->handlerFor($target);
         $context = $target->classDefinition;
+        if ($target->isClassIndex()) {
+            $this->settingsStoreService->removeClassMapping((string) $target->getClassId());
+        }
         if ($this->searchIndexService->existsAlias($target->aliasName)) {
             $handler->deleteIndex($context);
         }

@@ -51,7 +51,7 @@ final class CompatibilityCheckerTest extends Unit
 
     public function testStoreMatchIsCompatible(): void
     {
-        $report = $this->checker()->check($this->manifest([$this->simple->getId() => $this->realChecksum]));
+        $report = $this->checker()->check($this->manifestWithIndices([$this->simple->getId() => $this->realChecksum]));
 
         $this->assertTrue($report->isCompatible());
         $this->assertSame(ClassCompatibilityStatus::COMPATIBLE, $report->statusOf($this->simple->getId()));
@@ -61,7 +61,7 @@ final class CompatibilityCheckerTest extends Unit
     {
         $this->settingsStore->storeClassMapping($this->simple->getId(), 12345);
 
-        $report = $this->checker()->check($this->manifest([$this->simple->getId() => $this->realChecksum]));
+        $report = $this->checker()->check($this->manifestWithIndices([$this->simple->getId() => $this->realChecksum]));
 
         $this->assertTrue($report->isCompatible());
         $this->assertSame(ClassCompatibilityStatus::STALE_STORE, $report->statusOf($this->simple->getId()));
@@ -69,7 +69,7 @@ final class CompatibilityCheckerTest extends Unit
 
     public function testDoubleMismatchIsIncompatible(): void
     {
-        $report = $this->checker()->check($this->manifest([$this->simple->getId() => 999]));
+        $report = $this->checker()->check($this->manifestWithIndices([$this->simple->getId() => 999]));
 
         $this->assertFalse($report->isCompatible());
         $this->assertSame([$this->simple->getId()], $report->incompatibleClassIds());
@@ -82,7 +82,7 @@ final class CompatibilityCheckerTest extends Unit
         // class definition is what decides compatibility.
         $this->settingsStore->storeClassMapping($this->simple->getId(), 999);
 
-        $report = $this->checker()->check($this->manifest([$this->simple->getId() => 999]));
+        $report = $this->checker()->check($this->manifestWithIndices([$this->simple->getId() => 999]));
 
         $this->assertFalse($report->isCompatible());
         $this->assertSame([$this->simple->getId()], $report->incompatibleClassIds());
@@ -90,7 +90,7 @@ final class CompatibilityCheckerTest extends Unit
 
     public function testClassMissingLocallyIsReportedNotFatal(): void
     {
-        $report = $this->checker()->check($this->manifest(['NOPE' => 1]));
+        $report = $this->checker()->check($this->manifestWithIndices(['NOPE' => 1]));
 
         $this->assertTrue($report->isCompatible());
         $this->assertSame(ClassCompatibilityStatus::MISSING_LOCALLY, $report->statusOf('NOPE'));
@@ -135,7 +135,7 @@ final class CompatibilityCheckerTest extends Unit
         // through the manifest's class_mapping_checksums array; check() must cast it back to
         // string before comparing/looking up, or ClassDefinition::getById() TypeErrors under
         // strict_types
-        $report = $this->checker()->check($this->manifest(['12' => 1]));
+        $report = $this->checker()->check($this->manifestWithIndices(['12' => 1]));
 
         $this->assertSame(ClassCompatibilityStatus::MISSING_LOCALLY, $report->statusOf('12'));
     }
@@ -179,5 +179,37 @@ final class CompatibilityCheckerTest extends Unit
     private function manifest(array $checksums): Manifest
     {
         return new Manifest('2026-09-10T00:00:00+00:00', 'dev', 'dev', 'openSearch', 'pimcore_', 0, 0, 0, $checksums, []);
+    }
+
+    /**
+     * A manifest that, unlike manifest(), also carries a class index entry for every checksum
+     * key, which is what makes the compatibility gate apply to that class at all.
+     */
+    private function manifestWithIndices(array $checksums): Manifest
+    {
+        $indices = [];
+        foreach (array_keys($checksums) as $classId) {
+            $shortName = 'data-object_' . strtolower((string) $classId);
+            $indices[] = new ManifestIndex(
+                $shortName, 'dataObject', (string) $classId, 'pimcore_' . $shortName . '-odd',
+                1, $shortName . '.ndjson.gz', 1, str_repeat('0', 64),
+            );
+        }
+
+        return $this->manifest($checksums)->withIndices($indices);
+    }
+
+    public function testChecksumEntryWithoutIndexEntryDoesNotGateTheImport(): void
+    {
+        // The import never touches an index the manifest does not carry, so a mismatching
+        // checksum for such a class must not block everything else: the class is reported as
+        // missing in the manifest (its old local index stays as it is) and nothing more.
+        $report = $this->checker()->check(
+            $this->manifest([$this->simple->getId() => $this->realChecksum + 1]),
+        );
+
+        $this->assertTrue($report->isCompatible());
+        $this->assertNull($report->statusOf((string) $this->simple->getId()));
+        $this->assertContains('simple', $report->missingInManifest);
     }
 }

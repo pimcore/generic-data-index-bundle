@@ -120,15 +120,21 @@ stamp:
 | no checksum in the manifest for a class that has an index | refused; `--force` skips that class |
 
 A class that is present in the manifest but no longer defined locally has no local index to import
-into and is always skipped, independently of `--force`. If the check finds a mismatch and
+into and is always skipped, independently of `--force`. A checksum entry for a class that has no
+index in the manifest gates nothing, because the import never touches that class's index; the
+class is only listed as missing in the manifest. If the check finds a mismatch and
 `--force` was not given, the command refuses the whole import and lists the affected classes; pass
 `--force` to import everything else and skip only those classes.
 
 If the local index queue is not empty, the command prints a warning ("Stop messenger consumers
 during the import to avoid interleaved writes.") but still proceeds — stopping the consumers
 yourself is recommended, not enforced. The import then recreates each index with the local
-mapping and replays the documents through the bulk API; it does **not** enqueue elements. After a
-class definition change, the normal per-class reindex still applies.
+mapping and replays the documents through the bulk API; it does **not** enqueue elements. Before a
+class index is recreated, its stored mapping checksum is removed and only stamped again once the
+replay completed: should the replay fail, the class is left without a checksum, so the normal
+per-class reindex (`deployment:reindex`, or the class-definition update) rebuilds the emptied
+index instead of skipping it as unchanged. After a class definition change, that per-class
+reindex still applies as usual.
 
 `--dry-run` runs the compatibility check and prints the import plan (which indices, how many
 documents each) without writing anything ("Nothing written."). A real import exits with a non-zero
