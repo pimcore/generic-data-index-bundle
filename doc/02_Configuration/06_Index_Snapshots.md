@@ -126,6 +126,12 @@ class is only listed as missing in the manifest. If the check finds a mismatch a
 `--force` was not given, the command refuses the whole import and lists the affected classes; pass
 `--force` to import everything else and skip only those classes.
 
+Before any index is touched, the command downloads the file of every index it is going to import
+and verifies its size and SHA-256 against the manifest, so a truncated or corrupted bundle is
+rejected while all local indices are still intact. Files of classes that are skipped (via
+`--force`, or because the class no longer exists locally) are never imported and therefore not
+downloaded or verified.
+
 If the local index queue is not empty, the command prints a warning ("Stop messenger consumers
 during the import to avoid interleaved writes.") but still proceeds — stopping the consumers
 yourself is recommended, not enforced. The import then recreates each index with the local

@@ -70,7 +70,9 @@ final class SnapshotImporter implements SnapshotImporterInterface
 
         // Two phases: every planned file is downloaded and verified BEFORE any index is
         // provisioned, so a corrupt or missing file anywhere in the plan is caught before any
-        // live index has been touched, not just before the index it belongs to.
+        // live index has been touched, not just before the index it belongs to. Skipped entries
+        // are not part of the plan on purpose: their files are never imported, and downloading
+        // a multi-gigabyte class file only to hash it would cost the operator time for nothing.
         $preflighted = $this->preflight($storage, $name, $plan);
         $imported = $this->apply($preflighted, $onIndexImported);
 

@@ -31,7 +31,10 @@ interface SnapshotImporterInterface
      * touched, not just before the index it belongs to — so a corrupted or missing file
      * anywhere in the plan is caught while every live index, including ones earlier in the
      * plan, is still untouched. Only once every planned file has verified does the second
-     * phase provision (delete and recreate) and replay each index in turn.
+     * phase provision (delete and recreate) and replay each index in turn. "Planned" is
+     * deliberate: files of entries that are skipped (incompatible or unverified under --force,
+     * class missing locally, unknown target) are never imported, so they are not downloaded or
+     * verified either; the skip and its reason are reported instead.
      *
      * The apply phase is not atomic across indices: if replaying one index fails — including a
      * replayed document count that doesn't match the manifest's — every index replayed before it
