@@ -90,6 +90,10 @@ and prints them without writing anything ("Nothing written.").
 Snapshots are kept in the storage until an operator deletes them from it; running
 `generic-data-index:snapshot:import` without a name uses the newest one.
 
+An index that does not exist on the source installation (for example a class that has never been
+indexed there) is exported as an empty index. The import then recreates that index empty, so a
+stale local index with old documents is replaced rather than silently kept.
+
 The export pages through each live alias without taking a point-in-time snapshot of it, so
 elements that are created, changed, or deleted while the export is running can be reflected
 inconsistently across documents (or across pages of the same index). Run the export in a quiet
@@ -138,7 +142,7 @@ yourself is recommended, not enforced. The import then recreates each index with
 mapping and replays the documents through the bulk API; it does **not** enqueue elements. Before a
 class index is recreated, its stored mapping checksum is removed and only stamped again once the
 replay completed: should the replay fail, the class is left without a checksum, so the normal
-per-class reindex (`deployment:reindex`, or the class-definition update) rebuilds the emptied
+per-class reindex (`generic-data-index:deployment:reindex`, or the class-definition update) rebuilds the emptied
 index instead of skipping it as unchanged. After a class definition change, that per-class
 reindex still applies as usual.
 

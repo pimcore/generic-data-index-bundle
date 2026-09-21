@@ -233,7 +233,8 @@ final class SnapshotRoundTripTest extends Unit
             $this->fail('expected SnapshotImportException');
         } catch (SnapshotImportException $e) {
             $this->assertStringContainsString('data-object_simple', $e->getMessage());
-            $this->assertStringContainsString('Checksum mismatch', $e->getMessage());
+            // the size check runs first and already rejects the corrupted content
+            $this->assertStringContainsString('mismatch', $e->getMessage());
         }
         // the checksum is verified before the live index is touched: it must still be intact
         $this->assertTrue($this->searchIndexService->existsAlias($this->simpleAlias));
@@ -270,7 +271,8 @@ final class SnapshotRoundTripTest extends Unit
             $this->importer()->import($this->storage, 'preflight', new ImportOptions());
             $this->fail('expected SnapshotImportException');
         } catch (SnapshotImportException $e) {
-            $this->assertStringContainsString('Checksum mismatch', $e->getMessage());
+            // the size check runs first and already rejects the corrupted content
+            $this->assertStringContainsString('mismatch', $e->getMessage());
         }
 
         $this->tester->flushIndex();
@@ -598,5 +600,77 @@ final class SnapshotRoundTripTest extends Unit
             $this->assertSame(1, $flush->context['documents']);
             $this->assertGreaterThan(1, $flush->context['bytes'], 'the first document already exceeds the budget');
         }
+    }
+
+    public function testFileSizeMismatchIsRejectedBeforeIndexing(): void
+    {
+        // A file whose size differs from the manifest is rejected in preflight, like a checksum
+        // mismatch, before any live index is touched; the size check is the cheaper of the two.
+        $object = $this->tester->createFullyFledgedObjectSimple('snapshot-size-', true, true, 7);
+        $this->tester->flushIndex();
+        $this->exporter()->export($this->storage, 'size', new ExportOptions());
+        $manifest = $this->storage->readManifest('size');
+        $entry = $manifest->getIndex('data-object_simple');
+        $tampered = new ManifestIndex(
+            $entry->shortName, $entry->elementType, $entry->classId, $entry->sourceIndex,
+            $entry->documentCount, $entry->file, $entry->bytes + 1, $entry->sha256,
+        );
+        $this->storage->writeManifest('size', $manifest->withIndices(array_map(
+            static fn (ManifestIndex $i) => $i->shortName === 'data-object_simple' ? $tampered : $i,
+            $manifest->indices,
+        )));
+
+        try {
+            $this->importer()->import($this->storage, 'size', new ImportOptions());
+            $this->fail('expected SnapshotImportException');
+        } catch (SnapshotImportException $e) {
+            $this->assertStringContainsString('data-object_simple', $e->getMessage());
+            $this->assertStringContainsString('Size mismatch', $e->getMessage());
+        }
+        $this->assertTrue($this->searchIndexService->existsAlias($this->simpleAlias));
+        $this->tester->checkIndexEntry($object->getId(), $this->simpleAlias);
+    }
+
+    public function testAnIndexAbsentOnTheSourceIsExportedEmptyAndReplacesAStaleLocalIndex(): void
+    {
+        // Source installation without a document index: the snapshot must still carry the
+        // document index (empty), so that importing it into an installation that does have
+        // documents indexed replaces those stale documents instead of silently keeping them.
+        $documentAlias = $this->tester->grabService(DocumentTypeAdapter::class)->getAliasIndexName();
+        $this->searchIndexService->deleteIndex($this->tester->getIndexName('document'));
+        $this->assertFalse($this->searchIndexService->existsAlias($documentAlias));
+
+        $seen = [];
+        $result = $this->exporter()->export(
+            $this->storage,
+            'no-documents',
+            new ExportOptions(),
+            static function ($target, int $count) use (&$seen): void {
+                $seen[$target->shortName] = $count;
+            },
+        );
+
+        $document = $result->manifest->getIndex('document');
+        $this->assertNotNull($document, 'an index the source does not have is exported as an empty index');
+        $this->assertSame(0, $document->documentCount);
+        $this->assertSame(0, $seen['document']);
+        $this->assertTrue($this->filesystem->fileExists('no-documents/' . $document->file));
+
+        // "local" installation with a stale document in its index
+        $page = TestHelper::createEmptyDocumentPage('snapshot-stale-doc-');
+        $this->tester->flushIndex();
+        $this->assertSame(1, $this->searchIndexService->getCount(new Search(), $documentAlias));
+
+        $imported = $this->importer()->import($this->storage, 'no-documents', new ImportOptions());
+
+        $this->assertTrue($imported->isSuccessful(), print_r($imported->imported, true));
+        $this->tester->flushIndex();
+        $this->assertTrue($this->searchIndexService->existsAlias($documentAlias));
+        $this->assertSame(
+            0,
+            $this->searchIndexService->getCount(new Search(), $documentAlias),
+            'the stale local document was replaced by the (empty) source state',
+        );
+        $this->assertNotNull($page->getId());
     }
 }

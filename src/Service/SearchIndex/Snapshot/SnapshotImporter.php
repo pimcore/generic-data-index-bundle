@@ -241,6 +241,7 @@ final class SnapshotImporter implements SnapshotImporterInterface
             // Download and verify BEFORE touching any live index: a truncated or corrupted
             // file anywhere in the plan must be rejected before any index has been provisioned.
             $storage->readFileToLocal($name, $entry->file, $local);
+            $this->documentFileReader->verifySize($local, $entry->bytes);
             $this->documentFileReader->verifyHash($local, $entry->sha256);
         } catch (InvalidSnapshotException|FilesystemException|SnapshotImportException $e) {
             @unlink($local);

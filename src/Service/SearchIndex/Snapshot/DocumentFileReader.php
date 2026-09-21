@@ -33,6 +33,23 @@ final class DocumentFileReader
         return $path;
     }
 
+    /**
+     * @throws SnapshotImportException
+     */
+    public function verifySize(string $path, int $expectedBytes): void
+    {
+        clearstatcache(true, $path);
+        $actual = filesize($path);
+        if ($actual === false || $actual !== $expectedBytes) {
+            throw new SnapshotImportException(sprintf(
+                'Size mismatch for "%s": manifest says %d bytes, file has %s',
+                basename($path),
+                $expectedBytes,
+                $actual === false ? 'unknown size' : $actual . ' bytes',
+            ));
+        }
+    }
+
     public function verifyHash(string $path, string $expectedSha256): void
     {
         $actual = hash_file('sha256', $path);

@@ -67,7 +67,7 @@ final class SnapshotExporter implements SnapshotExporterInterface
         $started = microtime(true);
         $queueBefore = $this->queueCount();
 
-        $targets = $this->resolveExistingTargets();
+        $targets = $this->indexResolver->resolveAll();
         $checksums = $this->collectClassChecksums($targets);
 
         $manifest = new Manifest(
@@ -86,12 +86,10 @@ final class SnapshotExporter implements SnapshotExporterInterface
         if ($options->dryRun) {
             $indices = [];
             foreach ($targets as $target) {
-                $indices[] = $this->manifestIndex(
-                    $target,
-                    $this->searchIndexService->getCount(new Search(), $target->aliasName),
-                    0,
-                    '',
-                );
+                $count = $this->searchIndexService->existsAlias($target->aliasName)
+                    ? $this->searchIndexService->getCount(new Search(), $target->aliasName)
+                    : 0;
+                $indices[] = $this->manifestIndex($target, $count, 0, '');
             }
 
             return new ExportResult($name, $manifest->withIndices($indices), true);
@@ -173,15 +171,6 @@ final class SnapshotExporter implements SnapshotExporterInterface
         return $this->indexStatsService->getStats()->getCountIndexQueueEntries();
     }
 
-    /** @return IndexTarget[] */
-    private function resolveExistingTargets(): array
-    {
-        return array_values(array_filter(
-            $this->indexResolver->resolveAll(),
-            fn (IndexTarget $target) => $this->searchIndexService->existsAlias($target->aliasName),
-        ));
-    }
-
     /**
      * @param IndexTarget[] $targets
      *
@@ -235,11 +224,20 @@ final class SnapshotExporter implements SnapshotExporterInterface
         return $indices;
     }
 
+    /**
+     * An index the source installation does not have is exported as an empty index rather than
+     * left out: the importer only recreates what the manifest lists, so leaving it out would
+     * keep a stale local index (with its old documents) in place while the import reports
+     * success. Empty in the snapshot means empty after the import, like on the source.
+     */
     private function exportIndex(IndexTarget $target): WrittenFile
     {
         $writer = DocumentFileWriter::createTemporary();
 
         try {
+            if (!$this->searchIndexService->existsAlias($target->aliasName)) {
+                return $writer->finish();
+            }
             $sizer = new PageSizer($this->pageSize, $this->pageBytes);
             $search = new Search(source: true);
             $search->setSortList(new FieldSortList([new FieldSort(SystemField::ID->getPath())]));
