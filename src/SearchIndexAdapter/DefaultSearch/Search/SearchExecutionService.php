@@ -28,6 +28,8 @@ use Symfony\Component\Stopwatch\Stopwatch;
  */
 final class SearchExecutionService implements SearchExecutionServiceInterface
 {
+    private const MAX_EXECUTED_SEARCHES = 500;
+
     /**
      * @var SearchInformation[]
      */
@@ -36,6 +38,7 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
     public function __construct(
         private readonly SearchResultDenormalizer $searchResultDenormalizer,
         private readonly SearchClientInterface $client,
+        private readonly bool $debugMode,
     ) {
     }
 
@@ -74,7 +77,9 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
                 []
             );
 
-            $this->executedSearches[] = $searchInformation;
+            if ($this->debugMode) {
+                $this->addExecutedSearch($searchInformation);
+            }
 
             if ($this->isWindowTooLarge($e)) {
                 throw new ResultWindowTooLargeException(
@@ -97,13 +102,15 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
             $defaultSearchResult['hits']['hits'] = array_reverse($defaultSearchResult['hits']['hits']);
         }
 
-        $this->executedSearches[] = new SearchInformation(
-            $search,
-            true,
-            $defaultSearchResult,
-            $executionTime,
-            debug_backtrace(),
-        );
+        if ($this->debugMode) {
+            $this->addExecutedSearch(new SearchInformation(
+                $search,
+                true,
+                $defaultSearchResult,
+                $executionTime,
+                debug_backtrace(),
+            ));
+        }
 
         return $this->searchResultDenormalizer->denormalize(
             $defaultSearchResult,
@@ -116,6 +123,16 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
     public function getExecutedSearches(): array
     {
         return $this->executedSearches;
+    }
+
+    private function addExecutedSearch(SearchInformation $searchInformation): void
+    {
+        $this->executedSearches[] = $searchInformation;
+
+        $excess = count($this->executedSearches) - self::MAX_EXECUTED_SEARCHES;
+        if ($excess > 0) {
+            array_splice($this->executedSearches, 0, $excess);
+        }
     }
 
     private function isWindowTooLarge(Exception $e): bool
