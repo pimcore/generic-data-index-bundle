@@ -126,7 +126,7 @@ final class CompatibilityChecker implements CompatibilityCheckerInterface
                     $classId,
                     null,
                     ClassCompatibilityStatus::MISSING_LOCALLY,
-                    0,
+                    null,
                     null,
                     null,
                 );
@@ -137,7 +137,7 @@ final class CompatibilityChecker implements CompatibilityCheckerInterface
                 $classId,
                 $classDefinition->getName(),
                 ClassCompatibilityStatus::UNVERIFIED,
-                0,
+                null,
                 $this->settingsStoreService->getClassMappingCheckSum($classId),
                 null,
             );

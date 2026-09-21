@@ -213,4 +213,29 @@ final class SnapshotImportCommandTest extends Unit
         }
         rmdir($dir);
     }
+
+    public function testUnverifiedClassRendersNoManifestChecksum(): void
+    {
+        // An unverified class has no checksum in the manifest at all; printing a 0 there would
+        // read like a real checksum that simply did not match.
+        $report = new CompatibilityReport(
+            [new ClassCompatibility('PR', 'Product', ClassCompatibilityStatus::UNVERIFIED, null, 77, null)],
+            [],
+        );
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => static function () use ($report): never {
+                throw new SnapshotIncompatibleException('unverified', $report);
+            },
+        ]);
+        $tester = new CommandTester($this->command($this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']), $importer));
+
+        $this->assertSame(Command::FAILURE, $tester->execute([]));
+        $display = $tester->getDisplay();
+        $this->assertStringContainsString('Product', $display);
+        $this->assertMatchesRegularExpression(
+            '/^\s+Product\s+PR\s+77\s*$/m',
+            $display,
+            'the manifest checksum cell stays empty for an unverified class',
+        );
+    }
 }

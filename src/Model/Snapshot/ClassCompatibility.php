@@ -24,7 +24,8 @@ final readonly class ClassCompatibility
         public string $classId,
         public ?string $className,
         public ClassCompatibilityStatus $status,
-        public int $manifestChecksum,
+        /** null when the manifest carries no checksum for this class at all (unverified) */
+        public ?int $manifestChecksum,
         public ?int $storedChecksum,
         public ?int $computedChecksum,
     ) {

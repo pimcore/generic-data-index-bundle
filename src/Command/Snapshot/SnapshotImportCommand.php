@@ -231,7 +231,7 @@ final class SnapshotImportCommand extends AbstractCommand
                 static fn (ClassCompatibility $c) => [
                     $c->className ?? '',
                     $c->classId,
-                    $c->manifestChecksum,
+                    $c->manifestChecksum ?? '',
                     $c->storedChecksum ?? '',
                     $c->computedChecksum ?? '',
                 ],
