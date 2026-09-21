@@ -83,6 +83,119 @@ final class ClassificationStoreAdapterTest extends Unit
         );
     }
 
+    /**
+     * Regression test for pimcore/platform-version#271: a classification store key whose name ends
+     * with a dot produced the field path "<field>.<group>.<key>..<language>", which the search index
+     * rejects with "object field starting or ending with a [.] makes object resolution ambiguous",
+     * failing the whole bulk request.
+     */
+    public function testNameSegmentEndingWithADotIsTrimmed(): void
+    {
+        $adapter = $this->createAdapter();
+        $logger = $this->createCollectingLogger();
+        $adapter->setLogger($logger);
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'normalizeNameSegment');
+
+        $this->assertSame('Size_Drive_Dr', $method->invoke($adapter, 'Size_Drive_Dr.', 'key', 42, true));
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('info', $logger->records[0]['level']);
+
+        // The document paths run per element and per locale, so they stay silent.
+        $method->invoke($adapter, 'Size_Drive_Dr.', 'key', 42);
+        $this->assertCount(1, $logger->records, 'only the mapping path may report a normalised name');
+    }
+
+    public function testNameSegmentStartingWithADotIsTrimmed(): void
+    {
+        $adapter = $this->createAdapter();
+        $adapter->setLogger($this->createCollectingLogger());
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'normalizeNameSegment');
+
+        $this->assertSame('Specifications', $method->invoke($adapter, '.Specifications', 'group', 9));
+    }
+
+    public function testNameSegmentWithoutLeadingOrTrailingDotIsUntouchedAndNotLogged(): void
+    {
+        $adapter = $this->createAdapter();
+        $logger = $this->createCollectingLogger();
+        $adapter->setLogger($logger);
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'normalizeNameSegment');
+
+        // A single dot inside the name is left alone: it creates a nested sub-object, which the search
+        // index accepts, and rewriting it would change field names that index today.
+        $this->assertSame(
+            'Regular Socket - Spec.ifications',
+            $method->invoke($adapter, 'Regular Socket - Spec.ifications', 'group', 9)
+        );
+        $this->assertSame('Size_Drive_Dr', $method->invoke($adapter, 'Size_Drive_Dr', 'key', 42));
+        $this->assertCount(0, $logger->records, 'an unaffected name must not produce log noise');
+    }
+
+    /**
+     * A doubled dot inside a name adds the same empty path component as a leading or trailing one, and
+     * the search index rejects it for the same reason.
+     */
+    public function testConsecutiveDotsInsideANameAreCollapsed(): void
+    {
+        $adapter = $this->createAdapter();
+        $adapter->setLogger($this->createCollectingLogger());
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'normalizeNameSegment');
+
+        $this->assertSame('Size.Drive', $method->invoke($adapter, 'Size..Drive', 'key', 42));
+        $this->assertSame('Size.Drive', $method->invoke($adapter, '.Size...Drive.', 'key', 42));
+    }
+
+    /**
+     * Two names that differ only in dot placement normalise to the same segment. Classification store
+     * names are not unique, so without a guard the later entry would overwrite the earlier one.
+     */
+    public function testCollidingNormalizedKeyNameIsSkippedRatherThanOverwritingTheMapping(): void
+    {
+        $adapter = $this->createAdapter();
+        $logger = $this->createCollectingLogger();
+        $adapter->setLogger($logger);
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'isTakenNameSegment');
+
+        $this->assertFalse($method->invoke($adapter, [], 'Size', 'Size', 'key', 42, true));
+        $this->assertCount(0, $logger->records);
+
+        $this->assertTrue($method->invoke($adapter, ['Size' => []], 'Size', 'Size.', 'key', 43, true));
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('warning', $logger->records[0]['level']);
+        $this->assertStringContainsString('already', $logger->records[0]['message']);
+
+        // The document paths stay silent for the same reason as normalizeNameSegment().
+        $this->assertTrue($method->invoke($adapter, ['Size' => []], 'Size', 'Size.', 'key', 43));
+        $this->assertCount(1, $logger->records);
+    }
+
+    public function testNameSegmentOfOnlyDotsIsSkippedWithAWarning(): void
+    {
+        $adapter = $this->createAdapter();
+        $logger = $this->createCollectingLogger();
+        $adapter->setLogger($logger);
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'normalizeNameSegment');
+
+        $this->assertNull($method->invoke($adapter, '..', 'key', 42, true));
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('warning', $logger->records[0]['level']);
+        $this->assertStringContainsString('consists only of dots', $logger->records[0]['message']);
+    }
+
+    private function createAdapter(): ClassificationStoreAdapter
+    {
+        return new ClassificationStoreAdapter(
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
+            $this->makeEmpty(FieldDefinitionServiceInterface::class)
+        );
+    }
+
     private function createCollectingLogger(): AbstractLogger
     {
         return new class extends AbstractLogger {
