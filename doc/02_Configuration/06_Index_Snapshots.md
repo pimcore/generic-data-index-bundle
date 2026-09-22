@@ -67,8 +67,9 @@ fixed batch sizes:
   request the engine rejects because its write queue is full (HTTP 429) is retried with backoff,
   up to five attempts, so more workers than the engine can take cost time but no documents.
   Measured on a 2 million document import on a 12-core notebook: 4 workers were 3 times as fast
-  as 1, 8 workers 3.4 times; beyond that the node rejected requests. Unsent bulk bodies occupy at
-  most `2 × import_workers × bulk_bytes` in the system temp directory.
+  as 1, 8 workers 3.4 times; beyond that the node rejected requests. Unsent bulk bodies occupy
+  roughly `2 × import_workers × bulk_bytes` in the system temp directory, plus one short action
+  line per document; a single document larger than `bulk_bytes` forms a chunk of its own size.
 
 The budget is a target rather than a guarantee, because the search engine cannot be asked for "at
 most N bytes": a page whose documents are larger than everything seen before is only corrected
