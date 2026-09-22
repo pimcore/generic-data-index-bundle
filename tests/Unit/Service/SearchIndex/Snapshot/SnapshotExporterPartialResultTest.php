@@ -74,14 +74,13 @@ final class SnapshotExporterPartialResultTest extends Unit
             'existsAlias' => true,
             'getCurrentIndexVersion' => 'odd',
             'getCount' => 1,
-            'search' => static fn (Search $search): SearchResult => new SearchResult(
-                [$hit],
-                [],
-                1,
-                null,
-                $search,
-                ['hits' => ['total' => ['value' => 1]]] + $responseFlags,
-            ),
+            // one document on the first page, then the empty page that ends the paging loop
+            'search' => static function (Search $search) use ($hit, $responseFlags): SearchResult {
+                static $calls = 0;
+                $hits = $calls++ === 0 ? [$hit] : [];
+
+                return new SearchResult($hits, [], 1, null, $search, ['hits' => ['total' => ['value' => 1]]] + $responseFlags);
+            },
         ]);
         $exporter = new SnapshotExporter(
             $searchIndexService,
