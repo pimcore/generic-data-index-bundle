@@ -21,11 +21,13 @@
         "nesbot/carbon": "^3.8.4",
         "pimcore/pimcore": "^12.3.9",
         "league/flysystem": "^3.12",
+        "league/flysystem-local": "^3.12",
         "pimcore/static-resolver-bundle": "^3.0",
         "pimcore/opensearch-client": "^2.2.1",
         "pimcore/elasticsearch-client": "^2.0",
         "doctrine/orm": "^3.0",
         "symfony/lock": "^6.4 || ^7.2",
+        "symfony/process": "^6.4 || ^7.2",
         "symfony/scheduler": "^6.4 || ^7.2"
     },
     "require-dev": {

@@ -124,6 +124,30 @@ final class BulkDispatchersTest extends Unit
         }
     }
 
+    public function testWorkerPoolRemovesTheChunkBeingDispatchedWhenAnEarlierFailureSurfaces(): void
+    {
+        // one worker, which fails its first chunk; the failure is only noticed while the
+        // second chunk waits for a free slot, and that second chunk is not tracked yet
+        $dispatcher = new WorkerPoolBulkDispatcher($this->fakeWorker('echo "ERR\t$path\tboom\n"; exit(1);'), 1);
+        $first = $this->chunk('a');
+        $second = $this->chunk('b');
+        $third = $this->chunk('c');
+        $dispatcher->start(new IndexTarget('asset', 'pimcore_asset', 'asset'));
+        $dispatcher->dispatch($first);
+        $dispatcher->dispatch($second);
+        usleep(300_000);
+
+        try {
+            $dispatcher->dispatch($third);
+            $dispatcher->finish();
+            $this->fail('expected SnapshotImportException');
+        } catch (SnapshotImportException $e) {
+            $this->assertStringContainsString('boom', $e->getMessage());
+        }
+        $this->assertFileDoesNotExist($third->path, 'the chunk that was about to be dispatched is removed too');
+        $this->assertFileDoesNotExist($second->path);
+    }
+
     public function testWorkerPoolReportsAWorkerThatDiesWithoutAnswering(): void
     {
         $dispatcher = new WorkerPoolBulkDispatcher($this->fakeWorker('fwrite(STDERR, "segfault-ish"); exit(3);'), 1);

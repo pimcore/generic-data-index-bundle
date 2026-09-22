@@ -85,8 +85,14 @@ final class BulkChunkWriter
     private function flush(string $body, int $documents, int $bytes): BulkChunk
     {
         $path = tempnam(DocumentFileWriter::temporaryDirectory(), 'gdi-snapshot-bulk-');
-        if ($path === false || file_put_contents($path, $body) !== strlen($body)) {
-            throw new SnapshotImportException('Cannot write a bulk chunk to the temporary directory');
+        if ($path === false) {
+            throw new SnapshotImportException('Cannot create a bulk chunk in the temporary directory');
+        }
+        if (file_put_contents($path, $body) !== strlen($body)) {
+            // tempnam() created the file; a partial chunk must not be left behind
+            @unlink($path);
+
+            throw new SnapshotImportException(sprintf('Cannot write bulk chunk "%s"', $path));
         }
 
         return new BulkChunk($path, $documents, $bytes);

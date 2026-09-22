@@ -137,12 +137,18 @@ final class ReplayIndexSettings implements ReplayIndexSettingsInterface
     private function put(string $indexName, array $indexSettings): void
     {
         try {
-            $this->client->putIndexSettings(['index' => $indexName, 'body' => ['index' => $indexSettings]]);
+            $response = $this->client->putIndexSettings(['index' => $indexName, 'body' => ['index' => $indexSettings]]);
         } catch (Exception $e) {
             throw new SnapshotImportException(
                 sprintf('Cannot update settings of index "%s": %s', $indexName, $e->getMessage()),
                 0,
                 $e,
+            );
+        }
+        // the engine can answer without applying the change; the import must not go on then
+        if (($response['acknowledged'] ?? false) !== true) {
+            throw new SnapshotImportException(
+                sprintf('Settings update of index "%s" was not acknowledged by the search engine', $indexName),
             );
         }
     }

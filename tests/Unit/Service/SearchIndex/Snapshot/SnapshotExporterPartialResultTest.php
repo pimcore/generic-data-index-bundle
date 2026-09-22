@@ -79,7 +79,9 @@ final class SnapshotExporterPartialResultTest extends Unit
                 static $calls = 0;
                 $hits = $calls++ === 0 ? [$hit] : [];
 
-                return new SearchResult($hits, [], 1, null, $search, ['hits' => ['total' => ['value' => 1]]] + $responseFlags);
+                $response = ['hits' => ['total' => ['value' => 1]]] + $responseFlags;
+
+                return new SearchResult($hits, [], 1, null, $search, $response);
             },
         ]);
         $exporter = new SnapshotExporter(

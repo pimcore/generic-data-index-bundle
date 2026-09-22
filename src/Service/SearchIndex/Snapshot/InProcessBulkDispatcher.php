@@ -59,9 +59,11 @@ final class InProcessBulkDispatcher implements BulkDispatcherInterface
 
     public function finish(): void
     {
+        // every chunk was sent synchronously in dispatch(); nothing is pending
     }
 
     public function abort(): void
     {
+        // dispatch() deletes its chunk file even when sending fails; nothing is left to clean up
     }
 }

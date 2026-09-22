@@ -32,6 +32,8 @@ final class ReplayIndexSettingsTest extends Unit
 
     private array $flushResponse = ['_shards' => ['total' => 1, 'successful' => 1, 'failed' => 0]];
 
+    private array $putResponse = ['acknowledged' => true];
+
     public function testApplyDisablesRefreshAndMakesTheTranslogAsynchronous(): void
     {
         (new ReplayIndexSettings($this->client()))->apply('pimcore_data-object_ptcar');
@@ -129,6 +131,16 @@ final class ReplayIndexSettingsTest extends Unit
         }
     }
 
+    public function testANotAcknowledgedSettingsUpdateFailsTheImport(): void
+    {
+        $this->putResponse = ['acknowledged' => false];
+
+        $this->expectException(SnapshotImportException::class);
+        $this->expectExceptionMessage('not acknowledged');
+
+        (new ReplayIndexSettings($this->client()))->apply('pimcore_asset');
+    }
+
     public function testApplyDoesNotFlush(): void
     {
         (new ReplayIndexSettings($this->client()))->apply('pimcore_asset');
@@ -167,6 +179,7 @@ final class ReplayIndexSettingsTest extends Unit
         $this->calls = [];
         $this->currentSettings = [];
         $this->flushResponse = ['_shards' => ['total' => 1, 'successful' => 1, 'failed' => 0]];
+        $this->putResponse = ['acknowledged' => true];
     }
 
     private function client(): SearchClientInterface
@@ -181,7 +194,7 @@ final class ReplayIndexSettingsTest extends Unit
                 $this->puts[] = $params;
                 $this->calls[] = 'put ' . $params['index'];
 
-                return ['acknowledged' => true];
+                return $this->putResponse;
             },
             'flushIndex' => function (array $params): array {
                 $this->calls[] = 'flush ' . $params['index'];

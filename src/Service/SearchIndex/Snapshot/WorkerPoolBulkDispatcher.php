@@ -89,7 +89,15 @@ final class WorkerPoolBulkDispatcher implements BulkDispatcherInterface
 
     public function dispatch(BulkChunk $chunk): void
     {
-        $worker = $this->waitForFreeWorker();
+        try {
+            $worker = $this->waitForFreeWorker();
+        } catch (SnapshotImportException $e) {
+            // an earlier chunk's failure surfaced while this one waited; it is not tracked yet,
+            // so abort() would not remove its file
+            @unlink($chunk->path);
+
+            throw $e;
+        }
         $this->inFlight[$worker][$chunk->path] = $chunk;
         $this->logger?->debug('Snapshot import bulk', [
             'index' => $this->indexShortName,
