@@ -82,9 +82,20 @@ Symfony's lock component (`framework.lock`), whose default store is a host-local
 installation with several application nodes, configure a shared lock store (for example Redis or
 the database) so that an export on one node also excludes an import on another.
 
-Run both commands with `--no-debug` (or in the `prod` environment). In debug mode the bundle keeps
-a history of executed searches, including their full responses, for the profiler; on a large
-export this history alone can exhaust the memory limit.
+Run both commands in the `prod` environment, or at least with `--no-debug`. In debug mode the
+bundle keeps a history of executed searches, including their full responses, for the profiler; on
+a large export this history alone can exhaust the memory limit. The `dev` environment has a second
+cost that `--no-debug` does not remove: Pimcore's default `dev` logging writes every debug record to
+`var/log/dev-debug.log`, and the search client logs every request body at debug level, so an import
+of a large snapshot writes every bulk body to that file (tens of gigabytes for millions of
+documents). If you must import in `dev`, exclude the search client's channel
+(`pimcore.opensearch.default` / `pimcore.elasticsearch.default`) from the debug handler first.
+
+A snapshot only covers the search indices. The matching database dump must contain everything the
+installation needs to boot and to compute the class mapping checksums: take it with stored
+routines and triggers included (`mariadb-dump --routines --triggers ...`), copy `var/classes` along
+with it, and expect asset binaries and thumbnails to be missing unless you copy `public/var/assets`
+too — the index import does not need them, the UI does.
 
 ## Export
 
