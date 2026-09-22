@@ -31,12 +31,26 @@ services:
         arguments:
             $client: '@generic-data-index.search-client'
 
-    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentReplayerInterface:
-        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentReplayer
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkSenderInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkSender
         arguments:
             $client: '@generic-data-index.search-client'
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkChunkWriter:
+        arguments:
             $bulkSize: 1000
             $bulkBytes: 16777216
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkDispatcherFactory:
+        arguments:
+            $workers: 4
+            $projectDir: '%kernel.project_dir%'
+            $environment: '%kernel.environment%'
+            $debug: '%kernel.debug%'
+            $logger: '@?monolog.logger.pimcore_generic_data_index'
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentReplayerInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentReplayer
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporter

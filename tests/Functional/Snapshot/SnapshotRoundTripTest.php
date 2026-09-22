@@ -36,6 +36,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\Eleme
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkChunkWriter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkDispatcherFactory;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkSender;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\CompatibilityCheckerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileReader;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileWriter;
@@ -572,14 +575,19 @@ final class SnapshotRoundTripTest extends Unit
         $this->searchIndexService->deleteIndex($this->tester->getIndexName('simple', true));
 
         // ceiling of 1000 documents, budget of 1 byte: every document must be flushed on its own
-        $replayer = new DocumentReplayer(
-            $this->tester->grabService('generic-data-index.search-client'),
-            new DocumentFileReader(),
-            $this->tester->grabService(ReplayIndexSettingsInterface::class),
-            bulkSize: 1000,
-            bulkBytes: 1,
-        );
         $log = new TestHandler();
+        $replayer = new DocumentReplayer(
+            new BulkChunkWriter(new DocumentFileReader(), bulkSize: 1000, bulkBytes: 1),
+            new BulkDispatcherFactory(
+                new BulkSender($this->tester->grabService('generic-data-index.search-client')),
+                1,
+                PIMCORE_PROJECT_ROOT,
+                'test',
+                false,
+                new Logger('test', [$log]),
+            ),
+            $this->tester->grabService(ReplayIndexSettingsInterface::class),
+        );
         $replayer->setLogger(new Logger('test', [$log]));
         $importer = new SnapshotImporter(
             $this->tester->grabService(SnapshotIndexResolverInterface::class),

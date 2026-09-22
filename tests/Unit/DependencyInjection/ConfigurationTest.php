@@ -28,6 +28,7 @@ final class ConfigurationTest extends Unit
             'page_size' => 1000,
             'page_bytes' => 16 * 1024 * 1024,
             'bulk_size' => 1000,
+            'import_workers' => 4,
             'bulk_bytes' => 16 * 1024 * 1024,
         ], $config['snapshot']);
     }
@@ -41,6 +42,7 @@ final class ConfigurationTest extends Unit
                 'page_bytes' => 4096,
                 'bulk_size' => 500,
                 'bulk_bytes' => 8192,
+                'import_workers' => 1,
             ],
         ]]);
 
@@ -49,5 +51,6 @@ final class ConfigurationTest extends Unit
         $this->assertSame(4096, $config['snapshot']['page_bytes']);
         $this->assertSame(500, $config['snapshot']['bulk_size']);
         $this->assertSame(8192, $config['snapshot']['bulk_bytes']);
+        $this->assertSame(1, $config['snapshot']['import_workers']);
     }
 }

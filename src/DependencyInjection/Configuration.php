@@ -172,6 +172,15 @@ class Configuration implements ConfigurationInterface
                             ->defaultValue(1000)
                             ->min(1)
                         ->end()
+                        ->integerNode('import_workers')
+                            ->info(
+                                'Worker processes that send bulk requests concurrently during import. '
+                                . '1 sends from the importing process; more workers use the search '
+                                . 'engine\'s write threads in parallel (bounded by its write queue).',
+                            )
+                            ->defaultValue(4)
+                            ->min(1)
+                        ->end()
                         ->integerNode('bulk_bytes')
                             ->info(
                                 'Raw JSON byte budget per import bulk request. A request is sent as soon '
