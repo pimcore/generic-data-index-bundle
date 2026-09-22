@@ -65,13 +65,22 @@ final class ReplayIndexSettings implements ReplayIndexSettingsInterface
     private function flush(string $indexName): void
     {
         try {
-            $this->client->flushIndex(['index' => $indexName]);
+            $response = $this->client->flushIndex(['index' => $indexName]);
         } catch (Exception $e) {
             throw new SnapshotImportException(
                 sprintf('Cannot flush index "%s" after the replay: %s', $indexName, $e->getMessage()),
                 0,
                 $e,
             );
+        }
+        // a normal response can still report shards the flush did not reach: no barrier there
+        $failedShards = (int) ($response['_shards']['failed'] ?? 0);
+        if ($failedShards > 0) {
+            throw new SnapshotImportException(sprintf(
+                'Flush of index "%s" after the replay: %d shard(s) failed, the replayed documents are not durable',
+                $indexName,
+                $failedShards,
+            ));
         }
     }
 

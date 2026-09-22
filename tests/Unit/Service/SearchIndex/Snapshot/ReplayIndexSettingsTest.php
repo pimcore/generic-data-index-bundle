@@ -30,6 +30,8 @@ final class ReplayIndexSettingsTest extends Unit
 
     private array $currentSettings = [];
 
+    private array $flushResponse = ['_shards' => ['total' => 1, 'successful' => 1, 'failed' => 0]];
+
     public function testApplyDisablesRefreshAndMakesTheTranslogAsynchronous(): void
     {
         (new ReplayIndexSettings($this->client()))->apply('pimcore_data-object_ptcar');
@@ -77,6 +79,18 @@ final class ReplayIndexSettingsTest extends Unit
         $this->assertSame(['flush pimcore_asset', 'put pimcore_asset'], $this->calls);
     }
 
+    public function testAFlushWithFailedShardsFailsTheRestore(): void
+    {
+        // a normal flush response can still report shards on which the flush did not happen;
+        // the durability barrier then did not hold and the replay must not count as complete
+        $this->flushResponse = ['_shards' => ['total' => 2, 'successful' => 1, 'failed' => 1]];
+
+        $this->expectException(SnapshotImportException::class);
+        $this->expectExceptionMessage('1 shard(s) failed');
+
+        (new ReplayIndexSettings($this->client()))->restore('pimcore_asset', new IndexSettingsBackup(null, null));
+    }
+
     public function testApplyDoesNotFlush(): void
     {
         (new ReplayIndexSettings($this->client()))->apply('pimcore_asset');
@@ -114,6 +128,7 @@ final class ReplayIndexSettingsTest extends Unit
         $this->puts = [];
         $this->calls = [];
         $this->currentSettings = [];
+        $this->flushResponse = ['_shards' => ['total' => 1, 'successful' => 1, 'failed' => 0]];
     }
 
     private function client(): SearchClientInterface
@@ -133,7 +148,7 @@ final class ReplayIndexSettingsTest extends Unit
             'flushIndex' => function (array $params): array {
                 $this->calls[] = 'flush ' . $params['index'];
 
-                return ['_shards' => ['failed' => 0]];
+                return $this->flushResponse;
             },
         ]);
     }
