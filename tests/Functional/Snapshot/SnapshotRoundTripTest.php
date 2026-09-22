@@ -29,7 +29,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportedIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportOptions;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
@@ -42,6 +41,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentF
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileWriter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentReplayer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\IndexProvisionerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\ReplayIndexSettingsInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface;
@@ -169,6 +169,12 @@ final class SnapshotRoundTripTest extends Unit
         $this->assertCount(1, $hits['hits']['hits']);
         $this->assertSame($objects[0]->getId(), (int) $hits['hits']['hits'][0]['_id']);
         $this->assertSame(3, $this->searchIndexService->getCount(new Search(), $this->simpleAlias));
+        // the replay runs with refresh disabled and an asynchronous translog; both must be back
+        // at the engine defaults once the index is imported
+        $settings = $this->tester->getIndexSearchClient()->getIndexSettings(['index' => $this->simpleAlias]);
+        $index = array_values($settings)[0]['settings']['index'];
+        $this->assertArrayNotHasKey('refresh_interval', $index, 'refresh_interval restored to default');
+        $this->assertArrayNotHasKey('translog', $index, 'translog durability restored to default');
     }
 
     public function testImportRefusesOnChecksumMismatchAndWritesNothing(): void
@@ -567,7 +573,7 @@ final class SnapshotRoundTripTest extends Unit
 
         // ceiling of 1000 documents, budget of 1 byte: every document must be flushed on its own
         $replayer = new DocumentReplayer(
-            $this->tester->grabService(BulkOperationServiceInterface::class),
+            $this->tester->grabService('generic-data-index.search-client'),
             new DocumentFileReader(),
             bulkSize: 1000,
             bulkBytes: 1,
@@ -582,6 +588,7 @@ final class SnapshotRoundTripTest extends Unit
             $this->tester->grabService(IndexProvisionerInterface::class),
             new DocumentFileReader(),
             $replayer,
+            $this->tester->grabService(ReplayIndexSettingsInterface::class),
         );
         $importer->setLogger(new Logger('test', [$log]));
 

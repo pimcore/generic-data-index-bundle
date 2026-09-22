@@ -17,6 +17,7 @@ use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\DocumentLine;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\RawDocumentLine;
 
 /**
  * @internal
@@ -64,6 +65,35 @@ final class DocumentFileReader
     }
 
     /** @return iterable<array> */
+    /**
+     * The lines as stored, undecoded, for callers that pass them on verbatim (the bulk replay).
+     * Empty lines are skipped; anything else is left to the consumer to validate.
+     *
+     * @return iterable<RawDocumentLine>
+     *
+     * @throws InvalidSnapshotException
+     */
+    public function readRawLines(string $path): iterable
+    {
+        $handle = gzopen($path, 'rb');
+        if ($handle === false) {
+            throw new InvalidSnapshotException(sprintf('Cannot open "%s" for gzip reading', $path));
+        }
+
+        try {
+            while (($line = gzgets($handle)) !== false) {
+                $bytes = strlen($line);
+                $json = rtrim($line, "\r\n");
+                if (trim($json) === '') {
+                    continue;
+                }
+                yield new RawDocumentLine($json, $bytes);
+            }
+        } finally {
+            gzclose($handle);
+        }
+    }
+
     public function read(string $path): iterable
     {
         foreach ($this->readLines($path) as $line) {

@@ -152,4 +152,29 @@ final class DocumentFileTest extends Unit
             'reader and writer agree on raw size',
         );
     }
+
+    public function testRawLinesAreTheExactFileLinesWithTheirByteSize(): void
+    {
+        $documents = [
+            ['system_fields' => ['id' => 1, 'key' => 'käse']],
+            ['system_fields' => ['id' => 2], 'standard_fields' => ['ratio' => 1.0]],
+        ];
+        $writer = DocumentFileWriter::createTemporary();
+        foreach ($documents as $document) {
+            $writer->write($document);
+        }
+        $written = $writer->finish();
+        $this->paths[] = $written->path;
+        $expected = explode("\n", rtrim((string) gzdecode((string) file_get_contents($written->path)), "\n"));
+
+        $lines = iterator_to_array((new DocumentFileReader())->readRawLines($written->path), false);
+
+        $this->assertSame($expected, array_map(static fn ($l) => $l->json, $lines), 'no decode/encode round trip');
+        $this->assertSame(
+            array_map(static fn (string $l) => strlen($l) + 1, $expected),
+            array_map(static fn ($l) => $l->bytes, $lines),
+            'bytes include the newline, like the writer counts them',
+        );
+        $this->assertSame($documents, array_map(static fn ($l) => json_decode($l->json, true), $lines));
+    }
 }

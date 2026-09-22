@@ -16,12 +16,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\S
 use Codeception\Test\Unit;
 use Monolog\Handler\TestHandler;
 use Monolog\Logger;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileReader;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileWriter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentReplayer;
+use Pimcore\SearchClient\SearchClientInterface;
 
 final class DocumentReplayerTest extends Unit
 {
@@ -36,6 +37,7 @@ final class DocumentReplayerTest extends Unit
             }
         }
         $this->paths = [];
+        $this->bulkResponse = ['errors' => false, 'items' => []];
     }
 
     public function testFlushesBeforeALineThatWouldCrossTheByteBudget(): void
@@ -81,13 +83,89 @@ final class DocumentReplayerTest extends Unit
         $this->assertSame([2, 1], array_column($flushes, 'documents'));
     }
 
+    public function testSendsTheRawLinesUnchangedWithAnIndexActionPerDocument(): void
+    {
+        $documents = [
+            [
+                'system_fields' => ['id' => 41, 'key' => 'käse/über'],
+                'standard_fields' => ['ratio' => 1.0, 'n' => null],
+            ],
+            ['system_fields' => ['id' => 42], 'standard_fields' => []],
+        ];
+        $path = $this->writeDocuments($documents);
+        $rawLines = [];
+        foreach ((new DocumentFileReader())->readRawLines($path) as $line) {
+            $rawLines[] = $line->json;
+        }
+
+        $this->replay($path, bulkSize: 1000, bulkBytes: 1024 * 1024);
+
+        $this->assertCount(1, $this->bulkBodies);
+        $lines = explode("\n", rtrim($this->bulkBodies[0], "\n"));
+        $this->assertCount(4, $lines, 'action line + document line per document');
+        $this->assertSame(['index' => ['_index' => 'pimcore_asset', '_id' => 41]], json_decode($lines[0], true));
+        $this->assertSame($rawLines[0], $lines[1], 'the document line is the snapshot line, byte for byte');
+        $this->assertSame(['index' => ['_index' => 'pimcore_asset', '_id' => 42]], json_decode($lines[2], true));
+        $this->assertSame($rawLines[1], $lines[3]);
+        $this->assertSame('false', $this->bulkParams[0]['refresh'], 'never refresh per bulk request');
+    }
+
+    public function testBulkItemErrorsAbortTheReplay(): void
+    {
+        $path = $this->writeDocuments([['system_fields' => ['id' => 1]], ['system_fields' => ['id' => 2]]]);
+        $this->bulkResponse = ['errors' => true, 'items' => [
+            ['index' => ['_id' => '1', 'status' => 201]],
+            ['index' => [
+                '_id' => '2',
+                'status' => 400,
+                'error' => ['type' => 'mapper_parsing_exception', 'reason' => 'failed to parse'],
+            ]],
+        ]];
+
+        try {
+            $this->replay($path, bulkSize: 1000, bulkBytes: 1024 * 1024);
+            $this->fail('expected SnapshotImportException');
+        } catch (SnapshotImportException $e) {
+            $this->assertStringContainsString('asset', $e->getMessage());
+            $this->assertStringContainsString('mapper_parsing_exception', $e->getMessage());
+            $this->assertStringContainsString('failed to parse', $e->getMessage());
+        }
+    }
+
+    public function testDocumentWithoutIntegerIdIsRejected(): void
+    {
+        $path = $this->writeDocuments([['system_fields' => ['id' => 'not-an-int']]]);
+
+        $this->expectException(SnapshotImportException::class);
+        $this->expectExceptionMessage('Document without integer system_fields.id');
+
+        $this->replay($path, bulkSize: 1000, bulkBytes: 1024 * 1024);
+    }
+
+    /** @var string[] NDJSON bodies of the bulk requests the replayer sent, in order */
+    private array $bulkBodies = [];
+
+    /** @var array[] full params of those requests */
+    private array $bulkParams = [];
+
+    private array $bulkResponse = ['errors' => false, 'items' => []];
+
     /**
      * @return array<int, array{documents: int, bytes: int}> one entry per bulk commit, in order
      */
     private function replay(string $path, int $bulkSize, int $bulkBytes): array
     {
-        $bulk = $this->makeEmpty(BulkOperationServiceInterface::class);
-        $replayer = new DocumentReplayer($bulk, new DocumentFileReader(), $bulkSize, $bulkBytes);
+        $this->bulkBodies = [];
+        $this->bulkParams = [];
+        $client = $this->makeEmpty(SearchClientInterface::class, [
+            'bulk' => function (array $params): array {
+                $this->bulkParams[] = $params;
+                $this->bulkBodies[] = $params['body'];
+
+                return $this->bulkResponse;
+            },
+        ]);
+        $replayer = new DocumentReplayer($client, new DocumentFileReader(), $bulkSize, $bulkBytes);
         $log = new TestHandler();
         $replayer->setLogger(new Logger('test', [$log]));
         $target = new IndexTarget('asset', 'pimcore_asset', 'asset');

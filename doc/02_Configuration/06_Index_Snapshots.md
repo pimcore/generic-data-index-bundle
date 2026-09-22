@@ -144,7 +144,11 @@ downloaded or verified.
 If the local index queue is not empty, the command prints a warning ("Stop messenger consumers
 during the import to avoid interleaved writes.") but still proceeds — stopping the consumers
 yourself is recommended, not enforced. The import then recreates each index with the local
-mapping and replays the documents through the bulk API; it does **not** enqueue elements. Before a
+mapping and replays the documents through the bulk API; it does **not** enqueue elements. The
+documents are sent to the bulk API exactly as stored in the snapshot, without being decoded and
+re-encoded, and while an index is being replayed its automatic refresh is disabled and its
+translog switched to asynchronous durability; both settings are restored as soon as the index is
+complete (or the replay failed). Before a
 class index is recreated, its stored mapping checksum is removed and only stamped again once the
 replay completed: should the replay fail, the class is left without a checksum, so the normal
 per-class reindex (`generic-data-index:deployment:reindex`, or the class-definition update) rebuilds the emptied

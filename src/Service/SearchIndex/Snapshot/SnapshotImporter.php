@@ -47,6 +47,7 @@ final class SnapshotImporter implements SnapshotImporterInterface
         private readonly IndexProvisionerInterface $indexProvisioner,
         private readonly DocumentFileReader $documentFileReader,
         private readonly DocumentReplayerInterface $documentReplayer,
+        private readonly ReplayIndexSettingsInterface $replayIndexSettings,
     ) {
     }
 
@@ -298,6 +299,34 @@ final class SnapshotImporter implements SnapshotImporterInterface
         return $imported;
     }
 
+    /**
+     * The index runs without automatic refresh and with an asynchronous translog for the
+     * duration of the replay; both are put back to the defaults afterwards, also when the replay
+     * fails, so a partial index never stays in bulk-loading mode.
+     *
+     * @throws SnapshotImportException
+     */
+    private function replayWithBulkLoadSettings(IndexTarget $target, ManifestIndex $entry, string $local): void
+    {
+        $this->replayIndexSettings->apply($target->aliasName);
+
+        try {
+            $this->documentReplayer->replay($target, $entry, $local);
+        } catch (Throwable $e) {
+            try {
+                $this->replayIndexSettings->restore($target->aliasName);
+            } catch (SnapshotImportException $restoreError) {
+                $this->logger?->warning('Could not restore index settings after a failed replay', [
+                    'index' => $target->aliasName,
+                    'error' => $restoreError->getMessage(),
+                ]);
+            }
+
+            throw $e;
+        }
+        $this->replayIndexSettings->restore($target->aliasName);
+    }
+
     private function replay(ManifestIndex $entry, IndexTarget $target, string $local): ImportedIndex
     {
         // The checksum is computed here, before the documents are replayed, but only ever
@@ -308,7 +337,7 @@ final class SnapshotImporter implements SnapshotImporterInterface
         $this->indexProvisioner->provision($target);
         $classMappingChecksum = $this->indexProvisioner->computeClassMappingChecksum($target);
 
-        $this->documentReplayer->replay($target, $entry, $local);
+        $this->replayWithBulkLoadSettings($target, $entry, $local);
         $this->searchIndexService->refreshIndex($target->aliasName);
         $actual = $this->searchIndexService->getCount(new Search(), $target->aliasName);
         $this->logger?->info(sprintf(
