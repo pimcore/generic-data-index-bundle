@@ -91,6 +91,40 @@ final class ReplayIndexSettingsTest extends Unit
         (new ReplayIndexSettings($this->client()))->restore('pimcore_asset', new IndexSettingsBackup(null, null));
     }
 
+    public function testAFailedFlushStillResetsTheSettings(): void
+    {
+        $this->flushResponse = ['_shards' => ['total' => 2, 'successful' => 1, 'failed' => 1]];
+
+        try {
+            (new ReplayIndexSettings($this->client()))->restore('pimcore_asset', new IndexSettingsBackup('30s', null));
+            $this->fail('expected SnapshotImportException');
+        } catch (SnapshotImportException $e) {
+            $this->assertStringContainsString('1 shard(s) failed', $e->getMessage());
+        }
+        $this->assertSame(['flush pimcore_asset', 'put pimcore_asset'], $this->calls, 'the index must not stay in bulk mode');
+        $this->assertSame('30s', $this->puts[0]['body']['index']['refresh_interval']);
+    }
+
+    public function testBothErrorsAreReportedWhenTheResetAfterAFailedFlushFailsToo(): void
+    {
+        $client = $this->makeEmpty(SearchClientInterface::class, [
+            'flushIndex' => static function (): never {
+                throw new RuntimeException('flush boom');
+            },
+            'putIndexSettings' => static function (): never {
+                throw new RuntimeException('reset boom');
+            },
+        ]);
+
+        try {
+            (new ReplayIndexSettings($client))->restore('pimcore_asset', new IndexSettingsBackup(null, null));
+            $this->fail('expected SnapshotImportException');
+        } catch (SnapshotImportException $e) {
+            $this->assertStringContainsString('flush boom', $e->getMessage());
+            $this->assertStringContainsString('reset boom', $e->getMessage());
+        }
+    }
+
     public function testApplyDoesNotFlush(): void
     {
         (new ReplayIndexSettings($this->client()))->apply('pimcore_asset');

@@ -48,13 +48,31 @@ final class ReplayIndexSettings implements ReplayIndexSettingsInterface
 
     public function restore(string $indexName, IndexSettingsBackup $backup): void
     {
-        $this->flush($indexName);
         // A value the index had (the installation's configured index_settings) goes back as it
         // was; null resets the setting to the engine default instead of pinning a value.
-        $this->put($indexName, [
+        $settings = [
             'refresh_interval' => $backup->refreshInterval,
             'translog' => ['durability' => $backup->translogDurability],
-        ]);
+        ];
+
+        try {
+            $this->flush($indexName);
+        } catch (SnapshotImportException $flushError) {
+            // The import of this index fails either way, but the index must not be left in
+            // bulk-loading mode; report both errors if the reset fails as well.
+            try {
+                $this->put($indexName, $settings);
+            } catch (SnapshotImportException $resetError) {
+                throw new SnapshotImportException(
+                    $flushError->getMessage() . ' Resetting the index settings also failed: ' . $resetError->getMessage(),
+                    0,
+                    $flushError,
+                );
+            }
+
+            throw $flushError;
+        }
+        $this->put($indexName, $settings);
     }
 
     /**
