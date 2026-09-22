@@ -22,11 +22,16 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\SearchClient\SearchClientInterface;
+use Throwable;
 
 /**
  * Streams a snapshot file into the bulk API. The snapshot lines are the documents' JSON as the
  * source engine returned them, so they go into the bulk body unchanged: no decode into PHP
  * arrays and no re-encode per document. Only the id is read from each line.
+ *
+ * For the duration of the replay the index runs in bulk-loading mode (no automatic refresh,
+ * asynchronous translog); its previous settings are put back afterwards, also after a failure,
+ * so a partial index never stays in that mode.
  *
  * @internal
  */
@@ -36,21 +41,48 @@ final class DocumentReplayer implements DocumentReplayerInterface
 
     /**
      * The exporter writes the source unchanged and GDI documents always start with the system
-     * fields, id first; when a line deviates, the id is read the slow way (json_decode).
+     * fields, id first; when a line deviates, the id is read the slow way (json_decode). At most
+     * 18 digits, so the cast can never clamp an oversized value to PHP_INT_MAX: longer digit runs
+     * take the slow path, where json_decode yields a float that the integer check rejects.
      */
-    private const ID_FAST_PATH = '/^\{"system_fields":\{"id":(\d+)[,}]/';
+    private const ID_FAST_PATH = '/^\{"system_fields":\{"id":(\d{1,18})[,}]/';
 
     private const MAX_REPORTED_ITEM_ERRORS = 3;
 
     public function __construct(
         private readonly SearchClientInterface $client,
         private readonly DocumentFileReader $documentFileReader,
+        private readonly ReplayIndexSettingsInterface $replayIndexSettings,
         private readonly int $bulkSize,
         private readonly int $bulkBytes,
     ) {
     }
 
     public function replay(IndexTarget $target, ManifestIndex $entry, string $localFile): void
+    {
+        $backup = $this->replayIndexSettings->apply($target->aliasName);
+
+        try {
+            $this->stream($target, $entry, $localFile);
+        } catch (Throwable $e) {
+            try {
+                $this->replayIndexSettings->restore($target->aliasName, $backup);
+            } catch (SnapshotImportException $restoreError) {
+                $this->logger?->warning('Could not restore index settings after a failed replay', [
+                    'index' => $target->aliasName,
+                    'error' => $restoreError->getMessage(),
+                ]);
+            }
+
+            throw $e;
+        }
+        $this->replayIndexSettings->restore($target->aliasName, $backup);
+    }
+
+    /**
+     * @throws SnapshotImportException
+     */
+    private function stream(IndexTarget $target, ManifestIndex $entry, string $localFile): void
     {
         try {
             $body = '';

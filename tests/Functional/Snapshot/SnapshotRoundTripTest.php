@@ -575,6 +575,7 @@ final class SnapshotRoundTripTest extends Unit
         $replayer = new DocumentReplayer(
             $this->tester->grabService('generic-data-index.search-client'),
             new DocumentFileReader(),
+            $this->tester->grabService(ReplayIndexSettingsInterface::class),
             bulkSize: 1000,
             bulkBytes: 1,
         );
@@ -588,7 +589,6 @@ final class SnapshotRoundTripTest extends Unit
             $this->tester->grabService(IndexProvisionerInterface::class),
             new DocumentFileReader(),
             $replayer,
-            $this->tester->grabService(ReplayIndexSettingsInterface::class),
         );
         $importer->setLogger(new Logger('test', [$log]));
 

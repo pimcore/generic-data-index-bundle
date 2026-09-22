@@ -17,11 +17,13 @@ use Codeception\Test\Unit;
 use Monolog\Handler\TestHandler;
 use Monolog\Logger;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexSettingsBackup;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileReader;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileWriter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentReplayer;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\ReplayIndexSettingsInterface;
 use Pimcore\SearchClient\SearchClientInterface;
 
 final class DocumentReplayerTest extends Unit
@@ -132,6 +134,43 @@ final class DocumentReplayerTest extends Unit
         }
     }
 
+    public function testBulkLoadingSettingsWrapTheReplayAndAreRestoredWithTheBackup(): void
+    {
+        $path = $this->writeDocuments([['system_fields' => ['id' => 1]]]);
+        $this->settingsCalls = [];
+
+        $this->replay($path, bulkSize: 1000, bulkBytes: 1024 * 1024);
+
+        $this->assertSame(['apply pimcore_asset', 'restore pimcore_asset 30s'], $this->settingsCalls);
+    }
+
+    public function testSettingsAreRestoredWhenTheReplayFails(): void
+    {
+        $path = $this->writeDocuments([['system_fields' => ['id' => 1]]]);
+        $this->bulkResponse = ['errors' => true, 'items' => [['index' => ['_id' => '1', 'error' => 'x']]]];
+        $this->settingsCalls = [];
+
+        try {
+            $this->replay($path, bulkSize: 1000, bulkBytes: 1024 * 1024);
+            $this->fail('expected SnapshotImportException');
+        } catch (SnapshotImportException) {
+            $this->assertSame(['apply pimcore_asset', 'restore pimcore_asset 30s'], $this->settingsCalls);
+        }
+    }
+
+    public function testOversizedNumericIdIsRejectedInsteadOfClamped(): void
+    {
+        // 9223372036854775808 = PHP_INT_MAX + 1: the fast path must not cast it to PHP_INT_MAX
+        $path = $this->writeDocuments([['system_fields' => ['id' => 1]]]);
+        $raw = gzencode('{"system_fields":{"id":9223372036854775808,"key":"x"}}' . "\n");
+        file_put_contents($path, $raw);
+
+        $this->expectException(SnapshotImportException::class);
+        $this->expectExceptionMessage('Document without integer system_fields.id');
+
+        $this->replay($path, bulkSize: 1000, bulkBytes: 1024 * 1024);
+    }
+
     public function testDocumentWithoutIntegerIdIsRejected(): void
     {
         $path = $this->writeDocuments([['system_fields' => ['id' => 'not-an-int']]]);
@@ -144,6 +183,9 @@ final class DocumentReplayerTest extends Unit
 
     /** @var string[] NDJSON bodies of the bulk requests the replayer sent, in order */
     private array $bulkBodies = [];
+
+    /** @var string[] apply/restore calls on the settings service, in order */
+    private array $settingsCalls = [];
 
     /** @var array[] full params of those requests */
     private array $bulkParams = [];
@@ -165,7 +207,17 @@ final class DocumentReplayerTest extends Unit
                 return $this->bulkResponse;
             },
         ]);
-        $replayer = new DocumentReplayer($client, new DocumentFileReader(), $bulkSize, $bulkBytes);
+        $settings = $this->makeEmpty(ReplayIndexSettingsInterface::class, [
+            'apply' => function (string $index): IndexSettingsBackup {
+                $this->settingsCalls[] = 'apply ' . $index;
+
+                return new IndexSettingsBackup('30s', null);
+            },
+            'restore' => function (string $index, IndexSettingsBackup $backup): void {
+                $this->settingsCalls[] = 'restore ' . $index . ' ' . $backup->refreshInterval;
+            },
+        ]);
+        $replayer = new DocumentReplayer($client, new DocumentFileReader(), $settings, $bulkSize, $bulkBytes);
         $log = new TestHandler();
         $replayer->setLogger(new Logger('test', [$log]));
         $target = new IndexTarget('asset', 'pimcore_asset', 'asset');

@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexSettingsBackup;
 use Pimcore\SearchClient\SearchClientInterface;
 
 /**
@@ -32,15 +33,47 @@ final class ReplayIndexSettings implements ReplayIndexSettingsInterface
     {
     }
 
-    public function apply(string $indexName): void
+    public function apply(string $indexName): IndexSettingsBackup
     {
+        $backup = $this->current($indexName);
         $this->put($indexName, ['refresh_interval' => '-1', 'translog' => ['durability' => 'async']]);
+
+        return $backup;
     }
 
-    public function restore(string $indexName): void
+    public function restore(string $indexName, IndexSettingsBackup $backup): void
     {
-        // null resets a setting to the engine default instead of pinning a value
-        $this->put($indexName, ['refresh_interval' => null, 'translog' => ['durability' => null]]);
+        // A value the index had (the installation's configured index_settings) goes back as it
+        // was; null resets the setting to the engine default instead of pinning a value.
+        $this->put($indexName, [
+            'refresh_interval' => $backup->refreshInterval,
+            'translog' => ['durability' => $backup->translogDurability],
+        ]);
+    }
+
+    /**
+     * @throws SnapshotImportException
+     */
+    private function current(string $indexName): IndexSettingsBackup
+    {
+        try {
+            $response = $this->client->getIndexSettings(['index' => $indexName]);
+        } catch (Exception $e) {
+            throw new SnapshotImportException(
+                sprintf('Cannot read settings of index "%s": %s', $indexName, $e->getMessage()),
+                0,
+                $e,
+            );
+        }
+        // keyed by the concrete index name, also when queried through its alias
+        $index = is_array($response) && $response !== [] ? (reset($response)['settings']['index'] ?? []) : [];
+        $refresh = $index['refresh_interval'] ?? null;
+        $durability = $index['translog']['durability'] ?? null;
+
+        return new IndexSettingsBackup(
+            is_string($refresh) ? $refresh : null,
+            is_string($durability) ? $durability : null,
+        );
     }
 
     /**
