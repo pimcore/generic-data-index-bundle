@@ -25,6 +25,9 @@ final class ReplayIndexSettingsTest extends Unit
     /** @var array[] putIndexSettings params, in order */
     private array $puts = [];
 
+    /** @var string[] client calls in order: "flush <index>" / "put <index>" */
+    private array $calls = [];
+
     private array $currentSettings = [];
 
     public function testApplyDisablesRefreshAndMakesTheTranslogAsynchronous(): void
@@ -64,6 +67,23 @@ final class ReplayIndexSettingsTest extends Unit
         $this->assertSame('request', $this->puts[0]['body']['index']['translog']['durability']);
     }
 
+    public function testRestoreFlushesTheIndexBeforeLeavingBulkLoadingMode(): void
+    {
+        // With an asynchronous translog a bulk request is acknowledged before it is fsynced.
+        // The flush is the durability barrier: only after it may the replay count as complete
+        // and the class checksum be stamped.
+        (new ReplayIndexSettings($this->client()))->restore('pimcore_asset', new IndexSettingsBackup(null, null));
+
+        $this->assertSame(['flush pimcore_asset', 'put pimcore_asset'], $this->calls);
+    }
+
+    public function testApplyDoesNotFlush(): void
+    {
+        (new ReplayIndexSettings($this->client()))->apply('pimcore_asset');
+
+        $this->assertSame(['put pimcore_asset'], $this->calls);
+    }
+
     public function testRestoreResetsAbsentSettingsToTheEngineDefaults(): void
     {
         (new ReplayIndexSettings($this->client()))->restore('pimcore_asset', new IndexSettingsBackup(null, null));
@@ -92,6 +112,7 @@ final class ReplayIndexSettingsTest extends Unit
     protected function _before(): void
     {
         $this->puts = [];
+        $this->calls = [];
         $this->currentSettings = [];
     }
 
@@ -105,8 +126,14 @@ final class ReplayIndexSettingsTest extends Unit
             ],
             'putIndexSettings' => function (array $params): array {
                 $this->puts[] = $params;
+                $this->calls[] = 'put ' . $params['index'];
 
                 return ['acknowledged' => true];
+            },
+            'flushIndex' => function (array $params): array {
+                $this->calls[] = 'flush ' . $params['index'];
+
+                return ['_shards' => ['failed' => 0]];
             },
         ]);
     }

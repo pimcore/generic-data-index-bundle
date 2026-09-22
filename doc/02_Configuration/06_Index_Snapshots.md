@@ -50,8 +50,8 @@ The size of an indexed document is not known up front, and one page of 1000 larg
 exhaust PHP's memory limit on its own. `page_size` and `bulk_size` are therefore ceilings, not
 fixed batch sizes:
 
-- On export, the first page of every index requests a single document, so that a page cannot
-  exceed the budget before anything is known about document size. Every following page is sized
+- On export, the first page of every index requests a single document, which limits the initial
+  exposure to one document while nothing is known about document size yet. Every following page is sized
   from the larger of two estimates: the average over the documents written for that index so far,
   and the average of the most recent page. The second one makes a run of larger documents shrink
   the next page immediately, while a single outlier does not collapse the page size. Small
@@ -147,8 +147,8 @@ yourself is recommended, not enforced. The import then recreates each index with
 mapping and replays the documents through the bulk API; it does **not** enqueue elements. The
 documents are sent to the bulk API exactly as stored in the snapshot, without being decoded and
 re-encoded, and while an index is being replayed its automatic refresh is disabled and its
-translog switched to asynchronous durability; both settings are restored as soon as the index is
-complete (or the replay failed). Before a
+translog switched to asynchronous durability; the index is flushed (made durable) and both
+settings are restored as soon as the index is complete (or the replay failed). Before a
 class index is recreated, its stored mapping checksum is removed and only stamped again once the
 replay completed: should the replay fail, the class is left without a checksum, so the normal
 per-class reindex (`generic-data-index:deployment:reindex`, or the class-definition update) rebuilds the emptied

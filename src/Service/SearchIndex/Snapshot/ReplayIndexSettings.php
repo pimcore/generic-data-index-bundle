@@ -25,6 +25,11 @@ use Pimcore\SearchClient\SearchClientInterface;
  * automatic refresh (one per second by default) and fsync-per-request removes measurable
  * overhead from a bulk load of millions of documents.
  *
+ * Leaving bulk-loading mode flushes the index first: with an asynchronous translog a bulk
+ * request is acknowledged before its operations are fsynced, and only the flush makes them
+ * durable. Without it a crash right after the importer counted the documents and stamped the
+ * class checksum could lose the tail of the replay while the class stays marked as current.
+ *
  * @internal
  */
 final class ReplayIndexSettings implements ReplayIndexSettingsInterface
@@ -43,12 +48,31 @@ final class ReplayIndexSettings implements ReplayIndexSettingsInterface
 
     public function restore(string $indexName, IndexSettingsBackup $backup): void
     {
+        $this->flush($indexName);
         // A value the index had (the installation's configured index_settings) goes back as it
         // was; null resets the setting to the engine default instead of pinning a value.
         $this->put($indexName, [
             'refresh_interval' => $backup->refreshInterval,
             'translog' => ['durability' => $backup->translogDurability],
         ]);
+    }
+
+    /**
+     * The durability barrier: fsyncs the translog and commits the Lucene segments.
+     *
+     * @throws SnapshotImportException
+     */
+    private function flush(string $indexName): void
+    {
+        try {
+            $this->client->flushIndex(['index' => $indexName]);
+        } catch (Exception $e) {
+            throw new SnapshotImportException(
+                sprintf('Cannot flush index "%s" after the replay: %s', $indexName, $e->getMessage()),
+                0,
+                $e,
+            );
+        }
     }
 
     /**
