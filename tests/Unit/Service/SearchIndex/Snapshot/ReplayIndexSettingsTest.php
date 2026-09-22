@@ -101,7 +101,11 @@ final class ReplayIndexSettingsTest extends Unit
         } catch (SnapshotImportException $e) {
             $this->assertStringContainsString('1 shard(s) failed', $e->getMessage());
         }
-        $this->assertSame(['flush pimcore_asset', 'put pimcore_asset'], $this->calls, 'the index must not stay in bulk mode');
+        $this->assertSame(
+            ['flush pimcore_asset', 'put pimcore_asset'],
+            $this->calls,
+            'the index must not stay in bulk mode',
+        );
         $this->assertSame('30s', $this->puts[0]['body']['index']['refresh_interval']);
     }
 

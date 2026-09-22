@@ -64,7 +64,11 @@ final class ReplayIndexSettings implements ReplayIndexSettingsInterface
                 $this->put($indexName, $settings);
             } catch (SnapshotImportException $resetError) {
                 throw new SnapshotImportException(
-                    $flushError->getMessage() . ' Resetting the index settings also failed: ' . $resetError->getMessage(),
+                    sprintf(
+                        '%s Resetting the index settings also failed: %s',
+                        $flushError->getMessage(),
+                        $resetError->getMessage(),
+                    ),
                     0,
                     $flushError,
                 );
