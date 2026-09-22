@@ -253,6 +253,7 @@ final class SnapshotExporter implements SnapshotExporterInterface
                 // needs "hits.total" to exist, never its exact value, so `1` avoids the engine
                 // counting every match on each page.
                 $result = $this->searchIndexService->search($search, $target->aliasName, 1);
+                $this->assertCompleteResponse($result->getResponse(), $target);
                 $hits = $result->getHits();
                 $bytesBefore = $writer->getRawBytes();
                 foreach ($hits as $hit) {
@@ -275,6 +276,32 @@ final class SnapshotExporter implements SnapshotExporterInterface
             $writer->abort();
 
             throw $e;
+        }
+    }
+
+    /**
+     * A page can come back HTTP 200 and still be partial: `timed_out: true`, or failed shards
+     * with only the surviving shards' hits. Writing those hits as if they were the page would
+     * yield a snapshot that is incomplete and yet imports with matching counts, so the export
+     * aborts instead; re-running it on a healthy cluster is the only correct recovery.
+     *
+     * @throws SnapshotExportException
+     */
+    private function assertCompleteResponse(array $response, IndexTarget $target): void
+    {
+        if (($response['timed_out'] ?? false) === true) {
+            throw new SnapshotExportException(sprintf(
+                'Export of index "%s" aborted: the search engine returned a partial (timed out) page',
+                $target->shortName,
+            ));
+        }
+        $failedShards = (int) ($response['_shards']['failed'] ?? 0);
+        if ($failedShards > 0) {
+            throw new SnapshotExportException(sprintf(
+                'Export of index "%s" aborted: %d shard(s) failed, the page is partial',
+                $target->shortName,
+                $failedShards,
+            ));
         }
     }
 
