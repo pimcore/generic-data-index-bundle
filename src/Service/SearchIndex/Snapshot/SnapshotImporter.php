@@ -303,7 +303,8 @@ final class SnapshotImporter implements SnapshotImporterInterface
         // stamped into the settings store below, once the replay has actually succeeded.
         // Stamping it now, before the bulk import, would mark the mapping as current even if
         // the import subsequently fails, leaving an empty or partial index that
-        // {@see \Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService} would then never self-heal.
+        // {@see \Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService}
+        // would then never self-heal.
         $this->indexProvisioner->provision($target);
         $classMappingChecksum = $this->indexProvisioner->computeClassMappingChecksum($target);
 

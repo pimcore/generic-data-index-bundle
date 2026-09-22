@@ -99,7 +99,9 @@ final class ReplayIndexSettingsTest extends Unit
     {
         return $this->makeEmpty(SearchClientInterface::class, [
             'getIndexSettings' => fn (array $params): array => [
-                $params['index'] . '-odd' => ['settings' => ['index' => $this->currentSettings + ['number_of_shards' => '1']]],
+                $params['index'] . '-odd' => [
+                    'settings' => ['index' => $this->currentSettings + ['number_of_shards' => '1']],
+                ],
             ],
             'putIndexSettings' => function (array $params): array {
                 $this->puts[] = $params;
