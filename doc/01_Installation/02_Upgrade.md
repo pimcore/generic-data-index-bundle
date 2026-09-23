@@ -2,7 +2,7 @@
 
 Following steps are necessary during updating to newer versions.
 
-## Upgrade to 2.5.12
+## Upgrade to 2.5.13
 - [Commands] Added `generic-data-index:snapshot:export` and `generic-data-index:snapshot:import`. Export writes every
   search index into a portable, gzipped JSON-lines bundle (plus a manifest) in a configurable Flysystem storage, so a
   bundle can be moved between installations without a full reindex. Import recreates the local indices from the
