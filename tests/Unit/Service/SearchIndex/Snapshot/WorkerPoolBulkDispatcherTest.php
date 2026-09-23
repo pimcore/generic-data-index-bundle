@@ -69,8 +69,13 @@ final class WorkerPoolBulkDispatcherTest extends Unit
         $chunks = [$this->chunk('a'), $this->chunk('b'), $this->chunk('c')];
         $dispatcher->start(new IndexTarget('asset', 'pimcore_asset', 'asset'));
 
+        // the failure can surface from any dispatch() call, depending on scheduling; chunks the
+        // loop never handed over stay with the caller, so only attempted ones are asserted
+        $attempted = [];
+
         try {
             foreach ($chunks as $chunk) {
+                $attempted[] = $chunk;
                 $dispatcher->dispatch($chunk);
             }
             $dispatcher->finish();
@@ -79,33 +84,35 @@ final class WorkerPoolBulkDispatcherTest extends Unit
             $this->assertStringContainsString('asset', $e->getMessage());
             $this->assertStringContainsString('mapper_parsing_exception failed to parse', $e->getMessage());
         }
-        foreach ($chunks as $chunk) {
-            $this->assertFileDoesNotExist($chunk->path, 'unsent chunk files are removed on abort');
+        foreach ($attempted as $chunk) {
+            $this->assertFileDoesNotExist($chunk->path, 'every chunk handed to the pool is removed on abort');
         }
     }
 
-    public function testWorkerPoolRemovesTheChunkBeingDispatchedWhenAnEarlierFailureSurfaces(): void
+    public function testWorkerPoolRemovesTheChunkWhoseDispatchSurfacesAnEarlierFailure(): void
     {
-        // one worker, which fails its first chunk; the failure is only noticed while the
-        // second chunk waits for a free slot, and that second chunk is not tracked yet
+        // one worker, which fails its first chunk; the failure surfaces from a later dispatch()
+        // (which one depends on scheduling), and that call's chunk is not tracked by the pool yet
         $dispatcher = new WorkerPoolBulkDispatcher($this->fakeWorker('echo "ERR\t$path\tboom\n"; exit(1);'), 1);
-        $first = $this->chunk('a');
-        $second = $this->chunk('b');
-        $third = $this->chunk('c');
+        $chunks = array_map(fn (string $c) => $this->chunk($c), ['a', 'b', 'c', 'd']);
+        $attempted = [];
         $dispatcher->start(new IndexTarget('asset', 'pimcore_asset', 'asset'));
-        $dispatcher->dispatch($first);
-        $dispatcher->dispatch($second);
-        usleep(300_000);
 
         try {
-            $dispatcher->dispatch($third);
+            foreach ($chunks as $chunk) {
+                $attempted[] = $chunk;
+                $dispatcher->dispatch($chunk);
+                usleep(100_000);
+            }
             $dispatcher->finish();
             $this->fail('expected SnapshotImportException');
         } catch (SnapshotImportException $e) {
             $this->assertStringContainsString('boom', $e->getMessage());
         }
-        $this->assertFileDoesNotExist($third->path, 'the chunk that was about to be dispatched is removed too');
-        $this->assertFileDoesNotExist($second->path);
+        $this->assertGreaterThan(1, count($attempted), 'the failure surfaced from a later dispatch() call');
+        foreach ($attempted as $chunk) {
+            $this->assertFileDoesNotExist($chunk->path, 'including the chunk of the call that surfaced the failure');
+        }
     }
 
     public function testWorkerPoolReportsAWorkerThatDiesWithoutAnswering(): void
