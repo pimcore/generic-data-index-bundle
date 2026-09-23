@@ -66,25 +66,25 @@ final class SnapshotIndexResolver implements SnapshotIndexResolverInterface
     {
         $identity = IndexIdentity::fromManifestIndex($index);
         if ($identity->isAsset()) {
-            return $this->target($this->assetTypeAdapter->getAliasIndexName(), $index->elementType);
+            return $this->target($this->assetTypeAdapter->getAliasIndexName(), $index->getElementType());
         }
         if ($identity->isDocument()) {
-            return $this->target($this->documentTypeAdapter->getAliasIndexName(), $index->elementType);
+            return $this->target($this->documentTypeAdapter->getAliasIndexName(), $index->getElementType());
         }
         if (!$identity->isDataObject()) {
             return null;
         }
         if ($identity->isDataObjectFolder()) {
-            return $this->target($this->dataObjectTypeAdapter->getAliasIndexName(), $index->elementType);
+            return $this->target($this->dataObjectTypeAdapter->getAliasIndexName(), $index->getElementType());
         }
-        $classDefinition = ClassDefinition::getById($index->classId);
+        $classDefinition = ClassDefinition::getById($index->getClassId());
         if ($classDefinition === null) {
             return null;
         }
 
         return $this->target(
             $this->dataObjectTypeAdapter->getAliasIndexName($classDefinition),
-            $index->elementType,
+            $index->getElementType(),
             $classDefinition,
         );
     }

@@ -38,7 +38,7 @@ final class CompatibilityChecker implements CompatibilityCheckerInterface
         $classes = [];
         $seenClassIds = [];
         $classIdsWithIndex = array_flip($this->classIdsWithDataObjectIndex($manifest));
-        foreach ($manifest->classMappingChecksums as $classId => $manifestChecksum) {
+        foreach ($manifest->getClassMappingChecksums() as $classId => $manifestChecksum) {
             $classId = (string) $classId;
             // A checksum for a class without an index entry gates nothing: the import never
             // touches that class's index, so its local definition may differ freely. The class
@@ -118,12 +118,12 @@ final class CompatibilityChecker implements CompatibilityCheckerInterface
     private function collectUncheckedClassIndices(Manifest $manifest, array $seenClassIds): array
     {
         $classes = [];
-        foreach ($manifest->indices as $index) {
+        foreach ($manifest->getIndices() as $index) {
             if (!IndexIdentity::fromManifestIndex($index)->isClassIndex()) {
                 continue;
             }
-            $classId = (string) $index->classId;
-            if (isset($seenClassIds[$classId]) || array_key_exists($classId, $manifest->classMappingChecksums)) {
+            $classId = (string) $index->getClassId();
+            if (isset($seenClassIds[$classId]) || array_key_exists($classId, $manifest->getClassMappingChecksums())) {
                 continue;
             }
             $seenClassIds[$classId] = true;
@@ -180,9 +180,9 @@ final class CompatibilityChecker implements CompatibilityCheckerInterface
     private function classIdsWithDataObjectIndex(Manifest $manifest): array
     {
         $classIds = [];
-        foreach ($manifest->indices as $index) {
+        foreach ($manifest->getIndices() as $index) {
             if (IndexIdentity::fromManifestIndex($index)->isClassIndex()) {
-                $classIds[] = (string) $index->classId;
+                $classIds[] = (string) $index->getClassId();
             }
         }
 

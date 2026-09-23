@@ -25,9 +25,25 @@ final readonly class CompatibilityReport
      * @param string[] $missingInManifest class names
      */
     public function __construct(
-        public array $classes,
-        public array $missingInManifest,
+        private array $classes,
+        private array $missingInManifest,
     ) {
+    }
+
+    /**
+     * @return ClassCompatibility[]
+     */
+    public function getClasses(): array
+    {
+        return $this->classes;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getMissingInManifest(): array
+    {
+        return $this->missingInManifest;
     }
 
     public function isCompatible(): bool
@@ -43,10 +59,10 @@ final readonly class CompatibilityReport
         $ids = [];
         foreach ($this->classes as $class) {
             if (
-                $class->status === ClassCompatibilityStatus::INCOMPATIBLE
-                || $class->status === ClassCompatibilityStatus::UNVERIFIED
+                $class->getStatus() === ClassCompatibilityStatus::INCOMPATIBLE
+                || $class->getStatus() === ClassCompatibilityStatus::UNVERIFIED
             ) {
-                $ids[] = $class->classId;
+                $ids[] = $class->getClassId();
             }
         }
 
@@ -56,8 +72,8 @@ final readonly class CompatibilityReport
     public function statusOf(string $classId): ?ClassCompatibilityStatus
     {
         foreach ($this->classes as $class) {
-            if ($class->classId === $classId) {
-                return $class->status;
+            if ($class->getClassId() === $classId) {
+                return $class->getStatus();
             }
         }
 

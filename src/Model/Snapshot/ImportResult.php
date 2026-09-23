@@ -24,14 +24,55 @@ final readonly class ImportResult
      * @param string[] $notices
      */
     public function __construct(
-        public string $name,
-        public Manifest $manifest,
-        public CompatibilityReport $report,
-        public array $imported,
-        public array $skipped,
-        public array $notices,
-        public bool $dryRun,
+        private string $name,
+        private Manifest $manifest,
+        private CompatibilityReport $report,
+        private array $imported,
+        private array $skipped,
+        private array $notices,
+        private bool $dryRun,
     ) {
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getManifest(): Manifest
+    {
+        return $this->manifest;
+    }
+
+    public function getReport(): CompatibilityReport
+    {
+        return $this->report;
+    }
+
+    /**
+     * @return ImportedIndex[]
+     */
+    public function getImported(): array
+    {
+        return $this->imported;
+    }
+
+    public function getSkipped(): array
+    {
+        return $this->skipped;
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getNotices(): array
+    {
+        return $this->notices;
+    }
+
+    public function isDryRun(): bool
+    {
+        return $this->dryRun;
     }
 
     /**

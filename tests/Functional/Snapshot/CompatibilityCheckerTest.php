@@ -100,7 +100,7 @@ final class CompatibilityCheckerTest extends Unit
     {
         $report = $this->checker()->check($this->manifest([]));
 
-        $this->assertContains('simple', $report->missingInManifest);
+        $this->assertContains('simple', $report->getMissingInManifest());
     }
 
     public function testClassWithIndexEntryButNoChecksumIsNotMissingInManifest(): void
@@ -115,7 +115,7 @@ final class CompatibilityCheckerTest extends Unit
 
         $report = $this->checker()->check($manifest->withIndices([$index]));
 
-        $this->assertNotContains('simple', $report->missingInManifest);
+        $this->assertNotContains('simple', $report->getMissingInManifest());
         $this->assertSame(ClassCompatibilityStatus::UNVERIFIED, $report->statusOf($this->simple->getId()));
     }
 
@@ -126,7 +126,7 @@ final class CompatibilityCheckerTest extends Unit
         // untouched by the import, which the operator needs to know about via missingInManifest.
         $report = $this->checker()->check($this->manifest([$this->simple->getId() => $this->realChecksum]));
 
-        $this->assertContains('simple', $report->missingInManifest);
+        $this->assertContains('simple', $report->getMissingInManifest());
     }
 
     public function testNumericClassIdKeyIsHandledAsString(): void
@@ -210,6 +210,6 @@ final class CompatibilityCheckerTest extends Unit
 
         $this->assertTrue($report->isCompatible());
         $this->assertNull($report->statusOf((string) $this->simple->getId()));
-        $this->assertContains('simple', $report->missingInManifest);
+        $this->assertContains('simple', $report->getMissingInManifest());
     }
 }

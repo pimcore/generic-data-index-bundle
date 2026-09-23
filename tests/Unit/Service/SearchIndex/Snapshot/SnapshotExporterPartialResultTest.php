@@ -60,7 +60,7 @@ final class SnapshotExporterPartialResultTest extends Unit
         $storage = $this->export(['timed_out' => false, '_shards' => ['total' => 1, 'successful' => 1, 'failed' => 0]]);
 
         $this->assertTrue($storage->hasSnapshot('partial-check'));
-        $this->assertSame(1, $storage->readManifest('partial-check')->getIndex('asset')->documentCount);
+        $this->assertSame(1, $storage->readManifest('partial-check')->getIndex('asset')->getDocumentCount());
     }
 
     /**

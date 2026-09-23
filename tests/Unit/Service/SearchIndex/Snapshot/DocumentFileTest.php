@@ -44,18 +44,18 @@ final class DocumentFileTest extends Unit
             $writer->write($document);
         }
         $written = $writer->finish();
-        $this->paths[] = $written->path;
+        $this->paths[] = $written->getPath();
 
-        $this->assertSame(2, $written->documentCount);
-        $this->assertSame(filesize($written->path), $written->bytes);
-        $this->assertSame(hash_file('sha256', $written->path), $written->sha256);
-        $this->assertSame("\x1f\x8b", substr(file_get_contents($written->path), 0, 2), 'file is gzip');
+        $this->assertSame(2, $written->getDocumentCount());
+        $this->assertSame(filesize($written->getPath()), $written->getBytes());
+        $this->assertSame(hash_file('sha256', $written->getPath()), $written->getSha256());
+        $this->assertSame("\x1f\x8b", substr(file_get_contents($written->getPath()), 0, 2), 'file is gzip');
 
         $reader = new DocumentFileReader();
-        $reader->verifyHash($written->path, $written->sha256);
+        $reader->verifyHash($written->getPath(), $written->getSha256());
         $roundTripped = [];
-        foreach ($reader->readRawLines($written->path) as $line) {
-            $roundTripped[] = json_decode($line->json, true, 512, JSON_THROW_ON_ERROR);
+        foreach ($reader->readRawLines($written->getPath()) as $line) {
+            $roundTripped[] = json_decode($line->getJson(), true, 512, JSON_THROW_ON_ERROR);
         }
         $this->assertSame($documents, $roundTripped);
         $this->assertIsFloat($roundTripped[1]['standard_fields']['ratio'], 'whole-number float must not round-trip as int');
@@ -66,10 +66,10 @@ final class DocumentFileTest extends Unit
         $writer = DocumentFileWriter::createTemporary();
         $writer->write(['system_fields' => ['id' => 1]]);
         $written = $writer->finish();
-        $this->paths[] = $written->path;
+        $this->paths[] = $written->getPath();
 
         $this->expectException(SnapshotImportException::class);
-        (new DocumentFileReader())->verifyHash($written->path, str_repeat('0', 64));
+        (new DocumentFileReader())->verifyHash($written->getPath(), str_repeat('0', 64));
     }
 
     public function testAbortRemovesTemporaryFile(): void
@@ -88,11 +88,11 @@ final class DocumentFileTest extends Unit
         $writer = DocumentFileWriter::createTemporary();
         $writer->write(['system_fields' => ['id' => 1]]);
         $written = $writer->finish();
-        $this->paths[] = $written->path;
+        $this->paths[] = $written->getPath();
 
         $writer->abort();
 
-        $this->assertFileExists($written->path);
+        $this->assertFileExists($written->getPath());
     }
 
     public function testWriterTracksDocumentCountAndRawBytesWhileWriting(): void
@@ -114,7 +114,7 @@ final class DocumentFileTest extends Unit
         $this->assertSame($expectedBytes, $writer->getRawBytes(), 'raw bytes are the uncompressed NDJSON size');
 
         $written = $writer->finish();
-        $this->assertLessThan($expectedBytes + 64, $written->bytes, 'gzip output is unrelated to the raw byte counter');
+        $this->assertLessThan($expectedBytes + 64, $written->getBytes(), 'gzip output is unrelated to the raw byte counter');
     }
 
     public function testRawLinesAreTheExactFileLinesWithTheirByteSize(): void
@@ -128,17 +128,17 @@ final class DocumentFileTest extends Unit
             $writer->write($document);
         }
         $written = $writer->finish();
-        $this->paths[] = $written->path;
-        $expected = explode("\n", rtrim((string) gzdecode((string) file_get_contents($written->path)), "\n"));
+        $this->paths[] = $written->getPath();
+        $expected = explode("\n", rtrim((string) gzdecode((string) file_get_contents($written->getPath())), "\n"));
 
-        $lines = iterator_to_array((new DocumentFileReader())->readRawLines($written->path), false);
+        $lines = iterator_to_array((new DocumentFileReader())->readRawLines($written->getPath()), false);
 
-        $this->assertSame($expected, array_map(static fn ($l) => $l->json, $lines), 'no decode/encode round trip');
+        $this->assertSame($expected, array_map(static fn ($l) => $l->getJson(), $lines), 'no decode/encode round trip');
         $this->assertSame(
             array_map(static fn (string $l) => strlen($l) + 1, $expected),
-            array_map(static fn ($l) => $l->bytes, $lines),
+            array_map(static fn ($l) => $l->getBytes(), $lines),
             'bytes include the newline, like the writer counts them',
         );
-        $this->assertSame($documents, array_map(static fn ($l) => json_decode($l->json, true), $lines));
+        $this->assertSame($documents, array_map(static fn ($l) => json_decode($l->getJson(), true), $lines));
     }
 }

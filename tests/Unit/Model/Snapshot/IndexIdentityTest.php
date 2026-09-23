@@ -28,7 +28,7 @@ final class IndexIdentityTest extends Unit
         $this->assertTrue($identity->isDataObject());
         $this->assertTrue($identity->isClassIndex());
         $this->assertFalse($identity->isDataObjectFolder());
-        $this->assertSame('PR', $identity->classId);
+        $this->assertSame('PR', $identity->getClassId());
     }
 
     public function testForDataObjectFolderBuildsTheFolderIdentity(): void
@@ -38,7 +38,7 @@ final class IndexIdentityTest extends Unit
         $this->assertTrue($identity->isDataObject());
         $this->assertFalse($identity->isClassIndex());
         $this->assertTrue($identity->isDataObjectFolder());
-        $this->assertNull($identity->classId);
+        $this->assertNull($identity->getClassId());
     }
 
     public function testForAssetBuildsTheAssetIdentity(): void
@@ -64,7 +64,7 @@ final class IndexIdentityTest extends Unit
         $identity = IndexIdentity::fromManifestIndex($this->manifestIndex('data-object_product', 'dataObject', 'PR'));
 
         $this->assertTrue($identity->isClassIndex());
-        $this->assertSame('PR', $identity->classId);
+        $this->assertSame('PR', $identity->getClassId());
     }
 
     public function testAssetAcceptsOnlyItsOwnShortName(): void

@@ -91,7 +91,7 @@ final class SnapshotImportCommandTest extends Unit
             'import' => function (SnapshotStorageInterface $storage, string $name, ImportOptions $options): ImportResult {
                 $this->assertInstanceOf(SnapshotStorage::class, $storage);
                 $this->assertTrue($storage->hasSnapshot('snap'));
-                $this->assertTrue($options->force);
+                $this->assertTrue($options->isForce());
 
                 return $this->importResult($name, []);
             },

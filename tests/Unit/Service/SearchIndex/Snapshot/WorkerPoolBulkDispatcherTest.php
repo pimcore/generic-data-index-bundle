@@ -57,7 +57,7 @@ final class WorkerPoolBulkDispatcherTest extends Unit
         $workerPids = array_unique(array_map(static fn (string $l) => explode(' ', $l)[0], $lines));
         $this->assertCount(3, $workerPids, 'all three workers took part');
         foreach ($chunks as $chunk) {
-            $this->assertFileDoesNotExist($chunk->path);
+            $this->assertFileDoesNotExist($chunk->getPath());
         }
     }
 
@@ -85,7 +85,7 @@ final class WorkerPoolBulkDispatcherTest extends Unit
             $this->assertStringContainsString('mapper_parsing_exception failed to parse', $e->getMessage());
         }
         foreach ($attempted as $chunk) {
-            $this->assertFileDoesNotExist($chunk->path, 'every chunk handed to the pool is removed on abort');
+            $this->assertFileDoesNotExist($chunk->getPath(), 'every chunk handed to the pool is removed on abort');
         }
     }
 
@@ -111,7 +111,7 @@ final class WorkerPoolBulkDispatcherTest extends Unit
         }
         $this->assertGreaterThan(1, count($attempted), 'the failure surfaced from a later dispatch() call');
         foreach ($attempted as $chunk) {
-            $this->assertFileDoesNotExist($chunk->path, 'including the chunk of the call that surfaced the failure');
+            $this->assertFileDoesNotExist($chunk->getPath(), 'including the chunk of the call that surfaced the failure');
         }
     }
 

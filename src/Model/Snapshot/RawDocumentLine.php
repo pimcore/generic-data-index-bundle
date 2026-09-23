@@ -22,8 +22,18 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot;
 final readonly class RawDocumentLine
 {
     public function __construct(
-        public string $json,
-        public int $bytes,
+        private string $json,
+        private int $bytes,
     ) {
+    }
+
+    public function getJson(): string
+    {
+        return $this->json;
+    }
+
+    public function getBytes(): int
+    {
+        return $this->bytes;
     }
 }

@@ -147,7 +147,7 @@ final class SnapshotRoundTripTest extends Unit
 
         $result = $this->importer()->import($this->storage, 'rt', new ImportOptions());
 
-        $this->assertTrue($result->isSuccessful(), print_r($result->imported, true));
+        $this->assertTrue($result->isSuccessful(), print_r($result->getImported(), true));
         $this->assertSame($queueBefore, $this->queueRepository->countIndexQueueEntries(), 'import must not enqueue');
         $this->tester->flushIndex();
         foreach ($originals as $id => $source) {
@@ -189,14 +189,14 @@ final class SnapshotRoundTripTest extends Unit
         // Override only "simple"'s checksum, keep the others: withClassMappingChecksums() replaces
         // the whole map, and dropping the other classes' entries entirely would make them
         // UNVERIFIED too (a different, unrelated failure mode from the one under test here).
-        $this->storage->writeManifest('bad', $manifest->withClassMappingChecksums([...$manifest->classMappingChecksums, $classId => 999]));
+        $this->storage->writeManifest('bad', $manifest->withClassMappingChecksums([...$manifest->getClassMappingChecksums(), $classId => 999]));
         $countBefore = $this->searchIndexService->getCount(new Search(), $this->simpleAlias);
 
         try {
             $this->importer()->import($this->storage, 'bad', new ImportOptions());
             $this->fail('expected SnapshotIncompatibleException');
         } catch (SnapshotIncompatibleException $e) {
-            $this->assertSame([$classId], $e->report->incompatibleClassIds());
+            $this->assertSame([$classId], $e->getReport()->incompatibleClassIds());
         }
         $this->tester->flushIndex();
         $this->assertSame($countBefore, $this->searchIndexService->getCount(new Search(), $this->simpleAlias), 'nothing was written');
@@ -212,14 +212,14 @@ final class SnapshotRoundTripTest extends Unit
         $manifest = $this->storage->readManifest('forced');
         // Override only "simple"'s checksum, keep the others (see comment in
         // testImportRefusesOnChecksumMismatchAndWritesNothing() above).
-        $this->storage->writeManifest('forced', $manifest->withClassMappingChecksums([...$manifest->classMappingChecksums, $classId => 999]));
+        $this->storage->writeManifest('forced', $manifest->withClassMappingChecksums([...$manifest->getClassMappingChecksums(), $classId => 999]));
 
         $result = $this->importer()->import($this->storage, 'forced', new ImportOptions(force: true));
 
-        $this->assertArrayHasKey('data-object_simple', $result->skipped);
-        $this->assertCount(1, $result->skipped);
-        $this->assertStringContainsString('incompatible', $result->skipped['data-object_simple']);
-        $importedNames = array_map(static fn (ImportedIndex $i) => $i->shortName, $result->imported);
+        $this->assertArrayHasKey('data-object_simple', $result->getSkipped());
+        $this->assertCount(1, $result->getSkipped());
+        $this->assertStringContainsString('incompatible', $result->getSkipped()['data-object_simple']);
+        $importedNames = array_map(static fn (ImportedIndex $i) => $i->getShortName(), $result->getImported());
         $this->assertContains('asset', $importedNames);
         $this->assertNotContains('data-object_simple', $importedNames);
         // --force must never provision/replay the skipped index: the pre-existing object is untouched
@@ -260,18 +260,18 @@ final class SnapshotRoundTripTest extends Unit
         $this->exporter()->export($this->storage, 'preflight', new ExportOptions());
 
         $manifest = $this->storage->readManifest('preflight');
-        $this->assertGreaterThan(1, count($manifest->indices), 'need at least two planned indices to prove ordering');
+        $this->assertGreaterThan(1, count($manifest->getIndices()), 'need at least two planned indices to prove ordering');
         $resolver = $this->tester->grabService(SnapshotIndexResolverInterface::class);
-        $firstEntry = $manifest->indices[0];
-        $lastEntry = $manifest->indices[count($manifest->indices) - 1];
+        $firstEntry = $manifest->getIndices()[0];
+        $lastEntry = $manifest->getIndices()[count($manifest->getIndices()) - 1];
         $firstTarget = $resolver->resolveManifestIndex($firstEntry);
         $this->assertNotNull($firstTarget);
-        $firstAlias = $firstTarget->aliasName;
+        $firstAlias = $firstTarget->getAliasName();
 
         $countBefore = $this->searchIndexService->getCount(new Search(), $firstAlias);
         $versionBefore = $this->searchIndexService->getCurrentIndexVersion($firstAlias);
 
-        $this->filesystem->write('preflight/' . $lastEntry->file, gzencode("{\"system_fields\":{\"id\":1}}\n"));
+        $this->filesystem->write('preflight/' . $lastEntry->getFile(), gzencode("{\"system_fields\":{\"id\":1}}\n"));
         $tempDir = DocumentFileWriter::temporaryDirectory();
         $tempFilesBefore = glob($tempDir . '/gdi-snapshot-in-*') ?: [];
 
@@ -324,11 +324,11 @@ final class SnapshotRoundTripTest extends Unit
         $manifest = $this->storage->readManifest('stamp-fail');
         $entry = $manifest->getIndex('data-object_simple');
         $fixedEntry = new ManifestIndex(
-            $entry->shortName, $entry->elementType, $entry->classId, $entry->sourceIndex,
-            $entry->documentCount, $entry->file, strlen($badContent), hash('sha256', $badContent)
+            $entry->getShortName(), $entry->getElementType(), $entry->getClassId(), $entry->getSourceIndex(),
+            $entry->getDocumentCount(), $entry->getFile(), strlen($badContent), hash('sha256', $badContent)
         );
         $this->storage->writeManifest('stamp-fail', $manifest->withIndices(
-            array_map(static fn (ManifestIndex $i) => $i->shortName === 'data-object_simple' ? $fixedEntry : $i, $manifest->indices)
+            array_map(static fn (ManifestIndex $i) => $i->getShortName() === 'data-object_simple' ? $fixedEntry : $i, $manifest->getIndices())
         ));
 
         try {
@@ -375,11 +375,11 @@ final class SnapshotRoundTripTest extends Unit
         $manifest = $this->storage->readManifest('incomplete');
         $entry = $manifest->getIndex('data-object_simple');
         $bumpedEntry = new ManifestIndex(
-            $entry->shortName, $entry->elementType, $entry->classId, $entry->sourceIndex,
-            3, $entry->file, $entry->bytes, $entry->sha256
+            $entry->getShortName(), $entry->getElementType(), $entry->getClassId(), $entry->getSourceIndex(),
+            3, $entry->getFile(), $entry->getBytes(), $entry->getSha256()
         );
         $this->storage->writeManifest('incomplete', $manifest->withIndices(
-            array_map(static fn (ManifestIndex $i) => $i->shortName === 'data-object_simple' ? $bumpedEntry : $i, $manifest->indices)
+            array_map(static fn (ManifestIndex $i) => $i->getShortName() === 'data-object_simple' ? $bumpedEntry : $i, $manifest->getIndices())
         ));
         $settingsStore->storeClassMapping($classId, 424242);
 
@@ -409,11 +409,11 @@ final class SnapshotRoundTripTest extends Unit
         $manifest = $this->storage->readManifest('badname');
         $entry = $manifest->getIndex('data-object_simple');
         $tampered = new ManifestIndex(
-            $entry->shortName, $entry->elementType, $entry->classId, $entry->sourceIndex,
-            $entry->documentCount, '../etc/passwd', $entry->bytes, $entry->sha256
+            $entry->getShortName(), $entry->getElementType(), $entry->getClassId(), $entry->getSourceIndex(),
+            $entry->getDocumentCount(), '../etc/passwd', $entry->getBytes(), $entry->getSha256()
         );
         $this->storage->writeManifest('badname', $manifest->withIndices(
-            array_map(static fn (ManifestIndex $i) => $i->shortName === 'data-object_simple' ? $tampered : $i, $manifest->indices)
+            array_map(static fn (ManifestIndex $i) => $i->getShortName() === 'data-object_simple' ? $tampered : $i, $manifest->getIndices())
         ));
 
         try {
@@ -442,19 +442,19 @@ final class SnapshotRoundTripTest extends Unit
         $assetCountBefore = $this->searchIndexService->getCount(new Search(), $assetAlias);
 
         $rewrittenAssetEntry = new ManifestIndex(
-            $assetEntry->shortName,
-            $assetEntry->elementType,
-            $assetEntry->classId,
-            $assetEntry->sourceIndex,
-            $dataObjectEntry->documentCount,
-            $dataObjectEntry->file,
-            $dataObjectEntry->bytes,
-            $dataObjectEntry->sha256,
+            $assetEntry->getShortName(),
+            $assetEntry->getElementType(),
+            $assetEntry->getClassId(),
+            $assetEntry->getSourceIndex(),
+            $dataObjectEntry->getDocumentCount(),
+            $dataObjectEntry->getFile(),
+            $dataObjectEntry->getBytes(),
+            $dataObjectEntry->getSha256(),
         );
         $this->storage->writeManifest('crossref', $manifest->withIndices(
             array_map(
-                static fn (ManifestIndex $i) => $i->shortName === 'asset' ? $rewrittenAssetEntry : $i,
-                $manifest->indices,
+                static fn (ManifestIndex $i) => $i->getShortName() === 'asset' ? $rewrittenAssetEntry : $i,
+                $manifest->getIndices(),
             )
         ));
 
@@ -491,8 +491,8 @@ final class SnapshotRoundTripTest extends Unit
 
         $result = $this->importer()->import($this->storage, 'unverified', new ImportOptions(force: true));
 
-        $this->assertArrayHasKey('data-object_simple', $result->skipped);
-        $this->assertStringContainsString('no class mapping checksum', $result->skipped['data-object_simple']);
+        $this->assertArrayHasKey('data-object_simple', $result->getSkipped());
+        $this->assertStringContainsString('no class mapping checksum', $result->getSkipped()['data-object_simple']);
         $this->tester->checkIndexEntry($object->getId(), $this->simpleAlias);
     }
 
@@ -505,7 +505,7 @@ final class SnapshotRoundTripTest extends Unit
 
         $result = $this->importer()->import($this->storage, 'dry', new ImportOptions(dryRun: true));
 
-        $this->assertTrue($result->dryRun);
+        $this->assertTrue($result->isDryRun());
         $this->assertTrue($result->isSuccessful(), 'a dry run plan has no counts to compare and is always successful');
         $this->tester->flushIndex();
         $this->assertSame($countBefore, $this->searchIndexService->getCount(new Search(), $this->simpleAlias), 'dry run writes nothing');
@@ -600,7 +600,7 @@ final class SnapshotRoundTripTest extends Unit
 
         $result = $importer->import($this->storage, 'bb', new ImportOptions());
 
-        $this->assertTrue($result->isSuccessful(), print_r($result->imported, true));
+        $this->assertTrue($result->isSuccessful(), print_r($result->getImported(), true));
         $this->tester->flushIndex();
         $this->assertSame(3, $this->searchIndexService->getCount(new Search(), $this->simpleAlias));
         $flushes = array_filter(
@@ -625,12 +625,12 @@ final class SnapshotRoundTripTest extends Unit
         $manifest = $this->storage->readManifest('size');
         $entry = $manifest->getIndex('data-object_simple');
         $tampered = new ManifestIndex(
-            $entry->shortName, $entry->elementType, $entry->classId, $entry->sourceIndex,
-            $entry->documentCount, $entry->file, $entry->bytes + 1, $entry->sha256,
+            $entry->getShortName(), $entry->getElementType(), $entry->getClassId(), $entry->getSourceIndex(),
+            $entry->getDocumentCount(), $entry->getFile(), $entry->getBytes() + 1, $entry->getSha256(),
         );
         $this->storage->writeManifest('size', $manifest->withIndices(array_map(
-            static fn (ManifestIndex $i) => $i->shortName === 'data-object_simple' ? $tampered : $i,
-            $manifest->indices,
+            static fn (ManifestIndex $i) => $i->getShortName() === 'data-object_simple' ? $tampered : $i,
+            $manifest->getIndices(),
         )));
 
         try {
@@ -659,15 +659,15 @@ final class SnapshotRoundTripTest extends Unit
             'no-documents',
             new ExportOptions(),
             static function ($target, int $count) use (&$seen): void {
-                $seen[$target->shortName] = $count;
+                $seen[$target->getShortName()] = $count;
             },
         );
 
-        $document = $result->manifest->getIndex('document');
+        $document = $result->getManifest()->getIndex('document');
         $this->assertNotNull($document, 'an index the source does not have is exported as an empty index');
-        $this->assertSame(0, $document->documentCount);
+        $this->assertSame(0, $document->getDocumentCount());
         $this->assertSame(0, $seen['document']);
-        $this->assertTrue($this->filesystem->fileExists('no-documents/' . $document->file));
+        $this->assertTrue($this->filesystem->fileExists('no-documents/' . $document->getFile()));
 
         // "local" installation with a stale document in its index
         $page = TestHelper::createEmptyDocumentPage('snapshot-stale-doc-');
@@ -676,7 +676,7 @@ final class SnapshotRoundTripTest extends Unit
 
         $imported = $this->importer()->import($this->storage, 'no-documents', new ImportOptions());
 
-        $this->assertTrue($imported->isSuccessful(), print_r($imported->imported, true));
+        $this->assertTrue($imported->isSuccessful(), print_r($imported->getImported(), true));
         $this->tester->flushIndex();
         $this->assertTrue($this->searchIndexService->existsAlias($documentAlias));
         $this->assertSame(

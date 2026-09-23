@@ -191,8 +191,8 @@ final class DocumentReplayerTest extends Unit
             $writer->write($document);
         }
         $written = $writer->finish();
-        $this->paths[] = $written->path;
+        $this->paths[] = $written->getPath();
 
-        return $written->path;
+        return $written->getPath();
     }
 }

@@ -72,39 +72,39 @@ final class SnapshotExportCommand extends AbstractCommand
                 $options,
                 function (IndexTarget $target, int $count) use ($lock): void {
                     $lock->refresh();
-                    $this->io->writeln(sprintf('  %s: %d documents', $target->shortName, $count));
+                    $this->io->writeln(sprintf('  %s: %d documents', $target->getShortName(), $count));
                 },
             );
-            $manifest = $result->manifest;
+            $manifest = $result->getManifest();
             $this->io->section(
-                $result->dryRun ? sprintf('Dry run of snapshot "%s"', $name) : sprintf('Snapshot "%s"', $name),
+                $result->isDryRun() ? sprintf('Dry run of snapshot "%s"', $name) : sprintf('Snapshot "%s"', $name),
             );
             $this->io->table(
                 ['index', 'element type', 'class', 'documents', 'bytes'],
                 array_map(
                     static fn (ManifestIndex $i) => [
-                        $i->shortName,
-                        $i->elementType,
-                        $i->classId ?? '',
-                        $i->documentCount,
-                        $i->bytes,
+                        $i->getShortName(),
+                        $i->getElementType(),
+                        $i->getClassId() ?? '',
+                        $i->getDocumentCount(),
+                        $i->getBytes(),
                     ],
-                    $manifest->indices,
+                    $manifest->getIndices(),
                 ),
             );
             $this->io->writeln(sprintf(
                 'queue entries before: %d, after: %d, duration: %d s',
-                $manifest->queueEntriesBefore,
-                $manifest->queueEntriesAfter,
-                $manifest->durationSeconds,
+                $manifest->getQueueEntriesBefore(),
+                $manifest->getQueueEntriesAfter(),
+                $manifest->getDurationSeconds(),
             ));
-            if ($manifest->queueEntriesBefore > 0) {
+            if ($manifest->getQueueEntriesBefore() > 0) {
                 $this->io->note(
                     'The index queue is not idle: the snapshot may lag the database. '
                     . 'Stop messenger consumers before exporting for a clean baseline.',
                 );
             }
-            $this->io->success($result->dryRun ? 'Nothing written.' : 'Snapshot written.');
+            $this->io->success($result->isDryRun() ? 'Nothing written.' : 'Snapshot written.');
 
             return self::SUCCESS;
         } catch (Throwable $e) {

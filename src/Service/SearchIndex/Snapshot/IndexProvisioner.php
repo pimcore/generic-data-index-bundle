@@ -48,11 +48,11 @@ final class IndexProvisioner implements IndexProvisionerInterface
     public function provision(IndexTarget $target): void
     {
         $handler = $this->handlerFor($target);
-        $context = $target->classDefinition;
+        $context = $target->getClassDefinition();
         if ($target->isClassIndex()) {
             $this->settingsStoreService->removeClassMapping((string) $target->getClassId());
         }
-        if ($this->searchIndexService->existsAlias($target->aliasName)) {
+        if ($this->searchIndexService->existsAlias($target->getAliasName())) {
             $handler->deleteIndex($context);
         }
         $mappingProperties = $handler->getMappingProperties($context);
@@ -66,7 +66,7 @@ final class IndexProvisioner implements IndexProvisionerInterface
         }
         $handler = $this->handlerFor($target);
 
-        return $handler->getClassMappingCheckSum($handler->getMappingProperties($target->classDefinition));
+        return $handler->getClassMappingCheckSum($handler->getMappingProperties($target->getClassDefinition()));
     }
 
     public function stampClassMapping(IndexTarget $target, int $checksum): void
@@ -77,10 +77,12 @@ final class IndexProvisioner implements IndexProvisionerInterface
     private function handlerFor(IndexTarget $target): IndexHandlerInterface
     {
         return match (true) {
-            $target->identity->isAsset() => $this->assetIndexHandler,
-            $target->identity->isDocument() => $this->documentIndexHandler,
-            $target->identity->isDataObject() => $this->dataObjectIndexHandler,
-            default => throw new SnapshotImportException(sprintf('Unknown element type "%s"', $target->elementType)),
+            $target->getIdentity()->isAsset() => $this->assetIndexHandler,
+            $target->getIdentity()->isDocument() => $this->documentIndexHandler,
+            $target->getIdentity()->isDataObject() => $this->dataObjectIndexHandler,
+            default => throw new SnapshotImportException(
+                sprintf('Unknown element type "%s"', $target->getElementType()),
+            ),
         };
     }
 }

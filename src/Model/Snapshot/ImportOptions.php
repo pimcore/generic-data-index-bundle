@@ -19,8 +19,18 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot;
 final readonly class ImportOptions
 {
     public function __construct(
-        public bool $force = false,
-        public bool $dryRun = false,
+        private bool $force = false,
+        private bool $dryRun = false,
     ) {
+    }
+
+    public function isForce(): bool
+    {
+        return $this->force;
+    }
+
+    public function isDryRun(): bool
+    {
+        return $this->dryRun;
     }
 }

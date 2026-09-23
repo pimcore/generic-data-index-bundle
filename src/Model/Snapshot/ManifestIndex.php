@@ -23,15 +23,55 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 final readonly class ManifestIndex
 {
     public function __construct(
-        public string $shortName,
-        public string $elementType,
-        public ?string $classId,
-        public string $sourceIndex,
-        public int $documentCount,
-        public string $file,
-        public int $bytes,
-        public string $sha256,
+        private string $shortName,
+        private string $elementType,
+        private ?string $classId,
+        private string $sourceIndex,
+        private int $documentCount,
+        private string $file,
+        private int $bytes,
+        private string $sha256,
     ) {
+    }
+
+    public function getShortName(): string
+    {
+        return $this->shortName;
+    }
+
+    public function getElementType(): string
+    {
+        return $this->elementType;
+    }
+
+    public function getClassId(): ?string
+    {
+        return $this->classId;
+    }
+
+    public function getSourceIndex(): string
+    {
+        return $this->sourceIndex;
+    }
+
+    public function getDocumentCount(): int
+    {
+        return $this->documentCount;
+    }
+
+    public function getFile(): string
+    {
+        return $this->file;
+    }
+
+    public function getBytes(): int
+    {
+        return $this->bytes;
+    }
+
+    public function getSha256(): string
+    {
+        return $this->sha256;
     }
 
     public function toArray(): array
@@ -114,7 +154,7 @@ final readonly class ManifestIndex
                 'Manifest index entry "%s" has element_type "dataObject" with class_id "%s", so its ' .
                 '"short_name" must start with "%s" and must not be the folder index name "%s"',
                 $shortName,
-                $identity->classId,
+                $identity->getClassId(),
                 SearchIndexConfigService::CLASS_INDEX_PREFIX,
                 IndexName::DATA_OBJECT_FOLDER->value,
             ));
@@ -128,11 +168,11 @@ final readonly class ManifestIndex
             return;
         }
 
-        if ($identity->classId !== null) {
+        if ($identity->getClassId() !== null) {
             throw new InvalidSnapshotException(sprintf(
                 'Manifest index entry "%s" has element_type "%s", which must not have a "class_id"',
                 $shortName,
-                $identity->elementType,
+                $identity->getElementType(),
             ));
         }
 
@@ -140,7 +180,7 @@ final readonly class ManifestIndex
             throw new InvalidSnapshotException(sprintf(
                 'Manifest index entry "%s" has element_type "%s", so its "short_name" must be "%s"',
                 $shortName,
-                $identity->elementType,
+                $identity->getElementType(),
                 $expectedShortName,
             ));
         }

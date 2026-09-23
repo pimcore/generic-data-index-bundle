@@ -19,10 +19,30 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot;
 final readonly class WrittenFile
 {
     public function __construct(
-        public string $path,
-        public int $documentCount,
-        public int $bytes,
-        public string $sha256,
+        private string $path,
+        private int $documentCount,
+        private int $bytes,
+        private string $sha256,
     ) {
+    }
+
+    public function getPath(): string
+    {
+        return $this->path;
+    }
+
+    public function getDocumentCount(): int
+    {
+        return $this->documentCount;
+    }
+
+    public function getBytes(): int
+    {
+        return $this->bytes;
+    }
+
+    public function getSha256(): string
+    {
+        return $this->sha256;
     }
 }

@@ -71,28 +71,28 @@ final class SnapshotExporterTest extends Unit
 
         $seen = [];
         $result = $exporter->export($storage, 'first', new ExportOptions(), static function (IndexTarget $target, int $count) use (&$seen): void {
-            $seen[$target->shortName] = $count;
+            $seen[$target->getShortName()] = $count;
         });
 
         $manifest = $storage->readManifest('first');
-        $this->assertSame($result->manifest->toArray(), $manifest->toArray());
+        $this->assertSame($result->getManifest()->toArray(), $manifest->toArray());
         $simple = $manifest->getIndex('data-object_simple');
         $this->assertNotNull($simple);
-        $this->assertSame(3, $simple->documentCount, 'every indexed Simple object is exported');
+        $this->assertSame(3, $simple->getDocumentCount(), 'every indexed Simple object is exported');
         $this->assertSame(3, $seen['data-object_simple']);
         $classId = ClassDefinition::getByName('simple')->getId();
-        $this->assertSame($simple->classId, $classId);
-        $this->assertArrayHasKey($classId, $manifest->classMappingChecksums);
-        $this->assertSame(0, $manifest->queueEntriesBefore);
-        $this->assertSame(1, $manifest->formatVersion);
+        $this->assertSame($simple->getClassId(), $classId);
+        $this->assertArrayHasKey($classId, $manifest->getClassMappingChecksums());
+        $this->assertSame(0, $manifest->getQueueEntriesBefore());
+        $this->assertSame(1, $manifest->getFormatVersion());
 
         // the file really holds the documents, with the localized value intact
         $local = tempnam(sys_get_temp_dir(), 'gdi-test-');
-        $storage->readFileToLocal('first', $simple->file, $local);
-        (new DocumentFileReader())->verifyHash($local, $simple->sha256);
+        $storage->readFileToLocal('first', $simple->getFile(), $local);
+        (new DocumentFileReader())->verifyHash($local, $simple->getSha256());
         $documents = [];
         foreach ((new DocumentFileReader())->readRawLines($local) as $line) {
-            $documents[] = json_decode($line->json, true, 512, JSON_THROW_ON_ERROR);
+            $documents[] = json_decode($line->getJson(), true, 512, JSON_THROW_ON_ERROR);
         }
         $this->assertCount(3, $documents);
         $ids = array_map(static fn (array $d) => $d['system_fields']['id'], $documents);
@@ -109,7 +109,7 @@ final class SnapshotExporterTest extends Unit
 
         $result = $exporter->export($storage, 'dry', new ExportOptions(dryRun: true));
 
-        $this->assertTrue($result->dryRun);
+        $this->assertTrue($result->isDryRun());
         $this->assertSame([], $storage->listSnapshots());
     }
 
@@ -126,8 +126,8 @@ final class SnapshotExporterTest extends Unit
         try {
             $result = $exporter->export($storage, 'queue-counts', new ExportOptions());
 
-            $this->assertSame(1, $result->manifest->queueEntriesBefore);
-            $this->assertSame(1, $result->manifest->queueEntriesAfter);
+            $this->assertSame(1, $result->getManifest()->getQueueEntriesBefore());
+            $this->assertSame(1, $result->getManifest()->getQueueEntriesAfter());
             $this->assertTrue($storage->hasSnapshot('queue-counts'));
         } finally {
             $this->tester->clearQueue();
@@ -209,9 +209,9 @@ final class SnapshotExporterTest extends Unit
 
         $result = $exporter->export($storage, 'paged', new ExportOptions());
 
-        $simple = $result->manifest->getIndex('data-object_simple');
+        $simple = $result->getManifest()->getIndex('data-object_simple');
         $this->assertNotNull($simple);
-        $this->assertSame(5, $simple->documentCount, 'every document is exported despite the tiny budget');
+        $this->assertSame(5, $simple->getDocumentCount(), 'every document is exported despite the tiny budget');
 
         $requested = [];
         foreach ($log->getRecords() as $record) {

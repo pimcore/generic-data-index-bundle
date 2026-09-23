@@ -19,7 +19,12 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot;
 final readonly class ExportOptions
 {
     public function __construct(
-        public bool $dryRun = false,
+        private bool $dryRun = false,
     ) {
+    }
+
+    public function isDryRun(): bool
+    {
+        return $this->dryRun;
     }
 }

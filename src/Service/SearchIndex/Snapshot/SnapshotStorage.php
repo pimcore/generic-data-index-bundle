@@ -55,7 +55,7 @@ final class SnapshotStorage implements SnapshotStorageInterface
                 if (!$this->hasSnapshot($name)) {
                     continue;
                 }
-                $rows[] = ['name' => $name, 'createdAt' => $this->readManifest($name)->createdAt];
+                $rows[] = ['name' => $name, 'createdAt' => $this->readManifest($name)->getCreatedAt()];
             } catch (InvalidSnapshotException) {
                 continue; // invalid name or unreadable manifest: treat as incomplete
             }

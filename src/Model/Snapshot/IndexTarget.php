@@ -20,15 +20,40 @@ use Pimcore\Model\DataObject\ClassDefinition;
  */
 final readonly class IndexTarget
 {
-    public IndexIdentity $identity;
+    private IndexIdentity $identity;
 
     public function __construct(
-        public string $shortName,
-        public string $aliasName,
-        public string $elementType,
-        public ?ClassDefinition $classDefinition = null,
+        private string $shortName,
+        private string $aliasName,
+        private string $elementType,
+        private ?ClassDefinition $classDefinition = null,
     ) {
         $this->identity = new IndexIdentity($elementType, $classDefinition?->getId());
+    }
+
+    public function getIdentity(): IndexIdentity
+    {
+        return $this->identity;
+    }
+
+    public function getShortName(): string
+    {
+        return $this->shortName;
+    }
+
+    public function getAliasName(): string
+    {
+        return $this->aliasName;
+    }
+
+    public function getElementType(): string
+    {
+        return $this->elementType;
+    }
+
+    public function getClassDefinition(): ?ClassDefinition
+    {
+        return $this->classDefinition;
     }
 
     public function isClassIndex(): bool

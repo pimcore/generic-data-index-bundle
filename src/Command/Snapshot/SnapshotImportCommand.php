@@ -125,7 +125,12 @@ final class SnapshotImportCommand extends AbstractCommand
             ) use ($lock): void {
                 $lock->refresh();
                 $this->io->writeln(
-                    sprintf('  %s: %d/%d documents', $index->shortName, $index->actualCount, $index->expectedCount),
+                    sprintf(
+                        '  %s: %d/%d documents',
+                        $index->getShortName(),
+                        $index->getActualCount(),
+                        $index->getExpectedCount(),
+                    ),
                 );
             });
 
@@ -135,7 +140,7 @@ final class SnapshotImportCommand extends AbstractCommand
 
                 return self::FAILURE;
             }
-            $this->io->success($result->dryRun ? 'Nothing written.' : 'Snapshot imported.');
+            $this->io->success($result->isDryRun() ? 'Nothing written.' : 'Snapshot imported.');
 
             return self::SUCCESS;
         } catch (SnapshotIncompatibleException $e) {
@@ -168,25 +173,26 @@ final class SnapshotImportCommand extends AbstractCommand
 
     private function renderResult(ImportResult $result): void
     {
-        foreach ($result->notices as $notice) {
+        foreach ($result->getNotices() as $notice) {
             $this->io->note($notice);
         }
         $this->io->section(
-            $result->dryRun
-                ? sprintf('Dry run of snapshot "%s"', $result->name)
-                : sprintf('Imported snapshot "%s"', $result->name),
+            $result->isDryRun()
+                ? sprintf('Dry run of snapshot "%s"', $result->getName())
+                : sprintf('Imported snapshot "%s"', $result->getName()),
         );
-        if ($result->dryRun) {
+        if ($result->isDryRun()) {
             $this->renderPlannedTable($result);
         } else {
             $this->renderImportedTable($result);
         }
-        foreach ($result->skipped as $shortName => $reason) {
+        foreach ($result->getSkipped() as $shortName => $reason) {
             $this->io->writeln(sprintf('skipped %s: %s', $shortName, $reason));
         }
-        if ($result->report->missingInManifest !== []) {
+        if ($result->getReport()->getMissingInManifest() !== []) {
             $this->io->note(
-                'Local classes without data in the snapshot: ' . implode(', ', $result->report->missingInManifest),
+                'Local classes without data in the snapshot: '
+                . implode(', ', $result->getReport()->getMissingInManifest()),
             );
         }
     }
@@ -200,10 +206,10 @@ final class SnapshotImportCommand extends AbstractCommand
         $this->io->table(
             ['index', 'alias', 'documents (planned)'],
             array_map(static fn (ImportedIndex $i) => [
-                $i->shortName,
-                $i->aliasName,
-                $i->expectedCount,
-            ], $result->imported),
+                $i->getShortName(),
+                $i->getAliasName(),
+                $i->getExpectedCount(),
+            ], $result->getImported()),
         );
     }
 
@@ -212,12 +218,12 @@ final class SnapshotImportCommand extends AbstractCommand
         $this->io->table(
             ['index', 'alias', 'expected', 'actual', 'ok'],
             array_map(static fn (ImportedIndex $i) => [
-                $i->shortName,
-                $i->aliasName,
-                $i->expectedCount,
-                $i->actualCount,
+                $i->getShortName(),
+                $i->getAliasName(),
+                $i->getExpectedCount(),
+                $i->getActualCount(),
                 $i->isComplete() ? 'yes' : 'NO',
-            ], $result->imported),
+            ], $result->getImported()),
         );
     }
 
@@ -228,16 +234,16 @@ final class SnapshotImportCommand extends AbstractCommand
             ['class', 'id', 'manifest checksum', 'stored', 'computed from local definition'],
             array_map(
                 static fn (ClassCompatibility $c) => [
-                    $c->className ?? '',
-                    $c->classId,
-                    $c->manifestChecksum ?? '',
-                    $c->storedChecksum ?? '',
-                    $c->computedChecksum ?? '',
+                    $c->getClassName() ?? '',
+                    $c->getClassId(),
+                    $c->getManifestChecksum() ?? '',
+                    $c->getStoredChecksum() ?? '',
+                    $c->getComputedChecksum() ?? '',
                 ],
                 array_filter(
-                    $e->report->classes,
-                    static fn (ClassCompatibility $c) => $c->status === ClassCompatibilityStatus::INCOMPATIBLE
-                        || $c->status === ClassCompatibilityStatus::UNVERIFIED,
+                    $e->getReport()->getClasses(),
+                    static fn (ClassCompatibility $c) => $c->getStatus() === ClassCompatibilityStatus::INCOMPATIBLE
+                        || $c->getStatus() === ClassCompatibilityStatus::UNVERIFIED,
                 ),
             ),
         );

@@ -32,7 +32,7 @@ final class SnapshotIndexResolverTest extends Unit
         $byShortName = [];
         foreach ($targets as $target) {
             $this->assertInstanceOf(IndexTarget::class, $target);
-            $byShortName[$target->shortName] = $target;
+            $byShortName[$target->getShortName()] = $target;
         }
 
         $this->assertArrayHasKey('asset', $byShortName);
@@ -42,8 +42,8 @@ final class SnapshotIndexResolverTest extends Unit
         $simple = $byShortName['data-object_simple'];
         $this->assertTrue($simple->isClassIndex());
         $this->assertSame(ClassDefinition::getByName('simple')->getId(), $simple->getClassId());
-        $this->assertStringEndsWith('data-object_simple', $simple->aliasName);
-        $this->assertSame('dataObject', $simple->elementType);
+        $this->assertStringEndsWith('data-object_simple', $simple->getAliasName());
+        $this->assertSame('dataObject', $simple->getElementType());
         $this->assertFalse($byShortName['asset']->isClassIndex());
     }
 
@@ -55,11 +55,11 @@ final class SnapshotIndexResolverTest extends Unit
 
         $target = $resolver->resolveManifestIndex(new ManifestIndex('renamed_on_source', 'dataObject', $classId, 'x-even', 0, 'f', 0, ''));
         $this->assertNotNull($target);
-        $this->assertSame('data-object_simple', $target->shortName);
+        $this->assertSame('data-object_simple', $target->getShortName());
 
         $this->assertNull($resolver->resolveManifestIndex(new ManifestIndex('class_gone', 'dataObject', 'NOPE', 'x', 0, 'f', 0, '')));
         $this->assertNull($resolver->resolveManifestIndex(new ManifestIndex('weird', 'video', null, 'x', 0, 'f', 0, '')));
-        $this->assertSame('asset', $resolver->resolveManifestIndex(new ManifestIndex('asset', 'asset', null, 'x', 0, 'f', 0, ''))->shortName);
-        $this->assertSame('data-object-folder', $resolver->resolveManifestIndex(new ManifestIndex('data-object-folder', 'dataObject', null, 'x', 0, 'f', 0, ''))->shortName);
+        $this->assertSame('asset', $resolver->resolveManifestIndex(new ManifestIndex('asset', 'asset', null, 'x', 0, 'f', 0, ''))->getShortName());
+        $this->assertSame('data-object-folder', $resolver->resolveManifestIndex(new ManifestIndex('data-object-folder', 'dataObject', null, 'x', 0, 'f', 0, ''))->getShortName());
     }
 }

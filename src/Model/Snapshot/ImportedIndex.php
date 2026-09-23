@@ -19,11 +19,31 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot;
 final readonly class ImportedIndex
 {
     public function __construct(
-        public string $shortName,
-        public string $aliasName,
-        public int $expectedCount,
-        public int $actualCount,
+        private string $shortName,
+        private string $aliasName,
+        private int $expectedCount,
+        private int $actualCount,
     ) {
+    }
+
+    public function getShortName(): string
+    {
+        return $this->shortName;
+    }
+
+    public function getAliasName(): string
+    {
+        return $this->aliasName;
+    }
+
+    public function getExpectedCount(): int
+    {
+        return $this->expectedCount;
+    }
+
+    public function getActualCount(): int
+    {
+        return $this->actualCount;
     }
 
     public function isComplete(): bool

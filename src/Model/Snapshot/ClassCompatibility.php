@@ -21,13 +21,43 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\Snapshot\ClassCompatibilityStatus
 final readonly class ClassCompatibility
 {
     public function __construct(
-        public string $classId,
-        public ?string $className,
-        public ClassCompatibilityStatus $status,
+        private string $classId,
+        private ?string $className,
+        private ClassCompatibilityStatus $status,
         /** null when the manifest carries no checksum for this class at all (unverified) */
-        public ?int $manifestChecksum,
-        public ?int $storedChecksum,
-        public ?int $computedChecksum,
+        private ?int $manifestChecksum,
+        private ?int $storedChecksum,
+        private ?int $computedChecksum,
     ) {
+    }
+
+    public function getClassId(): string
+    {
+        return $this->classId;
+    }
+
+    public function getClassName(): ?string
+    {
+        return $this->className;
+    }
+
+    public function getStatus(): ClassCompatibilityStatus
+    {
+        return $this->status;
+    }
+
+    public function getManifestChecksum(): ?int
+    {
+        return $this->manifestChecksum;
+    }
+
+    public function getStoredChecksum(): ?int
+    {
+        return $this->storedChecksum;
+    }
+
+    public function getComputedChecksum(): ?int
+    {
+        return $this->computedChecksum;
     }
 }

@@ -27,12 +27,12 @@ final class ManifestTest extends Unit
         $restored = Manifest::fromArray(json_decode(json_encode($manifest->toArray()), true));
 
         $this->assertSame($manifest->toArray(), $restored->toArray());
-        $this->assertSame(1, $restored->formatVersion);
-        $this->assertSame(['PR' => 1830112233], $restored->classMappingChecksums);
+        $this->assertSame(1, $restored->getFormatVersion());
+        $this->assertSame(['PR' => 1830112233], $restored->getClassMappingChecksums());
         $index = $restored->getIndex('data-object_product');
         $this->assertInstanceOf(ManifestIndex::class, $index);
-        $this->assertSame('PR', $index->classId);
-        $this->assertSame(602114, $index->documentCount);
+        $this->assertSame('PR', $index->getClassId());
+        $this->assertSame(602114, $index->getDocumentCount());
         $this->assertNull($restored->getIndex('nope'));
     }
 
@@ -132,7 +132,7 @@ final class ManifestTest extends Unit
 
         $restored = Manifest::fromArray($data);
 
-        $this->assertCount(2, $restored->indices);
+        $this->assertCount(2, $restored->getIndices());
     }
 
     public function testRejectsIndexEntryFileNotMatchingShortName(): void
@@ -204,7 +204,7 @@ final class ManifestTest extends Unit
 
         $restored = Manifest::fromArray($data);
 
-        $this->assertCount(2, $restored->indices);
+        $this->assertCount(2, $restored->getIndices());
         $this->assertNotNull($restored->getIndex('data-object-folder'));
         $this->assertNotNull($restored->getIndex('data-object_product'));
     }

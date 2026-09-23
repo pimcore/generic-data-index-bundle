@@ -68,10 +68,10 @@ final class WorkerPoolBulkDispatcher
      */
     public function start(IndexTarget $target): void
     {
-        $this->indexShortName = $target->shortName;
+        $this->indexShortName = $target->getShortName();
         for ($i = 0; $i < $this->workers; $i++) {
             $input = new InputStream();
-            $process = new Process([...$this->workerCommand, $target->shortName]);
+            $process = new Process([...$this->workerCommand, $target->getShortName()]);
             $process->setTimeout(null);
             $process->setInput($input);
 
@@ -106,18 +106,18 @@ final class WorkerPoolBulkDispatcher
         } catch (SnapshotImportException $e) {
             // an earlier chunk's failure surfaced while this one waited; it is not tracked yet,
             // so abort() would not remove its file
-            @unlink($chunk->path);
+            @unlink($chunk->getPath());
 
             throw $e;
         }
-        $this->inFlight[$worker][$chunk->path] = $chunk;
+        $this->inFlight[$worker][$chunk->getPath()] = $chunk;
         $this->logger?->debug('Snapshot import bulk', [
             'index' => $this->indexShortName,
             'worker' => $worker,
-            'documents' => $chunk->documents,
-            'bytes' => $chunk->bytes,
+            'documents' => $chunk->getDocuments(),
+            'bytes' => $chunk->getBytes(),
         ]);
-        $this->inputs[$worker]->write($chunk->path . "\n");
+        $this->inputs[$worker]->write($chunk->getPath() . "\n");
     }
 
     /**
@@ -166,7 +166,7 @@ final class WorkerPoolBulkDispatcher
         }
         foreach ($this->inFlight as $chunks) {
             foreach ($chunks as $chunk) {
-                @unlink($chunk->path);
+                @unlink($chunk->getPath());
             }
         }
         $this->processes = [];

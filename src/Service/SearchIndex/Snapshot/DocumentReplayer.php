@@ -43,23 +43,23 @@ final class DocumentReplayer implements DocumentReplayerInterface
 
     public function replay(IndexTarget $target, ManifestIndex $entry, string $localFile): void
     {
-        $previousRefresh = $this->replayIndexSettings->disableRefresh($target->aliasName);
+        $previousRefresh = $this->replayIndexSettings->disableRefresh($target->getAliasName());
 
         try {
             $this->stream($target, $entry, $localFile);
         } catch (Throwable $e) {
             try {
-                $this->replayIndexSettings->restoreRefresh($target->aliasName, $previousRefresh);
+                $this->replayIndexSettings->restoreRefresh($target->getAliasName(), $previousRefresh);
             } catch (SnapshotImportException $restoreError) {
                 $this->logger?->warning('Could not restore index settings after a failed replay', [
-                    'index' => $target->aliasName,
+                    'index' => $target->getAliasName(),
                     'error' => $restoreError->getMessage(),
                 ]);
             }
 
             throw $e;
         }
-        $this->replayIndexSettings->restoreRefresh($target->aliasName, $previousRefresh);
+        $this->replayIndexSettings->restoreRefresh($target->getAliasName(), $previousRefresh);
     }
 
     /**
@@ -79,7 +79,7 @@ final class DocumentReplayer implements DocumentReplayerInterface
             $dispatcher->abort();
 
             throw new SnapshotImportException(
-                sprintf('Import of index "%s" failed: %s', $target->shortName, $e->getMessage()),
+                sprintf('Import of index "%s" failed: %s', $target->getShortName(), $e->getMessage()),
                 0,
                 $e,
             );

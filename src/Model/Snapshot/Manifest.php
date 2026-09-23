@@ -33,24 +33,82 @@ final readonly class Manifest
      * @param ManifestIndex[] $indices
      */
     public function __construct(
-        public string $createdAt,
-        public string $genericDataIndexVersion,
-        public string $pimcoreVersion,
-        public string $clientType,
-        public string $indexPrefix,
-        public int $queueEntriesBefore,
-        public int $queueEntriesAfter,
-        public int $durationSeconds,
-        public array $classMappingChecksums,
-        public array $indices,
-        public int $formatVersion = self::FORMAT_VERSION,
+        private string $createdAt,
+        private string $genericDataIndexVersion,
+        private string $pimcoreVersion,
+        private string $clientType,
+        private string $indexPrefix,
+        private int $queueEntriesBefore,
+        private int $queueEntriesAfter,
+        private int $durationSeconds,
+        private array $classMappingChecksums,
+        private array $indices,
+        private int $formatVersion = self::FORMAT_VERSION,
     ) {
+    }
+
+    public function getCreatedAt(): string
+    {
+        return $this->createdAt;
+    }
+
+    public function getGenericDataIndexVersion(): string
+    {
+        return $this->genericDataIndexVersion;
+    }
+
+    public function getPimcoreVersion(): string
+    {
+        return $this->pimcoreVersion;
+    }
+
+    public function getClientType(): string
+    {
+        return $this->clientType;
+    }
+
+    public function getIndexPrefix(): string
+    {
+        return $this->indexPrefix;
+    }
+
+    public function getQueueEntriesBefore(): int
+    {
+        return $this->queueEntriesBefore;
+    }
+
+    public function getQueueEntriesAfter(): int
+    {
+        return $this->queueEntriesAfter;
+    }
+
+    public function getDurationSeconds(): int
+    {
+        return $this->durationSeconds;
+    }
+
+    public function getClassMappingChecksums(): array
+    {
+        return $this->classMappingChecksums;
+    }
+
+    /**
+     * @return ManifestIndex[]
+     */
+    public function getIndices(): array
+    {
+        return $this->indices;
+    }
+
+    public function getFormatVersion(): int
+    {
+        return $this->formatVersion;
     }
 
     public function getIndex(string $shortName): ?ManifestIndex
     {
         foreach ($this->indices as $index) {
-            if ($index->shortName === $shortName) {
+            if ($index->getShortName() === $shortName) {
                 return $index;
             }
         }
@@ -169,13 +227,13 @@ final readonly class Manifest
         $seenShortNames = [];
         $seenTargets = [];
         foreach ($indices as $index) {
-            if (isset($seenShortNames[$index->shortName])) {
+            if (isset($seenShortNames[$index->getShortName()])) {
                 throw new InvalidSnapshotException(sprintf(
                     'Manifest has more than one index entry named "%s"',
-                    $index->shortName,
+                    $index->getShortName(),
                 ));
             }
-            $seenShortNames[$index->shortName] = true;
+            $seenShortNames[$index->getShortName()] = true;
 
             $target = self::targetIdentity($index);
             if (isset($seenTargets[$target])) {

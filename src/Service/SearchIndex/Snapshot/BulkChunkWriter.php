@@ -54,19 +54,20 @@ final class BulkChunkWriter
         $pending = 0;
         $pendingBytes = 0;
         foreach ($this->documentFileReader->readRawLines($localFile) as $line) {
-            $id = $this->extractId($line->json, $entry);
+            $id = $this->extractId($line->getJson(), $entry);
             // Flush what is pending if this line would push the request over the byte budget,
             // so a bulk body never exceeds it by a document. A single document larger than the
             // whole budget still goes out on its own (post-add check below).
-            if ($pending > 0 && $pendingBytes + $line->bytes > $this->bulkBytes) {
+            if ($pending > 0 && $pendingBytes + $line->getBytes() > $this->bulkBytes) {
                 yield $this->flush($body, $pending, $pendingBytes);
                 $body = '';
                 $pending = 0;
                 $pendingBytes = 0;
             }
-            $body .= '{"index":{"_index":"' . $target->aliasName . '","_id":' . $id . "}}\n" . $line->json . "\n";
+            $action = '{"index":{"_index":"' . $target->getAliasName() . '","_id":' . $id . '}}';
+            $body .= $action . "\n" . $line->getJson() . "\n";
             $pending++;
-            $pendingBytes += $line->bytes;
+            $pendingBytes += $line->getBytes();
             if ($pending >= $this->bulkSize || $pendingBytes >= $this->bulkBytes) {
                 yield $this->flush($body, $pending, $pendingBytes);
                 $body = '';
@@ -111,7 +112,7 @@ final class BulkChunkWriter
             $document = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException $e) {
             throw new SnapshotImportException(
-                sprintf('Invalid JSON document in "%s": %s', $entry->file, $e->getMessage()),
+                sprintf('Invalid JSON document in "%s": %s', $entry->getFile(), $e->getMessage()),
                 0,
                 $e,
             );
@@ -119,7 +120,7 @@ final class BulkChunkWriter
         $id = is_array($document) ? ($document['system_fields']['id'] ?? null) : null;
         if (!is_int($id)) {
             throw new SnapshotImportException(
-                sprintf('Document without integer system_fields.id in "%s"', $entry->file),
+                sprintf('Document without integer system_fields.id in "%s"', $entry->getFile()),
             );
         }
 

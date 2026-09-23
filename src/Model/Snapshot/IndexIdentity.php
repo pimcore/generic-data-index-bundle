@@ -29,14 +29,24 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 final readonly class IndexIdentity
 {
     public function __construct(
-        public string $elementType,
-        public ?string $classId = null,
+        private string $elementType,
+        private ?string $classId = null,
     ) {
+    }
+
+    public function getElementType(): string
+    {
+        return $this->elementType;
+    }
+
+    public function getClassId(): ?string
+    {
+        return $this->classId;
     }
 
     public static function fromManifestIndex(ManifestIndex $index): self
     {
-        return new self($index->elementType, $index->classId);
+        return new self($index->getElementType(), $index->getClassId());
     }
 
     public static function forClass(string $classId): self
@@ -130,7 +140,7 @@ final readonly class IndexIdentity
 
     public function equals(self $other): bool
     {
-        return $this->elementType === $other->elementType && $this->classId === $other->classId;
+        return $this->elementType === $other->getElementType() && $this->classId === $other->getClassId();
     }
 
     public function elementTypeEnum(): ElementType

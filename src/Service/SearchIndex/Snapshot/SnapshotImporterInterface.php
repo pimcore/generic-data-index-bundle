@@ -46,7 +46,7 @@ interface SnapshotImporterInterface
      * @param (callable(ImportedIndex): void)|null $onIndexImported called after each index has been replayed
      *
      * @throws InvalidSnapshotException when the snapshot's manifest itself cannot be read
-     * @throws SnapshotIncompatibleException when the class definitions do not match and $options->force is false
+     * @throws SnapshotIncompatibleException when the class definitions do not match and $options->isForce() is false
      * @throws SnapshotImportException when an index file has an unsafe or unexpected name, an
      *                                  index file is corrupted, truncated, or could not be read
      *                                  from storage, or an index could not be replayed, including

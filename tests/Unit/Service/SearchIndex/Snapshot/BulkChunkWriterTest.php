@@ -49,13 +49,13 @@ final class BulkChunkWriterTest extends Unit
 
         $chunks = $this->chunks($file, bulkSize: 2, bulkBytes: 1024 * 1024);
 
-        $this->assertSame([2, 1], array_map(static fn (BulkChunk $c) => $c->documents, $chunks), 'count limit');
+        $this->assertSame([2, 1], array_map(static fn (BulkChunk $c) => $c->getDocuments(), $chunks), 'count limit');
         $this->assertSame(
             [strlen($raw[0]) + strlen($raw[1]) + 2, strlen($raw[2]) + 1],
-            array_map(static fn (BulkChunk $c) => $c->bytes, $chunks),
+            array_map(static fn (BulkChunk $c) => $c->getBytes(), $chunks),
             'bytes count the raw snapshot lines incl. newline, not the action lines',
         );
-        $body = explode("\n", rtrim(file_get_contents($chunks[0]->path), "\n"));
+        $body = explode("\n", rtrim(file_get_contents($chunks[0]->getPath()), "\n"));
         $this->assertSame(['index' => ['_index' => 'pimcore_asset', '_id' => 41]], json_decode($body[0], true));
         $this->assertSame($raw[0], $body[1], 'the document line is the snapshot line, byte for byte');
         $this->assertSame(['index' => ['_index' => 'pimcore_asset', '_id' => 42]], json_decode($body[2], true));
@@ -73,8 +73,8 @@ final class BulkChunkWriterTest extends Unit
 
         $chunks = $this->chunks($file, bulkSize: 1000, bulkBytes: $lineBytes[0] + 10);
 
-        $this->assertSame([1, 1, 1], array_map(static fn (BulkChunk $c) => $c->documents, $chunks));
-        $this->assertSame($lineBytes, array_map(static fn (BulkChunk $c) => $c->bytes, $chunks));
+        $this->assertSame([1, 1, 1], array_map(static fn (BulkChunk $c) => $c->getDocuments(), $chunks));
+        $this->assertSame($lineBytes, array_map(static fn (BulkChunk $c) => $c->getBytes(), $chunks));
     }
 
     public function testASingleDocumentLargerThanTheBudgetStillGetsItsOwnChunk(): void
@@ -86,7 +86,7 @@ final class BulkChunkWriterTest extends Unit
 
         $chunks = $this->chunks($file, bulkSize: 1000, bulkBytes: 50);
 
-        $this->assertSame([1, 1], array_map(static fn (BulkChunk $c) => $c->documents, $chunks));
+        $this->assertSame([1, 1], array_map(static fn (BulkChunk $c) => $c->getDocuments(), $chunks));
     }
 
     public function testOversizedNumericIdIsRejectedInsteadOfClamped(): void
@@ -131,7 +131,7 @@ final class BulkChunkWriterTest extends Unit
         $writer = new BulkChunkWriter(new DocumentFileReader(), $bulkSize, $bulkBytes);
         $chunks = [];
         foreach ($writer->write($target, $entry, $file) as $chunk) {
-            $this->paths[] = $chunk->path;
+            $this->paths[] = $chunk->getPath();
             $chunks[] = $chunk;
         }
 
@@ -145,9 +145,9 @@ final class BulkChunkWriterTest extends Unit
             $writer->write($document);
         }
         $written = $writer->finish();
-        $this->paths[] = $written->path;
+        $this->paths[] = $written->getPath();
 
-        return $written->path;
+        return $written->getPath();
     }
 
     /** @return string[] */
@@ -155,7 +155,7 @@ final class BulkChunkWriterTest extends Unit
     {
         $lines = [];
         foreach ((new DocumentFileReader())->readRawLines($file) as $line) {
-            $lines[] = $line->json;
+            $lines[] = $line->getJson();
         }
 
         return $lines;

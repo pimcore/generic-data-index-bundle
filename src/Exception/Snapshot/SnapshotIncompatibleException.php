@@ -24,8 +24,13 @@ final class SnapshotIncompatibleException extends RuntimeException implements Ge
 {
     public function __construct(
         string $message,
-        public readonly CompatibilityReport $report,
+        private readonly CompatibilityReport $report,
     ) {
         parent::__construct($message);
+    }
+
+    public function getReport(): CompatibilityReport
+    {
+        return $this->report;
     }
 }

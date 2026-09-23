@@ -83,11 +83,11 @@ final class SnapshotExporter implements SnapshotExporterInterface
             indices: [],
         );
 
-        if ($options->dryRun) {
+        if ($options->isDryRun()) {
             $indices = [];
             foreach ($targets as $target) {
-                $count = $this->searchIndexService->existsAlias($target->aliasName)
-                    ? $this->searchIndexService->getCount(new Search(), $target->aliasName)
+                $count = $this->searchIndexService->existsAlias($target->getAliasName())
+                    ? $this->searchIndexService->getCount(new Search(), $target->getAliasName())
                     : 0;
                 $indices[] = $this->manifestIndex($target, $count, 0, '');
             }
@@ -101,11 +101,11 @@ final class SnapshotExporter implements SnapshotExporterInterface
             $indices = $this->exportAllIndices($storage, $name, $targets, $onIndexExported);
 
             $manifest = new Manifest(
-                createdAt: $manifest->createdAt,
-                genericDataIndexVersion: $manifest->genericDataIndexVersion,
-                pimcoreVersion: $manifest->pimcoreVersion,
-                clientType: $manifest->clientType,
-                indexPrefix: $manifest->indexPrefix,
+                createdAt: $manifest->getCreatedAt(),
+                genericDataIndexVersion: $manifest->getGenericDataIndexVersion(),
+                pimcoreVersion: $manifest->getPimcoreVersion(),
+                clientType: $manifest->getClientType(),
+                indexPrefix: $manifest->getIndexPrefix(),
                 queueEntriesBefore: $queueBefore,
                 queueEntriesAfter: $this->queueCount(),
                 durationSeconds: (int) round(microtime(true) - $started),
@@ -138,7 +138,7 @@ final class SnapshotExporter implements SnapshotExporterInterface
             'Index snapshot "%s" written: %d indices in %d s',
             $name,
             count($indices),
-            $manifest->durationSeconds,
+            $manifest->getDurationSeconds(),
         ));
 
         return new ExportResult($name, $manifest, false);
@@ -211,13 +211,18 @@ final class SnapshotExporter implements SnapshotExporterInterface
             $written = $this->exportIndex($target);
 
             try {
-                $storage->writeFile($name, $target->shortName . '.ndjson.gz', $written->path);
+                $storage->writeFile($name, $target->getShortName() . '.ndjson.gz', $written->getPath());
             } finally {
-                @unlink($written->path);
+                @unlink($written->getPath());
             }
-            $indices[] = $this->manifestIndex($target, $written->documentCount, $written->bytes, $written->sha256);
+            $indices[] = $this->manifestIndex(
+                $target,
+                $written->getDocumentCount(),
+                $written->getBytes(),
+                $written->getSha256(),
+            );
             if ($onIndexExported !== null) {
-                $onIndexExported($target, $written->documentCount);
+                $onIndexExported($target, $written->getDocumentCount());
             }
         }
 
@@ -235,7 +240,7 @@ final class SnapshotExporter implements SnapshotExporterInterface
         $writer = DocumentFileWriter::createTemporary();
 
         try {
-            if (!$this->searchIndexService->existsAlias($target->aliasName)) {
+            if (!$this->searchIndexService->existsAlias($target->getAliasName())) {
                 return $writer->finish();
             }
             $sizer = new PageSizer($this->pageSize, $this->pageBytes);
@@ -252,7 +257,7 @@ final class SnapshotExporter implements SnapshotExporterInterface
                 // An integer bound (rather than `true`) is enough: search_after pagination only
                 // needs "hits.total" to exist, never its exact value, so `1` avoids the engine
                 // counting every match on each page.
-                $result = $this->searchIndexService->search($search, $target->aliasName, 1);
+                $result = $this->searchIndexService->search($search, $target->getAliasName(), 1);
                 $this->assertCompleteResponse($result->getResponse(), $target);
                 $hits = $result->getHits();
                 $bytesBefore = $writer->getRawBytes();
@@ -261,7 +266,7 @@ final class SnapshotExporter implements SnapshotExporterInterface
                 }
                 $sizer->recordPage(count($hits), $writer->getRawBytes() - $bytesBefore);
                 $this->logger?->debug('Snapshot export page', [
-                    'index' => $target->shortName,
+                    'index' => $target->getShortName(),
                     'requested' => $pageSize,
                     'received' => count($hits),
                     'documents_so_far' => $writer->getDocumentCount(),
@@ -292,14 +297,14 @@ final class SnapshotExporter implements SnapshotExporterInterface
         if (($response['timed_out'] ?? false) === true) {
             throw new SnapshotExportException(sprintf(
                 'Export of index "%s" aborted: the search engine returned a partial (timed out) page',
-                $target->shortName,
+                $target->getShortName(),
             ));
         }
         $failedShards = (int) ($response['_shards']['failed'] ?? 0);
         if ($failedShards > 0) {
             throw new SnapshotExportException(sprintf(
                 'Export of index "%s" aborted: %d shard(s) failed, the page is partial',
-                $target->shortName,
+                $target->getShortName(),
                 $failedShards,
             ));
         }
@@ -307,15 +312,15 @@ final class SnapshotExporter implements SnapshotExporterInterface
 
     private function manifestIndex(IndexTarget $target, int $documentCount, int $bytes, string $sha256): ManifestIndex
     {
-        $version = $this->searchIndexService->getCurrentIndexVersion($target->aliasName);
+        $version = $this->searchIndexService->getCurrentIndexVersion($target->getAliasName());
 
         return new ManifestIndex(
-            shortName: $target->shortName,
-            elementType: $target->elementType,
+            shortName: $target->getShortName(),
+            elementType: $target->getElementType(),
             classId: $target->getClassId(),
-            sourceIndex: $target->aliasName . ($version !== '' ? '-' . $version : ''),
+            sourceIndex: $target->getAliasName() . ($version !== '' ? '-' . $version : ''),
             documentCount: $documentCount,
-            file: $target->shortName . '.ndjson.gz',
+            file: $target->getShortName() . '.ndjson.gz',
             bytes: $bytes,
             sha256: $sha256,
         );

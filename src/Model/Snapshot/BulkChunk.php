@@ -23,9 +23,24 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot;
 final readonly class BulkChunk
 {
     public function __construct(
-        public string $path,
-        public int $documents,
-        public int $bytes,
+        private string $path,
+        private int $documents,
+        private int $bytes,
     ) {
+    }
+
+    public function getPath(): string
+    {
+        return $this->path;
+    }
+
+    public function getDocuments(): int
+    {
+        return $this->documents;
+    }
+
+    public function getBytes(): int
+    {
+        return $this->bytes;
     }
 }

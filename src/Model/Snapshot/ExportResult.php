@@ -19,9 +19,24 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot;
 final readonly class ExportResult
 {
     public function __construct(
-        public string $name,
-        public Manifest $manifest,
-        public bool $dryRun,
+        private string $name,
+        private Manifest $manifest,
+        private bool $dryRun,
     ) {
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getManifest(): Manifest
+    {
+        return $this->manifest;
+    }
+
+    public function isDryRun(): bool
+    {
+        return $this->dryRun;
     }
 }
