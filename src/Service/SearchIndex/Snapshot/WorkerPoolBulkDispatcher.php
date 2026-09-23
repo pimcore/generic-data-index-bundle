@@ -202,20 +202,25 @@ final class WorkerPoolBulkDispatcher
     private function pump(): void
     {
         foreach ($this->processes as $i => $process) {
+            // Check whether the worker still runs BEFORE reading its output: everything it wrote
+            // before exiting is readable afterwards, so a worker that answered and then exited
+            // is not mistaken for one that died with chunks pending.
+            $running = $process->isRunning();
             $this->buffers[$i] .= $process->getIncrementalOutput();
             while (($newline = strpos($this->buffers[$i], "\n")) !== false) {
                 $line = substr($this->buffers[$i], 0, $newline);
                 $this->buffers[$i] = substr($this->buffers[$i], $newline + 1);
                 $this->handleAnswer($i, $line);
             }
-            if (!$process->isRunning() && $this->inFlight[$i] !== []) {
+            if (!$running && $this->inFlight[$i] !== []) {
+                $lost = count($this->inFlight[$i]);
                 $this->abort();
 
                 throw new SnapshotImportException(sprintf(
                     'Snapshot replay worker %d died with exit code %d while %d chunk(s) of index "%s" were pending: %s',
                     $i,
                     (int) $process->getExitCode(),
-                    count($this->inFlight[$i] ?? []),
+                    $lost,
                     $this->indexShortName,
                     trim($process->getErrorOutput()) !== '' ? trim($process->getErrorOutput()) : 'no error output',
                 ));
