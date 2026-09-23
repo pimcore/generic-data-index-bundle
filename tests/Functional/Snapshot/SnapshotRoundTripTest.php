@@ -171,8 +171,8 @@ final class SnapshotRoundTripTest extends Unit
         $this->assertCount(1, $hits['hits']['hits']);
         $this->assertSame($objects[0]->getId(), (int) $hits['hits']['hits'][0]['_id']);
         $this->assertSame(3, $this->searchIndexService->getCount(new Search(), $this->simpleAlias));
-        // the replay runs with refresh disabled and an asynchronous translog; both must be back
-        // at the engine defaults once the index is imported
+        // the replay runs with refresh disabled (the translog keeps request durability); the
+        // refresh_interval must be back at the engine default once the index is imported
         $settings = $this->tester->getIndexSearchClient()->getIndexSettings(['index' => $this->simpleAlias]);
         $index = array_values($settings)[0]['settings']['index'];
         $this->assertArrayNotHasKey('refresh_interval', $index, 'refresh_interval restored to default');
