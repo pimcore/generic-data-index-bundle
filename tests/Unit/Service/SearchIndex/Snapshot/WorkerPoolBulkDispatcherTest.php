@@ -111,8 +111,43 @@ final class WorkerPoolBulkDispatcherTest extends Unit
         }
         $this->assertGreaterThan(1, count($attempted), 'the failure surfaced from a later dispatch() call');
         foreach ($attempted as $chunk) {
-            $this->assertFileDoesNotExist($chunk->getPath(), 'including the chunk of the call that surfaced the failure');
+            $this->assertFileDoesNotExist(
+                $chunk->getPath(),
+                'including the chunk of the call that surfaced the failure',
+            );
         }
+    }
+
+    public function testAWorkerThatDiesReportsHowManyChunksWereLost(): void
+    {
+        // the worker takes the chunk and dies without answering: one chunk is lost
+        $dispatcher = new WorkerPoolBulkDispatcher($this->fakeWorker('exit(3);'), 1);
+        $dispatcher->start(new IndexTarget('asset', 'pimcore_asset', 'asset'));
+
+        try {
+            $dispatcher->dispatch($this->chunk('a'));
+            $dispatcher->finish();
+            $this->fail('expected SnapshotImportException');
+        } catch (SnapshotImportException $e) {
+            $this->assertStringContainsString('while 1 chunk(s)', $e->getMessage());
+        }
+    }
+
+    public function testAWorkerThatExitsRightAfterItsLastAnswerIsNotReportedAsDead(): void
+    {
+        // answering and exiting without waiting for stdin to close: the answer written before
+        // the exit must still be processed, not taken for a worker that died with pending chunks
+        $dispatcher = new WorkerPoolBulkDispatcher(
+            $this->fakeWorker('unlink($path); echo "OK\t$path\n"; exit(0);'),
+            1,
+        );
+        $chunk = $this->chunk('a');
+        $dispatcher->start(new IndexTarget('asset', 'pimcore_asset', 'asset'));
+
+        $dispatcher->dispatch($chunk);
+        $dispatcher->finish();
+
+        $this->assertFileDoesNotExist($chunk->getPath());
     }
 
     public function testWorkerPoolReportsAWorkerThatDiesWithoutAnswering(): void
