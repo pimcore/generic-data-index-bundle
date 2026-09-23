@@ -13,10 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 
-use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\DocumentLine;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\RawDocumentLine;
 
 /**
@@ -88,57 +86,6 @@ final class DocumentFileReader
                     continue;
                 }
                 yield new RawDocumentLine($json, $bytes);
-            }
-        } finally {
-            gzclose($handle);
-        }
-    }
-
-    public function read(string $path): iterable
-    {
-        foreach ($this->readLines($path) as $line) {
-            yield $line->document;
-        }
-    }
-
-    /**
-     * @return iterable<DocumentLine> every document with the raw byte size of its line
-     *
-     * @throws InvalidSnapshotException
-     */
-    public function readLines(string $path): iterable
-    {
-        $handle = gzopen($path, 'rb');
-        if ($handle === false) {
-            throw new InvalidSnapshotException(sprintf('Cannot open "%s" for gzip reading', $path));
-        }
-
-        try {
-            $lineNumber = 0;
-            while (($line = gzgets($handle)) !== false) {
-                $lineNumber++;
-                $bytes = strlen($line);
-                $line = trim($line);
-                if ($line === '') {
-                    continue;
-                }
-
-                try {
-                    $document = json_decode($line, true, 512, JSON_THROW_ON_ERROR);
-                } catch (JsonException $e) {
-                    throw new InvalidSnapshotException(sprintf(
-                        'Line %d of "%s" is not valid JSON: %s',
-                        $lineNumber,
-                        basename($path),
-                        $e->getMessage(),
-                    ));
-                }
-                if (!is_array($document)) {
-                    throw new InvalidSnapshotException(
-                        sprintf('Line %d of "%s" is not a JSON object', $lineNumber, basename($path)),
-                    );
-                }
-                yield new DocumentLine($document, $bytes);
             }
         } finally {
             gzclose($handle);

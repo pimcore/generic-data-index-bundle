@@ -110,6 +110,17 @@ final class BulkChunkWriterTest extends Unit
         $this->chunks($file, bulkSize: 1000, bulkBytes: 1024 * 1024);
     }
 
+    public function testAMalformedLineIsRejected(): void
+    {
+        $file = $this->writeSnapshot([['system_fields' => ['id' => 1]]]);
+        file_put_contents($file, gzencode("{\"system_fields\":{\"id\":1}}\nnot json\n"));
+
+        $this->expectException(SnapshotImportException::class);
+        $this->expectExceptionMessage('Invalid JSON document');
+
+        $this->chunks($file, bulkSize: 1000, bulkBytes: 1024 * 1024);
+    }
+
     /** @return BulkChunk[] */
     private function chunks(string $file, int $bulkSize, int $bulkBytes): array
     {

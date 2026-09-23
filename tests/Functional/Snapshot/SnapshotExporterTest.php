@@ -90,7 +90,10 @@ final class SnapshotExporterTest extends Unit
         $local = tempnam(sys_get_temp_dir(), 'gdi-test-');
         $storage->readFileToLocal('first', $simple->file, $local);
         (new DocumentFileReader())->verifyHash($local, $simple->sha256);
-        $documents = iterator_to_array((new DocumentFileReader())->read($local), false);
+        $documents = [];
+        foreach ((new DocumentFileReader())->readRawLines($local) as $line) {
+            $documents[] = json_decode($line->json, true, 512, JSON_THROW_ON_ERROR);
+        }
         $this->assertCount(3, $documents);
         $ids = array_map(static fn (array $d) => $d['system_fields']['id'], $documents);
         $this->assertEqualsCanonicalizing(array_map(static fn ($o) => $o->getId(), $objects), $ids);

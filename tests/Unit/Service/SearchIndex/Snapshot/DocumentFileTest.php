@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\Snapshot;
 
 use Codeception\Test\Unit;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileReader;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileWriter;
@@ -54,7 +53,10 @@ final class DocumentFileTest extends Unit
 
         $reader = new DocumentFileReader();
         $reader->verifyHash($written->path, $written->sha256);
-        $roundTripped = iterator_to_array($reader->read($written->path), false);
+        $roundTripped = [];
+        foreach ($reader->readRawLines($written->path) as $line) {
+            $roundTripped[] = json_decode($line->json, true, 512, JSON_THROW_ON_ERROR);
+        }
         $this->assertSame($documents, $roundTripped);
         $this->assertIsFloat($roundTripped[1]['standard_fields']['ratio'], 'whole-number float must not round-trip as int');
     }
@@ -68,18 +70,6 @@ final class DocumentFileTest extends Unit
 
         $this->expectException(SnapshotImportException::class);
         (new DocumentFileReader())->verifyHash($written->path, str_repeat('0', 64));
-    }
-
-    public function testMalformedLineThrows(): void
-    {
-        $path = tempnam(sys_get_temp_dir(), 'gdi-test-');
-        $this->paths[] = $path;
-        $handle = gzopen($path, 'wb');
-        gzwrite($handle, "{\"system_fields\":{\"id\":1}}\nnot json\n");
-        gzclose($handle);
-
-        $this->expectException(InvalidSnapshotException::class);
-        iterator_to_array((new DocumentFileReader())->read($path), false);
     }
 
     public function testAbortRemovesTemporaryFile(): void
@@ -125,32 +115,6 @@ final class DocumentFileTest extends Unit
 
         $written = $writer->finish();
         $this->assertLessThan($expectedBytes + 64, $written->bytes, 'gzip output is unrelated to the raw byte counter');
-    }
-
-    public function testReaderReportsTheRawBytesOfEveryLine(): void
-    {
-        $documents = [
-            ['system_fields' => ['id' => 1, 'key' => 'käse']],
-            ['system_fields' => ['id' => 2], 'standard_fields' => ['long' => str_repeat('x', 300)]],
-        ];
-        $writer = DocumentFileWriter::createTemporary();
-        foreach ($documents as $document) {
-            $writer->write($document);
-        }
-        $written = $writer->finish();
-        $this->paths[] = $written->path;
-
-        $lines = iterator_to_array((new DocumentFileReader())->readLines($written->path), false);
-
-        $this->assertCount(2, $lines);
-        $this->assertSame($documents[0], $lines[0]->document);
-        $this->assertSame($documents[1], $lines[1]->document);
-        $this->assertSame(strlen(json_encode($documents[0], JSON_UNESCAPED_UNICODE) . "\n"), $lines[0]->bytes);
-        $this->assertSame(
-            $writer->getRawBytes(),
-            $lines[0]->bytes + $lines[1]->bytes,
-            'reader and writer agree on raw size',
-        );
     }
 
     public function testRawLinesAreTheExactFileLinesWithTheirByteSize(): void
