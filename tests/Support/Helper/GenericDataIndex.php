@@ -261,6 +261,13 @@ class GenericDataIndex extends \Codeception\Module
 
     public function consume(): void
     {
-        $this->runConsoleCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+        // --limit alone waits until that many messages were handled; when a test enqueues fewer
+        // (it depends on what earlier tests left in the transport), the worker would wait forever
+        // and block the whole suite. --time-limit bounds that wait.
+        $this->runConsoleCommand(
+            'messenger:consume',
+            ['--limit' => 2, '--time-limit' => 20],
+            ['pimcore_generic_data_index_queue'],
+        );
     }
 }
