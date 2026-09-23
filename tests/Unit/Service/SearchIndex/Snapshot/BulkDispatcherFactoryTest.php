@@ -15,22 +15,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\S
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkDispatcherFactory;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkSenderInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\InProcessBulkDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\WorkerPoolBulkDispatcher;
 
 final class BulkDispatcherFactoryTest extends Unit
 {
-    public function testOneWorkerSendsFromTheImportingProcess(): void
+    public function testCreatesTheWorkerPoolWithTheConsoleWorkerCommand(): void
     {
-        $factory = new BulkDispatcherFactory($this->makeEmpty(BulkSenderInterface::class), 1, '/app', 'prod', false);
-
-        $this->assertInstanceOf(InProcessBulkDispatcher::class, $factory->create());
-    }
-
-    public function testSeveralWorkersUseTheProcessPoolWithTheConsoleWorkerCommand(): void
-    {
-        $factory = new BulkDispatcherFactory($this->makeEmpty(BulkSenderInterface::class), 4, '/app', 'prod', false);
+        $factory = new BulkDispatcherFactory(4, '/app', 'prod', false);
 
         $this->assertInstanceOf(WorkerPoolBulkDispatcher::class, $factory->create());
         $command = $factory->workerCommand();
@@ -43,7 +34,7 @@ final class BulkDispatcherFactoryTest extends Unit
 
     public function testDebugModeIsPassedOnToTheWorkers(): void
     {
-        $factory = new BulkDispatcherFactory($this->makeEmpty(BulkSenderInterface::class), 2, '/app', 'dev', true);
+        $factory = new BulkDispatcherFactory(2, '/app', 'dev', true);
 
         $this->assertNotContains('--no-debug', $factory->workerCommand());
     }

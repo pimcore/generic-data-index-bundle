@@ -63,7 +63,7 @@ fixed batch sizes:
 - `import_workers` bulk requests are in flight at once. The importing process cuts the snapshot
   file into bulk bodies on disk and hands them to that many worker processes, each of which boots
   the application once and sends what it is given; the search engine indexes the requests on its
-  write threads in parallel. With one worker the importing process sends everything itself. A
+  write threads in parallel. `import_workers: 1` keeps a single request in flight. A
   request the engine rejects because its write queue is full (HTTP 429) is retried with backoff,
   up to five attempts, so more workers than the engine can take cost time but no documents.
   Measured on a 2 million document import on a 12-core notebook: 4 workers were 3 times as fast
@@ -168,9 +168,8 @@ during the import to avoid interleaved writes.") but still proceeds — stopping
 yourself is recommended, not enforced. The import then recreates each index with the local
 mapping and replays the documents through the bulk API; it does **not** enqueue elements. The
 documents are sent to the bulk API exactly as stored in the snapshot, without being decoded and
-re-encoded, and while an index is being replayed its automatic refresh is disabled and its
-translog switched to asynchronous durability; the index is flushed (made durable) and both
-settings are restored as soon as the index is complete (or the replay failed). Before a
+re-encoded, and while an index is being replayed its automatic refresh is disabled; the previous
+`refresh_interval` is restored as soon as the index is complete (or the replay failed). Before a
 class index is recreated, its stored mapping checksum is removed and only stamped again once the
 replay completed: should the replay fail, the class is left without a checksum, so the normal
 per-class reindex (`generic-data-index:deployment:reindex`, or the class-definition update) rebuilds the emptied

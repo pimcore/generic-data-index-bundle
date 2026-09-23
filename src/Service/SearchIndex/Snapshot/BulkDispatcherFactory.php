@@ -17,16 +17,14 @@ use Psr\Log\LoggerInterface;
 use Symfony\Component\Process\PhpExecutableFinder;
 
 /**
- * Chooses how the bulk chunks of an index are sent: from the importing process itself with one
- * worker, or through a pool of worker processes so that several bulk requests are in flight at
- * once (import_workers > 1).
+ * Creates the worker pool that sends the bulk chunks of one index: import_workers worker
+ * processes of the running application, started in the same environment and debug mode.
  *
  * @internal
  */
 final class BulkDispatcherFactory
 {
     public function __construct(
-        private readonly BulkSenderInterface $bulkSender,
         private readonly int $workers,
         private readonly string $projectDir,
         private readonly string $environment,
@@ -35,18 +33,9 @@ final class BulkDispatcherFactory
     ) {
     }
 
-    public function create(): BulkDispatcherInterface
+    public function create(): WorkerPoolBulkDispatcher
     {
-        if ($this->workers <= 1) {
-            return new InProcessBulkDispatcher($this->bulkSender, $this->logger);
-        }
-
         return new WorkerPoolBulkDispatcher($this->workerCommand(), $this->workers, $this->logger);
-    }
-
-    public function workers(): int
-    {
-        return $this->workers;
     }
 
     /**

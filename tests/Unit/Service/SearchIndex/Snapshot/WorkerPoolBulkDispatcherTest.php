@@ -17,11 +17,9 @@ use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\BulkChunk;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkSenderInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\InProcessBulkDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\WorkerPoolBulkDispatcher;
 
-final class BulkDispatchersTest extends Unit
+final class WorkerPoolBulkDispatcherTest extends Unit
 {
     /** @var string[] */
     private array $paths = [];
@@ -34,44 +32,6 @@ final class BulkDispatchersTest extends Unit
             }
         }
         $this->paths = [];
-    }
-
-    public function testInProcessDispatcherSendsTheFileContentAndDeletesTheFile(): void
-    {
-        $sent = [];
-        $sender = $this->makeEmpty(BulkSenderInterface::class, [
-            'send' => static function (string $body, string $index) use (&$sent): void {
-                $sent[] = [$index, $body];
-            },
-        ]);
-        $dispatcher = new InProcessBulkDispatcher($sender);
-        $chunk = $this->chunk("a\nb\n");
-
-        $dispatcher->start(new IndexTarget('asset', 'pimcore_asset', 'asset'));
-        $dispatcher->dispatch($chunk);
-        $dispatcher->finish();
-
-        $this->assertSame([['asset', "a\nb\n"]], $sent);
-        $this->assertFileDoesNotExist($chunk->path);
-    }
-
-    public function testInProcessDispatcherDeletesTheFileAlsoWhenSendingFails(): void
-    {
-        $sender = $this->makeEmpty(BulkSenderInterface::class, [
-            'send' => static function (): never {
-                throw new SnapshotImportException('boom');
-            },
-        ]);
-        $dispatcher = new InProcessBulkDispatcher($sender);
-        $chunk = $this->chunk('x');
-        $dispatcher->start(new IndexTarget('asset', 'pimcore_asset', 'asset'));
-
-        try {
-            $dispatcher->dispatch($chunk);
-            $this->fail('expected SnapshotImportException');
-        } catch (SnapshotImportException) {
-            $this->assertFileDoesNotExist($chunk->path);
-        }
     }
 
     public function testWorkerPoolDistributesChunksAcrossWorkersAndWaitsForEveryAcknowledgement(): void

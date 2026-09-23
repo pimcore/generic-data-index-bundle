@@ -26,11 +26,14 @@ use Symfony\Component\Process\Process;
  * flight at once; the search engine indexes them on its write threads in parallel. Each worker
  * boots the application once, then reads chunk paths from stdin and answers one line per chunk:
  * "OK<TAB>path" or "ERR<TAB>path<TAB>message". At most two chunks are queued per worker, which
- * bounds the temp-disk footprint of unsent chunks to 2 × workers × bulk_bytes.
+ * bounds the temp-disk footprint of unsent chunks to roughly 2 × workers × bulk_bytes.
+ *
+ * Lifecycle per index: start() → dispatch()* → finish() on success, abort() after a failure.
+ * Every chunk file is deleted once it is sent, and abort() removes the ones that were not.
  *
  * @internal
  */
-final class WorkerPoolBulkDispatcher implements BulkDispatcherInterface
+final class WorkerPoolBulkDispatcher
 {
     private const MAX_QUEUED_PER_WORKER = 2;
 
@@ -60,6 +63,9 @@ final class WorkerPoolBulkDispatcher implements BulkDispatcherInterface
     ) {
     }
 
+    /**
+     * @throws SnapshotImportException
+     */
     public function start(IndexTarget $target): void
     {
         $this->indexShortName = $target->shortName;
@@ -87,6 +93,12 @@ final class WorkerPoolBulkDispatcher implements BulkDispatcherInterface
         }
     }
 
+    /**
+     * Hands one chunk to the least busy worker; blocks while every worker has two chunks queued,
+     * and may report the failure of an earlier chunk.
+     *
+     * @throws SnapshotImportException
+     */
     public function dispatch(BulkChunk $chunk): void
     {
         try {
@@ -108,6 +120,11 @@ final class WorkerPoolBulkDispatcher implements BulkDispatcherInterface
         $this->inputs[$worker]->write($chunk->path . "\n");
     }
 
+    /**
+     * Waits until every dispatched chunk is acknowledged and every worker has exited cleanly.
+     *
+     * @throws SnapshotImportException
+     */
     public function finish(): void
     {
         foreach ($this->inputs as $input) {
@@ -137,6 +154,9 @@ final class WorkerPoolBulkDispatcher implements BulkDispatcherInterface
         $this->processes = [];
     }
 
+    /**
+     * Stops the workers and removes chunk files that were not sent. Never throws.
+     */
     public function abort(): void
     {
         foreach ($this->processes as $process) {

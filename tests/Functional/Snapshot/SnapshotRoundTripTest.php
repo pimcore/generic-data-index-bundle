@@ -38,7 +38,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\Index
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkChunkWriter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkDispatcherFactory;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkSender;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\CompatibilityCheckerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileReader;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentFileWriter;
@@ -579,7 +578,6 @@ final class SnapshotRoundTripTest extends Unit
         $replayer = new DocumentReplayer(
             new BulkChunkWriter(new DocumentFileReader(), bulkSize: 1000, bulkBytes: 1),
             new BulkDispatcherFactory(
-                new BulkSender($this->tester->grabService('generic-data-index.search-client')),
                 1,
                 PIMCORE_PROJECT_ROOT,
                 'test',

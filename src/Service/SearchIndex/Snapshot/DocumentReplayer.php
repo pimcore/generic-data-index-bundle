@@ -25,9 +25,8 @@ use Throwable;
  * disk (BulkChunkWriter) which a dispatcher sends — from this process, or through a pool of
  * worker processes so that several bulk requests are in flight at once (import_workers).
  *
- * For the duration of the replay the index runs in bulk-loading mode (no automatic refresh,
- * asynchronous translog); its previous settings are put back afterwards, also after a failure,
- * so a partial index never stays in that mode.
+ * For the duration of the replay the index's automatic refresh is disabled; its previous
+ * refresh_interval is put back afterwards, also after a failure.
  *
  * @internal
  */
@@ -44,13 +43,13 @@ final class DocumentReplayer implements DocumentReplayerInterface
 
     public function replay(IndexTarget $target, ManifestIndex $entry, string $localFile): void
     {
-        $backup = $this->replayIndexSettings->apply($target->aliasName);
+        $previousRefresh = $this->replayIndexSettings->disableRefresh($target->aliasName);
 
         try {
             $this->stream($target, $entry, $localFile);
         } catch (Throwable $e) {
             try {
-                $this->replayIndexSettings->restore($target->aliasName, $backup);
+                $this->replayIndexSettings->restoreRefresh($target->aliasName, $previousRefresh);
             } catch (SnapshotImportException $restoreError) {
                 $this->logger?->warning('Could not restore index settings after a failed replay', [
                     'index' => $target->aliasName,
@@ -60,7 +59,7 @@ final class DocumentReplayer implements DocumentReplayerInterface
 
             throw $e;
         }
-        $this->replayIndexSettings->restore($target->aliasName, $backup);
+        $this->replayIndexSettings->restoreRefresh($target->aliasName, $previousRefresh);
     }
 
     /**

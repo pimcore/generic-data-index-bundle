@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexSettingsBackup;
 
 /**
  * @internal
@@ -22,18 +21,18 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexSettingsBackup;
 interface ReplayIndexSettingsInterface
 {
     /**
-     * Switches an index into bulk-loading mode for the replay: no automatic refresh and an
-     * asynchronous translog. Returns the values the index had before, for restore().
+     * Disables the automatic refresh of the index for the replay.
+     *
+     * @return string|null the refresh_interval the index had before (null: engine default), for restore()
      *
      * @throws SnapshotImportException
      */
-    public function apply(string $indexName): IndexSettingsBackup;
+    public function disableRefresh(string $indexName): ?string;
 
     /**
-     * Puts the settings changed by apply() back to what the index had before: the installation's
-     * configured values where it had any, the engine defaults otherwise.
+     * Puts the refresh_interval back to what disableRefresh() returned.
      *
      * @throws SnapshotImportException
      */
-    public function restore(string $indexName, IndexSettingsBackup $backup): void;
+    public function restoreRefresh(string $indexName, ?string $previousRefreshInterval): void;
 }
