@@ -92,7 +92,10 @@ class Configuration implements ConfigurationInterface
                                 ->integerNode('max_polls')
                                     ->min(1)
                                     ->defaultValue(720)
-                                    ->info('Maximum number of polling attempts when waiting for an async reindex task (default: 720 = 1 hour at 5-second intervals).')
+                                    ->info(
+                                        'Maximum number of polling attempts when waiting for an async reindex '
+                                        . 'task (default: 720 = 1 hour at 5-second intervals).',
+                                    )
                                 ->end()
                                 ->integerNode('poll_interval')
                                     ->min(1)
@@ -135,6 +138,57 @@ class Configuration implements ConfigurationInterface
                                 ->append($this->buildSystemFieldsSettingsNode('data_object'))
                                 ->append($this->buildSystemFieldsSettingsNode('asset'))
                             ->end()
+                        ->end()
+                    ->end()
+                ->end()
+                ->arrayNode('snapshot')
+                    ->info(
+                        'Export/import of the whole search index as a portable file bundle '
+                        . '(generic-data-index:snapshot:*).',
+                    )
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->scalarNode('storage')
+                            ->info('Flysystem storage service id the snapshots are written to and read from.')
+                            ->defaultValue('pimcore.generic_data_index_snapshot.storage')
+                            ->cannotBeEmpty()
+                        ->end()
+                        ->integerNode('page_size')
+                            ->info('Maximum documents fetched per search_after page during export.')
+                            ->defaultValue(1000)
+                            ->min(1)
+                        ->end()
+                        ->integerNode('page_bytes')
+                            ->info(
+                                'Adaptive raw JSON byte target per export page: pages shrink below page_size '
+                                . 'as documents get larger. Not a hard ceiling, since document size is only '
+                                . 'known after a page was fetched.',
+                            )
+                            ->defaultValue(16 * 1024 * 1024)
+                            ->min(1)
+                        ->end()
+                        ->integerNode('bulk_size')
+                            ->info('Maximum documents per bulk request during import.')
+                            ->defaultValue(1000)
+                            ->min(1)
+                        ->end()
+                        ->integerNode('import_workers')
+                            ->info(
+                                'Worker processes (bin/console subprocesses) that send bulk requests '
+                                . 'concurrently during import; each keeps one request in flight. More '
+                                . 'workers use the search engine\'s write threads in parallel (bounded by '
+                                . 'its write queue).',
+                            )
+                            ->defaultValue(4)
+                            ->min(1)
+                        ->end()
+                        ->integerNode('bulk_bytes')
+                            ->info(
+                                'Raw JSON byte budget per import bulk request. A request is sent as soon '
+                                . 'as either bulk_size documents or this many bytes are pending.',
+                            )
+                            ->defaultValue(16 * 1024 * 1024)
+                            ->min(1)
                         ->end()
                     ->end()
                 ->end();
