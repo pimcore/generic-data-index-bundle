@@ -141,4 +141,39 @@ final class DocumentFileTest extends Unit
         );
         $this->assertSame($documents, array_map(static fn ($l) => json_decode($l->getJson(), true), $lines));
     }
+
+    public function testAMissingNestedTemporaryDirectoryIsCreatedAndUsed(): void
+    {
+        $base = sys_get_temp_dir() . '/gdi-tmpdir-test-' . bin2hex(random_bytes(4));
+        $nested = $base . '/system/nested';
+        $this->assertDirectoryDoesNotExist($base);
+
+        try {
+            $this->assertSame($nested, DocumentFileWriter::usableDirectory($nested));
+            $this->assertDirectoryExists($nested);
+        } finally {
+            @rmdir($nested);
+            @rmdir($base . '/system');
+            @rmdir($base);
+        }
+    }
+
+    public function testAnExistingTemporaryDirectoryIsUsedAsIs(): void
+    {
+        $this->assertSame(sys_get_temp_dir(), DocumentFileWriter::usableDirectory(sys_get_temp_dir()));
+    }
+
+    public function testAnUncreatableTemporaryDirectoryFallsBackToTheSystemTemp(): void
+    {
+        // a path below a regular file can never become a directory
+        $file = tempnam(sys_get_temp_dir(), 'gdi-tmpdir-file-');
+        $this->paths[] = $file;
+
+        $this->assertSame(sys_get_temp_dir(), DocumentFileWriter::usableDirectory($file . '/sub'));
+    }
+
+    public function testNoConfiguredDirectoryUsesTheSystemTemp(): void
+    {
+        $this->assertSame(sys_get_temp_dir(), DocumentFileWriter::usableDirectory(null));
+    }
 }
