@@ -62,7 +62,7 @@ final class ReplayIndexSettings implements ReplayIndexSettingsInterface
             );
         }
         // keyed by the concrete index name, also when queried through its alias
-        $index = is_array($response) && $response !== [] ? (reset($response)['settings']['index'] ?? []) : [];
+        $index = $response !== [] ? (reset($response)['settings']['index'] ?? []) : [];
         $refresh = $index['refresh_interval'] ?? null;
 
         return is_string($refresh) ? $refresh : null;

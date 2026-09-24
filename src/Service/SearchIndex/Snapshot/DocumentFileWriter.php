@@ -62,9 +62,22 @@ final class DocumentFileWriter
         return new self($path);
     }
 
+    /**
+     * Pimcore's system temp directory, created on first use: tempnam() silently falls back to the
+     * system temp directory (and raises a notice) when the directory does not exist yet. If it
+     * cannot be created, the system temp directory is used on purpose.
+     */
     public static function temporaryDirectory(): string
     {
-        return defined('PIMCORE_SYSTEM_TEMP_DIRECTORY') ? PIMCORE_SYSTEM_TEMP_DIRECTORY : sys_get_temp_dir();
+        if (!defined('PIMCORE_SYSTEM_TEMP_DIRECTORY')) {
+            return sys_get_temp_dir();
+        }
+        $directory = (string) PIMCORE_SYSTEM_TEMP_DIRECTORY;
+        if (!is_dir($directory) && !@mkdir($directory, 0o775, true) && !is_dir($directory)) {
+            return sys_get_temp_dir();
+        }
+
+        return $directory;
     }
 
     public function getPath(): string
