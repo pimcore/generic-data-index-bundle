@@ -234,12 +234,12 @@ final class WorkerPoolBulkDispatcher
     private function handleAnswer(int $worker, string $line): void
     {
         $parts = explode("\t", $line, 3);
-        if (($parts[0] ?? '') === 'OK' && isset($parts[1])) {
+        if ($parts[0] === 'OK' && isset($parts[1])) {
             unset($this->inFlight[$worker][$parts[1]]);
 
             return;
         }
-        if (($parts[0] ?? '') === 'ERR') {
+        if ($parts[0] === 'ERR') {
             $this->abort();
 
             throw new SnapshotImportException(sprintf(
