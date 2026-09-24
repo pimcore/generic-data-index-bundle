@@ -20,11 +20,15 @@
     "php": "~8.4.0 || ~8.5.0 ",
     "nesbot/carbon": "^3.8.4",
     "pimcore/pimcore": "^2026.1.5",
+    "league/flysystem": "^3.12",
+    "league/flysystem-local": "^3.12",
     "pimcore/static-resolver-bundle": "^2026.1",
     "pimcore/opensearch-client": "^2026.1.1",
     "pimcore/elasticsearch-client": "^2026.1",
     "doctrine/orm": "^3.0",
     "doctrine/dbal": "^4.4",
+    "symfony/lock": "^7.2",
+    "symfony/process": "^7.2",
     "symfony/scheduler": "^7.2"
   },
   "require-dev": {
@@ -39,7 +43,8 @@
     "nyholm/psr7": "^1",
     "symfony/phpunit-bridge": "^7",
     "fakerphp/faker": "^1.23",
-    "friendsofphp/php-cs-fixer": "^3.4"
+    "friendsofphp/php-cs-fixer": "^3.4",
+    "league/flysystem-memory": "^3.0"
   },
   "autoload": {
     "psr-4": {
