@@ -69,10 +69,22 @@ final class DocumentFileWriter
      */
     public static function temporaryDirectory(): string
     {
-        if (!defined('PIMCORE_SYSTEM_TEMP_DIRECTORY')) {
+        return self::usableDirectory(
+            defined('PIMCORE_SYSTEM_TEMP_DIRECTORY') ? (string) PIMCORE_SYSTEM_TEMP_DIRECTORY : null,
+        );
+    }
+
+    /**
+     * The given directory, created (with parents) if missing, or the system temp directory when
+     * none is given or it cannot be created.
+     *
+     * @internal separated from temporaryDirectory() so it can be tested without the Pimcore constant
+     */
+    public static function usableDirectory(?string $directory): string
+    {
+        if ($directory === null || $directory === '') {
             return sys_get_temp_dir();
         }
-        $directory = (string) PIMCORE_SYSTEM_TEMP_DIRECTORY;
         if (!is_dir($directory) && !@mkdir($directory, 0o775, true) && !is_dir($directory)) {
             return sys_get_temp_dir();
         }
