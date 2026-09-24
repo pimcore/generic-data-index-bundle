@@ -201,9 +201,9 @@ crons:
 OpenSearch and Elasticsearch can take and restore snapshots of their own. A native restore copies
 index segment files instead of indexing documents, so it takes minutes largely independent of the
 CPU of the target machine: on a notebook, 2 million documents (about 10 GB of indices) restored in
-about 4 minutes, compared to about 21 minutes for importing the same bundle. It cannot replace the bundle export on installations whose search
-service offers no snapshot repository (such as Pimcore PaaS), but a bundle can be turned into a
-native snapshot once and restored natively from there:
+about 4 minutes, compared to about 21 minutes for importing the same bundle. It cannot replace the
+bundle export on installations whose search service offers no snapshot repository (such as Pimcore
+PaaS), but a bundle can be turned into a native snapshot once and restored natively from there:
 
 1. Export the bundle on the source installation with `generic-data-index:snapshot:export`.
 2. Import it once with `generic-data-index:snapshot:import` into a separate installation (for
