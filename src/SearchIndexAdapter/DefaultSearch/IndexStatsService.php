@@ -68,9 +68,12 @@ final class IndexStatsService implements IndexStatsServiceInterface
         // for the count: their docs.count is a raw Lucene total that would be inflated by nested
         // block/table sub-documents and by replica shards. Every index that holds documents appears
         // in the aggregation (its 10000-bucket cap is far above any realistic number of GDI indices),
-        // so an index absent from it is empty and correctly counts as 0.
+        // so an index absent from it is empty and correctly counts as 0. When no index matches the
+        // prefix at all (e.g. a fresh installation, or right before a snapshot import), the response
+        // carries no "aggregations" key at all, so the result is simply empty.
+        $buckets = $aggregationResult['aggregations']['indices']['buckets'] ?? [];
         $docCountByIndex = [];
-        foreach ($aggregationResult['aggregations']['indices']['buckets'] as $bucket) {
+        foreach ($buckets as $bucket) {
             $docCountByIndex[$bucket['key']] = $bucket['doc_count'];
         }
 

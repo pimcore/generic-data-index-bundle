@@ -17,6 +17,21 @@ description: Version-specific upgrade instructions and breaking changes for the 
   `ScoreAwareResultItemInterface`.
 - [Searching] The search result models now expose `getMaxScore()`
 
+## Upgrade to 2026.2.10
+- [Commands] Added `generic-data-index:snapshot:export` and `generic-data-index:snapshot:import`. Export writes every
+  search index into a portable, gzipped JSON-lines bundle (plus a manifest) in a configurable Flysystem storage, so a
+  bundle can be moved between installations without a full reindex. Import recreates the local indices from the
+  bundle and replays the documents through the bulk API; it never enqueues elements, and refuses the import (unless
+  `--force` is given) when a class's mapping checksum in the manifest does not match the local class definition.
+  Snapshots are not rotated: they accumulate in the storage until an operator deletes them. See
+  [Index snapshots](../02_Configuration/06_Index_Snapshots.md) for the commands and configuration.
+- [Configuration] Added the `pimcore_generic_data_index.snapshot` node (`storage`, `page_size`, `page_bytes`,
+  `bulk_size`, `bulk_bytes`, `import_workers` — the import sends bulk requests through 4 worker processes by default)
+  and a default private Flysystem storage `pimcore.generic_data_index_snapshot.storage` under
+  `var/generic-data-index/snapshots`.
+- [Bug] `generic-data-index:status` (and any caller of `IndexStatsService::getStats()`) no longer fails with
+  "Undefined array key aggregations" when no search index exists yet.
+
 ## Upgrade to 2026.2.9
 
 ### Re-indexing required

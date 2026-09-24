@@ -1,0 +1,270 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * This source file is available under the terms of the
+ * Pimcore Open Core License (POCL)
+ * Full copyright and license information is available in
+ * LICENSE.md which is distributed with this source code.
+ *
+ *  @copyright  Copyright (c) Pimcore GmbH (https://www.pimcore.com)
+ *  @license    Pimcore Open Core License (POCL)
+ */
+
+namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Command\Snapshot;
+
+use Codeception\Test\Unit;
+use FilesystemIterator;
+use LogicException;
+use Pimcore\Bundle\GenericDataIndexBundle\Command\Snapshot\SnapshotImportCommand;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Snapshot\ClassCompatibilityStatus;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotIncompatibleException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ClassCompatibility;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\CompatibilityReport;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportedIndex;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportOptions;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\Manifest;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Stats\IndexStats;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotImporterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotLock;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorage;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use RuntimeException;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Lock\Store\InMemoryStore;
+
+final class SnapshotImportCommandTest extends Unit
+{
+    /** @var string[] files or directories created by a test, removed in _after() */
+    private array $tempPaths = [];
+
+    protected function _after(): void
+    {
+        foreach ($this->tempPaths as $path) {
+            if (is_dir($path)) {
+                $this->removeDirectory($path);
+            } elseif (file_exists($path)) {
+                unlink($path);
+            }
+        }
+        $this->tempPaths = [];
+    }
+
+    public function testUsesLatestSnapshotWhenNoNameGiven(): void
+    {
+        $storage = $this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'latest-one']);
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => function (SnapshotStorageInterface $s, string $name, ImportOptions $options): ImportResult {
+                $this->assertSame('latest-one', $name);
+
+                return $this->importResult($name, [new ImportedIndex('asset', 'pimcore_asset', 5, 5)]);
+            },
+        ]);
+        $tester = new CommandTester($this->command($storage, $importer));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute([]));
+        $this->assertStringContainsString('asset', $tester->getDisplay());
+    }
+
+    public function testFailsWhenNoSnapshotExists(): void
+    {
+        $storage = $this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => null]);
+        $tester = new CommandTester($this->command($storage, $this->makeEmpty(SnapshotImporterInterface::class)));
+
+        $this->assertSame(Command::FAILURE, $tester->execute([]));
+        $this->assertStringContainsString('No snapshot found', $tester->getDisplay());
+    }
+
+    public function testFromPathBuildsLocalStorageAndPassesOptions(): void
+    {
+        $dir = sys_get_temp_dir() . '/gdi-snapshot-cmd-' . uniqid();
+        $this->tempPaths[] = $dir;
+        mkdir($dir . '/snap', 0777, true);
+        file_put_contents($dir . '/snap/manifest.json', json_encode((new Manifest('2026-09-10T00:00:00+00:00', 'dev', 'dev', 'openSearch', 'pimcore_', 0, 0, 0, [], []))->toArray()));
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => function (SnapshotStorageInterface $storage, string $name, ImportOptions $options): ImportResult {
+                $this->assertInstanceOf(SnapshotStorage::class, $storage);
+                $this->assertTrue($storage->hasSnapshot('snap'));
+                $this->assertTrue($options->isForce());
+
+                return $this->importResult($name, []);
+            },
+        ]);
+        $tester = new CommandTester($this->command($this->makeEmpty(SnapshotStorageInterface::class), $importer));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['name' => 'snap', '--from-path' => $dir, '--force' => true]));
+    }
+
+    public function testIncompleteIndexIsFailure(): void
+    {
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => fn (SnapshotStorageInterface $s, string $name): ImportResult => $this->importResult($name, [new ImportedIndex('asset', 'pimcore_asset', 5, 4)]),
+        ]);
+        $tester = new CommandTester($this->command($this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']), $importer));
+
+        $this->assertSame(Command::FAILURE, $tester->execute([]));
+        $this->assertStringContainsString('5', $tester->getDisplay());
+    }
+
+    public function testIncompatibleExceptionPrintsClassIdsAndForceHint(): void
+    {
+        $report = new CompatibilityReport([new ClassCompatibility('PR', 'Product', ClassCompatibilityStatus::INCOMPATIBLE, 1, 2, 3)], []);
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => static function () use ($report): never {
+                throw new SnapshotIncompatibleException('mismatch', $report);
+            },
+        ]);
+        $tester = new CommandTester($this->command($this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']), $importer));
+
+        $this->assertSame(Command::FAILURE, $tester->execute([]));
+        $this->assertStringContainsString('Product', $tester->getDisplay());
+        $this->assertStringContainsString('--force', $tester->getDisplay());
+    }
+
+    public function testNonZeroQueueCountWarnsButStillImports(): void
+    {
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => fn (SnapshotStorageInterface $s, string $name): ImportResult => $this->importResult($name, [new ImportedIndex('asset', 'pimcore_asset', 5, 5)]),
+        ]);
+        $tester = new CommandTester($this->command(
+            $this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']),
+            $importer,
+            42
+        ));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute([]));
+        $display = $tester->getDisplay();
+        $this->assertStringContainsString('Stop messenger consumers', $display);
+        $this->assertStringContainsString('42', $display);
+    }
+
+    public function testNonDirectoryFromPathIsFailure(): void
+    {
+        $file = tempnam(sys_get_temp_dir(), 'gdi-snapshot-cmd-');
+        $this->tempPaths[] = $file;
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => static function (): never {
+                throw new LogicException('must not be called');
+            },
+        ]);
+        $tester = new CommandTester($this->command($this->makeEmpty(SnapshotStorageInterface::class), $importer));
+
+        $this->assertSame(Command::FAILURE, $tester->execute(['--from-path' => $file]));
+        $this->assertStringContainsString('is not a directory', $tester->getDisplay());
+    }
+
+    public function testUnexpectedExceptionIsFailure(): void
+    {
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => static function (): never {
+                throw new RuntimeException('engine down');
+            },
+        ]);
+        $tester = new CommandTester($this->command($this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']), $importer));
+
+        $this->assertSame(Command::FAILURE, $tester->execute([]));
+        $this->assertStringContainsString('engine down', $tester->getDisplay());
+    }
+
+    public function testDryRunPrintsNothingWritten(): void
+    {
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => function (SnapshotStorageInterface $s, string $name): ImportResult {
+                $manifest = new Manifest('2026-09-10T00:00:00+00:00', 'dev', 'dev', 'openSearch', 'pimcore_', 0, 0, 0, [], []);
+
+                return new ImportResult($name, $manifest, new CompatibilityReport([], []), [new ImportedIndex('asset', 'pimcore_asset', 5, 0)], [], [], true);
+            },
+        ]);
+        $tester = new CommandTester($this->command($this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']), $importer));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute([]));
+        $display = $tester->getDisplay();
+        $this->assertStringContainsString('Dry run of snapshot', $display);
+        $this->assertStringContainsString('Nothing written', $display);
+        $this->assertStringContainsString('planned', $display);
+        $this->assertStringNotContainsString('NO', $display);
+    }
+
+    private function command(
+        SnapshotStorageInterface $storage,
+        SnapshotImporterInterface $importer,
+        int $queueCount = 0,
+        ?LockFactory $lockFactory = null,
+    ): SnapshotImportCommand {
+        return new SnapshotImportCommand(
+            $storage,
+            $importer,
+            $this->makeEmpty(IndexStatsServiceInterface::class, ['getStats' => new IndexStats($queueCount, [])]),
+            $lockFactory ?? new LockFactory(new InMemoryStore()),
+        );
+    }
+
+    private function importResult(string $name, array $imported): ImportResult
+    {
+        $manifest = new Manifest('2026-09-10T00:00:00+00:00', 'dev', 'dev', 'openSearch', 'pimcore_', 0, 0, 0, [], []);
+
+        return new ImportResult($name, $manifest, new CompatibilityReport([], []), $imported, [], [], false);
+    }
+
+    private function removeDirectory(string $dir): void
+    {
+        $items = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+        foreach ($items as $item) {
+            $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
+        }
+        rmdir($dir);
+    }
+
+    public function testUnverifiedClassRendersNoManifestChecksum(): void
+    {
+        // An unverified class has no checksum in the manifest at all; printing a 0 there would
+        // read like a real checksum that simply did not match.
+        $report = new CompatibilityReport(
+            [new ClassCompatibility('PR', 'Product', ClassCompatibilityStatus::UNVERIFIED, null, 77, null)],
+            [],
+        );
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => static function () use ($report): never {
+                throw new SnapshotIncompatibleException('unverified', $report);
+            },
+        ]);
+        $tester = new CommandTester($this->command($this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']), $importer));
+
+        $this->assertSame(Command::FAILURE, $tester->execute([]));
+        $display = $tester->getDisplay();
+        $this->assertStringContainsString('Product', $display);
+        $this->assertMatchesRegularExpression(
+            '/^\s+Product\s+PR\s+77\s*$/m',
+            $display,
+            'the manifest checksum cell stays empty for an unverified class',
+        );
+    }
+
+    public function testRefusesToRunWhileAnExportHoldsTheSharedLock(): void
+    {
+        // Export and import share one lock resource, so an export on any node of the
+        // installation excludes the import for as long as the lock store is shared.
+        $lockFactory = new LockFactory(new InMemoryStore());
+        $export = SnapshotLock::create($lockFactory);
+        $this->assertTrue($export->acquire());
+        $importer = $this->makeEmpty(SnapshotImporterInterface::class, [
+            'import' => static function (): never {
+                throw new RuntimeException('must not import while an export holds the lock');
+            },
+        ]);
+        $storage = $this->makeEmpty(SnapshotStorageInterface::class, ['latestSnapshotName' => 'x']);
+        $tester = new CommandTester($this->command($storage, $importer, 0, $lockFactory));
+
+        $this->assertSame(Command::FAILURE, $tester->execute([]));
+        $this->assertStringContainsString('already running', $tester->getDisplay());
+    }
+}

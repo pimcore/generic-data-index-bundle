@@ -21,3 +21,4 @@ Configuration covers:
 - [Index Management](./03_Index_Management.md)
 - [OpenSearch Setup](./04_Opensearch.md)
 - [Elasticsearch Setup](./05_Elasticsearch.md)
+- [Index Snapshots](./06_Index_Snapshots.md)
