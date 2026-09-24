@@ -240,7 +240,9 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new AssetMetaDataFilter('testAsset', 'asset', [$asset->getId(), 123]))
+            // an id above the freshly created one: a literal id (e.g. 123) collides with the
+            // auto-increment id of the test's own element once enough elements were created before
+            ->addModifier(new AssetMetaDataFilter('testAsset', 'asset', [$asset->getId(), $asset->getId() + 1000]))
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -249,7 +251,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new AssetMetaDataFilter('testAsset', 'asset', [123]))
+            ->addModifier(new AssetMetaDataFilter('testAsset', 'asset', [$asset->getId() + 1000]))
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -281,7 +283,9 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new AssetMetaDataFilter('testDocument', 'document', [$document->getId(), 123]))
+            ->addModifier(
+                new AssetMetaDataFilter('testDocument', 'document', [$document->getId(), $document->getId() + 1000])
+            )
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -290,7 +294,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new AssetMetaDataFilter('testDocument', 'document', [123]))
+            ->addModifier(new AssetMetaDataFilter('testDocument', 'document', [$document->getId() + 1000]))
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -322,7 +326,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new AssetMetaDataFilter('testObject', 'object', [$object->getId(), 123]))
+            ->addModifier(new AssetMetaDataFilter('testObject', 'object', [$object->getId(), $object->getId() + 1000]))
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -331,7 +335,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new AssetMetaDataFilter('testObject', 'object', [123]))
+            ->addModifier(new AssetMetaDataFilter('testObject', 'object', [$object->getId() + 1000]))
         ;
 
         $searchResult = $searchService->search($assetSearch);
