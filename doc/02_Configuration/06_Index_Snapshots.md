@@ -195,3 +195,93 @@ crons:
         commands:
             start: "php /app/bin/console generic-data-index:snapshot:export"
 ```
+
+## Also possible: native engine snapshots from an imported bundle
+
+OpenSearch and Elasticsearch can take and restore snapshots of their own. A native restore copies
+index segment files instead of indexing documents, so it takes minutes largely independent of the
+CPU of the target machine: on a notebook, 2 million documents (about 10 GB of indices) restored in
+about 4 minutes, compared to about 21 minutes for importing the same bundle. It cannot replace the bundle export on installations whose search
+service offers no snapshot repository (such as Pimcore PaaS), but a bundle can be turned into a
+native snapshot once and restored natively from there:
+
+1. Export the bundle on the source installation with `generic-data-index:snapshot:export`.
+2. Import it once with `generic-data-index:snapshot:import` into a separate installation (for
+   example a CI job or a team server).
+3. Take a native snapshot of the imported indices there.
+4. Restore that native snapshot wherever it is needed, together with the database dump that
+   belongs to the bundle.
+
+The bundle stays the portable, engine-independent format. The native snapshot is tied to one
+engine and version, which is what makes the restore fast.
+
+### The installation that imports the bundle
+
+It needs the same Pimcore and Generic Data Index versions, the same class definitions
+(`var/classes`) and the same `pimcore_generic_data_index` configuration (in particular
+`index_prefix`) as the installations that restore the native snapshot later. Its database must
+contain the class definitions and the settings store the import reads and stamps; the database
+dump that belongs to the bundle is the simplest choice. Asset binaries, messenger workers and web
+access are not needed.
+
+Its search engine needs a snapshot repository path, for example in Docker Compose:
+
+```yaml
+services:
+    opensearch:
+        environment:
+            - path.repo=/usr/share/opensearch/snapshots
+        volumes:
+            - ./snapshots:/usr/share/opensearch/snapshots
+```
+
+After the import, register the repository and take the snapshot. The calls are the same for
+OpenSearch and Elasticsearch (Elasticsearch images use `/usr/share/elasticsearch/...` paths); add
+the credentials and TLS options your cluster needs, for example `-u admin:<password>` and `-k` for
+a self-signed certificate:
+
+```bash
+curl -X PUT "https://localhost:9200/_snapshot/gdi" -H 'Content-Type: application/json' -d '{
+  "type": "fs",
+  "settings": { "location": "/usr/share/opensearch/snapshots" }
+}'
+
+curl -X PUT "https://localhost:9200/_snapshot/gdi/2026-09-24?wait_for_completion=true" \
+  -H 'Content-Type: application/json' -d '{
+  "indices": "pimcore_*",
+  "include_global_state": false
+}'
+```
+
+`pimcore_*` stands for your `index_prefix`. Other bundles can use the same prefix for their own
+indices; list the Generic Data Index indices explicitly if they should not be part of the
+snapshot. The repository directory is then copied to wherever the snapshot is restored.
+
+### Restoring the native snapshot
+
+The target needs the same engine (OpenSearch or Elasticsearch) at the same or a newer version
+within the same major version as the installation that took the snapshot, and the same
+`path.repo` and volume setup with the copied repository directory. Load the database dump that
+belongs to the bundle first: its settings store holds the class mapping checksums that match the
+restored mappings, so the index is not considered outdated and nothing is reindexed.
+
+The restore does not overwrite open indices, so delete the existing Generic Data Index indices
+first, then register the repository and restore:
+
+```bash
+curl -X PUT "https://localhost:9200/_snapshot/gdi" -H 'Content-Type: application/json' -d '{
+  "type": "fs",
+  "settings": { "location": "/usr/share/opensearch/snapshots" }
+}'
+
+curl -X POST "https://localhost:9200/_snapshot/gdi/2026-09-24/_restore?wait_for_completion=true" \
+  -H 'Content-Type: application/json' -d '{
+  "indices": "pimcore_*",
+  "include_aliases": true,
+  "include_global_state": false
+}'
+```
+
+The aliases the bundle queries through are part of the snapshot and restored with the indices.
+Pinning the engine image version in the Compose files of all installations involved avoids a
+target that is too old to read the snapshot.
