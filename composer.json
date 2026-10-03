@@ -39,7 +39,7 @@
     "codeception/stub": "^4.3",
     "phpstan/phpstan": "2.1.40",
     "phpstan/phpstan-symfony": "^2.0",
-    "phpunit/phpunit": "^12.5.23 || ^13.1.7",
+    "phpunit/phpunit": "^12.5.23",
     "nyholm/psr7": "^1",
     "symfony/phpunit-bridge": "^7",
     "fakerphp/faker": "^1.23",
