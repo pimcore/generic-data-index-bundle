@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotLockException;
+use Symfony\Component\Lock\Exception\LockAcquiringException;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\LockInterface;
 
@@ -26,6 +28,11 @@ use Symfony\Component\Lock\LockInterface;
  * The TTL only matters for stores that expire keys: a run that crashes hard leaves its lock
  * behind for at most that long, while a healthy run refreshes it after every index.
  *
+ * A refresh is retried once: the default (DBAL) store's connection sits idle while one large
+ * index is exported or imported, so the server's wait_timeout may have closed it by the time
+ * the refresh runs. DBAL drops a lost connection and reconnects on the next query, so the
+ * retry goes through on a fresh connection.
+ *
  * @internal
  */
 final class SnapshotLock
@@ -37,5 +44,35 @@ final class SnapshotLock
     public static function create(LockFactory $lockFactory): LockInterface
     {
         return $lockFactory->createLock(self::RESOURCE, self::TTL_SECONDS);
+    }
+
+    /**
+     * A LockConflictedException (another run took the lock over) is not retried: it must abort.
+     *
+     * @throws SnapshotLockException when the refresh fails twice
+     */
+    public static function refresh(LockInterface $lock): void
+    {
+        try {
+            $lock->refresh();
+        } catch (LockAcquiringException) {
+            self::refreshAgain($lock);
+        }
+    }
+
+    private static function refreshAgain(LockInterface $lock): void
+    {
+        try {
+            $lock->refresh();
+        } catch (LockAcquiringException $e) {
+            throw new SnapshotLockException(
+                sprintf(
+                    'Failed to refresh the snapshot lock: %s',
+                    $e->getPrevious()?->getMessage() ?? $e->getMessage(),
+                ),
+                0,
+                $e,
+            );
+        }
     }
 }

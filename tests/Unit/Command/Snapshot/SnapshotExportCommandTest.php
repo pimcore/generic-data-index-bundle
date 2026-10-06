@@ -18,11 +18,13 @@ use Pimcore\Bundle\GenericDataIndexBundle\Command\Snapshot\SnapshotExportCommand
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotExportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ExportOptions;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ExportResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\Manifest;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotLock;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\Snapshot\FailingRefreshLockStore;
 use RuntimeException;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -135,5 +137,53 @@ final class SnapshotExportCommandTest extends Unit
             SnapshotLock::create($lockFactory)->acquire(),
             'the lock is released even when the export failed',
         );
+    }
+
+    public function testSurvivesALockStoreConnectionDroppedWhileAnIndexWasExported(): void
+    {
+        // The DBAL lock store's connection idles while a large index is paged; the server's
+        // wait_timeout closes it and the next lock refresh fails once before DBAL reconnects.
+        $manifest = new Manifest('x', 'dev', 'dev', 'openSearch', 'pimcore_', 0, 0, 0, [], []);
+        $store = new FailingRefreshLockStore();
+        $exporter = $this->makeEmpty(SnapshotExporterInterface::class, [
+            'export' => static function (
+                SnapshotStorageInterface $storage,
+                string $name,
+                ExportOptions $options,
+                callable $onIndexExported,
+            ) use ($manifest, $store): ExportResult {
+                $store->failNextRefreshes(1);
+                $onIndexExported(new IndexTarget('data-object_price', 'pimcore_data-object_price', 'dataObject'), 3);
+
+                return new ExportResult($name, $manifest, false);
+            },
+        ]);
+        $tester = new CommandTester($this->command($exporter, new LockFactory($store)));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute([]), $tester->getDisplay());
+        $this->assertStringContainsString('data-object_price: 3 documents', $tester->getDisplay());
+    }
+
+    public function testPersistentLockStoreFailureReportsTheUnderlyingCause(): void
+    {
+        $manifest = new Manifest('x', 'dev', 'dev', 'openSearch', 'pimcore_', 0, 0, 0, [], []);
+        $store = new FailingRefreshLockStore();
+        $exporter = $this->makeEmpty(SnapshotExporterInterface::class, [
+            'export' => static function (
+                SnapshotStorageInterface $storage,
+                string $name,
+                ExportOptions $options,
+                callable $onIndexExported,
+            ) use ($manifest, $store): ExportResult {
+                $store->failNextRefreshes(2);
+                $onIndexExported(new IndexTarget('data-object_price', 'pimcore_data-object_price', 'dataObject'), 3);
+
+                return new ExportResult($name, $manifest, false);
+            },
+        ]);
+        $tester = new CommandTester($this->command($exporter, new LockFactory($store)));
+
+        $this->assertSame(Command::FAILURE, $tester->execute([]));
+        $this->assertStringContainsString('2006 MySQL server', $tester->getDisplay());
     }
 }
