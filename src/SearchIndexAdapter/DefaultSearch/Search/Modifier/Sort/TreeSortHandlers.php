@@ -67,12 +67,16 @@ final class TreeSortHandlers
             return;
         }
 
+        $search = $pageNumberSort->getSearch();
+        if ($this->isFrontPageWithinItemsLimit($search->getPage(), $search->getPageSize())) {
+            return;
+        }
+
         $totalItems = $this->searchIndexService->getCount($contextSearch, $pageNumberSort->getIndexName());
         if ($totalItems === 0 || $totalItems <= $this->itemsLimit) {
             return;
         }
 
-        $search = $pageNumberSort->getSearch();
         $pageSize = $search->getPageSize();
         $lastPage = (int)ceil($totalItems / $pageSize);
         $currentPage = $search->getPage();
@@ -116,6 +120,12 @@ final class TreeSortHandlers
                     $indexSort->getDirection()->value
                 )
             );
+    }
+
+    private function isFrontPageWithinItemsLimit(int $page, int $pageSize): bool
+    {
+        // 2 * page * pageSize <= itemsLimit: either total <= itemsLimit or page < lastPage / 2, so nothing to do
+        return $page > 0 && $pageSize > 0 && 2 * $page * $pageSize <= $this->itemsLimit;
     }
 
     private function getInvertedSortList(array $sortListItems): array
