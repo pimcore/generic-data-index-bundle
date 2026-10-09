@@ -82,9 +82,13 @@ final readonly class BasicFilters
             $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch($search, $fieldName);
         }
 
+        $term = $filter->getSearchTerm();
+
         return new TermFilter(
             field: $fieldName,
-            term: $filter->getSearchTerm(),
+            // TermFilter does not accept floats; numeric fields accept numeric strings in term queries.
+            // json_encode() keeps the shortest round-trip representation (a (string) cast would round to 14 digits).
+            term: is_float($term) ? json_encode($term, JSON_THROW_ON_ERROR) : $term,
         );
     }
 
