@@ -63,7 +63,7 @@ final class QueueMessageService implements QueueMessageServiceInterface
                     ]);
 
                     if ($dispatchId !== null) {
-                        $this->indexQueueRepository->resetDispatchedItems($dispatchId);
+                        $this->indexQueueRepository->resetDispatchedItems((string)$dispatchId);
                     }
 
                     break;
