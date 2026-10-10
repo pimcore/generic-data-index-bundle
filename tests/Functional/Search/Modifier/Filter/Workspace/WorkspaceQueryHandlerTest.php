@@ -443,6 +443,14 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         // once confirmed by the view search, the item is served from the runtime cache
         $this->assertSame($allowedItem, $searchService->byId($allowedFolder->getId(), $user));
         $this->assertNull($searchService->byId($parentFolder->getId(), $user));
+
+        // a search by another user replaces the cached item, so byId() searches again for this user
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+        $searchService->search($searchProvider->createAssetSearch()->setUser(User::getByName('admin')));
+        $reloadedItem = $searchService->byId($allowedFolder->getId(), $user);
+        $this->assertNotSame($allowedItem, $reloadedItem);
+        $this->assertFalse($reloadedItem->getPermissions()->isDelete());
     }
 
     public function testHandleWorkspaceQueryDeclinedPathsForViewPermission(): void

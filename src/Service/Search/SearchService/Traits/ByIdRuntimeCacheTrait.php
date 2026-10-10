@@ -72,7 +72,10 @@ trait ByIdRuntimeCacheTrait
             }
 
             $viewCacheKey = $this->getViewCacheKey($cacheKey, $user);
-            if ($viewCacheKey === null || $runtimeCache->load($viewCacheKey) !== $searchResult) {
+            if ($viewCacheKey === null
+                || !$runtimeCache->isRegistered($viewCacheKey)
+                || $runtimeCache->load($viewCacheKey) !== $searchResult
+            ) {
                 return null;
             }
 
