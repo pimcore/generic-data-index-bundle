@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\StandardField\Document\DocumentStandardField;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Document\ExtractMappingEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -23,6 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasSe
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -37,6 +39,7 @@ final class DocumentIndexHandler extends AbstractIndexHandler
         IndexMappingServiceInterface $indexMappingService,
         private readonly DocumentTypeAdapter $documentAdapter,
         private readonly GlobalIndexAliasServiceInterface $globalIndexAliasService,
+        private readonly WorkflowPlaceServiceInterface $workflowPlaceService,
     ) {
         parent::__construct($searchIndexService, $searchIndexConfigService, $eventDispatcher, $indexMappingService);
     }
@@ -45,8 +48,11 @@ final class DocumentIndexHandler extends AbstractIndexHandler
     {
         $mappingProperties = [
             FieldCategory::SYSTEM_FIELDS->value => [
-                'properties' => $this->searchIndexConfigService
-                    ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELD_DOCUMENT),
+                'properties' => [
+                    SystemField::WORKFLOW_PLACES->value => $this->workflowPlaceService->getMapping(),
+                    ...$this->searchIndexConfigService
+                        ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELD_DOCUMENT),
+                ],
             ],
             FieldCategory::STANDARD_FIELDS->value => $this->getMappingForStandardFields(),
             FieldCategory::CUSTOM_FIELDS->value => [],

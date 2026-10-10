@@ -196,6 +196,24 @@ The search services respect user permissions and workspace configurations.
 
 See [Permissions and Workspaces](08_Permissions_Workspaces/README.md).
 
+## Workflow Places
+
+The current places of workflows using the `state_table` marking store are indexed in the keyword system field
+`system_fields.workflowPlaces.<workflow name>`, with one value per place. The places are indexed as stored in
+`element_workflow_state`, independent of the support strategy of the workflow. Elements without a stored place (for
+example elements created before the workflow was configured) have no value: the initial place is not assumed. Other
+marking stores keep the place in an element field, which is indexed like any other field.
+
+```
+system_fields.workflowPlaces.product_workflow = "review"
+```
+
+When a place changes without saving the element (transitions, global actions or the initial place), the element is added
+to the index queue. The queue messages are dispatched at the end of the request, the console command or the messenger
+message, so a long-running command that only applies transitions updates the index when it ends. This relies on the
+`workflow.entered` event, so keep it in `events_to_dispatch` if a workflow restricts the dispatched events. After adding
+or removing a `state_table` workflow, run `bin/console generic-data-index:update:index` to update the mapping.
+
 ## Pimcore Query Language (PQL)
 
 [PQL](./09_Pimcore_Query_Language/README.md) defines a query syntax
