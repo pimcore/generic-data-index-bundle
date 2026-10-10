@@ -2,6 +2,11 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 2.5.14
+- [Permissions] Searches that check a permission other than `list` (for example `byId()`, which checks `view`) no
+  longer return the parent elements of a user's workspaces. As in Pimcore core, only `list` includes them, so the
+  tree can show the way down to an allowed element.
+
 ## Upgrade to 2.5.13
 - [Commands] Added `generic-data-index:snapshot:export` and `generic-data-index:snapshot:import`. Export writes every
   search index into a portable, gzipped JSON-lines bundle (plus a manifest) in a configurable Flysystem storage, so a

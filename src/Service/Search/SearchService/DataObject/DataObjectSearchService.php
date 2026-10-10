@@ -25,6 +25,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdF
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DataObjectWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Traits\ByIdRuntimeCacheTrait;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Model\User;
@@ -34,6 +35,8 @@ use Pimcore\Model\User;
  */
 final readonly class DataObjectSearchService implements DataObjectSearchServiceInterface
 {
+    use ByIdRuntimeCacheTrait;
+
     public function __construct(
         private DataObjectTypeAdapter $dataObjectTypeAdapter,
         private PaginationInfoServiceInterface $paginationInfoService,
@@ -94,25 +97,13 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
         ?User $user = null,
         bool $forceReload = false
     ): ?DataObjectSearchResultItem {
-        $cacheKey = SearchHelper::OBJECT_SEARCH . '_' . $id;
-
-        if ($forceReload) {
-            $searchResult = $this->searchObjectById($id, $user);
-            $this->runtimeCacheResolver->save($searchResult, $cacheKey);
-
-            return $searchResult;
-        }
-
-        try {
-            $searchResult = $this->runtimeCacheResolver->load($cacheKey);
-            if ($searchResult === null) {
-                $searchResult = $this->searchObjectById($id, $user);
-            }
-        } catch (Exception) {
-            $searchResult = $this->searchObjectById($id, $user);
-        }
-
-        return $searchResult;
+        return $this->findByIdWithRuntimeCache(
+            $this->runtimeCacheResolver,
+            SearchHelper::OBJECT_SEARCH . '_' . $id,
+            $user,
+            $forceReload,
+            fn () => $this->searchObjectById($id, $user)
+        );
     }
 
     /**

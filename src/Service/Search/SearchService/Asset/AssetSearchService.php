@@ -24,6 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdF
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\AssetWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Traits\ByIdRuntimeCacheTrait;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Model\User;
@@ -33,6 +34,8 @@ use Pimcore\Model\User;
  */
 final readonly class AssetSearchService implements AssetSearchServiceInterface
 {
+    use ByIdRuntimeCacheTrait;
+
     public function __construct(
         private AssetTypeAdapter $assetTypeAdapter,
         private PaginationInfoServiceInterface $paginationInfoService,
@@ -91,25 +94,13 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
         ?User $user = null,
         bool $forceReload = false
     ): ?AssetSearchResultItem {
-        $cacheKey = SearchHelper::ASSET_SEARCH . '_' . $id;
-
-        if ($forceReload) {
-            $searchResult = $this->searchAssetById($id, $user);
-            $this->runtimeCacheResolver->save($searchResult, $cacheKey);
-
-            return $searchResult;
-        }
-
-        try {
-            $searchResult = $this->runtimeCacheResolver->load($cacheKey);
-            if ($searchResult === null) {
-                $searchResult = $this->searchAssetById($id, $user);
-            }
-        } catch (Exception) {
-            $searchResult = $this->searchAssetById($id, $user);
-        }
-
-        return $searchResult;
+        return $this->findByIdWithRuntimeCache(
+            $this->runtimeCacheResolver,
+            SearchHelper::ASSET_SEARCH . '_' . $id,
+            $user,
+            $forceReload,
+            fn () => $this->searchAssetById($id, $user)
+        );
     }
 
     /**

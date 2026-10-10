@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Workspace;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\ConditionType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
@@ -81,7 +82,8 @@ final class QueryService implements QueryServiceInterface
 
         return $this->createWorkspacesGroupQuery(
             $workspaceType,
-            $this->getCategorizedWorkspacePaths($group, $permission)
+            $this->getCategorizedWorkspacePaths($group, $permission),
+            $permission === PermissionTypes::LIST->value
         );
     }
 
@@ -144,8 +146,11 @@ final class QueryService implements QueryServiceInterface
         ];
     }
 
-    private function createWorkspacesGroupQuery(string $workspaceType, array $categorizedPaths): BoolQuery
-    {
+    private function createWorkspacesGroupQuery(
+        string $workspaceType,
+        array $categorizedPaths,
+        bool $includeParentPaths
+    ): BoolQuery {
         $allowedPaths = $categorizedPaths[self::ALLOWED_PATHS_KEY];
         $originalDeclinedPaths = $categorizedPaths[self::DECLINED_PATHS_KEY];
         $declinedPaths = $this->evaluateDeclinedPaths($workspaceType, $allowedPaths, $originalDeclinedPaths);
@@ -178,13 +183,16 @@ final class QueryService implements QueryServiceInterface
             );
         }
 
-        /* we need to include all parent paths of the allowed paths
-           as otherwise it will not be possible to navigate to the allowed paths in the tree */
-        $additionalIncludedPaths = array_merge(
-            $additionalIncludedPaths,
-            $this->pathService->getAllParentPaths($allowedMainPaths),
-            $this->getAllDeclinedParentPaths($originalDeclinedPaths, $allowedPaths)
-        );
+        /* for listing, we need to include all parent paths of the allowed paths
+           as otherwise it will not be possible to navigate to the allowed paths in the tree.
+           Like the core permission check, this exception only applies to the list permission. */
+        if ($includeParentPaths) {
+            $additionalIncludedPaths = array_merge(
+                $additionalIncludedPaths,
+                $this->pathService->getAllParentPaths($allowedMainPaths),
+                $this->getAllDeclinedParentPaths($originalDeclinedPaths, $allowedPaths)
+            );
+        }
         $additionalIncludedPaths = array_unique($additionalIncludedPaths);
 
         if (count($additionalIncludedPaths)) {
