@@ -447,8 +447,13 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         // a search by another user replaces the cached item, so byId() searches again for this user
         /** @var SearchProviderInterface $searchProvider */
         $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
-        $searchService->search($searchProvider->createAssetSearch()->setUser(User::getByName('admin')));
+        $adminResult = $searchService->search($searchProvider->createAssetSearch()->setUser(User::getByName('admin')));
+        $this->assertContains(
+            $allowedFolder->getId(),
+            array_map(fn (AssetSearchResultItem $item) => $item->getId(), $adminResult->getItems())
+        );
         $reloadedItem = $searchService->byId($allowedFolder->getId(), $user);
+        $this->assertNotNull($reloadedItem);
         $this->assertNotSame($allowedItem, $reloadedItem);
         $this->assertFalse($reloadedItem->getPermissions()->isDelete());
     }
