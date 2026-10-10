@@ -112,7 +112,7 @@ class WorkflowPlacesIndexingTest extends Unit
         $this->assertSame(['gdi_wf_draft'], $this->getIndexedPlaces($object));
     }
 
-    public function testRolledBackPlaceIsNotIndexed(): void
+    public function testIndexMatchesStoredPlaceAfterFailedSave(): void
     {
         $object = TestHelper::createEmptyObject(self::KEY_PREFIX);
         $this->consumeQueue();
@@ -135,7 +135,7 @@ class WorkflowPlacesIndexingTest extends Unit
             );
             $this->fail('The element save was expected to fail');
         } catch (ValidationException) {
-            // Pimcore rolls the place back to gdi_wf_draft.
+            // Pimcore versions with the rollback restore gdi_wf_draft, older ones keep gdi_wf_done.
         } finally {
             $eventDispatcher->removeListener(DataObjectEvents::PRE_UPDATE, $failingSave);
         }
@@ -144,7 +144,12 @@ class WorkflowPlacesIndexingTest extends Unit
         $this->assertSame($queueMessages, $this->countQueueMessages());
         $this->consumeQueue();
 
-        $this->assertSame(['gdi_wf_draft'], $this->getIndexedPlaces($object));
+        $storedPlace = Db::get()->fetchOne(
+            'SELECT place FROM element_workflow_state WHERE cid = ? AND ctype = "object" AND workflow = ?',
+            [$object->getId(), self::WORKFLOW]
+        );
+        $this->assertContains($storedPlace, ['gdi_wf_draft', 'gdi_wf_done']);
+        $this->assertSame([$storedPlace], $this->getIndexedPlaces($object));
     }
 
     public function testOnlyTheElementIsEnqueued(): void
