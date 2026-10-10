@@ -103,6 +103,8 @@ final class WorkflowPlaceService implements WorkflowPlaceServiceInterface
             }
         }
 
-        return $this->stateTableWorkflowNames = $workflowNames;
+        $this->stateTableWorkflowNames = $workflowNames;
+
+        return $workflowNames;
     }
 }

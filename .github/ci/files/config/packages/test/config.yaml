@@ -106,9 +106,13 @@ pimcore:
                 gdi_wf_start_editing:
                     from: 'gdi_wf_draft'
                     to: ['gdi_wf_edit_text', 'gdi_wf_edit_images']
+                    options:
+                        label: 'Start editing'
                 gdi_wf_finish_directly:
                     from: 'gdi_wf_draft'
                     to: 'gdi_wf_done'
+                    options:
+                        label: 'Finish'
             globalActions:
                 gdi_wf_reset:
                     label: 'Reset'
