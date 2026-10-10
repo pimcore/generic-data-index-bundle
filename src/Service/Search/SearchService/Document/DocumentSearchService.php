@@ -24,6 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IdF
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\Workspace\DocumentWorkspace;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Traits\ByIdRuntimeCacheTrait;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Model\User;
@@ -33,6 +34,8 @@ use Pimcore\Model\User;
  */
 final readonly class DocumentSearchService implements DocumentSearchServiceInterface
 {
+    use ByIdRuntimeCacheTrait;
+
     public function __construct(
         private DocumentTypeAdapter $documentTypeAdapter,
         private PaginationInfoServiceInterface $paginationInfoService,
@@ -93,21 +96,18 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
     ): ?DocumentSearchResultItem {
         $cacheKey = SearchHelper::DOCUMENT_SEARCH . '_' . $id;
 
-        if ($forceReload) {
-            $searchResult = $this->searchDocumentById($id, $user);
-            $this->runtimeCacheResolver->save($searchResult, $cacheKey);
-
-            return $searchResult;
-        }
-
-        try {
-            $searchResult = $this->runtimeCacheResolver->load($cacheKey);
-            if ($searchResult === null) {
-                $searchResult = $this->searchDocumentById($id, $user);
+        if (!$forceReload) {
+            $searchResult = $this->loadCachedByIdResult($cacheKey, $user);
+            if ($searchResult !== null) {
+                return $searchResult;
             }
-        } catch (Exception) {
-            $searchResult = $this->searchDocumentById($id, $user);
         }
+
+        $searchResult = $this->searchDocumentById($id, $user);
+        if ($forceReload) {
+            $this->runtimeCacheResolver->save($searchResult, $cacheKey);
+        }
+        $this->rememberByIdResult($cacheKey, $user, $searchResult);
 
         return $searchResult;
     }

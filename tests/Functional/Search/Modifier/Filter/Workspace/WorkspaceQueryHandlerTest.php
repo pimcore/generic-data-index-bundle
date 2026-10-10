@@ -18,7 +18,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchR
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
-use Pimcore\Cache\RuntimeCache;
 use Pimcore\Db;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
@@ -437,11 +436,10 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         $parentFolder = Asset::getByPath('/test-asset-folder-1/sub-folder-1');
         $allowedFolder = Asset::getByPath('/test-asset-folder-1/sub-folder-1/sub-sub-folder-1');
 
-        // the list searches above put their hits into the runtime cache that byId() reads first
-        RuntimeCache::clear();
+        // the list search above put both folders into the runtime cache that byId() reads first
         $this->assertNull($searchService->byId($parentFolder->getId(), $user));
-        RuntimeCache::clear();
         $this->assertNotNull($searchService->byId($allowedFolder->getId(), $user));
+        $this->assertNull($searchService->byId($parentFolder->getId(), $user));
     }
 
     public function testHandleWorkspaceQueryDeclinedPathsForViewPermission(): void
