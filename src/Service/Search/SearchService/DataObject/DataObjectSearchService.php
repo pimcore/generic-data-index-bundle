@@ -97,22 +97,13 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
         ?User $user = null,
         bool $forceReload = false
     ): ?DataObjectSearchResultItem {
-        $cacheKey = SearchHelper::OBJECT_SEARCH . '_' . $id;
-
-        if (!$forceReload) {
-            $searchResult = $this->loadCachedByIdResult($cacheKey, $user);
-            if ($searchResult !== null) {
-                return $searchResult;
-            }
-        }
-
-        $searchResult = $this->searchObjectById($id, $user);
-        if ($forceReload) {
-            $this->runtimeCacheResolver->save($searchResult, $cacheKey);
-        }
-        $this->rememberByIdResult($cacheKey, $user, $searchResult);
-
-        return $searchResult;
+        return $this->findByIdWithRuntimeCache(
+            $this->runtimeCacheResolver,
+            SearchHelper::OBJECT_SEARCH . '_' . $id,
+            $user,
+            $forceReload,
+            fn () => $this->searchObjectById($id, $user)
+        );
     }
 
     /**

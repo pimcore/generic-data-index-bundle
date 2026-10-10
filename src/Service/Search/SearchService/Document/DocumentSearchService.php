@@ -94,22 +94,13 @@ final readonly class DocumentSearchService implements DocumentSearchServiceInter
         ?User $user = null,
         bool $forceReload = false
     ): ?DocumentSearchResultItem {
-        $cacheKey = SearchHelper::DOCUMENT_SEARCH . '_' . $id;
-
-        if (!$forceReload) {
-            $searchResult = $this->loadCachedByIdResult($cacheKey, $user);
-            if ($searchResult !== null) {
-                return $searchResult;
-            }
-        }
-
-        $searchResult = $this->searchDocumentById($id, $user);
-        if ($forceReload) {
-            $this->runtimeCacheResolver->save($searchResult, $cacheKey);
-        }
-        $this->rememberByIdResult($cacheKey, $user, $searchResult);
-
-        return $searchResult;
+        return $this->findByIdWithRuntimeCache(
+            $this->runtimeCacheResolver,
+            SearchHelper::DOCUMENT_SEARCH . '_' . $id,
+            $user,
+            $forceReload,
+            fn () => $this->searchDocumentById($id, $user)
+        );
     }
 
     /**

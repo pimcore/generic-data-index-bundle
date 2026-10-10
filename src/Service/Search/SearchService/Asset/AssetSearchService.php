@@ -94,22 +94,13 @@ final readonly class AssetSearchService implements AssetSearchServiceInterface
         ?User $user = null,
         bool $forceReload = false
     ): ?AssetSearchResultItem {
-        $cacheKey = SearchHelper::ASSET_SEARCH . '_' . $id;
-
-        if (!$forceReload) {
-            $searchResult = $this->loadCachedByIdResult($cacheKey, $user);
-            if ($searchResult !== null) {
-                return $searchResult;
-            }
-        }
-
-        $searchResult = $this->searchAssetById($id, $user);
-        if ($forceReload) {
-            $this->runtimeCacheResolver->save($searchResult, $cacheKey);
-        }
-        $this->rememberByIdResult($cacheKey, $user, $searchResult);
-
-        return $searchResult;
+        return $this->findByIdWithRuntimeCache(
+            $this->runtimeCacheResolver,
+            SearchHelper::ASSET_SEARCH . '_' . $id,
+            $user,
+            $forceReload,
+            fn () => $this->searchAssetById($id, $user)
+        );
     }
 
     /**

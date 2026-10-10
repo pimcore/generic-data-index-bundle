@@ -438,7 +438,10 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
 
         // the list search above put both folders into the runtime cache that byId() reads first
         $this->assertNull($searchService->byId($parentFolder->getId(), $user));
-        $this->assertNotNull($searchService->byId($allowedFolder->getId(), $user));
+        $allowedItem = $searchService->byId($allowedFolder->getId(), $user);
+        $this->assertNotNull($allowedItem);
+        // once confirmed by the view search, the item is served from the runtime cache
+        $this->assertSame($allowedItem, $searchService->byId($allowedFolder->getId(), $user));
         $this->assertNull($searchService->byId($parentFolder->getId(), $user));
     }
 
