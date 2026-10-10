@@ -12,11 +12,13 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\Filter\Workspace;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Cache\RuntimeCache;
 use Pimcore\Db;
 use Pimcore\Model\Asset;
 use Pimcore\Model\DataObject;
@@ -404,8 +406,76 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
 
     }
 
-    private function assertAssetSearchResultFolders(array $expectedPaths, User $user)
+    public function testHandleWorkspaceQueryParentPathsOnlyForListPermission(): void
     {
+        $this->createTestAssetFolders();
+
+        $user = $this->createUserWithAssetWorkspaces(
+            ['/test-asset-folder-1/sub-folder-1/sub-sub-folder-1' => true],
+            true
+        );
+
+        $this->assertAssetSearchResultFolders([
+            '/',
+            '/test-asset-folder-1',
+            '/test-asset-folder-1/sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-3',
+        ], $user);
+
+        $this->assertAssetSearchResultFolders([
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-3',
+        ], $user, PermissionTypes::VIEW);
+
+        /** @var AssetSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
+        $parentFolder = Asset::getByPath('/test-asset-folder-1/sub-folder-1');
+        $allowedFolder = Asset::getByPath('/test-asset-folder-1/sub-folder-1/sub-sub-folder-1');
+
+        // the list searches above put their hits into the runtime cache that byId() reads first
+        RuntimeCache::clear();
+        $this->assertNull($searchService->byId($parentFolder->getId(), $user));
+        RuntimeCache::clear();
+        $this->assertNotNull($searchService->byId($allowedFolder->getId(), $user));
+    }
+
+    public function testHandleWorkspaceQueryDeclinedPathsForViewPermission(): void
+    {
+        $this->createTestAssetFolders();
+
+        $user = $this->createUserWithAssetWorkspaces([
+            '/' => true,
+            '/test-asset-folder-1' => false,
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1' => true,
+        ], true);
+
+        $this->assertAssetSearchResultFolders([
+            '/',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-3',
+            '/test-asset-folder-2',
+            '/test-asset-folder-2/sub-folder-2',
+            '/test-asset-folder-2/sub-folder-2/sub-sub-folder-2',
+            '/test-asset-folder-2/sub-folder-2/sub-sub-folder-2/sub-sub-sub-folder-2',
+            '/test-asset-folder-3',
+            '/test-asset-folder-3/sub-folder-3',
+            '/test-asset-folder-3/sub-folder-3/sub-sub-folder-3',
+            '/test-asset-folder-3/sub-folder-3/sub-sub-folder-3/sub-sub-sub-folder-3',
+        ], $user, PermissionTypes::VIEW);
+    }
+
+    private function assertAssetSearchResultFolders(
+        array $expectedPaths,
+        User $user,
+        PermissionTypes $permissionType = PermissionTypes::LIST
+    ) {
         /** @var AssetSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
         /** @var SearchProviderInterface $searchProvider */
@@ -415,7 +485,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             ->createAssetSearch()
             ->setUser($user)
         ;
-        $searchResult = $searchService->search($assetSearch);
+        $searchResult = $searchService->search($assetSearch, $permissionType);
 
         $paths = array_map(function (AssetSearchResultItem $item) {
             return $item->getPath() . $item->getKey();
@@ -450,7 +520,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         $this->assertEquals($expectedPaths, $paths);
     }
 
-    private function createUserWithAssetWorkspaces(array $workspaces): User
+    private function createUserWithAssetWorkspaces(array $workspaces, bool $withView = false): User
     {
         $user = new User();
         $user
@@ -463,6 +533,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
 
             $workspaceObject = (new User\Workspace\Asset())
                 ->setList($permission)
+                ->setView($withView && $permission)
                 ->setCpath($workspace)
                 ->setCid(Db::get()->fetchOne('select id from assets where concat(path, filename) = ?', [$workspace]))
                 ->setUserId($user->getId());
