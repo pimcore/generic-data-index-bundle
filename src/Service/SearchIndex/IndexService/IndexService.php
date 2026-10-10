@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexDataException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
@@ -36,7 +37,8 @@ final class IndexService implements IndexServiceInterface
         private readonly AdapterServiceInterface $typeAdapterService,
         private readonly SearchIndexServiceInterface $searchIndexService,
         private readonly BulkOperationServiceInterface $bulkOperationService,
-        private readonly EventDispatcherInterface $eventDispatcher
+        private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly SettingsStoreServiceInterface $settingsStoreService,
     ) {
     }
 
@@ -68,7 +70,7 @@ final class IndexService implements IndexServiceInterface
             $originalChecksum = -1;
         }
 
-        $indexData = $this->getIndexData($element);
+        $indexData = $this->getIndexData($element, $indexName);
 
         if ($indexData[FieldCategory::SYSTEM_FIELDS->value][SystemField::CHECKSUM->value] !== $originalChecksum) {
 
@@ -124,7 +126,7 @@ final class IndexService implements IndexServiceInterface
     /**
      * @throws IndexDataException
      */
-    private function getIndexData(ElementInterface $element): array
+    private function getIndexData(ElementInterface $element, string $indexName): array
     {
         try {
             $typeAdapter = $this->typeAdapterService->getTypeAdapter($element);
@@ -141,7 +143,14 @@ final class IndexService implements IndexServiceInterface
             $this->eventDispatcher->dispatch($updateIndexDataEvent);
             $customFields = $updateIndexDataEvent->getCustomFields();
 
-            $checksum = crc32(json_encode([$systemFields, $standardFields, $customFields], JSON_THROW_ON_ERROR));
+            $checksumData = [$systemFields, $standardFields, $customFields];
+            if (isset($systemFields[SystemField::WORKFLOW_PLACES->value])) {
+                // Places stored before their workflow was part of the index mapping are not searchable: the
+                // document has to be written again once the applied workflowPlaces mapping changes.
+                $checksumData[] = $this->settingsStoreService->getWorkflowPlacesMappingChecksum($indexName);
+            }
+
+            $checksum = crc32(json_encode($checksumData, JSON_THROW_ON_ERROR));
             $systemFields[SystemField::CHECKSUM->value] = $checksum;
 
             return [

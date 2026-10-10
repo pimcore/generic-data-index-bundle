@@ -20,7 +20,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber\WorkflowPlaceIndexUpda
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\QueryLanguage\PqlFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
 use Pimcore\Db;
 use Pimcore\Event\DataObjectEvents;
@@ -264,6 +268,84 @@ class WorkflowPlacesIndexingTest extends Unit
         $this->assertSame(['gdi_wf_done'], $this->getIndexedPlaces($document));
     }
 
+    public function testDocumentWithPlacesIsWrittenAgainWhenAppliedMappingChanges(): void
+    {
+        // Places can be part of a document before the index mapping knew their workflow (dynamic: false):
+        // they are only searchable after the document was written again with the new mapping applied.
+        /** @var SettingsStoreServiceInterface $settingsStore */
+        $settingsStore = $this->tester->grabService(SettingsStoreServiceInterface::class);
+        /** @var SearchIndexConfigServiceInterface $searchIndexConfigService */
+        $searchIndexConfigService = $this->tester->grabService(SearchIndexConfigServiceInterface::class);
+        $object = TestHelper::createEmptyObject(self::KEY_PREFIX);
+        $indexAlias = $searchIndexConfigService->getIndexName($object->getClassName(), true);
+        $original = $settingsStore->getWorkflowPlacesMappingChecksum($indexAlias);
+
+        try {
+            $settingsStore->storeWorkflowPlacesMappingChecksum($indexAlias, 1);
+            $this->indexQueueService()->updateIndexQueue($object, 'update', true, false)->commit();
+            $checksum = $this->getIndexedSource($object)['system_fields']['checksum'];
+
+            // Same data, same mapping: the document is not written again.
+            $this->indexQueueService()->updateIndexQueue($object, 'update', true, false)->commit();
+            $this->assertSame($checksum, $this->getIndexedSource($object)['system_fields']['checksum']);
+
+            // "update:index" applied a changed workflowPlaces mapping.
+            $settingsStore->storeWorkflowPlacesMappingChecksum($indexAlias, 2);
+            $this->indexQueueService()->updateIndexQueue($object, 'update', true, false)->commit();
+            $this->assertNotSame($checksum, $this->getIndexedSource($object)['system_fields']['checksum']);
+        } finally {
+            if ($original !== null) {
+                $settingsStore->storeWorkflowPlacesMappingChecksum($indexAlias, $original);
+            } else {
+                // No marker was stored before: remove the test value (not part of the service interface).
+                Db::get()->executeStatement(
+                    'DELETE FROM settings_store WHERE id = ? AND scope = ?',
+                    ['workflow_places_mapping_' . $indexAlias, 'generic_data_index']
+                );
+            }
+        }
+    }
+
+    public function testUpdateIndexStoresAppliedWorkflowPlacesMappingPerIndex(): void
+    {
+        /** @var SettingsStoreServiceInterface $settingsStore */
+        $settingsStore = $this->tester->grabService(SettingsStoreServiceInterface::class);
+        /** @var SearchIndexConfigServiceInterface $searchIndexConfigService */
+        $searchIndexConfigService = $this->tester->grabService(SearchIndexConfigServiceInterface::class);
+        /** @var WorkflowPlaceServiceInterface $workflowPlaceService */
+        $workflowPlaceService = $this->tester->grabService(WorkflowPlaceServiceInterface::class);
+        $assetIndex = $searchIndexConfigService->getIndexName(IndexName::ASSET->value);
+        $documentIndex = $searchIndexConfigService->getIndexName(IndexName::DOCUMENT->value);
+        $originalAsset = $settingsStore->getWorkflowPlacesMappingChecksum($assetIndex);
+        $originalDocument = $settingsStore->getWorkflowPlacesMappingChecksum($documentIndex);
+        $settingsStore->storeWorkflowPlacesMappingChecksum($assetIndex, 1);
+        $settingsStore->storeWorkflowPlacesMappingChecksum($documentIndex, 1);
+
+        /** @var IndexUpdateServiceInterface $indexUpdateService */
+        $indexUpdateService = $this->tester->grabService(IndexUpdateServiceInterface::class);
+        $indexUpdateService->setReCreateIndex(false);
+
+        try {
+            $indexUpdateService->updateAssets();
+
+            $expected = crc32(json_encode($workflowPlaceService->getMapping(), JSON_THROW_ON_ERROR));
+            $this->assertSame($expected, $settingsStore->getWorkflowPlacesMappingChecksum($assetIndex));
+            // Only the updated index is touched.
+            $this->assertSame(1, $settingsStore->getWorkflowPlacesMappingChecksum($documentIndex));
+        } finally {
+            foreach ([$assetIndex => $originalAsset, $documentIndex => $originalDocument] as $index => $original) {
+                if ($original !== null) {
+                    $settingsStore->storeWorkflowPlacesMappingChecksum($index, $original);
+                } else {
+                    Db::get()->executeStatement(
+                        'DELETE FROM settings_store WHERE id = ? AND scope = ?',
+                        ['workflow_places_mapping_' . $index, 'generic_data_index']
+                    );
+                }
+            }
+        }
+    }
+
     public function testWorkflowPlacesAreMappedAsKeyword(): void
     {
         foreach ([IndexName::ASSET->value, IndexName::DOCUMENT->value] as $name) {
@@ -280,6 +362,11 @@ class WorkflowPlacesIndexingTest extends Unit
         $field = $mapping[$indexName]['mappings']['properties']['system_fields']['properties']['workflowPlaces'];
 
         $this->assertSame('keyword', $field['properties'][self::WORKFLOW]['type'], $indexName);
+    }
+
+    private function indexQueueService(): IndexQueueServiceInterface
+    {
+        return $this->tester->grabService(IndexQueueServiceInterface::class);
     }
 
     private function workflowManager(): Manager

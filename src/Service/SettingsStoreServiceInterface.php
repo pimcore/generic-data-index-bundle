@@ -35,4 +35,14 @@ interface SettingsStoreServiceInterface
     public function removeClassMapping(
         string $classDefinitionId
     ): void;
+
+    /**
+     * Checksum of the workflowPlaces mapping applied to the index by the last index update.
+     */
+    public function getWorkflowPlacesMappingChecksum(string $indexName): ?int;
+
+    /**
+     * @throws Exception
+     */
+    public function storeWorkflowPlacesMappingChecksum(string $indexName, int $data): void;
 }
