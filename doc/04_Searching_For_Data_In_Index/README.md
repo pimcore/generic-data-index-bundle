@@ -211,8 +211,11 @@ system_fields.workflowPlaces.product_workflow = "review"
 When a place changes without saving the element (transitions, global actions or the initial place), the element is added
 to the index queue. The queue messages are dispatched at the end of the request, the console command or the messenger
 message, so a long-running command that only applies transitions updates the index when it ends. This relies on the
-`workflow.entered` event, so keep it in `events_to_dispatch` if a workflow restricts the dispatched events. After adding
-or removing a `state_table` workflow, run `bin/console generic-data-index:update:index` to update the mapping.
+`workflow.entered` event, so keep it in `events_to_dispatch` if a workflow restricts the dispatched events.
+
+After adding or removing a `state_table` workflow, restart the messenger consumers (for example with `bin/console
+messenger:stop-workers`) and other long-running PHP processes, because they read the workflows once. Then run
+`bin/console generic-data-index:update:index` to update the mapping and fill the field for existing elements.
 
 ## Pimcore Query Language (PQL)
 
