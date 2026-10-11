@@ -26,6 +26,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
+use Pimcore\Cache\RuntimeCache;
 use Pimcore\Db;
 use Pimcore\Event\DataObjectEvents;
 use Pimcore\Model\Asset;
@@ -282,6 +283,7 @@ class WorkflowPlacesIndexingTest extends Unit
 
         try {
             $settingsStore->storeWorkflowPlacesMappingChecksum($indexAlias, 1);
+            RuntimeCache::clear();
             $this->indexQueueService()->updateIndexQueue($object, 'update', true, false)->commit();
             $checksum = $this->getIndexedSource($object)['system_fields']['checksum'];
 
@@ -291,6 +293,8 @@ class WorkflowPlacesIndexingTest extends Unit
 
             // "update:index" applied a changed workflowPlaces mapping.
             $settingsStore->storeWorkflowPlacesMappingChecksum($indexAlias, 2);
+            // the marker is read once per queue batch, the runtime cache is cleared between batches
+            RuntimeCache::clear();
             $this->indexQueueService()->updateIndexQueue($object, 'update', true, false)->commit();
             $this->assertNotSame($checksum, $this->getIndexedSource($object)['system_fields']['checksum']);
         } finally {
