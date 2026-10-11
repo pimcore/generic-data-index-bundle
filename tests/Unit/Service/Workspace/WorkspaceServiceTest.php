@@ -196,6 +196,44 @@ final class WorkspaceServiceTest extends Unit
         $this->assertSame('/anotherParent', $relevantWorkspaces[1]->getPath());
     }
 
+    public function testGetRelevantWorkspacesMatchesPathPrefixesOnly(): void
+    {
+        $workspaces = [];
+        foreach (['/', '/Products', '/Archive', '/Products2', '/Archive/Products/2024', '/Products/Cars'] as $path) {
+            $workspaces[] = new AssetWorkspace(
+                $this->workspaceHelper->getUserWorkspace(Workspace\Asset::class, $path)
+            );
+        }
+
+        $relevantWorkspaces = $this->getWorkspaceService()->getRelevantWorkspaces(
+            $workspaces,
+            '/Archive/Products/item'
+        );
+
+        $this->assertSame(
+            ['/', '/Archive'],
+            array_map(static fn ($workspace) => $workspace->getPath(), $relevantWorkspaces)
+        );
+        $this->assertCount(
+            3,
+            $this->getWorkspaceService()->getRelevantWorkspaces($workspaces, '/Products/Cars')
+        );
+        $this->assertCount(
+            3,
+            $this->getWorkspaceService()->getRelevantWorkspaces($workspaces, '/Archive/Products/2024')
+        );
+    }
+
+    public function testGetDeepestWorkspaceUsesPathDepth(): void
+    {
+        $deepest = $this->getWorkspaceService()->getDeepestWorkspace([
+            new AssetWorkspace($this->workspaceHelper->getUserWorkspace(Workspace\Asset::class, '/Products')),
+            new AssetWorkspace($this->workspaceHelper->getUserWorkspace(Workspace\Asset::class, '/Archive/Products')),
+        ]);
+
+        $this->assertSame('/Archive/Products', $deepest->getPath());
+    }
+
     public function testGetRelevantWorkspacesWithInvalidType(): void
     {
         $workspaces = [

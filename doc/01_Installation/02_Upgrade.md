@@ -2,6 +2,12 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 2.5.14
+- [Permissions] Fixed: a workspace now only applies to its own path and the paths below it. Before, it also applied to
+  any path that merely contained the workspace path (for example `/Products` to `/Archive/Products/2024`), and the
+  workspace with the longest path was not always chosen as the deepest one. Effective permissions of elements
+  below such paths change accordingly.
+
 ## Upgrade to 2.5.13
 - [Commands] Added `generic-data-index:snapshot:export` and `generic-data-index:snapshot:import`. Export writes every
   search index into a portable, gzipped JSON-lines bundle (plus a manifest) in a configurable Flysystem storage, so a
