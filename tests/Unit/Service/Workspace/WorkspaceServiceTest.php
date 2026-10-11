@@ -214,6 +214,20 @@ final class WorkspaceServiceTest extends Unit
             ['/', '/Archive'],
             array_map(static fn ($workspace) => $workspace->getPath(), $relevantWorkspaces)
         );
+        $this->assertSame(
+            ['/', '/Products2'],
+            array_map(
+                static fn ($workspace) => $workspace->getPath(),
+                $this->getWorkspaceService()->getRelevantWorkspaces($workspaces, '/Products2/item')
+            )
+        );
+        $this->assertSame(
+            ['/'],
+            array_map(
+                static fn ($workspace) => $workspace->getPath(),
+                $this->getWorkspaceService()->getRelevantWorkspaces($workspaces, '/Products22/item')
+            )
+        );
         $this->assertCount(
             3,
             $this->getWorkspaceService()->getRelevantWorkspaces($workspaces, '/Products/Cars')
@@ -224,7 +238,7 @@ final class WorkspaceServiceTest extends Unit
         );
     }
 
-    public function testGetDeepestWorkspaceUsesPathDepth(): void
+    public function testGetDeepestWorkspaceIsIndependentOfInputOrder(): void
     {
         $deepest = $this->getWorkspaceService()->getDeepestWorkspace([
             new AssetWorkspace($this->workspaceHelper->getUserWorkspace(Workspace\Asset::class, '/Products')),
