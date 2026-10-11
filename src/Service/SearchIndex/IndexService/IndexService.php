@@ -22,6 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceI
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
@@ -33,12 +34,15 @@ final class IndexService implements IndexServiceInterface
 {
     use LoggerAwareTrait;
 
+    private const WORKFLOW_PLACES_MAPPING_CACHE_KEY = 'gdi_workflow_places_mapping_';
+
     public function __construct(
         private readonly AdapterServiceInterface $typeAdapterService,
         private readonly SearchIndexServiceInterface $searchIndexService,
         private readonly BulkOperationServiceInterface $bulkOperationService,
         private readonly EventDispatcherInterface $eventDispatcher,
         private readonly SettingsStoreServiceInterface $settingsStoreService,
+        private readonly RuntimeCacheResolverInterface $runtimeCache,
     ) {
     }
 
@@ -147,7 +151,7 @@ final class IndexService implements IndexServiceInterface
             if (isset($systemFields[SystemField::WORKFLOW_PLACES->value])) {
                 // Places stored before their workflow was part of the index mapping are not searchable: the
                 // document has to be written again once the applied workflowPlaces mapping changes.
-                $checksumData[] = $this->settingsStoreService->getWorkflowPlacesMappingChecksum($indexName);
+                $checksumData[] = $this->getAppliedWorkflowPlacesMappingChecksum($indexName);
             }
 
             $checksum = crc32(json_encode($checksumData, JSON_THROW_ON_ERROR));
@@ -162,5 +166,22 @@ final class IndexService implements IndexServiceInterface
             throw new IndexDataException($e->getMessage(), 0, $e);
         }
 
+    }
+
+    /**
+     * Read once per queue batch: the runtime cache is cleared between batches, so a long-running worker
+     * sees a mapping applied by "update:index" with the next batch.
+     */
+    private function getAppliedWorkflowPlacesMappingChecksum(string $indexName): ?int
+    {
+        $cacheKey = self::WORKFLOW_PLACES_MAPPING_CACHE_KEY . $indexName;
+        if ($this->runtimeCache->isRegistered($cacheKey)) {
+            return $this->runtimeCache->load($cacheKey);
+        }
+
+        $checksum = $this->settingsStoreService->getWorkflowPlacesMappingChecksum($indexName);
+        $this->runtimeCache->save($checksum, $cacheKey);
+
+        return $checksum;
     }
 }

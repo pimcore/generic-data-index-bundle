@@ -23,7 +23,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
+use Pimcore\Event\Workflow\GlobalActionEvent;
 use Pimcore\Model\DataObject\Concrete;
+use Pimcore\Workflow\ExpressionService;
+use Pimcore\Workflow\GlobalAction;
 use Pimcore\Workflow\MarkingStore\StateTableMarkingStore;
 use stdClass;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
@@ -54,6 +57,23 @@ final class WorkflowPlaceIndexUpdateSubscriberTest extends Unit
         $subscriber = $this->createSubscriber();
 
         $subscriber->onEntered($this->createEvent(new stdClass(), new StateTableMarkingStore('product_workflow')));
+        $subscriber->dispatchQueueMessages();
+    }
+
+    public function testGlobalActionWithoutTargetPlacesIsIgnored(): void
+    {
+        $subscriber = $this->createSubscriber();
+        $workflow = $this->makeEmpty(WorkflowInterface::class, [
+            'getMarkingStore' => new StateTableMarkingStore('product_workflow'),
+        ]);
+        $globalAction = new GlobalAction(
+            'notify',
+            [],
+            $this->makeEmpty(ExpressionService::class),
+            'product_workflow'
+        );
+
+        $subscriber->onPostGlobalAction(new GlobalActionEvent($workflow, $this->makeEmpty(Concrete::class), $globalAction));
         $subscriber->dispatchQueueMessages();
     }
 

@@ -200,9 +200,10 @@ See [Permissions and Workspaces](08_Permissions_Workspaces/README.md).
 
 The current places of workflows using the `state_table` marking store are indexed in the keyword system field
 `system_fields.workflowPlaces.<workflow name>`, with one value per place. The places are indexed as stored in
-`element_workflow_state`, independent of the support strategy of the workflow. Elements without a stored place (for
-example elements created before the workflow was configured) have no value: the initial place is not assumed. Other
-marking stores keep the place in an element field, which is indexed like any other field.
+`element_workflow_state`, independent of the support strategy of the workflow, so a search can filter by the place of a
+workflow that is not visible to the searching user. Elements without a stored place (for example elements created before
+the workflow was configured) have no value: the initial place is not assumed. Other marking stores keep the place in an
+element field, which is indexed like any other field.
 
 ```
 system_fields.workflowPlaces.product_workflow = "review"
@@ -212,6 +213,9 @@ When a place changes without saving the element (transitions, global actions or 
 to the index queue. The queue messages are dispatched at the end of the request, the console command or the messenger
 message, so a long-running command that only applies transitions updates the index when it ends. This relies on the
 `workflow.entered` event, so keep it in `events_to_dispatch` if a workflow restricts the dispatched events.
+
+Transitions that only save a version (`changePublishedState: save_version`) do not save the element, so their place
+reaches the index with the queue even if synchronous processing is enabled.
 
 After adding or removing a `state_table` workflow, restart the messenger consumers (for example with `bin/console
 messenger:stop-workers`) and other long-running PHP processes, because they read the workflows once. Then run

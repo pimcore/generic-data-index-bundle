@@ -78,6 +78,11 @@ final class WorkflowPlaceIndexUpdateSubscriber implements EventSubscriberInterfa
 
     public function onPostGlobalAction(GlobalActionEvent $event): void
     {
+        // Without target places the marking is not changed.
+        if ($event->getGlobalAction()->getTos() === []) {
+            return;
+        }
+
         $this->enqueue($event->getSubject(), $event->getWorkflow());
     }
 

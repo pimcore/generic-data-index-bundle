@@ -23,6 +23,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\Eleme
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
+use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Model\Element\ElementInterface;
 use Psr\Log\NullLogger;
 use Symfony\Component\Serializer\Normalizer\NormalizerInterface;
@@ -84,6 +85,7 @@ final class IndexServiceWorkflowChecksumTest extends Unit
                     return $appliedMappingChecksum;
                 },
             ]),
+            $this->makeEmpty(RuntimeCacheResolverInterface::class, ['isRegistered' => false]),
         );
         $service->setLogger(new NullLogger());
         $service->updateIndexData($element);
