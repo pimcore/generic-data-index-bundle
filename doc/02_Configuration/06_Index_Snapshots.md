@@ -180,8 +180,10 @@ The data object folder, asset and document indices are handled the same way for
 `generic-data-index:deployment:reindex` with index options: their mapping is marked as invalidated
 before the index is recreated, and the mapping checksum and index settings hash are stored once the
 replay completed. The stored data version is kept, because the snapshot does not tell which indexing
-code wrote the documents. If the exporting installation ran different calculators, `UpdateIndexDataEvent`
-subscribers or a different Generic Data Index version, run `generic-data-index:update:index` after the import.
+code wrote the documents. Unlike class indices, these indices are not checked against the manifest. If the
+exporting installation differs in predefined asset metadata, valid languages, `system_fields_settings`,
+mapping or index data event subscribers, calculators or the Generic Data Index version, run
+`generic-data-index:update:index` after the import.
 
 `--dry-run` runs the compatibility check and prints the import plan (which indices, how many
 documents each) without writing anything ("Nothing written."). A real import exits with a non-zero

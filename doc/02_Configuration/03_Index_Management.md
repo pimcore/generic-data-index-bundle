@@ -254,6 +254,10 @@ asset metadata, valid languages configured in config files, `system_fields_setti
 | Data version | Rebuild from the database |
 | Index missing | Create the index, then rebuild from the database |
 
+A native reindex copies the documents into a new index and switches the alias afterwards. Index updates
+processed while it runs are written to the old index and are lost. Run the command while the index queue
+workers are stopped, or before the application receives changes again.
+
 The values are stored per index once its update was applied and its elements were added to the index
 queue. If updating an index fails, the command exits with an error and the index is updated again on the
 next run. Values that were never stored, e.g. on the first run with index options, are stored as the

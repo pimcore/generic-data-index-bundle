@@ -15,6 +15,7 @@ namespace Functional\Command;
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -183,6 +184,21 @@ class DeploymentReindexScopeTest extends Unit
         $this->assertNotSame('outdated', $this->getSettingsStore()->getIndexState('asset_settings'));
         $output = $this->tester->runConsoleCommand(self::COMMAND, ['--assets' => true]);
         $this->assertStringContainsString('skip', $output);
+    }
+
+    public function testFolderIndexIsCheckedLikeTheOthers(): void
+    {
+        $output = $this->tester->runConsoleCommand(self::COMMAND, ['--folders' => true]);
+        $this->assertStringContainsString('data object folders', $output);
+        $indexName = $this->tester->getIndexName(IndexName::DATA_OBJECT_FOLDER->value);
+        $this->getSettingsStore()->storeIndexState('folder_settings', 'outdated');
+        $this->getSettingsStore()->storeIndexState('folder_data_version', '0.0');
+
+        $output = $this->tester->runConsoleCommand(self::COMMAND, ['--folders' => true]);
+
+        $this->assertStringContainsString('native reindex, rebuild from database', $output);
+        $this->assertNotSame($indexName, $this->tester->getIndexName(IndexName::DATA_OBJECT_FOLDER->value));
+        $this->assertStringContainsString('skip', $this->tester->runConsoleCommand(self::COMMAND, ['--folders' => true]));
     }
 
     public function testClassSettingsChangeReindexesTheClassIndex(): void

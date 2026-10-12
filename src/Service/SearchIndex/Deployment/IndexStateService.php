@@ -99,14 +99,11 @@ final readonly class IndexStateService implements IndexStateServiceInterface
         return $this->searchIndexService->existsAlias($aliasName);
     }
 
-    public function store(IndexStateTarget $target, IndexState $state, bool $includeClassMapping = false): void
+    public function store(IndexStateTarget $target, IndexState $state): void
     {
         $mappingChecksum = $state->getMappingChecksum();
-        $classDefinition = $target->getClassDefinition();
-        if ($mappingChecksum !== null && $classDefinition === null) {
+        if ($mappingChecksum !== null && !$target->isClassIndex()) {
             $this->settingsStoreService->storeIndexState($this->key($target, 'mapping'), $mappingChecksum);
-        } elseif ($mappingChecksum !== null && $includeClassMapping) {
-            $this->settingsStoreService->storeClassMapping($classDefinition->getId(), (int) $mappingChecksum);
         }
 
         if ($state->getSettingsHash() !== null) {

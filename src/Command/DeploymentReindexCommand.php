@@ -253,7 +253,8 @@ final class DeploymentReindexCommand extends AbstractCommand
             $output->writeln(
                 '<comment>Values that were not stored before were stored as the baseline without a reindex. ' .
                 'If this deployment also changed the mapping of these indices, run generic-data-index:update:index ' .
-                'once; if it changed index_settings, run generic-data-index:reindex once.</comment>'
+                'once; if it changed index_settings, run generic-data-index:reindex once (not covering data object ' .
+                'folders).</comment>'
             );
         }
 

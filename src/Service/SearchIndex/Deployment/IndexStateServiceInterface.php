@@ -43,11 +43,11 @@ interface IndexStateServiceInterface
 
     /**
      * Stores all values of $state that are not null. The mapping checksum of a class index is
-     * left to the class definition reindex unless $includeClassMapping is set.
+     * left to the class definition reindex.
      *
      * @throws Exception
      */
-    public function store(IndexStateTarget $target, IndexState $state, bool $includeClassMapping = false): void;
+    public function store(IndexStateTarget $target, IndexState $state): void;
 
     /**
      * Updates values that are already stored, after another code path brought the index up to
