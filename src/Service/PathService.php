@@ -23,7 +23,8 @@ final class PathService implements PathServiceInterface
 {
     public function isSubPath(string $path, string $parentPath): bool
     {
-        return $path !== $parentPath && str_starts_with($path, $parentPath);
+        // compare on a path boundary, `/Products2` is not below `/Products`
+        return $path !== $parentPath && str_starts_with($path, rtrim($parentPath, '/') . '/');
     }
 
     public function containsSubPath(string $path, array $paths): bool
