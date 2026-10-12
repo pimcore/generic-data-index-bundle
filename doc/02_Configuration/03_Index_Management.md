@@ -224,6 +224,55 @@ php bin/console generic-data-index:deployment:reindex
 
 This command will update the index structure for all data object classes which were created/updated since the last deployment and reindex all data objects for relevant classes.
 
+### Other Index Changes
+
+Without options the command only compares the mapping checksums of the class definitions. With index
+options it also covers the data object folder, asset and document indices, and compares the index
+settings and data versions:
+
+```
+php bin/console generic-data-index:deployment:reindex --all
+```
+
+| Option | Checked indices |
+| --- | --- |
+| `--all` | All of the below |
+| `--classes` | One per class definition |
+| `--folders` | Data object folders |
+| `--assets` | Assets |
+| `--documents` | Documents |
+| `--dry-run` | Prints the detected changes and the planned action per index, changes nothing |
+
+This picks up deployment-time changes that are not detected without options, for example predefined
+asset metadata, valid languages configured in config files, `system_fields_settings`,
+`search_analyzer_attributes`, fields added by an `ExtractMappingEvent` subscriber and `index_settings`.
+
+| Detected change | Action |
+| --- | --- |
+| Mapping | Native reindex, then rebuild from the database |
+| Index settings | Native reindex |
+| Data version | Rebuild from the database |
+| Index missing | Create the index, then rebuild from the database |
+
+The values are stored per index after a successful update; a failed index is retried on the next run.
+Values that were never stored, e.g. on the first run with index options, are stored as the baseline
+without a reindex. If that deployment also changes the mapping or the index settings, run
+`generic-data-index:update:index` once.
+
+Code changes that alter the indexed values without changing the mapping (calculators,
+`UpdateIndexDataEvent` subscribers, custom field definition adapters) cannot be detected. Raise the
+matching version in the same change instead:
+
+```yaml
+pimcore_generic_data_index:
+    index_versions:
+        assets: 1
+        documents: 1
+        folders: 1
+        classes:
+            CAR: 3 # class definition ID
+```
+
 ## Calculated Fields Index Mode
 
 By default, values of calculated value fields are computed **live** while index data is

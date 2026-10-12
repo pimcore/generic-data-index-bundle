@@ -321,6 +321,7 @@ final class SnapshotImporter implements SnapshotImporterInterface
 
         $this->assertReplayComplete($target, $actual, $entry->getDocumentCount());
         $this->stampClassMapping($target, $classMappingChecksum);
+        $this->indexProvisioner->stampIndexState($target);
 
         return new ImportedIndex($target->getShortName(), $target->getAliasName(), $entry->getDocumentCount(), $actual);
     }

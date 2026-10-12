@@ -13,9 +13,13 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexState;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexStateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DocumentIndexHandler;
@@ -42,6 +46,7 @@ final class IndexProvisioner implements IndexProvisionerInterface
         private readonly AssetIndexHandler $assetIndexHandler,
         private readonly DocumentIndexHandler $documentIndexHandler,
         private readonly SettingsStoreServiceInterface $settingsStoreService,
+        private readonly IndexStateServiceInterface $indexStateService,
     ) {
     }
 
@@ -51,6 +56,8 @@ final class IndexProvisioner implements IndexProvisionerInterface
         $context = $target->getClassDefinition();
         if ($target->isClassIndex()) {
             $this->settingsStoreService->removeClassMapping((string) $target->getClassId());
+        } else {
+            $this->indexStateService->invalidateMapping($this->getIndexStateTarget($target));
         }
         if ($this->searchIndexService->existsAlias($target->getAliasName())) {
             $handler->deleteIndex($context);
@@ -72,6 +79,35 @@ final class IndexProvisioner implements IndexProvisionerInterface
     public function stampClassMapping(IndexTarget $target, int $checksum): void
     {
         $this->settingsStoreService->storeClassMapping((string) $target->getClassId(), $checksum);
+    }
+
+    public function stampIndexState(IndexTarget $target): void
+    {
+        $stateTarget = $this->getIndexStateTarget($target);
+        $current = $this->indexStateService->getCurrentState($stateTarget);
+
+        // The data version describes the code that wrote the documents, which the snapshot does not tell.
+        $this->indexStateService->store(
+            $stateTarget,
+            new IndexState($current->getMappingChecksum(), $current->getSettingsHash(), null)
+        );
+    }
+
+    private function getIndexStateTarget(IndexTarget $target): IndexStateTarget
+    {
+        $classDefinition = $target->getClassDefinition();
+        if ($classDefinition !== null) {
+            return IndexStateTarget::forClassDefinition($classDefinition);
+        }
+
+        return IndexStateTarget::forScope(match (true) {
+            $target->getIdentity()->isAsset() => DeploymentReindexScope::ASSETS,
+            $target->getIdentity()->isDocument() => DeploymentReindexScope::DOCUMENTS,
+            $target->getIdentity()->isDataObjectFolder() => DeploymentReindexScope::FOLDERS,
+            default => throw new SnapshotImportException(
+                sprintf('Unknown element type "%s"', $target->getElementType()),
+            ),
+        });
     }
 
     private function handlerFor(IndexTarget $target): IndexHandlerInterface
