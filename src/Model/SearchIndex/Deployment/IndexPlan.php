@@ -92,6 +92,11 @@ final readonly class IndexPlan
         return $this->indexMissing || $this->mappingChanged || $this->dataVersionChanged;
     }
 
+    public function isBaselineOnly(): bool
+    {
+        return $this->baselineMissing && !$this->needsNativeReindex() && !$this->needsRebuild();
+    }
+
     public function isSkipped(): bool
     {
         return !$this->needsNativeReindex() && !$this->needsRebuild() && !$this->baselineMissing;
@@ -104,7 +109,7 @@ final readonly class IndexPlan
             $this->needsNativeReindex() && $this->needsRebuild() => 'native reindex, rebuild from database',
             $this->needsNativeReindex() => 'native reindex',
             $this->needsRebuild() => 'rebuild from database',
-            $this->baselineMissing => 'store baseline',
+            $this->isBaselineOnly() => 'store baseline',
             default => 'skip',
         };
     }

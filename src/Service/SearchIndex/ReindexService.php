@@ -113,9 +113,10 @@ final readonly class ReindexService implements ReindexServiceInterface
                 ->enqueueAssets();
         }
 
+        // Without the rebuild, fields added to the mapping stay empty, so the mapping is not current yet.
         $this->indexStateService->refresh(
             IndexStateTarget::forScope(DeploymentReindexScope::ASSETS),
-            true,
+            $enqueueElements,
             true,
             $enqueueElements
         );
@@ -136,9 +137,10 @@ final readonly class ReindexService implements ReindexServiceInterface
                 ->enqueueDocuments();
         }
 
+        // Without the rebuild, fields added to the mapping stay empty, so the mapping is not current yet.
         $this->indexStateService->refresh(
             IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS),
-            true,
+            $enqueueElements,
             true,
             $enqueueElements
         );

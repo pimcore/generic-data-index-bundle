@@ -176,6 +176,13 @@ per-class reindex (`generic-data-index:deployment:reindex`, or the class-definit
 index instead of skipping it as unchanged. After a class definition change, that per-class
 reindex still applies as usual.
 
+The data object folder, asset and document indices are handled the same way for
+`generic-data-index:deployment:reindex` with index options: their mapping is marked as invalidated
+before the index is recreated, and the mapping checksum and index settings hash are stored once the
+replay completed. The stored data version is kept, because the snapshot does not tell which indexing
+code wrote the documents. If the exporting installation ran different calculators, `UpdateIndexDataEvent`
+subscribers or a different Generic Data Index version, run `generic-data-index:update:index` after the import.
+
 `--dry-run` runs the compatibility check and prints the import plan (which indices, how many
 documents each) without writing anything ("Nothing written."). A real import exits with a non-zero
 status if the compatibility check refuses the snapshot, if the snapshot or `--from-path` directory

@@ -189,4 +189,39 @@ class DeploymentReindexCommandTest extends Unit
         $this->assertSame(Command::SUCCESS, $commandTester->getStatusCode());
         $this->assertStringContainsString('native reindex, rebuild from database', $commandTester->getDisplay());
     }
+
+    public function testFailedCheckDoesNotStopTheOtherIndices(): void
+    {
+        $deploymentReindexService = $this->makeEmpty(DeploymentReindexServiceInterface::class, [
+            'getTargets' => [
+                IndexStateTarget::forScope(DeploymentReindexScope::ASSETS),
+                IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS),
+            ],
+            'plan' => static function (IndexStateTarget $target): IndexPlan {
+                if ($target->getKey() === 'asset') {
+                    throw new Exception('mapping extraction failed (simulated)');
+                }
+
+                return new IndexPlan($target, new IndexState('m', 's', '1.0'), false, false, false, true, false, []);
+            },
+            'execute' => Expected::once(static function (IndexPlan $plan): bool {
+                self::assertSame('document', $plan->getTarget()->getKey());
+
+                return true;
+            }),
+        ]);
+
+        $commandTester = new CommandTester(new DeploymentReindexCommand(
+            $this->makeEmpty(EnqueueServiceInterface::class),
+            $this->makeEmpty(ClassDefinitionReindexServiceInterface::class),
+            $deploymentReindexService
+        ));
+        $commandTester->execute(['--assets' => true, '--documents' => true]);
+
+        $this->assertSame(Command::FAILURE, $commandTester->getStatusCode());
+        $this->assertStringContainsString(
+            'Checking assets failed: mapping extraction failed (simulated)',
+            $commandTester->getDisplay()
+        );
+    }
 }

@@ -14,11 +14,25 @@ declare(strict_types=1);
 namespace Functional\Command;
 
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexStateService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexStateServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DocumentIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
 use Pimcore\Db;
+use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -169,6 +183,108 @@ class DeploymentReindexScopeTest extends Unit
         $this->assertNotSame('outdated', $this->getSettingsStore()->getIndexState('asset_settings'));
         $output = $this->tester->runConsoleCommand(self::COMMAND, ['--assets' => true]);
         $this->assertStringContainsString('skip', $output);
+    }
+
+    public function testClassSettingsChangeReindexesTheClassIndex(): void
+    {
+        $this->tester->runConsoleCommand(self::COMMAND, ['--classes' => true]);
+        $indexName = $this->tester->getIndexName('simple', true);
+        $this->getSettingsStore()->storeIndexState($this->getSimpleClassKey() . '_settings', 'outdated');
+
+        $output = $this->tester->runConsoleCommand(self::COMMAND, ['--classes' => true]);
+
+        $this->assertStringContainsString('index settings changed', $output);
+        $this->assertNotSame($indexName, $this->tester->getIndexName('simple', true));
+        $this->assertNotSame('outdated', $this->getSettingsStore()->getIndexState($this->getSimpleClassKey() . '_settings'));
+    }
+
+    public function testClassDataVersionChangeRebuildsTheClass(): void
+    {
+        $this->tester->runConsoleCommand(self::COMMAND, ['--classes' => true]);
+        $indexName = $this->tester->getIndexName('simple', true);
+        $this->getSettingsStore()->storeIndexState($this->getSimpleClassKey() . '_data_version', '0.0');
+
+        $output = $this->tester->runConsoleCommand(self::COMMAND, ['--classes' => true]);
+
+        $this->assertStringContainsString('data version changed (0.0 -> 1.0)', $output);
+        $this->assertStringContainsString('Dispatch queue messages', $output);
+        $this->assertSame($indexName, $this->tester->getIndexName('simple', true));
+    }
+
+    public function testMissingClassIndexIsCreated(): void
+    {
+        $this->tester->runConsoleCommand(self::COMMAND, ['--classes' => true]);
+        /** @var SearchIndexServiceInterface $searchIndexService */
+        $searchIndexService = $this->tester->grabService(SearchIndexServiceInterface::class);
+        $searchIndexService->deleteIndex($this->tester->getIndexName('simple', true));
+        $alias = $this->tester->grabService(DataObjectTypeAdapter::class)
+            ->getAliasIndexName(ClassDefinition::getByName('simple'));
+        $this->assertFalse($searchIndexService->existsAlias($alias));
+
+        $output = $this->tester->runConsoleCommand(self::COMMAND, ['--classes' => true]);
+
+        $this->assertStringContainsString('index missing', $output);
+        $this->assertTrue($searchIndexService->existsAlias($alias));
+    }
+
+    public function testUpdateIndexRefreshesTheMappingButNotTheSettingsWithoutRecreation(): void
+    {
+        $this->tester->runConsoleCommand(self::COMMAND, ['--assets' => true]);
+        $this->getSettingsStore()->storeIndexState('asset_mapping', 'outdated');
+        $this->getSettingsStore()->storeIndexState('asset_settings', 'outdated');
+
+        /** @var IndexUpdateServiceInterface $indexUpdateService */
+        $indexUpdateService = $this->tester->grabService(IndexUpdateServiceInterface::class);
+        $indexUpdateService->setReCreateIndex(false)->updateAssets();
+
+        $this->assertNotSame('outdated', $this->getSettingsStore()->getIndexState('asset_mapping'));
+        $this->assertSame(
+            'outdated',
+            $this->getSettingsStore()->getIndexState('asset_settings'),
+            'Index settings are only applied when the index is created'
+        );
+    }
+
+    public function testNativeReindexWithoutRebuildKeepsAnUnfinishedSnapshotImportDetectable(): void
+    {
+        $this->tester->runConsoleCommand(self::COMMAND, ['--assets' => true]);
+        $this->getSettingsStore()->storeIndexState('asset_mapping', IndexStateServiceInterface::INVALIDATED);
+
+        $this->tester->grabService(ReindexServiceInterface::class)->reindexAssets(false);
+
+        $this->assertSame(IndexStateServiceInterface::INVALIDATED, $this->getSettingsStore()->getIndexState('asset_mapping'));
+        $output = $this->tester->runConsoleCommand(self::COMMAND, ['--assets' => true]);
+        $this->assertStringContainsString('previous snapshot import did not finish', $output);
+        $this->assertStringContainsString('native reindex, rebuild from database', $output);
+    }
+
+    public function testConfiguredIndexVersionsAreUsedPerIndex(): void
+    {
+        $classId = ClassDefinition::getByName('simple')->getId();
+        $indexStateService = new IndexStateService(
+            $this->getSettingsStore(),
+            $this->tester->grabService(SearchIndexServiceInterface::class),
+            $this->tester->grabService(SearchIndexConfigServiceInterface::class),
+            $this->tester->grabService(AssetIndexHandler::class),
+            $this->tester->grabService(DocumentIndexHandler::class),
+            $this->tester->grabService(DataObjectIndexHandler::class),
+            $this->tester->grabService(AssetTypeAdapter::class),
+            $this->tester->grabService(DocumentTypeAdapter::class),
+            $this->tester->grabService(DataObjectTypeAdapter::class),
+            ['assets' => 2, 'documents' => 0, 'folders' => 5, 'classes' => [$classId => 4]],
+        );
+
+        $version = static fn (IndexStateTarget $target) => $indexStateService->getCurrentState($target)->getDataVersion();
+
+        $this->assertSame('1.2', $version(IndexStateTarget::forScope(DeploymentReindexScope::ASSETS)));
+        $this->assertSame('1.0', $version(IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS)));
+        $this->assertSame('1.5', $version(IndexStateTarget::forScope(DeploymentReindexScope::FOLDERS)));
+        $this->assertSame('1.4', $version(IndexStateTarget::forClassDefinition(ClassDefinition::getByName('simple'))));
+    }
+
+    private function getSimpleClassKey(): string
+    {
+        return 'class_' . ClassDefinition::getByName('simple')->getId();
     }
 
     private function getEventDispatcher(): EventDispatcherInterface

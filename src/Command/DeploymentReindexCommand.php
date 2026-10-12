@@ -198,14 +198,26 @@ final class DeploymentReindexCommand extends AbstractCommand
     private function executeForScopes(array $scopes, bool $dryRun, OutputInterface $output): int
     {
         try {
-            $plans = array_map(
-                fn ($target) => $this->deploymentReindexService->plan($target),
-                $this->deploymentReindexService->getTargets($scopes)
-            );
+            $targets = $this->deploymentReindexService->getTargets($scopes);
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
 
             return self::FAILURE;
+        }
+
+        $failed = false;
+        $plans = [];
+        foreach ($targets as $target) {
+            try {
+                $plans[] = $this->deploymentReindexService->plan($target);
+            } catch (Exception $e) {
+                $failed = true;
+                $output->writeln(sprintf(
+                    '<error>Checking %s failed: %s</error>',
+                    $target->getLabel(),
+                    $e->getMessage()
+                ));
+            }
         }
 
         $this->writePlans($plans, $output);
@@ -213,16 +225,15 @@ final class DeploymentReindexCommand extends AbstractCommand
         if ($dryRun) {
             $output->writeln('<info>Dry run - nothing changed</info>');
 
-            return self::SUCCESS;
+            return $failed ? self::FAILURE : self::SUCCESS;
         }
 
-        $failed = false;
         $enqueued = false;
         $baselineStored = false;
         foreach ($plans as $plan) {
             try {
                 $enqueued = $this->deploymentReindexService->execute($plan) || $enqueued;
-                $baselineStored = $baselineStored || ($plan->isBaselineMissing() && !$plan->isSkipped());
+                $baselineStored = $baselineStored || $plan->isBaselineOnly();
             } catch (Exception $e) {
                 $failed = true;
                 $output->writeln(sprintf(
@@ -241,8 +252,8 @@ final class DeploymentReindexCommand extends AbstractCommand
         if ($baselineStored) {
             $output->writeln(
                 '<comment>Values that were not stored before were stored as the baseline without a reindex. ' .
-                'Run generic-data-index:update:index once if this deployment also changed the mapping or the ' .
-                'index settings of these indices.</comment>'
+                'If this deployment also changed the mapping of these indices, run generic-data-index:update:index ' .
+                'once; if it changed index_settings, run generic-data-index:reindex once.</comment>'
             );
         }
 

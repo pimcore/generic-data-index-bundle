@@ -254,14 +254,18 @@ asset metadata, valid languages configured in config files, `system_fields_setti
 | Data version | Rebuild from the database |
 | Index missing | Create the index, then rebuild from the database |
 
-The values are stored per index after a successful update; a failed index is retried on the next run.
-Values that were never stored, e.g. on the first run with index options, are stored as the baseline
-without a reindex. If that deployment also changes the mapping or the index settings, run
-`generic-data-index:update:index` once.
+The values are stored per index once its update was applied and its elements were added to the index
+queue. If updating an index fails, the command exits with an error and the index is updated again on the
+next run. Values that were never stored, e.g. on the first run with index options, are stored as the
+baseline without a reindex. If that deployment also changes the mapping, run
+`generic-data-index:update:index` once; if it changes `index_settings`, run `generic-data-index:reindex`
+once (it does not cover the data object folder index).
 
 Code changes that alter the indexed values without changing the mapping (calculators,
 `UpdateIndexDataEvent` subscribers, custom field definition adapters) cannot be detected. Raise the
-matching version in the same change instead:
+matching version in the same change instead. With `calculated_fields_index_mode: query_store` a rebuild
+reads the stored calculator values, see
+[Refreshing calculated values after a calculator change](#refreshing-calculated-values-after-a-calculator-change).
 
 ```yaml
 pimcore_generic_data_index:
