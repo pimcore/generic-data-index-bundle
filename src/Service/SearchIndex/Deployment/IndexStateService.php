@@ -137,11 +137,12 @@ final readonly class IndexStateService implements IndexStateServiceInterface
         }
 
         $current = $this->getCurrentState($target);
-        $this->store($target, new IndexState(
+        $state = new IndexState(
             $mapping ? $current->getMappingChecksum() : null,
             $settings ? $current->getSettingsHash() : null,
             $dataVersion ? $current->getDataVersion() : null,
-        ));
+        );
+        $this->store($target, $state);
     }
 
     public function invalidateMapping(IndexStateTarget $target): void
