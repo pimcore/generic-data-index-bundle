@@ -12,7 +12,6 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\Filter\Workspace;
 
-use PHPUnit\Framework\Attributes\DataProvider;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
@@ -812,23 +811,23 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
      * also for allowed sub paths below declined workspaces.
      *
      * @see https://github.com/pimcore/generic-data-index-bundle/issues/73
-     *
-     * @param array<string, bool> $workspaces list and view permission per workspace path
      */
-    #[DataProvider('provideWorkspaceSetups')]
-    public function testAssetSearchMatchesCorePermissionCheck(array $workspaces): void
+    public function testAssetSearchMatchesCorePermissionCheck(): void
     {
         $this->createTestAssetFolders();
-        $user = $this->createUserWithAssetWorkspaces($workspaces, true);
 
-        $this->assertAssetSearchMatchesCorePermissionCheck($user, PermissionTypes::LIST);
-        $this->assertAssetSearchMatchesCorePermissionCheck($user, PermissionTypes::VIEW);
+        foreach ($this->getWorkspaceSetups() as $setup => $workspaces) {
+            $user = $this->createUserWithAssetWorkspaces($workspaces, true);
+
+            $this->assertAssetSearchMatchesCorePermissionCheck($setup, $user, PermissionTypes::LIST);
+            $this->assertAssetSearchMatchesCorePermissionCheck($setup, $user, PermissionTypes::VIEW);
+        }
     }
 
     /**
-     * @return array<string, array{array<string, bool>}>
+     * @return array<string, array<string, bool>> list and view permission per workspace path, by setup name
      */
-    public static function provideWorkspaceSetups(): array
+    private function getWorkspaceSetups(): array
     {
         $folder1 = '/test-asset-folder-1';
         $folder2 = '/test-asset-folder-2';
@@ -840,44 +839,47 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         $subSubSub3 = $subSub1 . '/sub-sub-sub-folder-3';
 
         return [
-            'two allowed folders' => [[$folder1 => true, $folder2 => true]],
-            'allowed folder with allowed sub folder' => [[$folder1 => true, $sub1 => true]],
-            'allowed leaf folder only' => [[$subSubSub1 => true]],
-            'allowed sub folder only' => [[$subSub1 => true]],
-            'root with declined folder' => [['/' => true, $folder2 => false]],
-            'root with declined folder and sub folder' => [['/' => true, $folder1 => false, $sub1 => false]],
-            'root with declined leaf folder' => [['/' => true, $subSubSub3 => false]],
-            'declined sub folder' => [[$folder1 => true, $sub1 => false]],
-            'declined sub sub folder' => [[$folder1 => true, $subSub1 => false]],
-            'allowed below declined' => [[$folder1 => true, $sub1 => false, $subSub1 => true]],
-            'allowed two levels below declined' => [[$folder1 => true, $sub1 => false, $subSubSub1 => true]],
+            'two allowed folders' => [$folder1 => true, $folder2 => true],
+            'allowed folder with allowed sub folder' => [$folder1 => true, $sub1 => true],
+            'allowed leaf folder only' => [$subSubSub1 => true],
+            'allowed sub folder only' => [$subSub1 => true],
+            'root with declined folder' => ['/' => true, $folder2 => false],
+            'root with declined folder and sub folder' => ['/' => true, $folder1 => false, $sub1 => false],
+            'root with declined leaf folder' => ['/' => true, $subSubSub3 => false],
+            'declined sub folder' => [$folder1 => true, $sub1 => false],
+            'declined sub sub folder' => [$folder1 => true, $subSub1 => false],
+            'allowed below declined' => [$folder1 => true, $sub1 => false, $subSub1 => true],
+            'allowed two levels below declined' => [$folder1 => true, $sub1 => false, $subSubSub1 => true],
             'declined below allowed below declined' => [
-                [$folder1 => true, $sub1 => false, $subSub1 => true, $subSubSub1 => false],
+                $folder1 => true, $sub1 => false, $subSub1 => true, $subSubSub1 => false,
             ],
             'allowed below declined below root' => [
-                ['/' => true, $folder1 => false, $sub1 => true, $subSub1 => false, $folder2 => false,
-                    $folder3 => false],
+                '/' => true, $folder1 => false, $sub1 => true, $subSub1 => false, $folder2 => false,
+                $folder3 => false,
             ],
             'allowed below two declined levels' => [
-                [$folder1 => true, $sub1 => false, $subSub1 => false, $subSubSub1 => true],
+                $folder1 => true, $sub1 => false, $subSub1 => false, $subSubSub1 => true,
             ],
             'alternating declined and allowed without root' => [
-                ['/' => false, $folder1 => false, $sub1 => true, $subSub1 => false, $subSubSub1 => true,
-                    $subSubSub2 => false],
+                '/' => false, $folder1 => false, $sub1 => true, $subSub1 => false, $subSubSub1 => true,
+                $subSubSub2 => false,
             ],
             'allowed two levels below declined below root' => [
-                ['/' => true, $folder1 => false, $subSub1 => true, $subSubSub2 => false, $folder2 => false,
-                    $folder3 => false],
+                '/' => true, $folder1 => false, $subSub1 => true, $subSubSub2 => false, $folder2 => false,
+                $folder3 => false,
             ],
-            'allowed below declined without root' => [[$folder1 => false, $subSub1 => true]],
+            'allowed below declined without root' => [$folder1 => false, $subSub1 => true],
             'allowed sub folder below root with declined folder' => [
-                ['/' => true, $folder1 => false, $subSub1 => true],
+                '/' => true, $folder1 => false, $subSub1 => true,
             ],
         ];
     }
 
-    private function assertAssetSearchMatchesCorePermissionCheck(User $user, PermissionTypes $permissionType): void
-    {
+    private function assertAssetSearchMatchesCorePermissionCheck(
+        string $setup,
+        User $user,
+        PermissionTypes $permissionType
+    ): void {
         /** @var AssetSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
         /** @var SearchProviderInterface $searchProvider */
@@ -899,12 +901,16 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             }
         }
 
-        $this->assertResultItemPaths($allowedPaths, $searchResult->getItems(), $permissionType->value . ' search');
+        $this->assertResultItemPaths(
+            $allowedPaths,
+            $searchResult->getItems(),
+            $setup . ': ' . $permissionType->value . ' search'
+        );
 
         if ($permissionType === PermissionTypes::VIEW) {
             sort($allowedPaths);
             sort($byIdPaths);
-            $this->assertSame($allowedPaths, $byIdPaths, 'byId()');
+            $this->assertSame($allowedPaths, $byIdPaths, $setup . ': byId()');
         }
     }
 
