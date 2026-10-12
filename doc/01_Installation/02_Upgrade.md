@@ -5,6 +5,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 # Upgrade Information
 
+## Upgrade to 2026.3.2
+- [Permissions] Searches that check a permission other than `list` (for example `byId()`, which checks `view`) no
+  longer return the parent elements of a user's workspaces. As in Pimcore core, only `list` includes them, so the
+  tree can show the way down to an allowed element.
+
 ## Upgrade to 2026.3.0
 
 - [Searching] Added the `SearchBodyProcessorInterface` extension point (tag

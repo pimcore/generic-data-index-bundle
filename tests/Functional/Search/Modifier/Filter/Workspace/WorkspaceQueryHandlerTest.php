@@ -12,9 +12,11 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\Filter\Workspace;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Db;
@@ -26,6 +28,12 @@ use Pimcore\Tests\Support\Util\TestHelper;
 
 class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
 {
+    private const ASSET_ID_BY_PATH_QUERY = 'select id from assets where concat(path, filename) = ?';
+
+    private const DATA_OBJECT_ID_BY_PATH_QUERY = 'select id from objects where concat(path, `key`) = ?';
+
+    private const DOCUMENT_ID_BY_PATH_QUERY = 'select id from documents where concat(path, `key`) = ?';
+
     /**
      * @var \Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester
      */
@@ -36,12 +44,25 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         $this->tester->enableSynchronousProcessing();
     }
 
+    /**
+     * @var User\UserRole[]
+     */
+    private array $createdUsers = [];
+
     protected function _after()
     {
-        TestHelper::cleanUp();
-        $this->tester->flushIndex();
-        $this->tester->cleanupIndex();
-        $this->tester->flushIndex();
+        try {
+            foreach ($this->createdUsers as $createdUser) {
+                $createdUser->delete();
+            }
+        } finally {
+            $this->createdUsers = [];
+
+            TestHelper::cleanUp();
+            $this->tester->flushIndex();
+            $this->tester->cleanupIndex();
+            $this->tester->flushIndex();
+        }
     }
 
     // tests
@@ -404,8 +425,466 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
 
     }
 
-    private function assertAssetSearchResultFolders(array $expectedPaths, User $user)
+    public function testHandleWorkspaceQueryParentPathsOnlyForListPermission(): void
     {
+        $this->createTestAssetFolders();
+
+        $user = $this->createUserWithAssetWorkspaces(
+            ['/test-asset-folder-1/sub-folder-1/sub-sub-folder-1' => true],
+            true
+        );
+
+        $this->assertAssetSearchResultFolders([
+            '/',
+            '/test-asset-folder-1',
+            '/test-asset-folder-1/sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-3',
+        ], $user);
+
+        $this->assertAssetSearchResultFolders([
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-3',
+        ], $user, PermissionTypes::VIEW);
+
+        /** @var AssetSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
+
+        $this->assertByIdReturnsOnlyViewableItems(
+            $searchService,
+            Asset::getByPath('/test-asset-folder-1/sub-folder-1')->getId(),
+            Asset::getByPath('/test-asset-folder-1/sub-folder-1/sub-sub-folder-1')->getId(),
+            $user,
+            $this->createUserWithAssetWorkspaces(['/test-asset-folder-1/sub-folder-1/sub-sub-folder-1' => true])
+        );
+    }
+
+    public function testElementSearchViewPermissionHasNoParentPaths(): void
+    {
+        $this->createTestAssetFolders();
+        $this->createTestDataObjectFolders();
+        $this->createTestDocumentFolders();
+
+        $user = $this->createUserWithWorkspaces(
+            ['/test-asset-folder-1/sub-folder-1' => true],
+            ['/test-document-folder-2/sub-folder-2' => true],
+            ['/test-object-folder-3/sub-folder-3' => true],
+            true
+        );
+
+        $this->assertElementSearchResultFolders([
+            '/',
+            '/test-asset-folder-1',
+            '/test-asset-folder-1/sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-3',
+            '/',
+            '/test-document-folder-2',
+            '/test-document-folder-2/sub-folder-2',
+            '/test-document-folder-2/sub-folder-2/sub-sub-folder-2',
+            '/test-document-folder-2/sub-folder-2/sub-sub-folder-2/sub-sub-sub-folder-2',
+            '/',
+            '/test-object-folder-3',
+            '/test-object-folder-3/sub-folder-3',
+            '/test-object-folder-3/sub-folder-3/sub-sub-folder-3',
+            '/test-object-folder-3/sub-folder-3/sub-sub-folder-3/sub-sub-sub-folder-3',
+        ], $user);
+
+        $this->assertElementSearchResultFolders([
+            '/test-asset-folder-1/sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-3',
+            '/test-document-folder-2/sub-folder-2',
+            '/test-document-folder-2/sub-folder-2/sub-sub-folder-2',
+            '/test-document-folder-2/sub-folder-2/sub-sub-folder-2/sub-sub-sub-folder-2',
+            '/test-object-folder-3/sub-folder-3',
+            '/test-object-folder-3/sub-folder-3/sub-sub-folder-3',
+            '/test-object-folder-3/sub-folder-3/sub-sub-folder-3/sub-sub-sub-folder-3',
+        ], $user, PermissionTypes::VIEW);
+    }
+
+    public function testParentPathsAreOnlyIncludedForListPermissionType(): void
+    {
+        $this->createTestAssetFolders();
+        $this->createTestDataObjectFolders();
+        $this->createTestDocumentFolders();
+
+        $workspace = '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1';
+        $user = $this->createUserWithPermission('assets');
+        $workspaceObject = (new User\Workspace\Asset())
+            ->setCid((int) Db::get()->fetchOne(self::ASSET_ID_BY_PATH_QUERY, [$workspace]))
+            ->setCpath($workspace)
+            ->setUserId($user->getId())
+            ->setList(true)
+            ->setView(true)
+            ->setPublish(true)
+            ->setDelete(true)
+            ->setRename(true)
+            ->setCreate(true)
+            ->setSettings(true)
+            ->setVersions(true)
+            ->setProperties(true);
+        $workspaceObject->save();
+        $user->setWorkspacesAsset([$workspaceObject]);
+
+        $subTree = [
+            $workspace,
+            $workspace . '/sub-sub-sub-folder-1',
+            $workspace . '/sub-sub-sub-folder-2',
+            $workspace . '/sub-sub-sub-folder-3',
+        ];
+
+        $this->assertAssetSearchResultFolders(
+            array_merge(['/', '/test-asset-folder-1', '/test-asset-folder-1/sub-folder-1'], $subTree),
+            $user
+        );
+
+        foreach (PermissionTypes::cases() as $permissionType) {
+            if ($permissionType === PermissionTypes::LIST) {
+                continue;
+            }
+
+            $this->assertAssetSearchResultFolders($subTree, $user, $permissionType);
+        }
+    }
+
+    public function testWorkspacesOfRolesIncludeParentPathsOnlyForListPermission(): void
+    {
+        $this->createTestAssetFolders();
+
+        $workspace = '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1';
+        $role = new User\Role();
+        $role
+            ->setName('test-role-' . uniqid())
+            ->setPermissions(['assets'])
+            ->save();
+        $this->createdUsers[] = $role;
+
+        $roleWorkspace = (new User\Workspace\Asset())
+            ->setCid((int) Db::get()->fetchOne(self::ASSET_ID_BY_PATH_QUERY, [$workspace]))
+            ->setCpath($workspace)
+            ->setUserId($role->getId())
+            ->setList(true)
+            ->setView(true);
+        $roleWorkspace->save();
+        $role->setWorkspacesAsset([$roleWorkspace]);
+
+        $user = new User();
+        $user
+            ->setUsername('test-user-' . uniqid())
+            ->setRoles([$role->getId()])
+            ->save();
+        $this->createdUsers[] = $user;
+
+        $this->assertAssetSearchResultFolders([
+            '/',
+            '/test-asset-folder-1',
+            '/test-asset-folder-1/sub-folder-1',
+            $workspace,
+            $workspace . '/sub-sub-sub-folder-1',
+            $workspace . '/sub-sub-sub-folder-2',
+            $workspace . '/sub-sub-sub-folder-3',
+        ], $user);
+
+        $this->assertAssetSearchResultFolders([
+            $workspace,
+            $workspace . '/sub-sub-sub-folder-1',
+            $workspace . '/sub-sub-sub-folder-2',
+            $workspace . '/sub-sub-sub-folder-3',
+        ], $user, PermissionTypes::VIEW);
+
+        /** @var AssetSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
+        $parentId = (int) Db::get()->fetchOne(self::ASSET_ID_BY_PATH_QUERY, ['/test-asset-folder-1/sub-folder-1']);
+        $allowedId = (int) Db::get()->fetchOne(self::ASSET_ID_BY_PATH_QUERY, [$workspace]);
+
+        // the list search above cached both folders, so the view permission is checked with a forced reload
+        $this->assertNull($searchService->byId($parentId, $user, true));
+        $this->assertNotNull($searchService->byId($allowedId, $user, true));
+    }
+
+    public function testHandleWorkspaceQueryDeclinedPathsForViewPermission(): void
+    {
+        $this->createTestAssetFolders();
+
+        $user = $this->createUserWithAssetWorkspaces([
+            '/' => true,
+            '/test-asset-folder-1' => false,
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1' => true,
+        ], true);
+
+        $this->assertAssetSearchResultFolders([
+            '/',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-2',
+            '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-3',
+            '/test-asset-folder-2',
+            '/test-asset-folder-2/sub-folder-2',
+            '/test-asset-folder-2/sub-folder-2/sub-sub-folder-2',
+            '/test-asset-folder-2/sub-folder-2/sub-sub-folder-2/sub-sub-sub-folder-2',
+            '/test-asset-folder-3',
+            '/test-asset-folder-3/sub-folder-3',
+            '/test-asset-folder-3/sub-folder-3/sub-sub-folder-3',
+            '/test-asset-folder-3/sub-folder-3/sub-sub-folder-3/sub-sub-sub-folder-3',
+        ], $user, PermissionTypes::VIEW);
+    }
+
+    public function testHandleDataObjectWorkspaceQueryParentPathsOnlyForListPermission(): void
+    {
+        $this->createTestDataObjectFolders();
+
+        $user = $this->createUserWithDataObjectWorkspaces(
+            ['/test-object-folder-1/sub-folder-1/sub-sub-folder-1' => true],
+            true
+        );
+
+        $this->assertDataObjectSearchResultFolders([
+            '/',
+            '/test-object-folder-1',
+            '/test-object-folder-1/sub-folder-1',
+            '/test-object-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-object-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
+        ], $user);
+
+        $this->assertDataObjectSearchResultFolders([
+            '/test-object-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-object-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
+        ], $user, PermissionTypes::VIEW);
+
+        /** @var DataObjectSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
+
+        $this->assertByIdReturnsOnlyViewableItems(
+            $searchService,
+            DataObject::getByPath('/test-object-folder-1/sub-folder-1')->getId(),
+            DataObject::getByPath('/test-object-folder-1/sub-folder-1/sub-sub-folder-1')->getId(),
+            $user,
+            $this->createUserWithDataObjectWorkspaces(['/test-object-folder-1/sub-folder-1/sub-sub-folder-1' => true])
+        );
+    }
+
+    public function testHandleDataObjectWorkspaceQueryDeclinedPathsForViewPermission(): void
+    {
+        $this->createTestDataObjectFolders();
+
+        $user = $this->createUserWithDataObjectWorkspaces([
+            '/' => true,
+            '/test-object-folder-1' => false,
+            '/test-object-folder-1/sub-folder-1/sub-sub-folder-1' => true,
+        ], true);
+
+        $this->assertDataObjectSearchResultFolders([
+            '/',
+            '/test-object-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-object-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
+            '/test-object-folder-2',
+            '/test-object-folder-2/sub-folder-2',
+            '/test-object-folder-2/sub-folder-2/sub-sub-folder-2',
+            '/test-object-folder-2/sub-folder-2/sub-sub-folder-2/sub-sub-sub-folder-2',
+            '/test-object-folder-3',
+            '/test-object-folder-3/sub-folder-3',
+            '/test-object-folder-3/sub-folder-3/sub-sub-folder-3',
+            '/test-object-folder-3/sub-folder-3/sub-sub-folder-3/sub-sub-sub-folder-3',
+        ], $user, PermissionTypes::VIEW);
+    }
+
+    public function testHandleDocumentWorkspaceQueryParentPathsOnlyForListPermission(): void
+    {
+        $this->createTestDocumentFolders();
+
+        $user = $this->createUserWithDocumentWorkspaces(
+            ['/test-document-folder-1/sub-folder-1/sub-sub-folder-1' => true],
+            true
+        );
+
+        $this->assertDocumentSearchResultFolders([
+            '/',
+            '/test-document-folder-1',
+            '/test-document-folder-1/sub-folder-1',
+            '/test-document-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-document-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
+        ], $user);
+
+        $this->assertDocumentSearchResultFolders([
+            '/test-document-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-document-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
+        ], $user, PermissionTypes::VIEW);
+
+        /** @var DocumentSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.document-search-service');
+
+        $this->assertByIdReturnsOnlyViewableItems(
+            $searchService,
+            Document::getByPath('/test-document-folder-1/sub-folder-1')->getId(),
+            Document::getByPath('/test-document-folder-1/sub-folder-1/sub-sub-folder-1')->getId(),
+            $user,
+            $this->createUserWithDocumentWorkspaces(['/test-document-folder-1/sub-folder-1/sub-sub-folder-1' => true])
+        );
+    }
+
+    public function testHandleDocumentWorkspaceQueryDeclinedPathsForViewPermission(): void
+    {
+        $this->createTestDocumentFolders();
+
+        $user = $this->createUserWithDocumentWorkspaces([
+            '/' => true,
+            '/test-document-folder-1' => false,
+            '/test-document-folder-1/sub-folder-1/sub-sub-folder-1' => true,
+        ], true);
+
+        $this->assertDocumentSearchResultFolders([
+            '/',
+            '/test-document-folder-1/sub-folder-1/sub-sub-folder-1',
+            '/test-document-folder-1/sub-folder-1/sub-sub-folder-1/sub-sub-sub-folder-1',
+            '/test-document-folder-2',
+            '/test-document-folder-2/sub-folder-2',
+            '/test-document-folder-2/sub-folder-2/sub-sub-folder-2',
+            '/test-document-folder-2/sub-folder-2/sub-sub-folder-2/sub-sub-sub-folder-2',
+            '/test-document-folder-3',
+            '/test-document-folder-3/sub-folder-3',
+            '/test-document-folder-3/sub-folder-3/sub-sub-folder-3',
+            '/test-document-folder-3/sub-folder-3/sub-sub-folder-3/sub-sub-sub-folder-3',
+        ], $user, PermissionTypes::VIEW);
+    }
+
+    /**
+     * Uses the core permission check as the expected result, so that list and view searches stay in line with it,
+     * also for allowed sub paths below declined workspaces.
+     *
+     * @see https://github.com/pimcore/generic-data-index-bundle/issues/73
+     */
+    public function testAssetSearchMatchesCorePermissionCheck(): void
+    {
+        $this->createTestAssetFolders();
+
+        foreach ($this->getWorkspaceSetups() as $setup => $workspaces) {
+            $user = $this->createUserWithAssetWorkspaces($workspaces, true);
+
+            $this->assertAssetSearchMatchesCorePermissionCheck($setup, $user, PermissionTypes::LIST);
+            $this->assertAssetSearchMatchesCorePermissionCheck($setup, $user, PermissionTypes::VIEW);
+        }
+    }
+
+    /**
+     * @return array<string, array<string, bool>> list and view permission per workspace path, by setup name
+     */
+    private function getWorkspaceSetups(): array
+    {
+        $folder1 = '/test-asset-folder-1';
+        $folder2 = '/test-asset-folder-2';
+        $folder3 = '/test-asset-folder-3';
+        $sub1 = $folder1 . '/sub-folder-1';
+        $subSub1 = $sub1 . '/sub-sub-folder-1';
+        $subSubSub1 = $subSub1 . '/sub-sub-sub-folder-1';
+        $subSubSub2 = $subSub1 . '/sub-sub-sub-folder-2';
+        $subSubSub3 = $subSub1 . '/sub-sub-sub-folder-3';
+
+        return [
+            'two allowed folders' => [$folder1 => true, $folder2 => true],
+            'allowed folder with allowed sub folder' => [$folder1 => true, $sub1 => true],
+            'allowed leaf folder only' => [$subSubSub1 => true],
+            'allowed sub folder only' => [$subSub1 => true],
+            'root with declined folder' => ['/' => true, $folder2 => false],
+            'root with declined folder and sub folder' => ['/' => true, $folder1 => false, $sub1 => false],
+            'root with declined leaf folder' => ['/' => true, $subSubSub3 => false],
+            'declined sub folder' => [$folder1 => true, $sub1 => false],
+            'declined sub sub folder' => [$folder1 => true, $subSub1 => false],
+            'allowed below declined' => [$folder1 => true, $sub1 => false, $subSub1 => true],
+            'allowed two levels below declined' => [$folder1 => true, $sub1 => false, $subSubSub1 => true],
+            'declined below allowed below declined' => [
+                $folder1 => true, $sub1 => false, $subSub1 => true, $subSubSub1 => false,
+            ],
+            'allowed below declined below root' => [
+                '/' => true, $folder1 => false, $sub1 => true, $subSub1 => false, $folder2 => false,
+                $folder3 => false,
+            ],
+            'allowed below two declined levels' => [
+                $folder1 => true, $sub1 => false, $subSub1 => false, $subSubSub1 => true,
+            ],
+            'alternating declined and allowed without root' => [
+                '/' => false, $folder1 => false, $sub1 => true, $subSub1 => false, $subSubSub1 => true,
+                $subSubSub2 => false,
+            ],
+            'allowed two levels below declined below root' => [
+                '/' => true, $folder1 => false, $subSub1 => true, $subSubSub2 => false, $folder2 => false,
+                $folder3 => false,
+            ],
+            'allowed below declined without root' => [$folder1 => false, $subSub1 => true],
+            'allowed sub folder below root with declined folder' => [
+                '/' => true, $folder1 => false, $subSub1 => true,
+            ],
+        ];
+    }
+
+    private function assertAssetSearchMatchesCorePermissionCheck(
+        string $setup,
+        User $user,
+        PermissionTypes $permissionType
+    ): void {
+        /** @var AssetSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $searchResult = $searchService->search(
+            $searchProvider->createAssetSearch()->setUser($user)->setPageSize(100),
+            $permissionType
+        );
+
+        $allowedPaths = [];
+        $byIdPaths = [];
+        foreach ((new Asset\Listing())->load() as $asset) {
+            if ($asset->isAllowed($permissionType->value, $user)) {
+                $allowedPaths[] = $asset->getRealFullPath();
+            }
+            if ($permissionType === PermissionTypes::VIEW && $searchService->byId($asset->getId(), $user, true)) {
+                $byIdPaths[] = $asset->getRealFullPath();
+            }
+        }
+
+        $this->assertResultItemPaths(
+            $allowedPaths,
+            $searchResult->getItems(),
+            $setup . ': ' . $permissionType->value . ' search'
+        );
+
+        if ($permissionType === PermissionTypes::VIEW) {
+            sort($allowedPaths);
+            sort($byIdPaths);
+            $this->assertSame($allowedPaths, $byIdPaths, $setup . ': byId()');
+        }
+    }
+
+    /**
+     * byId() can return items that earlier searches of the same request put into the runtime cache, so the view
+     * permission is checked with a forced reload.
+     */
+    private function assertByIdReturnsOnlyViewableItems(
+        AssetSearchServiceInterface|DataObjectSearchServiceInterface|DocumentSearchServiceInterface $searchService,
+        int $parentId,
+        int $allowedId,
+        User $user,
+        User $listOnlyUser
+    ): void {
+        $this->assertNull($searchService->byId($parentId, $user, true));
+        $this->assertNotNull($searchService->byId($allowedId, $user, true));
+        $this->assertNull($searchService->byId($allowedId, $listOnlyUser, true));
+    }
+
+    private function assertAssetSearchResultFolders(
+        array $expectedPaths,
+        User $user,
+        PermissionTypes $permissionType = PermissionTypes::LIST
+    ) {
         /** @var AssetSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
         /** @var SearchProviderInterface $searchProvider */
@@ -415,20 +894,67 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             ->createAssetSearch()
             ->setUser($user)
         ;
-        $searchResult = $searchService->search($assetSearch);
+        $searchResult = $searchService->search($assetSearch, $permissionType);
 
-        $paths = array_map(function (AssetSearchResultItem $item) {
+        $this->assertResultItemPaths($expectedPaths, $searchResult->getItems());
+    }
+
+    private function assertDataObjectSearchResultFolders(
+        array $expectedPaths,
+        User $user,
+        PermissionTypes $permissionType = PermissionTypes::LIST
+    ): void {
+        /** @var DataObjectSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $searchResult = $searchService->search(
+            $searchProvider->createDataObjectSearch()->setUser($user),
+            $permissionType
+        );
+
+        $this->assertResultItemPaths($expectedPaths, $searchResult->getItems());
+    }
+
+    private function assertDocumentSearchResultFolders(
+        array $expectedPaths,
+        User $user,
+        PermissionTypes $permissionType = PermissionTypes::LIST
+    ): void {
+        /** @var DocumentSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.document-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $searchResult = $searchService->search(
+            $searchProvider->createDocumentSearch()->setUser($user),
+            $permissionType
+        );
+
+        $this->assertResultItemPaths($expectedPaths, $searchResult->getItems());
+    }
+
+    /**
+     * @param ElementSearchResultItemInterface[] $items
+     */
+    private function assertResultItemPaths(array $expectedPaths, array $items, string $message = ''): void
+    {
+        $paths = array_map(function (ElementSearchResultItemInterface $item) {
             return $item->getPath() . $item->getKey();
-        }, $searchResult->getItems());
+        }, $items);
 
         sort($expectedPaths);
         sort($paths);
 
-        $this->assertEquals($expectedPaths, $paths);
+        $this->assertEquals($expectedPaths, $paths, $message);
     }
 
-    private function assertElementSearchResultFolders(array $expectedPaths, User $user)
-    {
+    private function assertElementSearchResultFolders(
+        array $expectedPaths,
+        User $user,
+        PermissionTypes $permissionType = PermissionTypes::LIST
+    ): void {
         /** @var ElementSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.element-search-service');
         /** @var SearchProviderInterface $searchProvider */
@@ -438,45 +964,102 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             ->createElementSearch()
             ->setUser($user)
         ;
-        $searchResult = $searchService->search($elementSearch);
+        $searchResult = $searchService->search($elementSearch, $permissionType);
 
-        $paths = array_map(function (ElementSearchResultItemInterface $item) {
-            return $item->getPath() . $item->getKey();
-        }, $searchResult->getItems());
-
-        sort($expectedPaths);
-        sort($paths);
-
-        $this->assertEquals($expectedPaths, $paths);
+        $this->assertResultItemPaths($expectedPaths, $searchResult->getItems());
     }
 
-    private function createUserWithAssetWorkspaces(array $workspaces): User
+    private function createUserWithAssetWorkspaces(array $workspaces, bool $withView = false): User
+    {
+        $user = $this->createUserWithPermission('assets');
+        $user->setWorkspacesAsset($this->saveWorkspaces(
+            $user,
+            User\Workspace\Asset::class,
+            self::ASSET_ID_BY_PATH_QUERY,
+            $workspaces,
+            $withView
+        ));
+
+        return $user;
+    }
+
+    private function createUserWithDataObjectWorkspaces(array $workspaces, bool $withView = false): User
+    {
+        $user = $this->createUserWithPermission('objects');
+        $user->setWorkspacesObject($this->saveWorkspaces(
+            $user,
+            User\Workspace\DataObject::class,
+            self::DATA_OBJECT_ID_BY_PATH_QUERY,
+            $workspaces,
+            $withView
+        ));
+
+        return $user;
+    }
+
+    private function createUserWithDocumentWorkspaces(array $workspaces, bool $withView = false): User
+    {
+        $user = $this->createUserWithPermission('documents');
+        $user->setWorkspacesDocument($this->saveWorkspaces(
+            $user,
+            User\Workspace\Document::class,
+            self::DOCUMENT_ID_BY_PATH_QUERY,
+            $workspaces,
+            $withView
+        ));
+
+        return $user;
+    }
+
+    private function createUserWithPermission(string $permission): User
     {
         $user = new User();
         $user
-            ->setPermission('assets', true)
+            ->setPermission($permission, true)
             ->setUsername('test-user-' . uniqid())
             ->save();
+        $this->createdUsers[] = $user;
 
+        return $user;
+    }
+
+    /**
+     * @template T of User\Workspace\AbstractWorkspace
+     *
+     * @param class-string<T> $workspaceClass
+     * @param array<string, bool> $workspaces list permission per workspace path
+     *
+     * @return T[]
+     */
+    private function saveWorkspaces(
+        User $user,
+        string $workspaceClass,
+        string $idQuery,
+        array $workspaces,
+        bool $withView
+    ): array {
         $workspaceArray = [];
         foreach ($workspaces as $workspace => $permission) {
-
-            $workspaceObject = (new User\Workspace\Asset())
+            $workspaceObject = (new $workspaceClass())
                 ->setList($permission)
+                ->setView($withView && $permission)
                 ->setCpath($workspace)
-                ->setCid(Db::get()->fetchOne('select id from assets where concat(path, filename) = ?', [$workspace]))
+                ->setCid(Db::get()->fetchOne($idQuery, [$workspace]))
                 ->setUserId($user->getId());
 
             $workspaceObject->save();
             $workspaceArray[] = $workspaceObject;
         }
-        $user->setWorkspacesAsset($workspaceArray);
 
-        return $user;
+        return $workspaceArray;
     }
 
-    private function createUserWithWorkspaces(array $assetWorkspaces, array $documentWorkspaces, array $objectWorkspaces): User
-    {
+    private function createUserWithWorkspaces(
+        array $assetWorkspaces,
+        array $documentWorkspaces,
+        array $objectWorkspaces,
+        bool $withView = false
+    ): User {
         $user = new User();
         $user
             ->setPermission('assets', true)
@@ -484,48 +1067,29 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             ->setPermission('objects', true)
             ->setUsername('test-user-' . uniqid())
             ->save();
+        $this->createdUsers[] = $user;
 
-        $workspaceArray = [];
-        foreach ($assetWorkspaces as $workspace => $permission) {
-
-            $workspaceObject = (new User\Workspace\Asset())
-                ->setList($permission)
-                ->setCpath($workspace)
-                ->setCid(Db::get()->fetchOne('select id from assets where concat(path, filename) = ?', [$workspace]))
-                ->setUserId($user->getId());
-
-            $workspaceObject->save();
-            $workspaceArray[] = $workspaceObject;
-        }
-        $user->setWorkspacesAsset($workspaceArray);
-
-        $workspaceArray = [];
-        foreach ($documentWorkspaces as $workspace => $permission) {
-
-            $workspaceObject = (new User\Workspace\Document())
-                ->setList($permission)
-                ->setCpath($workspace)
-                ->setCid(Db::get()->fetchOne('select id from documents where concat(path, `key`) = ?', [$workspace]))
-                ->setUserId($user->getId());
-
-            $workspaceObject->save();
-            $workspaceArray[] = $workspaceObject;
-        }
-        $user->setWorkspacesDocument($workspaceArray);
-
-        $workspaceArray = [];
-        foreach ($objectWorkspaces as $workspace => $permission) {
-
-            $workspaceObject = (new User\Workspace\DataObject())
-                ->setList($permission)
-                ->setCpath($workspace)
-                ->setCid(Db::get()->fetchOne('select id from objects where concat(path, `key`) = ?', [$workspace]))
-                ->setUserId($user->getId());
-
-            $workspaceObject->save();
-            $workspaceArray[] = $workspaceObject;
-        }
-        $user->setWorkspacesObject($workspaceArray);
+        $user->setWorkspacesAsset($this->saveWorkspaces(
+            $user,
+            User\Workspace\Asset::class,
+            self::ASSET_ID_BY_PATH_QUERY,
+            $assetWorkspaces,
+            $withView
+        ));
+        $user->setWorkspacesDocument($this->saveWorkspaces(
+            $user,
+            User\Workspace\Document::class,
+            self::DOCUMENT_ID_BY_PATH_QUERY,
+            $documentWorkspaces,
+            $withView
+        ));
+        $user->setWorkspacesObject($this->saveWorkspaces(
+            $user,
+            User\Workspace\DataObject::class,
+            self::DATA_OBJECT_ID_BY_PATH_QUERY,
+            $objectWorkspaces,
+            $withView
+        ));
 
         return $user;
     }
