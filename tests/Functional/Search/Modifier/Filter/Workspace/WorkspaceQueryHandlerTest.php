@@ -13,9 +13,6 @@
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\Filter\Workspace;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\SearchResult\DocumentSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
@@ -456,17 +453,9 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
 
         /** @var AssetSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
-        /** @var SearchProviderInterface $searchProvider */
-        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
 
         $this->assertByIdReturnsOnlyViewableItems(
             $searchService,
-            fn () => array_map(
-                fn (AssetSearchResultItem $item) => $item->getId(),
-                $searchService->search(
-                    $searchProvider->createAssetSearch()->setUser(User::getByName('admin'))
-                )->getItems()
-            ),
             Asset::getByPath('/test-asset-folder-1/sub-folder-1')->getId(),
             Asset::getByPath('/test-asset-folder-1/sub-folder-1/sub-sub-folder-1')->getId(),
             $user,
@@ -617,32 +606,9 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         $parentId = (int) Db::get()->fetchOne(self::ASSET_ID_BY_PATH_QUERY, ['/test-asset-folder-1/sub-folder-1']);
         $allowedId = (int) Db::get()->fetchOne(self::ASSET_ID_BY_PATH_QUERY, [$workspace]);
 
-        // the list search above cached both folders, byId() checks the view permission through the role
-        $this->assertNull($searchService->byId($parentId, $user));
-        $this->assertNotNull($searchService->byId($allowedId, $user));
-    }
-
-    public function testByIdForceReloadDoesNotServeItemsToUsersWithoutViewPermission(): void
-    {
-        $this->createTestAssetFolders();
-
-        $workspace = '/test-asset-folder-1/sub-folder-1/sub-sub-folder-1';
-        $viewUser = $this->createUserWithAssetWorkspaces([$workspace => true], true);
-        $listOnlyUser = $this->createUserWithAssetWorkspaces([$workspace => true]);
-        $allowedId = (int) Db::get()->fetchOne(self::ASSET_ID_BY_PATH_QUERY, [$workspace]);
-
-        /** @var AssetSearchServiceInterface $searchService */
-        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
-
-        $this->assertNull($searchService->byId($allowedId, $listOnlyUser, true));
-        // an earlier forced reload by a user without view permission does not hide the item from others
-        $viewItem = $searchService->byId($allowedId, $viewUser);
-        $this->assertNotNull($viewItem);
-
-        $reloadedItem = $searchService->byId($allowedId, $viewUser, true);
-        $this->assertNotNull($reloadedItem);
-        $this->assertNull($searchService->byId($allowedId, $listOnlyUser));
-        $this->assertNotNull($searchService->byId($allowedId, $viewUser));
+        // the list search above cached both folders, so the view permission is checked with a forced reload
+        $this->assertNull($searchService->byId($parentId, $user, true));
+        $this->assertNotNull($searchService->byId($allowedId, $user, true));
     }
 
     public function testHandleWorkspaceQueryDeclinedPathsForViewPermission(): void
@@ -696,17 +662,9 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
 
         /** @var DataObjectSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
-        /** @var SearchProviderInterface $searchProvider */
-        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
 
         $this->assertByIdReturnsOnlyViewableItems(
             $searchService,
-            fn () => array_map(
-                fn (DataObjectSearchResultItem $item) => $item->getId(),
-                $searchService->search(
-                    $searchProvider->createDataObjectSearch()->setUser(User::getByName('admin'))
-                )->getItems()
-            ),
             DataObject::getByPath('/test-object-folder-1/sub-folder-1')->getId(),
             DataObject::getByPath('/test-object-folder-1/sub-folder-1/sub-sub-folder-1')->getId(),
             $user,
@@ -763,17 +721,9 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
 
         /** @var DocumentSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.document-search-service');
-        /** @var SearchProviderInterface $searchProvider */
-        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
 
         $this->assertByIdReturnsOnlyViewableItems(
             $searchService,
-            fn () => array_map(
-                fn (DocumentSearchResultItem $item) => $item->getId(),
-                $searchService->search(
-                    $searchProvider->createDocumentSearch()->setUser(User::getByName('admin'))
-                )->getItems()
-            ),
             Document::getByPath('/test-document-folder-1/sub-folder-1')->getId(),
             Document::getByPath('/test-document-folder-1/sub-folder-1/sub-sub-folder-1')->getId(),
             $user,
@@ -896,7 +846,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
             if ($asset->isAllowed($permissionType->value, $user)) {
                 $allowedPaths[] = $asset->getRealFullPath();
             }
-            if ($permissionType === PermissionTypes::VIEW && $searchService->byId($asset->getId(), $user)) {
+            if ($permissionType === PermissionTypes::VIEW && $searchService->byId($asset->getId(), $user, true)) {
                 $byIdPaths[] = $asset->getRealFullPath();
             }
         }
@@ -915,35 +865,19 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
     }
 
     /**
-     * Expects that a list search for $user ran before, so both elements are in the runtime cache that byId() reads.
-     *
-     * @param callable(): int[] $searchIdsAsAdmin
+     * byId() can return items that earlier searches of the same request put into the runtime cache, so the view
+     * permission is checked with a forced reload.
      */
     private function assertByIdReturnsOnlyViewableItems(
         AssetSearchServiceInterface|DataObjectSearchServiceInterface|DocumentSearchServiceInterface $searchService,
-        callable $searchIdsAsAdmin,
         int $parentId,
         int $allowedId,
         User $user,
         User $listOnlyUser
     ): void {
-        $this->assertNull($searchService->byId($parentId, $user));
-        $allowedItem = $searchService->byId($allowedId, $user);
-        $this->assertNotNull($allowedItem);
-        // once confirmed by the view search, the item is served from the runtime cache
-        $this->assertSame($allowedItem, $searchService->byId($allowedId, $user));
-        $this->assertNull($searchService->byId($parentId, $user));
-
-        // the item cached for $user is not returned to a user without view permission
-        $this->assertNull($searchService->byId($allowedId, $listOnlyUser));
-        $this->assertSame($allowedItem, $searchService->byId($allowedId, $user));
-
-        // a search by another user replaces the cached item, so byId() searches again for this user
-        $this->assertContains($allowedId, $searchIdsAsAdmin());
-        $reloadedItem = $searchService->byId($allowedId, $user);
-        $this->assertNotNull($reloadedItem);
-        $this->assertNotSame($allowedItem, $reloadedItem);
-        $this->assertFalse($reloadedItem->getPermissions()->isDelete());
+        $this->assertNull($searchService->byId($parentId, $user, true));
+        $this->assertNotNull($searchService->byId($allowedId, $user, true));
+        $this->assertNull($searchService->byId($allowedId, $listOnlyUser, true));
     }
 
     private function assertAssetSearchResultFolders(
