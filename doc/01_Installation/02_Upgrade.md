@@ -9,6 +9,10 @@ description: Version-specific upgrade instructions and breaking changes for the 
 - [Permissions] Searches that check a permission other than `list` (for example `byId()`, which checks `view`) no
   longer return the parent elements of a user's workspaces. As in Pimcore core, only `list` includes them, so the
   tree can show the way down to an allowed element.
+- [Permissions] Fixed: a workspace now only applies to its own path and the paths below it. Before, the permission
+  check also applied it to any path that merely contained the workspace path (for example `/Products` to
+  `/Archive/Products/2024`), and the search query treated a workspace such as `/Products2` as lying below
+  `/Products`. Effective permissions and search results for elements below such paths change accordingly.
 
 ## Upgrade to 2026.3.0
 
