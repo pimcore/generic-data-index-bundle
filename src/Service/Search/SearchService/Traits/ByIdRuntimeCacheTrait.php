@@ -22,6 +22,12 @@ use Pimcore\Model\User;
  * permission they were loaded with, so for restricted users a cached item is only returned if it is the item
  * that a view search for this user returned.
  *
+ * The check compares object identity: the search helpers save each hydrated item under the shared cache key, and
+ * the same instance is stored under the user's view key here. A later search replaces the shared entry with a new
+ * instance, so the identity check fails, and an index update clears it, so the lookup misses. Either way byId()
+ * searches again. If hydration ever returned a copy instead of the cached instance, byId() would always search,
+ * which stays correct but skips the cache.
+ *
  * @internal
  */
 trait ByIdRuntimeCacheTrait
