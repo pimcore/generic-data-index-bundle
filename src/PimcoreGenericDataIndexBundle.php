@@ -19,12 +19,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\SearchMod
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Compiler\ServiceLocatorPass;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\PimcoreGenericDataIndexExtension;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\DependencyInjection\ServiceTag;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorInterface;
 use Pimcore\Bundle\OpenSearchClientBundle\PimcoreOpenSearchClientBundle;
 use Pimcore\Bundle\StaticResolverBundle\PimcoreStaticResolverBundle;
 use Pimcore\Extension\Bundle\AbstractPimcoreBundle;
 use Pimcore\Extension\Bundle\Installer\InstallerInterface;
-use Pimcore\Extension\Bundle\PimcoreBundleAdminClassicInterface;
-use Pimcore\Extension\Bundle\Traits\BundleAdminClassicTrait;
 use Pimcore\HttpKernel\Bundle\DependentBundleInterface;
 use Pimcore\HttpKernel\BundleCollection\BundleCollection;
 use ReflectionMethod;
@@ -33,12 +32,8 @@ use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 
-class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements
-    PimcoreBundleAdminClassicInterface,
-    DependentBundleInterface
+class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements DependentBundleInterface
 {
-    use BundleAdminClassicTrait;
-
     public function getContainerExtension(): ExtensionInterface
     {
         return new PimcoreGenericDataIndexExtension();
@@ -52,6 +47,10 @@ class PimcoreGenericDataIndexBundle extends AbstractPimcoreBundle implements
     public function build(ContainerBuilder $container): void
     {
         $this->registerSearchModifierAttribute($container);
+
+        $container
+            ->registerForAutoconfiguration(SearchBodyProcessorInterface::class)
+            ->addTag(ServiceTag::SEARCH_BODY_PROCESSOR->value);
 
         $container
             ->addCompilerPass(new ServiceLocatorPass())

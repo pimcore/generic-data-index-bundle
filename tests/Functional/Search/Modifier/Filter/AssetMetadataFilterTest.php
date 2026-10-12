@@ -238,11 +238,10 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
 
         $this->assertEquals([$asset->getId()], $searchResult->getIds());
 
+        $nonExistentId = $asset->getId() + 1000;
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            // an id above the freshly created one: a literal id (e.g. 123) collides with the
-            // auto-increment id of the test's own element once enough elements were created before
-            ->addModifier(new AssetMetaDataFilter('testAsset', 'asset', [$asset->getId(), $asset->getId() + 1000]))
+            ->addModifier(new AssetMetaDataFilter('testAsset', 'asset', [$asset->getId(), $nonExistentId]))
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -251,7 +250,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new AssetMetaDataFilter('testAsset', 'asset', [$asset->getId() + 1000]))
+            ->addModifier(new AssetMetaDataFilter('testAsset', 'asset', [$nonExistentId]))
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -281,11 +280,10 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
 
         $this->assertEquals([$asset->getId()], $searchResult->getIds());
 
+        $nonExistentId = $document->getId() + 1000;
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(
-                new AssetMetaDataFilter('testDocument', 'document', [$document->getId(), $document->getId() + 1000])
-            )
+            ->addModifier(new AssetMetaDataFilter('testDocument', 'document', [$document->getId(), $nonExistentId]))
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -294,7 +292,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new AssetMetaDataFilter('testDocument', 'document', [$document->getId() + 1000]))
+            ->addModifier(new AssetMetaDataFilter('testDocument', 'document', [$nonExistentId]))
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -324,9 +322,10 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
 
         $this->assertEquals([$asset->getId()], $searchResult->getIds());
 
+        $nonExistentId = $object->getId() + 1000;
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new AssetMetaDataFilter('testObject', 'object', [$object->getId(), $object->getId() + 1000]))
+            ->addModifier(new AssetMetaDataFilter('testObject', 'object', [$object->getId(), $nonExistentId]))
         ;
 
         $searchResult = $searchService->search($assetSearch);
@@ -335,7 +334,7 @@ class AssetMetadataFilterTest extends \Codeception\Test\Unit
 
         $assetSearch = $searchProvider
             ->createAssetSearch()
-            ->addModifier(new AssetMetaDataFilter('testObject', 'object', [$object->getId() + 1000]))
+            ->addModifier(new AssetMetaDataFilter('testObject', 'object', [$nonExistentId]))
         ;
 
         $searchResult = $searchService->search($assetSearch);

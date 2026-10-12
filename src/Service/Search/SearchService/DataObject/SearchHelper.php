@@ -64,6 +64,8 @@ final class SearchHelper extends AbstractSearchHelper
             DataObjectSearchResult::class
         );
 
+        $result->setScore($searchResultHit->getScore());
+
         $this->runtimeCacheResolver->save($result, self::OBJECT_SEARCH . '_' . $result->getId());
         $result->setPermissions(
             $this->permissionService->getDataObjectPermissions(

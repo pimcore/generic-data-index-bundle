@@ -33,6 +33,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Throwable;
 
 /**
  * @internal
@@ -124,9 +125,19 @@ final class IndexQueueService implements IndexQueueServiceInterface
             'entries' => count($entries),
         ]);
 
-        try {
+        $processedEntries = [];
 
-            foreach ($entries as $entry) {
+        foreach ($entries as $entry) {
+            try {
+                // Field-level extraction failures (e.g. a missing physical file backing an asset's
+                // thumbnail/text/duration/dimensions) are caught inside the asset-type serialization
+                // handlers and degrade that single field to null; they never reach this catch. Such
+                // an entry is intentionally treated as processed - a missing file will not reappear,
+                // so retrying it forever would be pointless - and is indexed with the fields it could
+                // extract. Only failures that abort handling entirely (e.g. an unresolvable element,
+                // an index/backend error) land here; the entry stays dispatched and is picked up
+                // again by dispatchItems()'s existing 24h staleness reclaim, same as before this fix
+                // isolated failures to a single entry instead of aborting the whole batch.
                 $this->logger->debug('Updating index for element', [
                     'dispatchId' => $dispatchId,
                     'elementId' => $entry->getElementId(),
@@ -135,11 +146,27 @@ final class IndexQueueService implements IndexQueueServiceInterface
                     'indexName' => $entry->getElementIndexName(),
                 ]);
                 $this->handleEntryByOperation($entry->getOperation(), $entry);
+                $processedEntries[] = $entry;
+            } catch (Throwable $e) {
+                $this->logger->error(
+                    sprintf(
+                        '%s failed to update index for element %s and type %s. Error: %s',
+                        IndexQueue::TABLE,
+                        $entry->getElementId(),
+                        $entry->getElementType(),
+                        $e->getMessage()
+                    ),
+                    [
+                        'dispatchId' => $dispatchId,
+                        'exception' => $e,
+                    ]
+                );
             }
+        }
 
+        try {
             $this->bulkOperationService->commit();
-            $this->indexQueueRepository->deleteQueueEntries($entries);
-
+            $this->indexQueueRepository->deleteQueueEntries($processedEntries);
         } catch (Exception $e) {
             $this->logger->error('Processing index queue batch failed', [
                 'dispatchId' => $dispatchId,

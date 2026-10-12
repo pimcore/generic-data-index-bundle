@@ -138,27 +138,26 @@ final class IndexQueueRepository
     {
         $chunks = array_chunk($entries, self::BATCH_SIZE);
         foreach ($chunks as $chunk) {
-            $condition = [];
-
-            /** @var IndexQueue $entry */
-            foreach ($chunk as $entry) {
-                $condition[] = sprintf(
+            $tuples = array_map(
+                fn (IndexQueue $entry) => sprintf(
                     '(%s, %s)',
                     $this->connection->quote((string)$entry->getId()),
                     $this->connection->quote($entry->getOperationTime())
-                );
-            }
-
-            $condition = sprintf('(%s, %s) IN (%s) ORDER BY %s ASC LIMIT %s',
-                $this->connection->quoteIdentifier('id'),
-                $this->connection->quoteIdentifier('operationTime'),
-                implode(',', $condition),
-                $this->connection->quoteIdentifier('id'),
-                self::BATCH_SIZE
+                ),
+                $chunk
             );
 
-            //delete handled entry from queue table
-            $this->connection->executeQuery('DELETE FROM ' . IndexQueue::TABLE . ' WHERE ' . $condition);
+            $this->connection->executeQuery(
+                sprintf(
+                    'DELETE FROM %s WHERE (%s, %s) IN (%s) ORDER BY %s ASC LIMIT %d',
+                    $this->connection->quoteIdentifier(IndexQueue::TABLE),
+                    $this->connection->quoteIdentifier('id'),
+                    $this->connection->quoteIdentifier('operationTime'),
+                    implode(',', $tuples),
+                    $this->connection->quoteIdentifier('id'),
+                    self::BATCH_SIZE
+                )
+            );
         }
     }
 
@@ -175,24 +174,41 @@ final class IndexQueueRepository
         return $this->denormalizer->denormalize($entry, IndexQueue::class);
     }
 
+    /**
+     * @param array<string, string> $columnAliases Associative array mapping alias names to SQL expressions
+     * @param array<string, mixed>  $params        Query parameters for setParameters()
+     * @param array<int|string, string> $whereParameters Column names for WHERE clauses; keys may be numeric
+     *                                                   or operator constants (AND_OPERATOR, OR_OPERATOR)
+     */
     public function generateSelectQuery(
         string $tableName,
-        array $fields,
-        string $idField = 'id',
+        array $columnAliases,
         array $params = [],
         array $whereParameters = []
     ): DBALQueryBuilder {
-        $fields = $this->quoteParameters($fields);
-        array_unshift($fields, $idField);
+        $selectExpressions = [];
+        foreach ($columnAliases as $alias => $expression) {
+            /** @phpstan-ignore function.impossibleType (runtime guard for callers without static analysis) */
+            if (is_int($alias)) {
+                throw new \InvalidArgumentException(
+                    sprintf(
+                        'Column aliases must be an associative array with string keys '
+                        . '(alias => expression), got numeric key %d for expression "%s".',
+                        $alias,
+                        $expression
+                    )
+                );
+            }
+            $selectExpressions[] = $expression . ' AS ' . $alias;
+        }
 
         $qb = $this->connection->createQueryBuilder()
-            ->addSelect(...$fields)
+            ->addSelect(...$selectExpressions)
             ->from($tableName);
 
         $this->addWhereStatements($qb, $whereParameters);
 
         if (!empty($params)) {
-            $params = $this->quoteParameters($params);
             $qb->setParameters($params);
         }
 
@@ -331,20 +347,6 @@ final class IndexQueueRepository
             ->createQueryBuilder($alias);
     }
 
-    private function quoteParameters(array $parameters): array
-    {
-        return array_map(
-            function ($parameter) {
-                if (is_string($parameter)) {
-                    return $this->connection->quote($parameter);
-                }
-
-                return $parameter;
-            },
-            $parameters
-        );
-    }
-
     private function addWhereStatements(DBALQueryBuilder $queryBuilder, array $whereParameters): DBALQueryBuilder
     {
         foreach ($whereParameters as $operator => $parameter) {
@@ -433,54 +435,27 @@ final class IndexQueueRepository
         return $this->connection->executeStatement($insertSql, $insertParams);
     }
 
-    /*
-    * @TODO: Refactor to avoid that all values have to be in a specific order. Either use aliases or pass the keys as parameters.
-    * Both things can be considered breaking changes.
-    *
-    * @param list<string|int> $ids       Element IDs (flat list)
-    * @param array<string, mixed> $metaData First row from the query result, used to extract element type, operation, etc.
-    *
-    * @return array{0: list<string|int>, 1: string, 2: string, 3: int, 4: string|null}|array{}
-    */
+    /**
+     * Extracts values from a result chunk that uses named column aliases.
+     * Expected aliases: elementId, elementType, elementIndexName, operation, operationTime.
+     *
+     * @param list<string|int>     $ids      Element IDs (flat list) for the current chunk
+     * @param array<string, mixed> $metaData First row of the query result, providing element type, operation, etc.
+     *
+     * @return array{0: list<string|int>, 1: string, 2: string, 3: int, 4: string|null}|array{}
+     */
     private function getValuesFromSqlResult(array $ids, array $metaData): array
     {
         if (empty($ids)) {
             return [];
         }
 
-        $keys = array_keys($metaData);
-        $columnCount = count($keys);
-
-        $elementType = $metaData[$keys[1]];
-
-        $elementIndexName = match ($elementType) {
-            ElementType::ASSET->value, ElementType::DOCUMENT->value => $elementType,
-            ElementType::DATA_OBJECT->value => $metaData['className'] ??
-            $metaData[
-                $keys[2]
-            ] ??
-            null,
-            default => null,
-        };
-
-        $operation = $metaData[
-            $keys[
-                    $columnCount > 5 ? 3 : 2
-            ]
-        ];
-
-        $operationTime = (int)$metaData[
-            $keys[
-                $columnCount > 5 ? 4 : 3
-            ]
-        ];
-
         return [
             $ids,
-            $elementType,
-            $operation,
-            $operationTime,
-            $elementIndexName,
+            $metaData['elementType'],
+            $metaData['operation'],
+            (int)$metaData['operationTime'],
+            $metaData['elementIndexName'] ?? null,
         ];
     }
 

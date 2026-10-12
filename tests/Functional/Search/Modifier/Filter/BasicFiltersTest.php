@@ -208,6 +208,28 @@ class BasicFiltersTest extends \Codeception\Test\Unit
         $this->assertEmpty($searchResult->getItems());
     }
 
+    public function testNumberFilterDistinguishesAdjacentLargeIntegers()
+    {
+        // consecutive values above 2^25 collapse to the same float32 bit pattern
+        $searchTerm = 41187538;
+        $expected = $this->tester->createFullyFledgedObjectUnittest();
+        $expected->setIntegerNumber($searchTerm)->save();
+        foreach ([41187534, 41187535, 41187536, 41187537] as $neighbour) {
+            $this->tester->createFullyFledgedObjectUnittest()->setIntegerNumber($neighbour)->save();
+        }
+
+        /** @var DataObjectSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService(DataObjectSearchServiceInterface::class);
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $search = $searchProvider->createDataObjectSearch();
+        $search->addModifier(new NumberFilter('integerNumber', $searchTerm));
+        $searchResult = $searchService->search($search);
+        $this->assertCount(1, $searchResult->getItems());
+        $this->assertEquals($expected->getId(), $searchResult->getItems()[0]->getId());
+    }
+
     public function testBooleanFilter()
     {
         $objects = TestHelper::createEmptyObjects(count: 3);

@@ -83,6 +83,7 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
                     pageSize: $dataObjectSearch->getPageSize()
                 ),
                 aggregations: $searchResult->getAggregations(),
+                maxScore: $searchResult->getMaxScore(),
             );
         } catch (Exception $e) {
             throw new DataObjectSearchException($e->getMessage());

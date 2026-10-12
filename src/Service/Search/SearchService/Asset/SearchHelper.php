@@ -64,6 +64,8 @@ final class SearchHelper extends AbstractSearchHelper
             AssetSearchResult::class
         );
 
+        $result->setScore($searchResultHit->getScore());
+
         $this->runtimeCacheResolver->save($result, self::ASSET_SEARCH . '_' . $result->getId());
         $result->setPermissions(
             $this->permissionService->getAssetPermissions(

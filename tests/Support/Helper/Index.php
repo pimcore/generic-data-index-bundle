@@ -187,6 +187,10 @@ class Index extends Model
             $panel->addChild($this->createDataChild('lastname'));
 
             $panel->addChild($this->createDataChild('numeric', 'number'));
+            /** @var ClassDefinition\Data\Numeric $integerNumber */
+            $integerNumber = $this->createDataChild('numeric', 'integerNumber');
+            $integerNumber->setInteger(true);
+            $panel->addChild($integerNumber);
 
             $passwordField = $this->createDataChild('password');
 

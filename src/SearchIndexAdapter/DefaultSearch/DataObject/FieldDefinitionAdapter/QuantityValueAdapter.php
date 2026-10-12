@@ -14,19 +14,24 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
+use Pimcore\Model\DataObject\ClassDefinition\Data\QuantityValue;
 
 /**
  * @internal
  */
 final class QuantityValueAdapter extends AbstractAdapter
 {
+    use NumericMappingTrait;
+
     public function getIndexMapping(): array
     {
+        $fieldDefinition = $this->getFieldDefinition();
+
         return [
             'properties' => [
-                'value' => [
-                    'type' => AttributeType::FLOAT->value,
-                ],
+                'value' => $this->getNumericMapping(
+                    $fieldDefinition instanceof QuantityValue && $fieldDefinition->getInteger()
+                ),
                 'unitId' => [
                     'type' => AttributeType::TEXT->value,
                 ],

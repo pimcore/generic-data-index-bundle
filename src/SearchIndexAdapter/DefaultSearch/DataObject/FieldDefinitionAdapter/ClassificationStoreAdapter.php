@@ -64,8 +64,15 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
         $groups = $this->getClassificationStoreGroups($classificationStore->getStoreId());
         foreach ($groups as $group) {
+            $groupName = $this->normalizeNameSegment($group->getName(), 'group', $group->getId(), true);
+            if ($groupName === null
+                || $this->isTakenNameSegment($mapping, $groupName, $group->getName(), 'group', $group->getId(), true)
+            ) {
+                continue;
+            }
+
             $keys = $this->getClassificationStoreKeysFromGroup($group);
-            $mapping[$group->getName()]['properties'] = $this->getMappingForGroupConfig($keys);
+            $mapping[$groupName]['properties'] = $this->getMappingForGroupConfig($keys);
         }
 
         return [
@@ -89,20 +96,53 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $resultItems = [];
 
         foreach ($this->getActiveGroups($value) as $groupId => $groupConfig) {
-            $resultItems[$groupConfig->getName()] = [];
-            $keys = $this->getClassificationStoreKeysFromGroup($groupConfig);
-            foreach ($validLanguages as $validLanguage) {
-                foreach ($keys as $key) {
-                    $normalizedValue = $this->getNormalizedValue($value, $groupId, $key, $validLanguage);
+            $groupName = $this->normalizeNameSegment($groupConfig->getName(), 'group', $groupId);
+            if ($groupName === null
+                || $this->isTakenNameSegment($resultItems, $groupName, $groupConfig->getName(), 'group', $groupId)
+            ) {
+                continue;
+            }
 
-                    if ($normalizedValue !== null) {
-                        $resultItems[$groupConfig->getName()][$validLanguage][$key->getName()] = $normalizedValue;
-                    }
+            $resultItems[$groupName] = $this->normalizeGroupValues($value, $groupId, $groupConfig, $validLanguages);
+        }
+
+        return $resultItems;
+    }
+
+    /**
+     * @param GroupConfig $groupConfig
+     * @param string[] $validLanguages
+     */
+    private function normalizeGroupValues(
+        ClassificationstoreModel $value,
+        int $groupId,
+        GroupConfig $groupConfig,
+        array $validLanguages
+    ): array {
+        $normalizedGroup = [];
+        $keys = $this->getClassificationStoreKeysFromGroup($groupConfig);
+
+        foreach ($validLanguages as $validLanguage) {
+            $usedKeyNames = [];
+
+            foreach ($keys as $key) {
+                $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId());
+                if ($keyName === null
+                    || $this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId())
+                ) {
+                    continue;
+                }
+
+                $usedKeyNames[$keyName] = true;
+                $normalizedValue = $this->getNormalizedValue($value, $groupId, $key, $validLanguage);
+
+                if ($normalizedValue !== null) {
+                    $normalizedGroup[$validLanguage][$keyName] = $normalizedValue;
                 }
             }
         }
 
-        return $resultItems;
+        return $normalizedGroup;
     }
 
     /**
@@ -205,6 +245,97 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         return $activeGroups;
     }
 
+    /**
+     * The search index splits a field path on dots, so a name segment must not add an empty component:
+     * "object field starting or ending with a [.] makes object resolution ambiguous". A classification
+     * store group or key name may carry a leading, trailing or doubled dot, and a single such name makes
+     * the whole bulk request fail, so no element of the index gets updated at all.
+     *
+     * Empty components are therefore dropped: ".A" and "A." become "A", "A..B" becomes "A.B". A name that
+     * contributes no empty component is returned unchanged, so nothing that indexes today is affected. A
+     * name consisting only of dots has nothing left and is skipped.
+     *
+     * Diagnostics are reported only from the mapping paths, which run once per index update. The document
+     * paths run per element and per locale and would otherwise repeat the same line for every object in
+     * the index.
+     */
+    private function normalizeNameSegment(
+        string $name,
+        string $type,
+        int|string|null $id,
+        bool $reportDiagnostics = false
+    ): ?string {
+        if (!str_contains($name, '.')) {
+            return $name;
+        }
+
+        $normalized = implode('.', array_filter(explode('.', $name), static fn (string $part): bool => $part !== ''));
+
+        if ($normalized === $name) {
+            return $normalized;
+        }
+
+        if ($normalized === '') {
+            if ($reportDiagnostics) {
+                $this->logger->warning(sprintf(
+                    'Skipping classification store %s %s: its name "%s" consists only of dots, ' .
+                    'which cannot be used as a search index field name.',
+                    $type,
+                    (string) $id,
+                    $name
+                ));
+            }
+
+            return null;
+        }
+
+        if ($reportDiagnostics) {
+            $this->logger->info(sprintf(
+                'Classification store %s %s is indexed as "%s": its name "%s" would add an empty component ' .
+                'to the field path, which the search index does not allow.',
+                $type,
+                (string) $id,
+                $normalized,
+                $name
+            ));
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Two names that differ only in dot placement - "A." and "A" - normalize to the same segment, and
+     * classification store names are not unique, so the later one would silently overwrite the earlier
+     * one in the mapping, the document and the inheritance path. The first one wins instead; all three
+     * iterate the same listings in the same order, so they drop the same entry.
+     */
+    private function isTakenNameSegment(
+        array $existingNames,
+        string $normalizedName,
+        string $originalName,
+        string $type,
+        int|string|null $id,
+        bool $reportDiagnostics = false
+    ): bool {
+        if (!isset($existingNames[$normalizedName])) {
+            return false;
+        }
+
+        if ($reportDiagnostics) {
+            $this->logger->warning(sprintf(
+                'Skipping classification store %s %s: its name "%s" is indexed as "%s", which is already ' .
+                'used by another %s of the same store.',
+                $type,
+                (string) $id,
+                $originalName,
+                $normalizedName,
+                $type
+            ));
+        }
+
+        return true;
+    }
+
     private function getInheritancePath(string $key, string $groupName, string $groupKeyName, string $lang): string
     {
         $path = $key . '.' . $groupName . '.' . $groupKeyName;
@@ -227,28 +358,60 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             return $mapping;
         }
 
+        $usedGroupNames = [];
+
         foreach ($groups as $group) {
             if (!in_array($group->getId(), $activeGroups, true)) {
                 continue;
             }
 
-            $mapping[$group->getId()] = [
-                'name' => $group->getName(),
-            ];
-            $keys = $this->getClassificationStoreKeysFromGroup($group);
-            foreach ($keys as $groupKey) {
-                $definition = $this->getFieldDefinitionForKey($groupKey);
-                if ($definition === null) {
-                    continue;
-                }
-                $mapping[$groupKey->getGroupId()]['keys'][$groupKey->getKeyId()] = [
-                    'name' => $groupKey->getName(),
-                    'definition' => $definition,
-                ];
+            $groupName = $this->normalizeNameSegment($group->getName(), 'group', $group->getId());
+            if ($groupName === null
+                || $this->isTakenNameSegment($usedGroupNames, $groupName, $group->getName(), 'group', $group->getId())
+            ) {
+                continue;
             }
+
+            $usedGroupNames[$groupName] = true;
+            $mapping[$group->getId()] = [
+                'name' => $groupName,
+                'keys' => $this->getKeyMappingForInheritance($group),
+            ];
         }
 
         return $mapping;
+    }
+
+    /**
+     * @return array<int, array{name: string, definition: Data}>
+     */
+    private function getKeyMappingForInheritance(GroupConfig $group): array
+    {
+        $keyMapping = [];
+        $usedKeyNames = [];
+
+        foreach ($this->getClassificationStoreKeysFromGroup($group) as $groupKey) {
+            $definition = $this->getFieldDefinitionForKey($groupKey);
+            if ($definition === null) {
+                continue;
+            }
+
+            $keyId = $groupKey->getKeyId();
+            $keyName = $this->normalizeNameSegment($groupKey->getName(), 'key', $keyId);
+            if ($keyName === null
+                || $this->isTakenNameSegment($usedKeyNames, $keyName, $groupKey->getName(), 'key', $keyId)
+            ) {
+                continue;
+            }
+
+            $usedKeyNames[$keyName] = true;
+            $keyMapping[$keyId] = [
+                'name' => $keyName,
+                'definition' => $definition,
+            ];
+        }
+
+        return $keyMapping;
     }
 
     /**
@@ -283,9 +446,18 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
             $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($definition);
 
-            if ($adapter) {
-                $groupMapping['default']['properties'][$key->getName()] = $adapter->getIndexMapping();
+            $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId(), true);
+
+            if ($adapter === null || $keyName === null) {
+                continue;
             }
+
+            $properties = $groupMapping['default']['properties'] ?? [];
+            if ($this->isTakenNameSegment($properties, $keyName, $key->getName(), 'key', $key->getKeyId(), true)) {
+                continue;
+            }
+
+            $groupMapping['default']['properties'][$keyName] = $adapter->getIndexMapping();
         }
 
         return $groupMapping;

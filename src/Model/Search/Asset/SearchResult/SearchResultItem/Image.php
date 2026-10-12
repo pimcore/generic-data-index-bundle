@@ -17,7 +17,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetS
 
 class Image extends AssetSearchResultItem
 {
-    private ?string $thumbnail;
+    private string $thumbnail;
 
     private int $width;
 

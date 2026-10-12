@@ -13,23 +13,26 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter;
 
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
+use Pimcore\Model\DataObject\ClassDefinition\Data\NumericRange;
 
 /**
  * @internal
  */
 final class NumericRangeAdapter extends AbstractAdapter
 {
+    use NumericMappingTrait;
+
     public function getIndexMapping(): array
     {
+        $fieldDefinition = $this->getFieldDefinition();
+        $numericMapping = $this->getNumericMapping(
+            $fieldDefinition instanceof NumericRange && $fieldDefinition->getInteger()
+        );
+
         return [
             'properties' => [
-                'maximum' => [
-                    'type' => AttributeType::FLOAT->value,
-                ],
-                'minimum' => [
-                    'type' => AttributeType::FLOAT->value,
-                ],
+                'maximum' => $numericMapping,
+                'minimum' => $numericMapping,
             ],
         ];
     }

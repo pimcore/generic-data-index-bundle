@@ -1,3 +1,8 @@
+---
+title: Index Snapshots
+description: Export the search indices into a portable bundle and import them into another installation without a full reindex.
+---
+
 # Index Snapshots
 
 A full reindex of a large installation takes hours. A snapshot bundle lets you export all search

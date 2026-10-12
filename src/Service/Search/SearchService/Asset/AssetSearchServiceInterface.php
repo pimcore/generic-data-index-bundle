@@ -35,5 +35,5 @@ interface AssetSearchServiceInterface
     /**
      * @throws AssetSearchException
      */
-    public function byId(int $id, ?User $user = null): ?AssetSearchResultItem;
+    public function byId(int $id, ?User $user = null, bool $forceReload = false): ?AssetSearchResultItem;
 }

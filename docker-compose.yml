@@ -1,6 +1,6 @@
 services:
     php-generic-data-index-bundle:
-        image: pimcore/pimcore:php8.3-latest
+        image: pimcore/pimcore:php8.4-latest
         environment:
             PHP_IDE_CONFIG: serverName=localhost
         volumes:

@@ -15,7 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection;
 
 use Exception;
 use InvalidArgumentException;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ClientType;
 use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\DispatchQueueMessagesHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -24,13 +23,16 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkChunk
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkDispatcherFactory;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
+use Pimcore\SearchClient\SearchClientInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface as DIContainerInterface;
+use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
-use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\Yaml\Exception\ParseException;
 use Symfony\Component\Yaml\Yaml;
 
@@ -119,8 +121,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         );
         $resolverDefinition->setArgument('$configuredMode', $indexSettings['calculated_fields_index_mode']);
 
-        $clientId = $this->getDefaultSearchClientId($indexSettings);
-        $container->setAlias('generic-data-index.search-client', $clientId);
+        $this->registerSearchClient($container, $indexSettings['client_params']);
 
         $container->setParameter(
             'generic-data-index.index-prefix',
@@ -191,20 +192,31 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
         }
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
-    private function getDefaultSearchClientId(array $indexSettings): string
+    private function registerSearchClient(ContainerBuilder $container, array $clientParams): void
     {
-        $clientType = $indexSettings['client_params']['client_type'];
-        $clientName = $indexSettings['client_params']['client_name'];
+        $clientType = $clientParams['client_type'];
+        $clientName = $clientParams['client_name'];
 
-        return match ($clientType) {
-            ClientType::OPEN_SEARCH->value => 'pimcore.openSearch.custom_client.' . $clientName,
-            ClientType::ELASTIC_SEARCH->value => 'pimcore.elasticsearch.custom_client.' . $clientName,
-            default => throw new InvalidArgumentException(
-                sprintf('Invalid client type: %s', $indexSettings['client_params']['client_type'])
-            )
-        };
+        // Build the factory with NULL_ON_INVALID_REFERENCE so an uninstalled client bundle
+        // only triggers an error when that client type is actually requested at runtime.
+        $factoryDef = (new Definition(SearchClientFactory::class))
+            ->setArguments([
+                '$clientType' => $clientType,
+                '$openSearchClient' => new Reference(
+                    'pimcore.openSearch.custom_client.' . $clientName,
+                    DIContainerInterface::NULL_ON_INVALID_REFERENCE
+                ),
+                '$elasticsearchClient' => new Reference(
+                    'pimcore.elasticsearch.custom_client.' . $clientName,
+                    DIContainerInterface::NULL_ON_INVALID_REFERENCE
+                ),
+            ])
+            ->setPublic(false);
+        $container->setDefinition('generic-data-index.search-client-factory', $factoryDef);
+
+        $clientDef = (new Definition(SearchClientInterface::class))
+            ->setFactory([new Reference('generic-data-index.search-client-factory'), 'resolve'])
+            ->setPublic(false);
+        $container->setDefinition('generic-data-index.search-client', $clientDef);
     }
 }

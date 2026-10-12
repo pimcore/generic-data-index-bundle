@@ -34,5 +34,5 @@ interface DocumentSearchServiceInterface
     /**
      * @throws DocumentSearchException
      */
-    public function byId(int $id, ?User $user = null): ?DocumentSearchResultItem;
+    public function byId(int $id, ?User $user = null, bool $forceReload = false): ?DocumentSearchResultItem;
 }

@@ -39,6 +39,8 @@ final class IndexUpdateCommand extends AbstractCommand
 
     private const OPTION_UPDATE_ASSET_INDEX = 'update-asset-index';
 
+    private const OPTION_UPDATE_DOCUMENT_INDEX = 'update-document-index';
+
     private const OPTION_RECREATE_INDEX = 'recreate_index';
 
     private const UPDATE_GLOBAL_ALIASES_ONLY = 'update-global-aliases-only';
@@ -83,6 +85,13 @@ final class IndexUpdateCommand extends AbstractCommand
                 'a',
                 InputOption::VALUE_NONE,
                 'Update mapping and data for asset index',
+                null
+            )
+            ->addOption(
+                self::OPTION_UPDATE_DOCUMENT_INDEX,
+                'd',
+                InputOption::VALUE_NONE,
+                'Update mapping and data for document index',
                 null
             )
             ->addOption(
@@ -133,54 +142,29 @@ final class IndexUpdateCommand extends AbstractCommand
 
         if ($classDefinitionId) {
             $updateAll = false;
-
-            try {
-                $classDefinition = ClassDefinition::getById($classDefinitionId);
-                if (!$classDefinition) {
-                    throw new IdNotFoundException(
-                        sprintf('ClassDefinition with id %s not found', $classDefinitionId)
-                    );
-                }
-
-                $this->output->writeln(
-                    sprintf(
-                        '<info>Update index and indices for ClassDefinition with id %s</info>',
-                        $classDefinitionId
-                    ),
-                    OutputInterface::VERBOSITY_NORMAL
-                );
-
-                $this
-                    ->indexUpdateService
-                    ->updateClassDefinition($classDefinition);
-            } catch (Exception $e) {
+            if (!$this->updateClassDefinition($classDefinitionId)) {
                 $failed = true;
-                $this->writeSectionError(sprintf('Updating ClassDefinition %s', $classDefinitionId), $e);
             }
         }
 
         if ($input->getOption(self::OPTION_UPDATE_ASSET_INDEX)) {
             $updateAll = false;
-
-            try {
-                $output->writeln(
-                    '<info>Update asset index</info>',
-                    OutputInterface::VERBOSITY_NORMAL
-                );
-
-                $this
-                    ->indexUpdateService
-                    ->updateAssets();
-            } catch (Exception $e) {
+            if (!$this->updateAssets()) {
                 $failed = true;
-                $this->writeSectionError('Updating asset index', $e);
+            }
+        }
+
+        if ($input->getOption(self::OPTION_UPDATE_DOCUMENT_INDEX)) {
+            $updateAll = false;
+            if (!$this->updateDocuments()) {
+                $failed = true;
             }
         }
 
         if ($updateAll) {
             try {
                 $this->output->writeln(
-                    '<info>Update all mappings and indices for objects/assets</info>',
+                    '<info>Update all mappings and indices for objects/assets/documents</info>',
                     OutputInterface::VERBOSITY_NORMAL
                 );
 
@@ -217,6 +201,76 @@ final class IndexUpdateCommand extends AbstractCommand
         $this->output->writeln('<info>Finished</info>', OutputInterface::VERBOSITY_NORMAL);
 
         return self::SUCCESS;
+    }
+
+    private function updateClassDefinition(string $classDefinitionId): bool
+    {
+        try {
+            $classDefinition = ClassDefinition::getById($classDefinitionId);
+            if (!$classDefinition) {
+                throw new IdNotFoundException(
+                    sprintf('ClassDefinition with id %s not found', $classDefinitionId)
+                );
+            }
+
+            $this->output->writeln(
+                sprintf(
+                    '<info>Update index and indices for ClassDefinition with id %s</info>',
+                    $classDefinitionId
+                ),
+                OutputInterface::VERBOSITY_NORMAL
+            );
+
+            $this
+                ->indexUpdateService
+                ->updateClassDefinition($classDefinition);
+        } catch (Exception $e) {
+            $this->writeSectionError(sprintf('Updating ClassDefinition %s', $classDefinitionId), $e);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function updateAssets(): bool
+    {
+        try {
+            $this->output->writeln(
+                '<info>Update asset index</info>',
+                OutputInterface::VERBOSITY_NORMAL
+            );
+
+            $this
+                ->indexUpdateService
+                ->updateAssets();
+        } catch (Exception $e) {
+            $this->writeSectionError('Updating asset index', $e);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private function updateDocuments(): bool
+    {
+        try {
+            $this->output->writeln(
+                '<info>Update document index</info>',
+                OutputInterface::VERBOSITY_NORMAL
+            );
+
+            $this
+                ->indexUpdateService
+                ->updateDocuments();
+        } catch (Exception $e) {
+            $this->writeSectionError('Updating document index', $e);
+
+            return false;
+        }
+
+        return true;
     }
 
     /**

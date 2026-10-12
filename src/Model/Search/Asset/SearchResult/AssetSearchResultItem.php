@@ -15,10 +15,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ElementSearchResultItemInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\ScoreAwareResultItemInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Permission\AssetPermissions;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\AssetLazyLoadingHandlerInterface;
 
-class AssetSearchResultItem implements ElementSearchResultItemInterface
+class AssetSearchResultItem implements ElementSearchResultItemInterface, ScoreAwareResultItemInterface
 {
     private int $id;
 
@@ -54,6 +55,8 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
     private bool $hasChildren;
 
     private array $searchIndexData;
+
+    private ?float $score = null;
 
     private AssetPermissions $permissions;
 
@@ -284,6 +287,18 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
     public function setSearchIndexData(array $searchIndexData): AssetSearchResultItem
     {
         $this->searchIndexData = $searchIndexData;
+
+        return $this;
+    }
+
+    public function getScore(): ?float
+    {
+        return $this->score;
+    }
+
+    public function setScore(?float $score): AssetSearchResultItem
+    {
+        $this->score = $score;
 
         return $this;
     }

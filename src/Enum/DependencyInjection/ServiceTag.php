@@ -29,4 +29,5 @@ enum ServiceTag: string
     case PQL_FIELD_NAME_TRANSFORMER = 'pimcore.generic_data_index.pql_field_name_transformer';
     case PQL_FIELD_NAME_TRANSFORMER_SORT = 'pimcore.generic_data_index.pql_field_name_transformer_sort';
     case PQL_FIELD_NAME_VALIDATOR = 'pimcore.generic_data_index.pql_field_name_validator';
+    case SEARCH_BODY_PROCESSOR = 'pimcore.generic_data_index.search_body_processor';
 }

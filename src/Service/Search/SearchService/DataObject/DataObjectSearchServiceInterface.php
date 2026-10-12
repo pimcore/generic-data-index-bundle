@@ -34,5 +34,5 @@ interface DataObjectSearchServiceInterface
     /**
      * @throws DataObjectSearchException
      */
-    public function byId(int $id, ?User $user = null): ?DataObjectSearchResultItem;
+    public function byId(int $id, ?User $user = null, bool $forceReload = false): ?DataObjectSearchResultItem;
 }

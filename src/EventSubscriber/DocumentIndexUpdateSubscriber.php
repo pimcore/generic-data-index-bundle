@@ -59,6 +59,10 @@ final readonly class DocumentIndexUpdateSubscriber implements EventSubscriberInt
 
     public function updateDocument(DocumentEvent $event): void
     {
+        if (!$this->installer->isInstalled()) {
+            return;
+        }
+
         $this->indexElementIndexService->updateSiblings($event->getDocument(), ElementType::DOCUMENT->value);
         $this->updateData($event);
     }

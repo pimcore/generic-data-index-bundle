@@ -82,15 +82,15 @@ final class AssetTypeAdapter extends AbstractElementTypeAdapter
         string $operation,
         int $operationTime,
         bool $includeElement = false
-    ): ?QueryBuilder {
+    ): QueryBuilder {
 
         $selects = [
-            (string)$element->getId(),
-            "'" . ElementType::ASSET->value . "'",
-            "'" . IndexName::ASSET->value . "'",
-            "'$operation'",
-            "'$operationTime'",
-            '0',
+            (string)$element->getId() . ' AS elementId',
+            "'" . ElementType::ASSET->value . "' AS elementType",
+            "'" . IndexName::ASSET->value . "' AS elementIndexName",
+            "'$operation' AS operation",
+            "'$operationTime' AS operationTime",
+            '0 AS dispatched',
         ];
 
         return $this->dbConnection->createQueryBuilder()
