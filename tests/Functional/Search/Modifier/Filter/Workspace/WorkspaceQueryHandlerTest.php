@@ -12,6 +12,7 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Search\Modifier\Filter\Workspace;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\SearchResult\DataObjectSearchResultItem;
@@ -807,6 +808,107 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
     }
 
     /**
+     * Uses the core permission check as the expected result, so that list and view searches stay in line with it,
+     * also for allowed sub paths below declined workspaces.
+     *
+     * @see https://github.com/pimcore/generic-data-index-bundle/issues/73
+     *
+     * @param array<string, bool> $workspaces list and view permission per workspace path
+     */
+    #[DataProvider('provideWorkspaceSetups')]
+    public function testAssetSearchMatchesCorePermissionCheck(array $workspaces): void
+    {
+        $this->createTestAssetFolders();
+        $user = $this->createUserWithAssetWorkspaces($workspaces, true);
+
+        $this->assertAssetSearchMatchesCorePermissionCheck($user, PermissionTypes::LIST);
+        $this->assertAssetSearchMatchesCorePermissionCheck($user, PermissionTypes::VIEW);
+    }
+
+    /**
+     * @return array<string, array{array<string, bool>}>
+     */
+    public static function provideWorkspaceSetups(): array
+    {
+        $folder1 = '/test-asset-folder-1';
+        $folder2 = '/test-asset-folder-2';
+        $folder3 = '/test-asset-folder-3';
+        $sub1 = $folder1 . '/sub-folder-1';
+        $subSub1 = $sub1 . '/sub-sub-folder-1';
+        $subSubSub1 = $subSub1 . '/sub-sub-sub-folder-1';
+        $subSubSub2 = $subSub1 . '/sub-sub-sub-folder-2';
+        $subSubSub3 = $subSub1 . '/sub-sub-sub-folder-3';
+
+        return [
+            'two allowed folders' => [[$folder1 => true, $folder2 => true]],
+            'allowed folder with allowed sub folder' => [[$folder1 => true, $sub1 => true]],
+            'allowed leaf folder only' => [[$subSubSub1 => true]],
+            'allowed sub folder only' => [[$subSub1 => true]],
+            'root with declined folder' => [['/' => true, $folder2 => false]],
+            'root with declined folder and sub folder' => [['/' => true, $folder1 => false, $sub1 => false]],
+            'root with declined leaf folder' => [['/' => true, $subSubSub3 => false]],
+            'declined sub folder' => [[$folder1 => true, $sub1 => false]],
+            'declined sub sub folder' => [[$folder1 => true, $subSub1 => false]],
+            'allowed below declined' => [[$folder1 => true, $sub1 => false, $subSub1 => true]],
+            'allowed two levels below declined' => [[$folder1 => true, $sub1 => false, $subSubSub1 => true]],
+            'declined below allowed below declined' => [
+                [$folder1 => true, $sub1 => false, $subSub1 => true, $subSubSub1 => false],
+            ],
+            'allowed below declined below root' => [
+                ['/' => true, $folder1 => false, $sub1 => true, $subSub1 => false, $folder2 => false,
+                    $folder3 => false],
+            ],
+            'allowed below two declined levels' => [
+                [$folder1 => true, $sub1 => false, $subSub1 => false, $subSubSub1 => true],
+            ],
+            'alternating declined and allowed without root' => [
+                ['/' => false, $folder1 => false, $sub1 => true, $subSub1 => false, $subSubSub1 => true,
+                    $subSubSub2 => false],
+            ],
+            'allowed two levels below declined below root' => [
+                ['/' => true, $folder1 => false, $subSub1 => true, $subSubSub2 => false, $folder2 => false,
+                    $folder3 => false],
+            ],
+            'allowed below declined without root' => [[$folder1 => false, $subSub1 => true]],
+            'allowed sub folder below root with declined folder' => [
+                ['/' => true, $folder1 => false, $subSub1 => true],
+            ],
+        ];
+    }
+
+    private function assertAssetSearchMatchesCorePermissionCheck(User $user, PermissionTypes $permissionType): void
+    {
+        /** @var AssetSearchServiceInterface $searchService */
+        $searchService = $this->tester->grabService('generic-data-index.test.service.asset-search-service');
+        /** @var SearchProviderInterface $searchProvider */
+        $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
+
+        $searchResult = $searchService->search(
+            $searchProvider->createAssetSearch()->setUser($user)->setPageSize(100),
+            $permissionType
+        );
+
+        $allowedPaths = [];
+        $byIdPaths = [];
+        foreach ((new Asset\Listing())->load() as $asset) {
+            if ($asset->isAllowed($permissionType->value, $user)) {
+                $allowedPaths[] = $asset->getRealFullPath();
+            }
+            if ($permissionType === PermissionTypes::VIEW && $searchService->byId($asset->getId(), $user)) {
+                $byIdPaths[] = $asset->getRealFullPath();
+            }
+        }
+
+        $this->assertResultItemPaths($allowedPaths, $searchResult->getItems(), $permissionType->value . ' search');
+
+        if ($permissionType === PermissionTypes::VIEW) {
+            sort($allowedPaths);
+            sort($byIdPaths);
+            $this->assertSame($allowedPaths, $byIdPaths, 'byId()');
+        }
+    }
+
+    /**
      * Expects that a list search for $user ran before, so both elements are in the runtime cache that byId() reads.
      *
      * @param callable(): int[] $searchIdsAsAdmin
@@ -896,7 +998,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
     /**
      * @param ElementSearchResultItemInterface[] $items
      */
-    private function assertResultItemPaths(array $expectedPaths, array $items): void
+    private function assertResultItemPaths(array $expectedPaths, array $items, string $message = ''): void
     {
         $paths = array_map(function (ElementSearchResultItemInterface $item) {
             return $item->getPath() . $item->getKey();
@@ -905,7 +1007,7 @@ class WorkspaceQueryHandlerTest extends \Codeception\Test\Unit
         sort($expectedPaths);
         sort($paths);
 
-        $this->assertEquals($expectedPaths, $paths);
+        $this->assertEquals($expectedPaths, $paths, $message);
     }
 
     private function assertElementSearchResultFolders(
