@@ -25,6 +25,24 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
  */
 final class AbstractIndexHandlerChecksumTest extends Unit
 {
+    public function testGetClassMappingCheckSumIgnoresWorkflowPlaces(): void
+    {
+        $indexHandler = $this->getIndexHandler();
+
+        $mapping = ['system_fields' => ['properties' => ['id' => ['type' => 'long']]]];
+        $withWorkflowPlaces = $mapping;
+        $withWorkflowPlaces['system_fields']['properties']['workflowPlaces'] = [
+            'type' => 'object',
+            'dynamic' => false,
+            'properties' => ['product_workflow' => ['type' => 'keyword']],
+        ];
+
+        $this->assertSame(
+            $indexHandler->getClassMappingCheckSum($mapping),
+            $indexHandler->getClassMappingCheckSum($withWorkflowPlaces)
+        );
+    }
+
     /**
      * Numeric-ish keys (e.g. classification store ids) are cast to integers by PHP,
      * and ksort()'s default SORT_REGULAR compares those numerically — so distinct

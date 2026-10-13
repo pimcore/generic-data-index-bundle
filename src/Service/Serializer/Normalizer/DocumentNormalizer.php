@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemF
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\DocumentTypeSerializationHandlerService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
 use Pimcore\Model\Document;
@@ -36,6 +37,7 @@ final class DocumentNormalizer implements NormalizerInterface
         private readonly DocumentTypeSerializationHandlerService $documentTypeSerializationHandlerService,
         private readonly WorkflowServiceInterface $workflowService,
         private readonly DependencyServiceInterface $dependencyService,
+        private readonly WorkflowPlaceServiceInterface $workflowPlaceService,
     ) {
     }
 
@@ -121,6 +123,11 @@ final class DocumentNormalizer implements NormalizerInterface
                 SystemField::TAGS->value => $this->extractTagIds($tags),
                 SystemField::PARENT_TAGS->value => $this->extractParentTagIds($tags),
             ]);
+
+            $workflowPlaces = $this->workflowPlaceService->getPlaces($document);
+            if ($workflowPlaces !== []) {
+                $systemFields[SystemField::WORKFLOW_PLACES->value] = $workflowPlaces;
+            }
         }
 
         return $systemFields;

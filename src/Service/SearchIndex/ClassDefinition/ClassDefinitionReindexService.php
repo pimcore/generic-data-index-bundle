@@ -15,6 +15,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinit
 
 use Exception;
 use JsonException;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
@@ -149,6 +151,11 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
      */
     private function getLegacyClassMappingCheckSum(array $mappingProperties): int
     {
+        // Like the current checksum, ignore workflowPlaces: it does not depend on the class definition.
+        unset(
+            $mappingProperties[FieldCategory::SYSTEM_FIELDS->value]['properties'][SystemField::WORKFLOW_PLACES->value]
+        );
+
         return crc32(json_encode($mappingProperties, JSON_THROW_ON_ERROR));
     }
 }

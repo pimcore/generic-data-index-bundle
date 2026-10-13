@@ -46,6 +46,7 @@ enum SystemField: string
     case USER_MODIFICATION = 'userModification';
     case LOCKED = 'locked';
     case HAS_WORKFLOW_WITH_PERMISSIONS = 'hasWorkflowWithPermissions';
+    case WORKFLOW_PLACES = 'workflowPlaces';
     case FILE_SIZE = 'fileSize';
     case DEPENDENCIES = 'dependencies';
     case IS_REFERENCED = 'isReferenced';

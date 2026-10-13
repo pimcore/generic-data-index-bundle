@@ -80,3 +80,40 @@ pimcore:
                     test-checkbox:
                         name: 'testCheckbox'
                         type: checkbox
+    workflows:
+        # Used by WorkflowPlacesIndexingTest: places stored in element_workflow_state. Only elements whose key starts
+        # with "gdi-wf-" are part of it, so the initial place is not written for elements of other tests.
+        gdi_test_state_table:
+            label: 'GDI test workflow (state table)'
+            type: 'workflow'
+            marking_store:
+                type: 'state_table'
+            support_strategy:
+                type: 'expression'
+                arguments:
+                    - ['Pimcore\Model\DataObject\Concrete', 'Pimcore\Model\Asset', 'Pimcore\Model\Document\Page']
+                    - 'subject.getKey() matches "/^gdi-wf-/"'
+            places:
+                gdi_wf_draft:
+                    label: 'Draft'
+                gdi_wf_edit_text:
+                    label: 'Edit text'
+                gdi_wf_edit_images:
+                    label: 'Edit images'
+                gdi_wf_done:
+                    label: 'Done'
+            transitions:
+                gdi_wf_start_editing:
+                    from: 'gdi_wf_draft'
+                    to: ['gdi_wf_edit_text', 'gdi_wf_edit_images']
+                    options:
+                        label: 'Start editing'
+                gdi_wf_finish_directly:
+                    from: 'gdi_wf_draft'
+                    to: 'gdi_wf_done'
+                    options:
+                        label: 'Finish'
+            globalActions:
+                gdi_wf_reset:
+                    label: 'Reset'
+                    to: ['gdi_wf_draft']

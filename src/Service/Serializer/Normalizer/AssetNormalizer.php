@@ -22,6 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Asset\FieldDefiniti
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataProviderServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandlerService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
 use Pimcore\Model\Asset;
@@ -40,6 +41,7 @@ final class AssetNormalizer implements NormalizerInterface
         private readonly WorkflowServiceInterface $workflowService,
         private readonly MetadataProviderServiceInterface $metadataProviderService,
         private readonly DependencyServiceInterface $dependencyService,
+        private readonly WorkflowPlaceServiceInterface $workflowPlaceService,
     ) {
     }
 
@@ -121,6 +123,11 @@ final class AssetNormalizer implements NormalizerInterface
                 SystemField::TAGS->value => $this->extractTagIds($tags),
                 SystemField::PARENT_TAGS->value => $this->extractParentTagIds($tags),
             ]);
+
+            $workflowPlaces = $this->workflowPlaceService->getPlaces($asset);
+            if ($workflowPlaces !== []) {
+                $systemFields[SystemField::WORKFLOW_PLACES->value] = $workflowPlaces;
+            }
         }
 
         if ($handler = $this->assetTypeSerializationHandlerService->getSerializationHandler($asset->getType())) {

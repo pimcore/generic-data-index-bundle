@@ -6,3 +6,6 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowService
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceService

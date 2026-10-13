@@ -5,6 +5,16 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 # Upgrade Information
 
+## Upgrade to 2026.4.0
+
+- [Indexing] Places of workflows using the `state_table` marking store are indexed in the new system field
+  `workflowPlaces` (keyword per workflow name), see
+  [Workflow Places](../04_Searching_For_Data_In_Index/README.md#workflow-places).
+  Run `bin/console generic-data-index:update:index` to update the mapping and fill the field for existing elements.
+  The `workflowPlaces` mapping depends on the configured `state_table` workflows. It is not part of the class mapping
+  checksum, so `generic-data-index:deployment:reindex` does not reindex every class because of it: run
+  `generic-data-index:update:index` after adding or removing a `state_table` workflow.
+
 ## Upgrade to 2026.3.2
 - [Permissions] Searches that check a permission other than `list` (for example `byId()`, which checks `view`) no
   longer return the parent elements of a user's workspaces. As in Pimcore core, only `list` includes them, so the

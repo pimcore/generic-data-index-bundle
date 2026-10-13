@@ -48,6 +48,33 @@ final class ClassDefinitionReindexServiceTest extends Unit
      *
      * @see https://github.com/pimcore/generic-data-index-bundle/pull/419
      */
+    public function testLegacyCheckSumIgnoresWorkflowPlaces(): void
+    {
+        // A checksum stored before workflowPlaces existed was calculated without it.
+        $withoutWorkflowPlaces = array_merge(self::MAPPING_PROPERTIES, ['system_fields' => ['properties' => []]]);
+        $legacyCheckSum = crc32(json_encode($withoutWorkflowPlaces, JSON_THROW_ON_ERROR));
+        $mappingProperties = $withoutWorkflowPlaces;
+        $mappingProperties['system_fields']['properties']['workflowPlaces'] = [
+            'type' => 'object',
+            'dynamic' => false,
+            'properties' => ['product_workflow' => ['type' => 'keyword']],
+        ];
+
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => $mappingProperties,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'reindexMapping' => Expected::never(),
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
+            'getClassMappingCheckSum' => $legacyCheckSum,
+        ]);
+
+        $updated = $this->createService($handler, $settingsStore)
+            ->reindexClassDefinition($this->createClassDefinition(), true);
+
+        $this->assertFalse($updated);
+    }
+
     public function testLegacyCheckSumIsAcceptedAndReStampedWithoutReindexing(): void
     {
         $legacyCheckSum = crc32(json_encode(self::MAPPING_PROPERTIES, JSON_THROW_ON_ERROR));
