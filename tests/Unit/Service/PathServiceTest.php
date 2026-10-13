@@ -32,6 +32,19 @@ final class PathServiceTest extends Unit
         $this->assertFalse($pathService->isSubPath('/', '/foo'));
         $this->assertFalse($pathService->isSubPath('/foo', '/foo/bar'));
         $this->assertFalse($pathService->isSubPath('/foo', '/asdf'));
+        $this->assertFalse($pathService->isSubPath('/foo2', '/foo'));
+        $this->assertFalse($pathService->isSubPath('/foo2/bar', '/foo'));
+        $this->assertTrue($pathService->isSubPath('/foo/bar', '/foo/'));
+    }
+
+    public function testRemoveSubPathsKeepsSiblingsWithSamePrefix(): void
+    {
+        $pathService = new PathService();
+
+        $this->assertSame(
+            ['/Products', '/Products2'],
+            $pathService->removeSubPaths(['/Products', '/Products2', '/Products/Cars'])
+        );
     }
 
     public function testContainsSubPath(): void

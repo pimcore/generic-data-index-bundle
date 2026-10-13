@@ -3,6 +3,10 @@
 Following steps are necessary during updating to newer versions.
 
 ## Upgrade to 2.5.14
+- [Permissions] Fixed: a workspace now only applies to its own path and the paths below it. Before, the permission
+  check also applied it to any path that merely contained the workspace path (for example `/Products` to
+  `/Archive/Products/2024`), and the search query treated a workspace such as `/Products2` as lying below
+  `/Products`. Effective permissions and search results for elements below such paths change accordingly.
 - [Commands] `generic-data-index:deployment:reindex` has new opt-in options (`--all`, `--assets`, `--dry-run`, …) that
   also cover the folder, asset and document indices and `index_settings`. Without options nothing changes. See
   [Deployment and Index Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).
