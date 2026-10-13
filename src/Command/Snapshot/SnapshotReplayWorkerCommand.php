@@ -31,8 +31,13 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 final class SnapshotReplayWorkerCommand extends AbstractCommand
 {
-    /** @var resource */
-    private $inputStream = STDIN;
+    /**
+     * Null means execute() reads php://stdin. Not STDIN as default: that constant only exists in the CLI SAPI,
+     * and Symfony evaluates property defaults when it rebuilds the container, also in web requests.
+     *
+     * @var resource|null
+     */
+    private $inputStream = null;
 
     public function __construct(
         private readonly BulkSenderInterface $bulkSender,
@@ -62,10 +67,18 @@ final class SnapshotReplayWorkerCommand extends AbstractCommand
             ->addArgument('index', InputArgument::REQUIRED, 'Short name of the index being replayed (for messages)');
     }
 
+    /**
+     * @throws SnapshotImportException when stdin cannot be opened
+     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $index = (string) $input->getArgument('index');
-        while (($line = fgets($this->inputStream)) !== false) {
+        $stream = $this->inputStream ?? fopen('php://stdin', 'rb');
+        if ($stream === false) {
+            throw new SnapshotImportException('Cannot open stdin');
+        }
+
+        while (($line = fgets($stream)) !== false) {
             $path = rtrim($line, "\r\n");
             if ($path === '') {
                 continue;
