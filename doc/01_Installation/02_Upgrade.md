@@ -3,14 +3,11 @@
 Following steps are necessary during updating to newer versions.
 
 ## Upgrade to 2.5.14
-- [Commands] `generic-data-index:deployment:reindex` has new options `--all`, `--classes`, `--folders`, `--assets`,
-  `--documents` and `--dry-run`. With an index option it also detects mapping changes of the folder, asset and
-  document indices (e.g. predefined asset metadata, valid languages from config files), changed `index_settings`
-  and raised data versions (new `index_versions` configuration). Without options the command behaves as before.
-  The first run with an index option only stores the current state as the baseline. See
+- [Commands] `generic-data-index:deployment:reindex` has new opt-in options (`--all`, `--assets`, `--dry-run`, …) that
+  also cover the folder, asset and document indices and `index_settings`. Without options nothing changes. See
   [Deployment and Index Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).
-- [Indexing] A native reindex now fails when the new index cannot be created (e.g. invalid `index_settings`).
-  Before, the search engine created it with dynamic mapping and default settings and the alias was switched to it.
+- [Indexing] A native reindex now fails if the new index cannot be created (e.g. invalid `index_settings`) instead of
+  switching to an index with dynamic mapping.
 
 ## Upgrade to 2.5.13
 - [Commands] Added `generic-data-index:snapshot:export` and `generic-data-index:snapshot:import`. Export writes every
