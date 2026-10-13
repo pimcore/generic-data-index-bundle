@@ -46,6 +46,9 @@
     "friendsofphp/php-cs-fixer": "^3.4",
     "league/flysystem-memory": "^3.0"
   },
+  "conflict": {
+    "pimcore/studio-backend-bundle": "<2026.3.2"
+  },
   "autoload": {
     "psr-4": {
       "Pimcore\\Bundle\\GenericDataIndexBundle\\": "src/"

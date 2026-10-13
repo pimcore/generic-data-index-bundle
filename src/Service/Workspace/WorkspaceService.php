@@ -96,7 +96,7 @@ final readonly class WorkspaceService implements WorkspaceServiceInterface
                     'Provided workspace has unknown type!'
                 );
             }
-            if (str_contains($path, $userWorkspace->getPath())) {
+            if ($this->isPathInWorkspace($path, $userWorkspace->getPath())) {
                 $workspaces[] = $userWorkspace;
             }
         }
@@ -131,10 +131,24 @@ final readonly class WorkspaceService implements WorkspaceServiceInterface
         // matching the classic permission system
         $workspaces = array_values($this->mergeWorkspacesByPath($workspaces));
         usort($workspaces, static function (WorkspaceInterface $a, WorkspaceInterface $b) {
-            return strcmp($b->getPath(), $a->getPath());
+            // all relevant workspaces are parents of the same path, so the longest path is the deepest
+            return strlen($b->getPath()) <=> strlen($a->getPath());
         });
 
         return $workspaces[0];
+    }
+
+    /**
+     * A workspace applies to its own path and to everything below it. Plain substring matching would also apply
+     * `/Products` to `/Archive/Products/2024` or `/Products2`.
+     */
+    private function isPathInWorkspace(string $path, string $workspacePath): bool
+    {
+        $workspacePath = rtrim($workspacePath, '/');
+
+        return $workspacePath === ''
+            || $path === $workspacePath
+            || str_starts_with($path, $workspacePath . '/');
     }
 
     // role grants are additive: a permission granted by any role wins over roles not granting it

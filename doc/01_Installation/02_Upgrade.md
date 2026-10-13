@@ -15,6 +15,17 @@ description: Version-specific upgrade instructions and breaking changes for the 
   checksum, so `generic-data-index:deployment:reindex` does not reindex every class because of it: run
   `generic-data-index:update:index` after adding or removing a `state_table` workflow.
 
+## Upgrade to 2026.3.2
+- [Permissions] Searches that check a permission other than `list` (for example `byId()`, which checks `view`) no
+  longer return the parent elements of a user's workspaces. As in Pimcore core, only `list` includes them, so the
+  tree can show the way down to an allowed element. Requires `pimcore/studio-backend-bundle` 2026.3.2 or later:
+  older versions load the folder of grids and the advanced search with `byId()` and return `404` for users who may
+  only list it, for example the root folder.
+- [Permissions] Fixed: a workspace now only applies to its own path and the paths below it. Before, the permission
+  check also applied it to any path that merely contained the workspace path (for example `/Products` to
+  `/Archive/Products/2024`), and the search query treated a workspace such as `/Products2` as lying below
+  `/Products`. Effective permissions and search results for elements below such paths change accordingly.
+
 ## Upgrade to 2026.3.0
 
 - [Searching] Added the `SearchBodyProcessorInterface` extension point (tag
