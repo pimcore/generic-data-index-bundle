@@ -226,9 +226,9 @@ This command will update the index structure for all data object classes which w
 
 ### Other Index Changes
 
-Without options the command only compares the mapping checksums of the class definitions. With index
-options it also covers the data object folder, asset and document indices, and compares the index
-settings and data versions:
+With index options the command also checks the data object folder, asset and document indices, and compares
+`index_settings` and data versions as well. This covers e.g. predefined asset metadata, valid languages from
+config files, `system_fields_settings`, `search_analyzer_attributes` and `ExtractMappingEvent` fields.
 
 ```
 php bin/console generic-data-index:deployment:reindex --all
@@ -237,15 +237,8 @@ php bin/console generic-data-index:deployment:reindex --all
 | Option | Checked indices |
 | --- | --- |
 | `--all` | All of the below |
-| `--classes` | One per class definition |
-| `--folders` | Data object folders |
-| `--assets` | Assets |
-| `--documents` | Documents |
-| `--dry-run` | Prints the detected changes and the planned action per index, changes nothing |
-
-This picks up deployment-time changes that are not detected without options, for example predefined
-asset metadata, valid languages configured in config files, `system_fields_settings`,
-`search_analyzer_attributes`, fields added by an `ExtractMappingEvent` subscriber and `index_settings`.
+| `--classes` / `--folders` / `--assets` / `--documents` | Only the named indices |
+| `--dry-run` | Prints the planned action per index, changes nothing |
 
 | Detected change | Action |
 | --- | --- |
@@ -254,31 +247,25 @@ asset metadata, valid languages configured in config files, `system_fields_setti
 | Data version | Rebuild from the database |
 | Index missing | Create the index, then rebuild from the database |
 
-A native reindex copies the documents into a new index and switches the alias afterwards. Index updates
-processed while it runs are written to the old index and are lost. Run the command while the index queue
-workers are stopped, or before the application receives changes again.
+The values are stored per index after a successful update; a failed index is retried on the next run. The first
+run with index options only stores the current values as the baseline. If that deployment also changes a
+mapping, run `generic-data-index:update:index` once; for `index_settings`, run `generic-data-index:reindex` once
+(it does not cover the data object folder index).
 
-The values are stored per index once its update was applied and its elements were added to the index
-queue. If updating an index fails, the command exits with an error and the index is updated again on the
-next run. Values that were never stored, e.g. on the first run with index options, are stored as the
-baseline without a reindex. If that deployment also changes the mapping, run
-`generic-data-index:update:index` once; if it changes `index_settings`, run `generic-data-index:reindex`
-once (it does not cover the data object folder index).
+A native reindex switches the alias to a copy of the index; index updates processed during the copy are lost.
+Run the command while the index queue workers are stopped.
 
-Code changes that alter the indexed values without changing the mapping (calculators,
-`UpdateIndexDataEvent` subscribers, custom field definition adapters) cannot be detected. Raise the
-matching version in the same change instead. With `calculated_fields_index_mode: query_store` a rebuild
-reads the stored calculator values, see
+Code changes that alter indexed values without changing the mapping (calculators, `UpdateIndexDataEvent`
+subscribers, custom adapters) are not detected: raise the matching version in the same change. In
+`query_store` mode a rebuild reads the stored calculator values, see
 [Refreshing calculated values after a calculator change](#refreshing-calculated-values-after-a-calculator-change).
 
 ```yaml
 pimcore_generic_data_index:
     index_versions:
-        assets: 1
-        documents: 1
-        folders: 1
+        assets: 1        # also: documents, folders
         classes:
-            CAR: 3 # class definition ID
+            CAR: 3       # class definition ID
 ```
 
 ## Calculated Fields Index Mode
