@@ -188,6 +188,46 @@ Run `deployment:reindex` after every deployment as a safety net. It recalculates
 only classes that differ or have no stored checksum yet. See [Deployment and Index
 Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).
 
+## Avoiding Index Recreation
+
+An index recreation is the one reindex that interrupts search: the class index is empty until the rebuild from the
+database has filled it again. It happens when a field's type changes in a way the existing values don't fit, for
+example input to numeric with text values, date to numeric, or a field changed between an object and a scalar.
+The odd/even copy fails, and the bundle recreates the index instead. Three practices avoid it.
+
+### Expand and Contract Instead of Changing a Type in Place
+
+Treat a type change like a database column migration: add the new field, move the data, switch the consumers,
+remove the old field. Every step is an additive mapping change, which the odd/even copy handles without
+interruption.
+
+1. **Add** a new field with the target type (for example `priceNumeric` next to `price`). Saving the class
+   triggers an odd/even copy; the new field is empty.
+2. **Fill** it: a one-off script that converts the old value and saves each object, or an import. Each save
+   reindexes the object. For large classes, batch the saves and disable versioning for the run.
+3. **Switch** the consumers to the new field: code, grid configurations, Studio listings, PQL filters and
+   Data Hub queries.
+4. **Remove** the old field. The copy succeeds, because a removed field is re-mapped dynamically, and the
+   following rebuild drops it from the documents. Its mapping entry stays until the index is recreated with
+   `update:index -r`; schedule that for a quiet period, or leave it.
+
+A field rename works the same way, because the bundle treats it as a remove plus an add.
+
+### Test the Change Before the Production Deployment
+
+`deployment:reindex --dry-run` reports that the mapping changed, but not whether the existing values fit the new
+type; only the copy itself finds that out. Apply the class change on a staging system with production-like data,
+let the class save or `deployment:reindex` run, and check the log of the `pimcore_generic_data_index` channel:
+the warning `Recreating index for alias "..." : the new mapping is incompatible with the indexed documents` means
+the same change will empty the index in production.
+
+### Schedule Unavoidable Type Changes
+
+If a type has to change in place, deploy it in a quiet period with enough messenger workers running, so the empty
+window stays short, and run `generic-data-index:status` to see when the index queue has drained. Don't use
+`generic-data-index:reindex` for such a change: it never fills the index queue, so an index it recreates stays
+empty.
+
 ## Field Collections, Object Bricks and Classification Store
 
 These definitions are part of the mapping of every class that uses them, but most changes to them fire no class
