@@ -170,7 +170,12 @@ final readonly class IndexStateService implements IndexStateServiceInterface
             return $this->indexVersions['classes'][$classDefinition->getId()] ?? 0;
         }
 
-        return $this->indexVersions[$target->getScope()->value] ?? 0;
+        return match ($target->getScope()) {
+            DeploymentReindexScope::ASSETS => $this->indexVersions['assets'],
+            DeploymentReindexScope::DOCUMENTS => $this->indexVersions['documents'],
+            DeploymentReindexScope::FOLDERS => $this->indexVersions['folders'],
+            DeploymentReindexScope::CLASSES => 0,
+        };
     }
 
     private function key(IndexStateTarget $target, string $value): string
