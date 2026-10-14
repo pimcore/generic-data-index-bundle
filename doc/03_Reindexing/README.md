@@ -77,8 +77,10 @@ copy this means:
 ### Flow of a Mapping Change
 
 The chart shows what happens after a trigger detects a mapping change, for example a class save or
-`deployment:reindex`. The odd/even copy produces a complete index with the old values in the new structure; the
-rebuild from the database afterwards refreshes the values, and only some triggers run it.
+`deployment:reindex`, and where the index recreation comes in: as the fallback when the copied values don't fit
+the new mapping, or explicitly through `update:index -r`. The odd/even copy produces a complete index with the
+old values in the new structure; the rebuild from the database afterwards refreshes the values, and only some
+triggers run it.
 
 ```mermaid
 flowchart TB
@@ -91,7 +93,11 @@ flowchart TB
         F{Values fit the new mapping?}
         S["Switch the alias, delete the old index (search unaffected)"]
     end
-    E["Index recreation: delete the copy, recreate the live index empty (search empty until the rebuild)"]
+    subgraph RECREATE["Index recreation"]
+        E1["Delete the failed copy"]
+        E2["Delete the live index, create it empty with the new mapping (search empty until the rebuild)"]
+    end
+    X["update:index -r"]
     Q{Trigger fills the index queue?}
     D1["Done, old values kept"]
     subgraph REBUILD["Rebuild from the database"]
@@ -105,9 +111,11 @@ flowchart TB
     N --> R
     R --> F
     F -->|yes| S
-    F -->|no| E
+    F -->|no| E1
+    E1 --> E2
+    X --> E2
     S --> Q
-    E --> Q
+    E2 --> Q
     Q -->|"generic-data-index:reindex, settings-only change"| D1
     Q -->|"class save, deployment:reindex, update:index, language change"| QF
     QF --> W
