@@ -2,6 +2,8 @@
 
 It is important to index all assets and data object in Pimcore in order to be able to use the search and listing features powered by the Generic Data Index bundle.
 
+For an overview of which changes require a reindex, which of them are handled automatically and which command to run for the rest, see the [Reindexing Guide](../03_Reindexing/README.md).
+
 ## Define Index Prefix
 
 To avoid duplicate names or index interferences in your search engine, it is necessary to define an index name prefix, which is added to all indices created by Generic Data Index. 
