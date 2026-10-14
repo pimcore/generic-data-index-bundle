@@ -53,15 +53,17 @@ the general term "reindex". `<id>` stands for a class definition ID.
 
 ## How Reindexing Works
 
-Four mechanisms update an index. Almost every trigger combines an odd/even copy with a rebuild from the database;
-a mapping-only odd/even copy happens only for changed index settings and for `generic-data-index:reindex`.
+Four mechanisms update an index. A trigger usually chains two of them: a mapping step (in-place mapping update,
+odd/even copy or index recreation) followed by a rebuild from the database, which refreshes the values. The mapping
+step alone leaves the old values in place. Only `generic-data-index:reindex` and settings-only changes stop after
+the mapping step; the table under [Which Trigger Does What](#which-trigger-does-what) shows the chain per trigger.
 
-| Mechanism | What happens in the search engine | Used by | Reads the database? | Search during the run |
-| --- | --- | --- | --- | --- |
-| In-place mapping update | `PUT _mapping` on the live index. Additive only: new fields are added, removed fields stay mapped, a type change is rejected and triggers an odd/even copy instead. Index settings are not applied. | `update:index` without `-r` | No | Unaffected |
-| Odd/even copy | The engine copies all documents into the other `-odd`/`-even` index, created with the current mapping and the current `index_settings` (`_reindex`), then the alias is switched and the old index deleted. The documents are never emptied. [Index Management](../02_Configuration/03_Index_Management.md#why--odd-and--even-suffixes) and the `generic-data-index:reindex` command call this *native reindexing*. | Class save, `deployment:reindex`, `generic-data-index:reindex`, language change in the system settings | No | Unaffected: reads go to the old index until the switch |
-| Index recreation | The live index is deleted and created again empty with the new mapping. Runs automatically when the odd/even copy fails because the existing documents don't fit the new mapping; `update:index -r` always recreates. | Fallback of an odd/even copy, `update:index -r` | No | Empty or incomplete until the rebuild has finished |
-| Rebuild from the database | The affected elements are added to the index queue; messenger workers load each one from the database and replace its document. | All of the above except `generic-data-index:reindex` and settings-only changes | Yes | Values update as the index queue is processed |
+| Mechanism | What happens in the search engine | Data source | Search during the run |
+| --- | --- | --- | --- |
+| In-place mapping update | `PUT _mapping` on the live index. Adds new fields only: removed fields stay mapped, a type change is rejected and triggers an odd/even copy instead. Index settings are not applied. | Existing documents, unchanged | Unaffected |
+| Odd/even copy | The engine copies all documents into the other `-odd`/`-even` index, created with the current mapping and the current `index_settings` (`_reindex`), then the alias is switched and the old index deleted. The documents are never emptied. [Index Management](../02_Configuration/03_Index_Management.md#why--odd-and--even-suffixes) and the `generic-data-index:reindex` command call this *native reindexing*. | Existing documents, copied | Unaffected: reads go to the old index until the switch |
+| Index recreation | The live index is deleted and created again empty with the new mapping. Runs automatically when the odd/even copy fails because the existing documents don't fit the new mapping; `update:index -r` always recreates. | None: the index is empty until the rebuild has filled it | Empty or incomplete until the rebuild has finished |
+| Rebuild from the database | The affected elements are added to the index queue; messenger workers load each one from the database and replace its document. | Database | Values update as the index queue is processed |
 
 The bundle creates indices with the engine defaults for `dynamic`, `coerce` and `ignore_malformed`. During an odd/even
 copy this means:
