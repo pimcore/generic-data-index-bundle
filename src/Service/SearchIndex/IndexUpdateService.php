@@ -14,6 +14,9 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexStateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
@@ -35,6 +38,7 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
         private readonly DataObjectIndexHandler $dataObjectIndexHandler,
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly SettingsStoreServiceInterface $settingsStoreService,
+        private readonly IndexStateServiceInterface $indexStateService,
     ) {
 
     }
@@ -95,6 +99,8 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
             ->enqueueService
             ->enqueueByClassDefinition($classDefinition);
 
+        $this->refreshIndexState(IndexStateTarget::forClassDefinition($classDefinition));
+
         return $this;
     }
 
@@ -118,6 +124,8 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
         $this
             ->enqueueService
             ->enqueueDataObjectFolders();
+
+        $this->refreshIndexState(IndexStateTarget::forScope(DeploymentReindexScope::FOLDERS));
 
         return $this;
     }
@@ -144,6 +152,8 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
             ->enqueueService
             ->enqueueAssets();
 
+        $this->refreshIndexState(IndexStateTarget::forScope(DeploymentReindexScope::ASSETS));
+
         return $this;
     }
 
@@ -169,6 +179,8 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
             ->enqueueService
             ->enqueueDocuments();
 
+        $this->refreshIndexState(IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS));
+
         return $this;
     }
 
@@ -177,5 +189,15 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
         $this->reCreateIndex = $reCreateIndex;
 
         return $this;
+    }
+
+    /**
+     * Index settings are only applied when the index is (re)created.
+     *
+     * @throws Exception
+     */
+    private function refreshIndexState(IndexStateTarget $target): void
+    {
+        $this->indexStateService->refresh($target, true, $this->reCreateIndex, true);
     }
 }

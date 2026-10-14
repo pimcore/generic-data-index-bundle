@@ -41,4 +41,11 @@ interface IndexProvisionerInterface
      * Stamps the given checksum into the settings store for the target's class.
      */
     public function stampClassMapping(IndexTarget $target, int $checksum): void;
+
+    /**
+     * Stores the mapping checksum and index settings hash checked by
+     * generic-data-index:deployment:reindex, once the replay succeeded. The class mapping
+     * checksum is left to {@see stampClassMapping()}.
+     */
+    public function stampIndexState(IndexTarget $target): void;
 }

@@ -155,6 +155,33 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $this->assertTrue($updated);
     }
 
+    /** @dataProvider provideStoredCheckSums */
+    public function testIsMappingChangedMatchesTheReindexDecision(?int $storedCheckSum, bool $expected): void
+    {
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
+            'getClassMappingCheckSum' => $storedCheckSum,
+        ]);
+
+        $this->assertSame(
+            $expected,
+            $this->createService($handler, $settingsStore)->isMappingChanged($this->createClassDefinition())
+        );
+    }
+
+    public static function provideStoredCheckSums(): array
+    {
+        return [
+            'no stored checksum' => [null, true],
+            'current checksum' => [self::CURRENT_CHECK_SUM, false],
+            'legacy checksum' => [crc32(json_encode(self::MAPPING_PROPERTIES, JSON_THROW_ON_ERROR)), false],
+            'other checksum' => [1234, true],
+        ];
+    }
+
     private function createService(
         IndexHandlerInterface $handler,
         SettingsStoreServiceInterface $settingsStore
