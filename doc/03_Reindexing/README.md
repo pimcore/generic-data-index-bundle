@@ -74,6 +74,46 @@ copy this means:
 - Fields that are no longer in the mapping are re-mapped dynamically and stay in the mapping until the index is
   recreated with `update:index -r`.
 
+### Flow of a Mapping Change
+
+The chart shows what happens after a trigger detects a mapping change, for example a class save or
+`deployment:reindex`. The odd/even copy produces a complete index with the old values in the new structure; the
+rebuild from the database afterwards refreshes the values, and only some triggers run it.
+
+```mermaid
+flowchart TB
+    T["Trigger: class save, deployment:reindex, language change"]
+    C{Mapping checksum changed?}
+    D0[Nothing to do]
+    subgraph COPY["Odd/even copy"]
+        N["Create the other -odd/-even index with the new mapping and index settings"]
+        R["Copy all documents into it (_reindex)"]
+        F{Values fit the new mapping?}
+        S["Switch the alias, delete the old index (search unaffected)"]
+    end
+    E["Index recreation: delete the copy, recreate the live index empty (search empty until the rebuild)"]
+    Q{Trigger fills the index queue?}
+    D1["Done, old values kept"]
+    subgraph REBUILD["Rebuild from the database"]
+        QF[("Index queue: all elements of the index")]
+        W["Messenger workers load each element from the database and replace its document"]
+    end
+    D2["Done: structure and values current"]
+    T --> C
+    C -->|no| D0
+    C -->|yes| N
+    N --> R
+    R --> F
+    F -->|yes| S
+    F -->|no| E
+    S --> Q
+    E --> Q
+    Q -->|"generic-data-index:reindex, settings-only change"| D1
+    Q -->|"class save, deployment:reindex, update:index, language change"| QF
+    QF --> W
+    W --> D2
+```
+
 ### Which Trigger Does What
 
 | Trigger | In-place | Odd/even copy | Index recreation | Rebuild from the database | Applies new `index_settings`? |
