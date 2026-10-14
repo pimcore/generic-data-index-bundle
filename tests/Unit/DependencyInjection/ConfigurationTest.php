@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\DependencyInjection;
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\Configuration;
+use Symfony\Component\Config\Definition\Exception\InvalidConfigurationException;
 use Symfony\Component\Config\Definition\Processor;
 
 final class ConfigurationTest extends Unit
@@ -52,5 +53,37 @@ final class ConfigurationTest extends Unit
         $this->assertSame(500, $config['snapshot']['bulk_size']);
         $this->assertSame(8192, $config['snapshot']['bulk_bytes']);
         $this->assertSame(1, $config['snapshot']['import_workers']);
+    }
+
+    public function testIndexVersionsDefaults(): void
+    {
+        $config = (new Processor())->processConfiguration(new Configuration(), []);
+
+        $this->assertSame(
+            ['assets' => 0, 'documents' => 0, 'folders' => 0, 'classes' => []],
+            $config['index_versions']
+        );
+    }
+
+    public function testIndexVersionsKeepClassDefinitionIds(): void
+    {
+        $config = (new Processor())->processConfiguration(new Configuration(), [[
+            'index_versions' => [
+                'assets' => 2,
+                'classes' => ['CAR' => 3, 'my-class' => 1, '7' => 4],
+            ],
+        ]]);
+
+        $this->assertSame(2, $config['index_versions']['assets']);
+        $this->assertSame(['CAR' => 3, 'my-class' => 1, 7 => 4], $config['index_versions']['classes']);
+    }
+
+    public function testIndexVersionsRejectNegativeValues(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+
+        (new Processor())->processConfiguration(new Configuration(), [[
+            'index_versions' => ['classes' => ['CAR' => -1]],
+        ]]);
     }
 }

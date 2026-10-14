@@ -596,6 +596,30 @@ final class DefaultSearchServiceReindexTest extends Unit
         return count(array_filter($deletedIndices, static fn (string $name): bool => $name === $indexName));
     }
 
+    /**
+     * A rejected target index (e.g. invalid index_settings) must abort the reindex: the reindex
+     * API would otherwise auto-create it with dynamic mapping and default settings, and the
+     * alias would be switched to it.
+     */
+    public function testReindexFailsWhenTheNewIndexCannotBeCreated(): void
+    {
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]]],
+            withAliasSwitchSupport: true
+        );
+        $client->createIndexException = new Exception('illegal_argument_exception: unknown analyzer');
+
+        try {
+            $this->createService(client: $client)->reindex('test_index', []);
+            $this->fail('Expected ReindexFailedException');
+        } catch (ReindexFailedException $e) {
+            $this->assertStringContainsString('Creating index "test_index-even" failed', $e->getMessage());
+            $this->assertStringContainsString('unknown analyzer', $e->getPrevious()?->getMessage() ?? '');
+        }
+        $this->assertSame(0, $client->reIndexCalls, 'No documents may be copied into an index that was not created');
+    }
+
     // -------------------------------------------------------------------------
     // Happy path: clean completion on first poll
     // -------------------------------------------------------------------------
@@ -754,6 +778,10 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
 
     public int $createIndexCalls = 0;
 
+    public int $reIndexCalls = 0;
+
+    public ?Exception $createIndexException = null;
+
     public function __construct(
         private readonly object $originalClient,
         private readonly string $taskId,
@@ -776,6 +804,8 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
 
     public function reIndex(array $_params): array
     {
+        $this->reIndexCalls++;
+
         return $this->reindexResponseOverride ?? ['task' => $this->taskId];
     }
 
@@ -842,6 +872,9 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
     public function createIndex(array $_params): array
     {
         $this->createIndexCalls++;
+        if ($this->createIndexException !== null) {
+            throw $this->createIndexException;
+        }
 
         return [];
     }

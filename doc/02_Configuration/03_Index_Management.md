@@ -266,6 +266,50 @@ bin/console generic-data-index:cleanup:unused-indices --min-age=3600
 > `generic-data-index:deployment:reindex`) is currently running or expected to take longer
 > than the chosen threshold. Run a `--dry-run` first to review what would be deleted.
 
+### Other Index Changes
+
+With index options the command also checks the data object folder, asset and document indices, and compares
+`index_settings` and data versions as well. This covers e.g. predefined asset metadata, valid languages from
+config files, `system_fields_settings`, `search_analyzer_attributes` and `ExtractMappingEvent` fields.
+
+```
+php bin/console generic-data-index:deployment:reindex --all
+```
+
+| Option | Checked indices |
+| --- | --- |
+| `--all` | All of the below |
+| `--classes` / `--folders` / `--assets` / `--documents` | Only the named indices |
+| `--dry-run` | Prints the planned action per index, changes nothing |
+
+| Detected change | Action |
+| --- | --- |
+| Mapping | Native reindex, then rebuild from the database |
+| Index settings | Native reindex |
+| Data version | Rebuild from the database |
+| Index missing | Create the index, then rebuild from the database |
+
+The values are stored per index after a successful update; a failed index is retried on the next run. The first
+run with index options only stores the current values as the baseline. If that deployment also changes a
+mapping, run `generic-data-index:update:index` once; for `index_settings`, run `generic-data-index:reindex` once
+(it does not cover the data object folder index).
+
+A native reindex switches the alias to a copy of the index; index updates processed during the copy are lost.
+Run the command while the index queue workers are stopped.
+
+Code changes that alter indexed values without changing the mapping (calculators, `UpdateIndexDataEvent`
+subscribers, custom adapters) are not detected: raise the matching version in the same change. In
+`query_store` mode a rebuild reads the stored calculator values, see
+[Refreshing calculated values after a calculator change](#refreshing-calculated-values-after-a-calculator-change).
+
+```yaml
+pimcore_generic_data_index:
+    index_versions:
+        assets: 1        # also: documents, folders
+        classes:
+            CAR: 3       # class definition ID
+```
+
 ## Calculated Fields Index Mode
 
 By default, values of calculated value fields are computed **live** while index data is

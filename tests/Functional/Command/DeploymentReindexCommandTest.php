@@ -14,9 +14,15 @@ namespace Functional\Command;
 
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Command\DeploymentReindexCommand;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexPlan;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexState;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\DeploymentReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Component\Console\Command\Command;
@@ -57,7 +63,11 @@ class DeploymentReindexCommandTest extends Unit
         ]);
 
         $commandTester = new CommandTester(
-            new DeploymentReindexCommand($enqueueService, $classDefinitionReindexService)
+            new DeploymentReindexCommand(
+                $enqueueService,
+                $classDefinitionReindexService,
+                $this->makeEmpty(DeploymentReindexServiceInterface::class)
+            )
         );
         $commandTester->execute([]);
 
@@ -75,11 +85,143 @@ class DeploymentReindexCommandTest extends Unit
         ]);
 
         $commandTester = new CommandTester(
-            new DeploymentReindexCommand($enqueueService, $classDefinitionReindexService)
+            new DeploymentReindexCommand(
+                $enqueueService,
+                $classDefinitionReindexService,
+                $this->makeEmpty(DeploymentReindexServiceInterface::class)
+            )
         );
         $commandTester->execute([]);
 
         $this->assertSame(Command::SUCCESS, $commandTester->getStatusCode());
         $this->assertStringContainsString('No updates needed', $commandTester->getDisplay());
+    }
+
+    public function testWithoutIndexOptionsTheExtendedChecksAreNotUsed(): void
+    {
+        $commandTester = new CommandTester(new DeploymentReindexCommand(
+            $this->makeEmpty(EnqueueServiceInterface::class),
+            $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, ['reindexClassDefinition' => false]),
+            $this->makeEmpty(DeploymentReindexServiceInterface::class, [
+                'getTargets' => Expected::never(),
+                'execute' => Expected::never(),
+            ])
+        ));
+
+        $commandTester->execute([]);
+
+        $this->assertSame(Command::SUCCESS, $commandTester->getStatusCode());
+    }
+
+    /**
+     * A failing index must not keep the others from being updated, and the run must still fail.
+     */
+    public function testFailedIndexDoesNotStopTheOthers(): void
+    {
+        $assets = IndexStateTarget::forScope(DeploymentReindexScope::ASSETS);
+        $documents = IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS);
+        $deploymentReindexService = $this->makeEmpty(DeploymentReindexServiceInterface::class, [
+            'getTargets' => Expected::once(static function (array $scopes) use ($assets, $documents): array {
+                self::assertSame([DeploymentReindexScope::ASSETS, DeploymentReindexScope::DOCUMENTS], $scopes);
+
+                return [$assets, $documents];
+            }),
+            'plan' => static fn (IndexStateTarget $target): IndexPlan => new IndexPlan(
+                $target,
+                new IndexState('mapping', 'settings', '1.0'),
+                false,
+                true,
+                false,
+                false,
+                false,
+                ['mapping changed']
+            ),
+            'execute' => Expected::exactly(2, static function (IndexPlan $plan): bool {
+                if ($plan->getTarget()->getKey() === 'asset') {
+                    throw new Exception('asset reindex failed (simulated)');
+                }
+
+                return true;
+            }),
+        ]);
+        $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
+            'dispatchQueueMessages' => Expected::once(),
+        ]);
+
+        $commandTester = new CommandTester(new DeploymentReindexCommand(
+            $enqueueService,
+            $this->makeEmpty(ClassDefinitionReindexServiceInterface::class),
+            $deploymentReindexService
+        ));
+        $commandTester->execute(['--assets' => true, '--documents' => true]);
+
+        $this->assertSame(Command::FAILURE, $commandTester->getStatusCode());
+        $this->assertStringContainsString(
+            'Updating assets failed: asset reindex failed (simulated)',
+            $commandTester->getDisplay()
+        );
+    }
+
+    public function testDryRunExecutesNothing(): void
+    {
+        $deploymentReindexService = $this->makeEmpty(DeploymentReindexServiceInterface::class, [
+            'getTargets' => [IndexStateTarget::forScope(DeploymentReindexScope::ASSETS)],
+            'plan' => static fn (IndexStateTarget $target): IndexPlan => new IndexPlan(
+                $target,
+                new IndexState('mapping', 'settings', '1.0'),
+                false,
+                true,
+                false,
+                false,
+                false,
+                ['mapping changed']
+            ),
+            'execute' => Expected::never(),
+        ]);
+
+        $commandTester = new CommandTester(new DeploymentReindexCommand(
+            $this->makeEmpty(EnqueueServiceInterface::class, ['dispatchQueueMessages' => Expected::never()]),
+            $this->makeEmpty(ClassDefinitionReindexServiceInterface::class),
+            $deploymentReindexService
+        ));
+        $commandTester->execute(['--all' => true, '--dry-run' => true]);
+
+        $this->assertSame(Command::SUCCESS, $commandTester->getStatusCode());
+        $this->assertStringContainsString('native reindex, rebuild from database', $commandTester->getDisplay());
+    }
+
+    public function testFailedCheckDoesNotStopTheOtherIndices(): void
+    {
+        $deploymentReindexService = $this->makeEmpty(DeploymentReindexServiceInterface::class, [
+            'getTargets' => [
+                IndexStateTarget::forScope(DeploymentReindexScope::ASSETS),
+                IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS),
+            ],
+            'plan' => static function (IndexStateTarget $target): IndexPlan {
+                if ($target->getKey() === 'asset') {
+                    throw new Exception('mapping extraction failed (simulated)');
+                }
+
+                return new IndexPlan($target, new IndexState('m', 's', '1.0'), false, false, false, true, false, []);
+            },
+            'execute' => Expected::once(static function (IndexPlan $plan): bool {
+                self::assertSame('document', $plan->getTarget()->getKey());
+
+                return true;
+            }),
+        ]);
+
+        $commandTester = new CommandTester(new DeploymentReindexCommand(
+            $this->makeEmpty(EnqueueServiceInterface::class),
+            $this->makeEmpty(ClassDefinitionReindexServiceInterface::class),
+            $deploymentReindexService
+        ));
+        $commandTester->execute(['--assets' => true, '--documents' => true]);
+
+        $this->assertSame(Command::FAILURE, $commandTester->getStatusCode());
+        $this->assertStringContainsString(
+            'Checking assets failed: mapping extraction failed (simulated)',
+            $commandTester->getDisplay()
+        );
     }
 }
