@@ -121,7 +121,14 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $newIndexName = $indexName . '-' . $newIndexVersion;
 
         $this->ensureNoActiveReindexTask($newIndexName);
-        $this->createIndex($newIndexName, $mapping);
+        $this->deleteIndex($newIndexName, true);
+
+        try {
+            $this->doCreateIndex($newIndexName, $mapping);
+        } catch (Exception $e) {
+            // The reindex would otherwise auto-create the target with dynamic mapping and default settings.
+            throw new ReindexFailedException(sprintf('Creating index "%s" failed', $newIndexName), 0, $e);
+        }
 
         $body = [
             'source' => [
@@ -439,30 +446,38 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $this->deleteIndex($indexName, true);
 
         try {
-            $this->logger->info("Creating index $indexName");
-
-            $body = [];
-            if (!empty($this->searchIndexConfigService->getIndexSettings())) {
-                $body['settings'] = $this->searchIndexConfigService->getIndexSettings();
-            }
-
-            if ($mappings) {
-                $body['mappings']['properties'] = $mappings;
-            }
-
-            $response = $this->client->createIndex(
-                [
-                    'index' => $indexName,
-                    'body' => $body,
-                ]
-            );
-
-            $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
+            $this->doCreateIndex($indexName, $mappings);
         } catch (Exception $e) {
             $this->logger->error($e);
         }
 
         return $this;
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function doCreateIndex(string $indexName, ?array $mappings): void
+    {
+        $this->logger->info("Creating index $indexName");
+
+        $body = [];
+        if (!empty($this->searchIndexConfigService->getIndexSettings())) {
+            $body['settings'] = $this->searchIndexConfigService->getIndexSettings();
+        }
+
+        if ($mappings) {
+            $body['mappings']['properties'] = $mappings;
+        }
+
+        $response = $this->client->createIndex(
+            [
+                'index' => $indexName,
+                'body' => $body,
+            ]
+        );
+
+        $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
     }
 
     public function addAlias(string $aliasName, string $indexName): array

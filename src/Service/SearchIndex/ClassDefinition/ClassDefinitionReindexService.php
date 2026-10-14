@@ -59,6 +59,21 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         }
     }
 
+    /**
+     * @throws JsonException
+     */
+    public function isMappingChanged(ClassDefinition $classDefinition): bool
+    {
+        $mappingProperties = $this->dataObjectIndexHandler->getMappingProperties($classDefinition);
+        $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
+
+        return $storedCheckSum === null
+            || (
+                $storedCheckSum !== $this->dataObjectIndexHandler->getClassMappingCheckSum($mappingProperties)
+                && $storedCheckSum !== $this->getLegacyClassMappingCheckSum($mappingProperties)
+            );
+    }
+
     private function changeIcon(ClassDefinition $classDefinition): void
     {
         $this->indexIconUpdateService->updateIcon(

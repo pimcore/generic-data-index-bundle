@@ -35,4 +35,11 @@ interface SettingsStoreServiceInterface
     public function removeClassMapping(
         string $classDefinitionId
     ): void;
+
+    public function getIndexState(string $key): ?string;
+
+    /**
+     * @throws Exception
+     */
+    public function storeIndexState(string $key, string $value): void;
 }
