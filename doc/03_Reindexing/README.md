@@ -53,18 +53,18 @@ the general term "reindex". `<id>` stands for a class definition ID.
 
 ## How Reindexing Works
 
-Four mechanisms update an index. Almost every trigger combines a native reindex with a rebuild from the database;
-a mapping-only native reindex happens only for changed index settings and for `generic-data-index:reindex`.
+Four mechanisms update an index. Almost every trigger combines an odd/even copy with a rebuild from the database;
+a mapping-only odd/even copy happens only for changed index settings and for `generic-data-index:reindex`.
 
 | Mechanism | What happens in the search engine | Used by | Reads the database? | Search during the run |
 | --- | --- | --- | --- | --- |
-| In-place mapping update | `PUT _mapping` on the live index. Additive only: new fields are added, removed fields stay mapped, a type change is rejected and triggers a native reindex instead. Index settings are not applied. | `update:index` without `-r` | No | Unaffected |
-| Native reindex | A new `-odd`/`-even` index is created with the current mapping and the current `index_settings`, the engine copies all documents into it (`_reindex`), then the alias is switched and the old index deleted. | Class save, `deployment:reindex`, `generic-data-index:reindex`, language change in the system settings | No | Unaffected: reads go to the old index until the switch |
-| Index recreation | The live index is deleted and created again empty with the new mapping. Runs automatically when the native reindex fails because the existing documents don't fit the new mapping; `update:index -r` always recreates. | Fallback of a native reindex, `update:index -r` | No | Empty or incomplete until the rebuild has finished |
+| In-place mapping update | `PUT _mapping` on the live index. Additive only: new fields are added, removed fields stay mapped, a type change is rejected and triggers an odd/even copy instead. Index settings are not applied. | `update:index` without `-r` | No | Unaffected |
+| Odd/even copy | The engine copies all documents into the other `-odd`/`-even` index, created with the current mapping and the current `index_settings` (`_reindex`), then the alias is switched and the old index deleted. The documents are never emptied. [Index Management](../02_Configuration/03_Index_Management.md#why--odd-and--even-suffixes) and the `generic-data-index:reindex` command call this *native reindexing*. | Class save, `deployment:reindex`, `generic-data-index:reindex`, language change in the system settings | No | Unaffected: reads go to the old index until the switch |
+| Index recreation | The live index is deleted and created again empty with the new mapping. Runs automatically when the odd/even copy fails because the existing documents don't fit the new mapping; `update:index -r` always recreates. | Fallback of an odd/even copy, `update:index -r` | No | Empty or incomplete until the rebuild has finished |
 | Rebuild from the database | The affected elements are added to the index queue; messenger workers load each one from the database and replace its document. | All of the above except `generic-data-index:reindex` and settings-only changes | Yes | Values update as the index queue is processed |
 
-The bundle creates indices with the engine defaults for `dynamic`, `coerce` and `ignore_malformed`. During a native
-reindex this means:
+The bundle creates indices with the engine defaults for `dynamic`, `coerce` and `ignore_malformed`. During an odd/even
+copy this means:
 
 - Numbers copied into a `keyword` field and numeric strings copied into a number field are accepted.
 - Decimals copied into an integer field are accepted but truncated.
@@ -74,7 +74,7 @@ reindex this means:
 
 ### Which Trigger Does What
 
-| Trigger | In-place | Native reindex | Index recreation | Rebuild from the database | Applies new `index_settings`? |
+| Trigger | In-place | Odd/even copy | Index recreation | Rebuild from the database | Applies new `index_settings`? |
 | --- | --- | --- | --- | --- | --- |
 | Class save (admin UI, Studio, `classes-rebuild`) | — | If the mapping checksum changed | If the values don't fit | That class | Only if reindexed |
 | `deployment:reindex` without options | — | Classes with a changed or missing checksum | If the values don't fit | Those classes | Only for those classes |
@@ -85,13 +85,13 @@ reindex this means:
 
 :::warning
 
-Two risks of native reindexing:
+Two risks of odd/even copying:
 
 - **Changes made while `_reindex` runs.** The engine copies a snapshot, and writes keep going to the old index, so
   elements saved during the copy are missing from the new index. A rebuild from the database afterwards repairs
   updates and inserts. Deletes made during the window are not repaired: deleted elements remain in the index until
-  the next `update:index -r`. Run native reindexes in a quiet period, ideally with the messenger workers stopped.
-- **`generic-data-index:reindex` never adds elements to the index queue.** If its native reindex fails because the
+  the next `update:index -r`. Run odd/even copies in a quiet period, ideally with the messenger workers stopped.
+- **`generic-data-index:reindex` never adds elements to the index queue.** If its odd/even copy fails because the
   values don't fit the mapping, the live index is recreated empty and stays empty, and the new checksum is stored,
   so a later `deployment:reindex` doesn't notice. Run `update:index -c <id>` or `-a` afterwards.
 
@@ -99,8 +99,8 @@ Two risks of native reindexing:
 
 ## Class Definition Changes
 
-Saving a class definition reindexes only when the class's **mapping checksum** changes. The bundle then runs a native
-reindex of the class index, followed by a rebuild from the database of all its objects. If the existing values don't
+Saving a class definition reindexes only when the class's **mapping checksum** changes. The bundle then runs an odd/even
+copy of the class index, followed by a rebuild from the database of all its objects. If the existing values don't
 fit the new mapping, the index is recreated instead.
 
 Changes that alter the mapping (automatic reindex on save):
@@ -121,7 +121,7 @@ between data types that share an index type. The class icon is updated in the in
 | Index type | Data types that share it (switching between them needs no reindex) |
 | --- | --- |
 | Text + keyword | input, textarea, wysiwyg, select, multiselect, country, countrymultiselect, language, languagemultiselect, password, user, firstname, lastname, email, gender, calculatedValue |
-| Numeric (`float`) | numeric, slider |
+| Numeric (`float`) | numeric, slider. In 2026.x these fields are mapped as `double`, or `long` with the integer option, so toggling the integer option changes the mapping there. |
 | Boolean | checkbox, booleanSelect |
 | Relation | manyToOneRelation, manyToManyRelation, manyToManyObjectRelation, reverseObjectRelation |
 | Advanced relation | advancedManyToManyRelation, advancedManyToManyObjectRelation |
@@ -176,7 +176,7 @@ valid language (`localizedfields.<lang>.<field>`), including localized fields in
 asset metadata is mapped per language as well.
 
 - **Changed in the system settings (admin UI or Studio):** automatic. The bundle compares the old and new language
-  lists and, if they differ, runs a forced native reindex of every class, asset and document index, then adds every
+  lists and, if they differ, runs a forced odd/even copy of every class, asset and document index, then adds every
   element to the index queue. On large installations this is the most expensive change there is: plan it for a
   quiet period and run enough messenger workers.
 - **Only the order changed in the system settings:** this also triggers the full reindex, because the comparison is
@@ -210,9 +210,12 @@ without saving that object leaves a stale value in the index. What to do depends
 | Calculator reads related objects, prices, stock or an external service, and that data changed | Stale until that object is rebuilt: re-save it, or `update:index -c <id>` | Stale until that object is saved: re-save it |
 | Switching `live` ↔ `query_store` | No mapping change and no automatic reindex; values converge as objects are saved or rebuilt. Run `update:index -c <id>` to apply the switch now | Same |
 
-Calculated values are always mapped as text and keyword, so changing a calculated field's element type doesn't
-change the mapping. Calculated fields inside field collections, object bricks and blocks always behave as `live`,
-even in `query_store` mode. Inside localized fields the calculator runs once per valid language.
+Calculated values are mapped as text and keyword, so changing a calculated field's element type doesn't change
+the mapping. In 2026.x (since 2026.2.9) calculated values are mapped by their element type (boolean, numeric,
+date, text), so an element type change is a mapping change and reindexes on class save.
+
+Calculated fields inside field collections, object bricks and blocks always behave as `live`, even in
+`query_store` mode. Inside localized fields the calculator runs once per valid language.
 
 Related elements are added to the index queue only when the saved element is related to them. If a calculator reads
 data from objects that aren't related to it, nothing queues the dependent object.
@@ -259,12 +262,12 @@ configuration.
 
 ## Search Engine Settings and Bundle Upgrades
 
-`index_settings` are applied only when an index is created. Every native reindex creates a new index and therefore
+`index_settings` are applied only when an index is created. Every odd/even copy creates a new index and therefore
 picks up the current settings; the in-place update of `update:index` does not.
 
 | Change | Reindex needed? | Command |
 | --- | --- | --- |
-| `index_settings` (`max_result_window`, `index.mapping.total_fields.limit`, analyzers, normalizers, tokenizers) | Yes: new index | `deployment:reindex --all` (native reindex, no downtime) or `update:index -r` |
+| `index_settings` (`max_result_window`, `index.mapping.total_fields.limit`, analyzers, normalizers, tokenizers) | Yes: new index | `deployment:reindex --all` (odd/even copy, no downtime) or `update:index -r` |
 | `search_settings.search_analyzer_attributes` | Yes: part of the mapping, changes every checksum | `deployment:reindex --all` |
 | `system_fields_settings` | Yes: mapping | `deployment:reindex --all` |
 | `calculated_fields_index_mode` | Values only | `update:index -c <id>` for the affected classes (optional) |
@@ -304,15 +307,15 @@ code on failure.
 bin/console generic-data-index:deployment:reindex [--all] [--classes] [--folders] [--assets] [--documents] [--dry-run]
 ```
 
-Without options the command compares the mapping checksum of every class definition and runs a native reindex plus
+Without options the command compares the mapping checksum of every class definition and runs an odd/even copy plus
 a rebuild from the database for the classes whose checksum changed or is missing. With an index option it also
 compares the `index_settings` hash and the data version (bundle version plus the `index_versions` configuration)
 of the selected indices:
 
 | Detected change | Action |
 | --- | --- |
-| Mapping | Native reindex, then rebuild from the database |
-| Index settings | Native reindex |
+| Mapping | Odd/even copy, then rebuild from the database |
+| Index settings | Odd/even copy |
 | Data version | Rebuild from the database |
 | Index missing | Create the index, then rebuild from the database |
 | No stored value yet | Store the current value as the baseline, no reindex |
@@ -339,13 +342,14 @@ Updates the mapping of the selected indices in place and adds every element in s
 | `--update-global-aliases-only` | Only rebuilds the global data object and element search aliases, then exits |
 
 Without `-c` or `-a` the command updates everything, in this order: data object folders, every class, assets,
-documents. The document and folder indices are only updated in this run. Without `-r`, search keeps working and
+documents. The document and folder indices are only updated in this run; 2026.x adds `-d`,
+`--update-document-index` for the document index. Without `-r`, search keeps working and
 values refresh as the index queue is processed; with `-r`, the indices in scope are empty until the queue has been
 processed, so use it only for a broken index or to remove fields that are no longer used.
 
 ### `generic-data-index:reindex`
 
-Runs a forced native reindex of every class, asset and document index (not the folder index) with the current
+Runs a forced odd/even copy of every class, asset and document index (not the folder index) with the current
 mapping and `index_settings`, and adds nothing to the index queue. Use it only to apply changed `index_settings`
 when no values changed, and read the warning in [How Reindexing Works](#how-reindexing-works) first. The engine
 runs each `_reindex` as a background task that the bundle polls according to `reindex_settings` (default: up to
@@ -354,8 +358,9 @@ runs each `_reindex` as a background task that the bundle polls according to `re
 ### `generic-data-index:status`
 
 Read-only. Shows the index queue depth, every index with its document count and size, and a warning for any index
-that exists as both `-even` and `-odd`, which is the sign of an interrupted reindex. Such leftover indices are not
-used by the bundle and can be deleted in the search engine.
+that exists as both `-even` and `-odd`, which is the sign of an interrupted odd/even copy. Such leftover indices are not
+used by the bundle and can be deleted in the search engine; 2026.x provides `generic-data-index:cleanup:unused-indices`
+for this.
 
 ### Snapshots
 
@@ -371,10 +376,10 @@ The import doesn't add anything to the index queue. See [Index Snapshots](../02_
 | Tag deleted | Documents keep the tag ID; elements tagged only with one of its child tags keep theirs too | `update:index` |
 | Element copied | The copy's tags are missing from the index until it is saved again | Re-save the copy, or `update:index` |
 | Reverse object relations | Saving the referenced object doesn't update objects that point to it | Re-save them, or `update:index -c <id>` |
-| Deletes during a native reindex | Deleted elements stay in the index | Reindex in a quiet period; `update:index -r` removes them |
+| Deletes during an odd/even copy | Deleted elements stay in the index | Reindex in a quiet period; `update:index -r` removes them |
 | `generic-data-index:reindex` with values that don't fit the mapping | The index is recreated empty and nothing refills it | `update:index -c <id>` or `-a` |
 | Languages changed in config files, class with only a localized classification store | Not detected by `deployment:reindex` | `index_versions.classes.<id>` or `update:index -c <id>` |
-| Removed fields and removed languages | Stay in the mapping after a native reindex or an in-place update | `update:index -r` |
+| Removed fields and removed languages | Stay in the mapping after an odd/even copy or an in-place update | `update:index -r` |
 | Calculator code changes | Cannot be detected | `index_versions`, see above |
 | `update_by_query` unsupported on some managed OpenSearch services | Icon updates, child path rewrites and lock flags fail | `update:index` for the affected index |
 
@@ -384,12 +389,12 @@ The import doesn't add anything to the index queue. See [Index Snapshots](../02_
 | --- | --- |
 | Element | A data object, asset or document. |
 | Class index | The index of one class definition. There is one per class, plus the asset index, the document index and the folder index (data object folders). |
-| Alias | The stable name the bundle reads and writes through. It points to exactly one backing index with an `-odd` or `-even` suffix; a native reindex builds the other one and switches the alias. |
+| Alias | The stable name the bundle reads and writes through. It points to exactly one backing index with an `-odd` or `-even` suffix; an odd/even copy builds the other one and switches the alias. |
 | Mapping | The field structure of an index, built from the class definitions (including field collections, object bricks and the classification store), the valid languages, predefined asset metadata and custom `ExtractMappingEvent` code. |
 | Index type | The search engine field type a Pimcore data type is mapped to. Data types sharing an index type can be switched without a reindex. |
 | Mapping checksum | A hash of an index's mapping stored in the settings store. An index is reindexed only when the current mapping differs. |
 | Data version | The bundle's data version combined with the `index_versions` configuration. Raising it rebuilds the index from the database. |
 | Index queue | The database table of elements waiting to be indexed, processed by the messenger workers. |
 | Rebuild from the database | Elements are added to the index queue, loaded from the database and their documents replaced. |
-| Native reindex | The engine copies all documents of an index into a new index with the current mapping and settings; no database read. |
+| Odd/even copy | The engine copies all documents of an index into the other `-odd`/`-even` index with the current mapping and settings, then switches the alias; no database read, nothing is emptied. Called *native reindexing* in Index Management and by the `generic-data-index:reindex` command. |
 | Index recreation | The live index is deleted and created again empty; search is incomplete until the rebuild has finished. |
