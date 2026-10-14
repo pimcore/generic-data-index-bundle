@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\BulkChunk;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Process\Exception\ExceptionInterface as ProcessException;
+use Symfony\Component\Process\Exception\ProcessSignaledException;
 use Symfony\Component\Process\InputStream;
 use Symfony\Component\Process\Process;
 
@@ -138,7 +139,21 @@ final class WorkerPoolBulkDispatcher
             usleep(self::POLL_MICROSECONDS);
         }
         foreach ($this->processes as $i => $process) {
-            $process->wait();
+            try {
+                $process->wait();
+            } catch (ProcessSignaledException $e) {
+                // wait() throws for a worker killed by a signal (e.g. SIGABRT) before isSuccessful() can report it,
+                // which would leak a Symfony exception and drop the worker's stderr
+                $this->abort();
+
+                throw new SnapshotImportException(sprintf(
+                    'Snapshot replay worker %d was terminated by signal %d for index "%s": %s',
+                    $i,
+                    $e->getSignal(),
+                    $this->indexShortName,
+                    trim($process->getErrorOutput()) !== '' ? trim($process->getErrorOutput()) : 'no error output',
+                ), 0, $e);
+            }
             if (!$process->isSuccessful()) {
                 $this->abort();
 
