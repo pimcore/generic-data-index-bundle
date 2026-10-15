@@ -120,13 +120,18 @@ final readonly class FieldTypeFilters
         MultiSelectFilter $multiSelectFilter,
         ?string $prefix = null,
         ?SearchInterface $search = null
-    ): TermsFilterQuery {
+    ): MultiBoolQuery|TermsFilterQuery {
         $fieldName = $multiSelectFilter->getField();
         if ($prefix) {
             $fieldName = $prefix . '.' . $fieldName;
         }
         if ($search && $multiSelectFilter->isPqlFieldNameResolutionEnabled()) {
             $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch($search, $fieldName);
+        }
+
+        // An empty string stands for "no value": match a missing field (null) as well as ''.
+        if (in_array('', $multiSelectFilter->getValues(), true)) {
+            return new MultiBoolQuery($fieldName, $multiSelectFilter->getValues());
         }
 
         return new TermsFilterQuery(
