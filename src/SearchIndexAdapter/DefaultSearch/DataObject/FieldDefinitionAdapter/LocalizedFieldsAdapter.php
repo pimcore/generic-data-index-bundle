@@ -30,12 +30,19 @@ use Symfony\Contracts\Service\Attribute\Required;
  */
 final class LocalizedFieldsAdapter extends AbstractAdapter
 {
+    private const CONTAINER_TYPES = ['objectbrick', 'fieldcollection', 'block'];
+
     private LanguageServiceInterface $languageService;
 
     private CalculatedFieldsIndexModeResolverInterface $calculatedFieldsIndexModeResolver;
 
     private CalculatedValueQueryStoreServiceInterface $calculatedValueQueryStoreService;
 
+    /**
+     * Mapped as <attribute>.<language>, the structure normalize() writes. IndexMappingService moves the
+     * attributes of the class-level localized fields to the top level; inside object bricks, field
+     * collections and blocks they stay below "localizedfields".
+     */
     public function getIndexMapping(): array
     {
         $mapping = [
@@ -46,21 +53,22 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         $fieldDefinition = $this->getFieldDefinition();
         $childFieldDefinitions = $fieldDefinition->getFieldDefinitions();
 
-        foreach ($languages as $language) {
-            $languageProperties = [];
-
-            foreach ($childFieldDefinitions as $childFieldDefinition) {
-                $fieldDefinitionAdapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter(
-                    $childFieldDefinition
-                );
-                if ($fieldDefinitionAdapter) {
-                    $mappingKey = $fieldDefinitionAdapter->getIndexAttributeName();
-
-                    $languageProperties[$mappingKey] = $fieldDefinitionAdapter->getIndexMapping();
-                }
+        foreach ($childFieldDefinitions as $childFieldDefinition) {
+            $fieldDefinitionAdapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter(
+                $childFieldDefinition
+            );
+            if (!$fieldDefinitionAdapter) {
+                continue;
             }
 
-            $mapping['properties'][$language] = [
+            $mappingKey = $fieldDefinitionAdapter->getIndexAttributeName();
+            $languageProperties = [];
+            foreach ($languages as $language) {
+                $languageProperties[$language] = $fieldDefinitionAdapter->getIndexMapping();
+            }
+
+            $mapping['properties'][$mappingKey] = [
+                'type' => 'object',
                 'properties' => $languageProperties,
             ];
         }
@@ -83,13 +91,23 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         }
 
         $dataObject = $value->getObject();
+        // The adapter's own definition is the one of the container (class, object brick, field
+        // collection or block). Localizedfield::getFieldDefinition() without a context only knows
+        // the class-level localized fields and returns null for fields inside a container.
+        /** @var Data\Localizedfields $localizedFieldsDefinition */
+        $localizedFieldsDefinition = $this->getFieldDefinition();
+        // only decides whether calculated values may come from the class-level localized query table;
+        // when in doubt they are calculated live, which is always correct
+        $inContainer = $this->isInContainer($value);
         $result = [];
         foreach ($attributes as $attribute) {
-            $fieldDefinition = $value->getFieldDefinition($attribute);
+            $fieldDefinition = $localizedFieldsDefinition->getFieldDefinition($attribute);
             // In query_store mode localized calculated values come from the localized query
             // table (save-time snapshot, per language); the calculator never runs here. This
-            // is the dominant saving on many-language installations.
-            $useQueryStore = $dataObject instanceof Concrete
+            // is the dominant saving on many-language installations. The query table only
+            // holds the class-level localized fields.
+            $useQueryStore = !$inContainer
+                && $dataObject instanceof Concrete
                 && $fieldDefinition instanceof CalculatedValue
                 && $this->calculatedFieldsIndexModeResolver->getMode() === CalculatedFieldsIndexMode::QUERY_STORE;
 
@@ -225,6 +243,20 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         }
 
         return [array_keys($internalData), $attributes];
+    }
+
+    /**
+     * Localized fields inside an object brick, field collection or block carry the container in their
+     * context (set by Pimcore when the container is loaded or its localized fields are created). The
+     * class-level localized fields have no container type, or "object" after the object was saved.
+     */
+    private function isInContainer(Localizedfield $value): bool
+    {
+        return in_array(
+            $value->getContext()['containerType'] ?? null,
+            self::CONTAINER_TYPES,
+            true
+        );
     }
 
     /**

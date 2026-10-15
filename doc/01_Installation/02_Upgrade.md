@@ -12,6 +12,19 @@ description: Version-specific upgrade instructions and breaking changes for the 
 - [Indexing] A native reindex now fails if the new index cannot be created (e.g. invalid `index_settings`) instead of
   switching to an index with dynamic mapping.
 
+### Re-indexing required
+
+- [Indexing] Fixed: localized fields inside object bricks, field collections and blocks were normalized without the
+  container's field definitions, so their values were indexed unconverted (relations as empty objects), and their
+  mapping (`localizedfields.<language>.<field>`) did not match the documents (`localizedfields.<field>.<language>`).
+  They are now mapped and indexed as `<container path>.localizedfields.<field>.<language>`, the structure the
+  class-level localized fields already use. Values of data types without a Generic Data Index adapter are no longer
+  indexed there.
+- [Indexing] The mapping of the affected classes changes. Run `generic-data-index:update:index -c <class id> -r`
+  (or `generic-data-index:deployment:reindex`) for them, so the old mapping is dropped and the elements are indexed
+  again. Snapshots exported before the update are refused for these classes, and `--force` skips them: export them
+  again after the re-index.
+
 ## Upgrade to 2026.3.2
 - [Permissions] Searches that check a permission other than `list` (for example `byId()`, which checks `view`) no
   longer return the parent elements of a user's workspaces. As in Pimcore core, only `list` includes them, so the
