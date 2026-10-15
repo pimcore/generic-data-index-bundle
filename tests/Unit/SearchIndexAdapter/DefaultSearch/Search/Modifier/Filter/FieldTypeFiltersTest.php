@@ -37,14 +37,30 @@ final class FieldTypeFiltersTest extends Unit
     }
 
     /**
-     * An empty string stands for "no value": it matches a missing field (null) as well as ''
+     * Without the opt-in flag an empty string is an ordinary term, so existing callers keep their results.
+     *
+     * @throws Exception
+     */
+    public function testMultiSelectQueryWithEmptyValueMatchesTermsOnlyByDefault(): void
+    {
+        $query = $this->getFieldTypeFilters()->getMultiSelectQuery(new MultiSelectFilter('color', ['']));
+
+        $this->assertSame([
+            'terms' => ['color' => ['']],
+        ], $query->toArrayAsSubQuery());
+    }
+
+    /**
+     * With the opt-in flag an empty string stands for "no value": it matches a missing field (null) as well as ''
      * (pimcore/platform-version#394).
      *
      * @throws Exception
      */
-    public function testMultiSelectQueryWithEmptyValueAlsoMatchesMissingField(): void
+    public function testMultiSelectQueryWithEmptyValueAlsoMatchesMissingFieldWhenEnabled(): void
     {
-        $query = $this->getFieldTypeFilters()->getMultiSelectQuery(new MultiSelectFilter('color', ['', 'red']));
+        $query = $this->getFieldTypeFilters()->getMultiSelectQuery(
+            new MultiSelectFilter('color', ['', 'red'], matchMissingForEmptyValue: true)
+        );
 
         $this->assertSame([
             'bool' => [
@@ -60,9 +76,26 @@ final class FieldTypeFiltersTest extends Unit
     /**
      * @throws Exception
      */
+    public function testMultiSelectQueryWithoutEmptyValueMatchesTermsOnlyWhenEnabled(): void
+    {
+        $query = $this->getFieldTypeFilters()->getMultiSelectQuery(
+            new MultiSelectFilter('color', ['red'], matchMissingForEmptyValue: true)
+        );
+
+        $this->assertSame([
+            'terms' => ['color' => ['red']],
+        ], $query->toArrayAsSubQuery());
+    }
+
+    /**
+     * @throws Exception
+     */
     public function testMultiSelectQueryWithEmptyValueUsesPrefixedField(): void
     {
-        $query = $this->getFieldTypeFilters()->getMultiSelectQuery(new MultiSelectFilter('color', ['']), 'brick');
+        $query = $this->getFieldTypeFilters()->getMultiSelectQuery(
+            new MultiSelectFilter('color', [''], matchMissingForEmptyValue: true),
+            'brick'
+        );
 
         $this->assertSame([
             'bool' => [

@@ -129,8 +129,10 @@ final readonly class FieldTypeFilters
             $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch($search, $fieldName);
         }
 
-        // An empty string stands for "no value": match a missing field (null) as well as ''.
-        if (in_array('', $multiSelectFilter->getValues(), true)) {
+        // Opt-in: an empty string stands for "no value", so match a missing field (null) as well as ''.
+        if ($multiSelectFilter->isMatchMissingForEmptyValueEnabled()
+            && in_array('', $multiSelectFilter->getValues(), true)
+        ) {
             return new MultiBoolQuery($fieldName, $multiSelectFilter->getValues());
         }
 
