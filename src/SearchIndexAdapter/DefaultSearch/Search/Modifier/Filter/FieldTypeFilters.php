@@ -130,10 +130,16 @@ final readonly class FieldTypeFilters
         }
 
         // Opt-in: an empty string stands for "no value", so match a missing field (null) as well as ''.
-        if ($multiSelectFilter->isMatchMissingForEmptyValueEnabled()
+        // Only for top-level fields: inside a nested filter (classification store) a missing key cannot be
+        // told apart from an absent group, so the filter keeps its exact-match behaviour there.
+        if ($prefix === null
+            && $multiSelectFilter->isMatchMissingForEmptyValueEnabled()
             && in_array('', $multiSelectFilter->getValues(), true)
         ) {
-            return new MultiBoolQuery($fieldName, $multiSelectFilter->getValues());
+            // check presence on the field itself: the keyword subfield skips values above ignore_above
+            $existsField = str_ends_with($fieldName, '.keyword') ? substr($fieldName, 0, -strlen('.keyword')) : $fieldName;
+
+            return new MultiBoolQuery($fieldName, $multiSelectFilter->getValues(), $existsField);
         }
 
         return new TermsFilterQuery(

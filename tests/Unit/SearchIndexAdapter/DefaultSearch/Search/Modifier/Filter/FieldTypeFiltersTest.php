@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\De
 
 use Codeception\Test\Unit;
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\MultiSelectFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\Filter\FieldTypeFilters;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationServiceInterface;
@@ -88,20 +89,45 @@ final class FieldTypeFiltersTest extends Unit
     }
 
     /**
+     * Inside a nested filter (classification store) a missing key cannot be told apart from an absent group,
+     * so the option is not applied there and the filter keeps exact matching.
+     *
      * @throws Exception
      */
-    public function testMultiSelectQueryWithEmptyValueUsesPrefixedField(): void
+    public function testMultiSelectQueryKeepsExactMatchingInsideNestedFilters(): void
     {
         $query = $this->getFieldTypeFilters()->getMultiSelectQuery(
             new MultiSelectFilter('color', [''], matchMissingForEmptyValue: true),
-            'brick'
+            'standard_fields.store.group.default'
+        );
+
+        $this->assertSame([
+            'terms' => ['standard_fields.store.group.default.color' => ['']],
+        ], $query->toArrayAsSubQuery());
+    }
+
+    /**
+     * The keyword subfield skips values longer than ignore_above, so presence is checked on the field itself.
+     *
+     * @throws Exception
+     */
+    public function testMultiSelectQueryChecksPresenceOnTheFieldNotItsKeywordSubfield(): void
+    {
+        $filters = new FieldTypeFilters($this->makeEmpty(SearchPqlFieldNameTransformationServiceInterface::class, [
+            'transformFieldnameForSearch' => 'standard_fields.color.keyword',
+        ]));
+
+        $query = $filters->getMultiSelectQuery(
+            new MultiSelectFilter('color', [''], matchMissingForEmptyValue: true),
+            null,
+            $this->makeEmpty(SearchInterface::class)
         );
 
         $this->assertSame([
             'bool' => [
                 'should' => [
-                    ['bool' => ['must_not' => ['exists' => ['field' => 'brick.color']]]],
-                    ['terms' => ['brick.color' => ['']]],
+                    ['bool' => ['must_not' => ['exists' => ['field' => 'standard_fields.color']]]],
+                    ['terms' => ['standard_fields.color.keyword' => ['']]],
                 ],
                 'minimum_should_match' => 1,
             ],

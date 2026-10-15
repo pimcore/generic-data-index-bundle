@@ -22,6 +22,10 @@ final readonly class MultiSelectFilter implements SearchModifierInterface
         private string $field,
         private array $values,
         private bool $enablePqlFieldNameResolution = true,
+        /**
+         * When true, '' also matches elements where the field has no value (top-level fields only,
+         * nested filters such as ClassificationStoreFilter keep exact matching).
+         */
         private bool $matchMissingForEmptyValue = false,
     ) {
         $this->validate();
