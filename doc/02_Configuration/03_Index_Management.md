@@ -193,25 +193,33 @@ for available settings.
 
 ### Maximum Result Window
 
-The default limit of retrievable items is 10,000. Increase it with:
+The bundle sets the limit of retrievable items to 10,000,000 by default
+(`config/pimcore/default_index_settings.yaml`). Change it with:
 
 ```yaml
 pimcore_generic_data_index:
     index_service:
         index_settings:
-            max_result_window: 20000
+            max_result_window: 20000000
 ```
 
 ### Total Fields Limit
 
-The default field limit per index is 1,000. Increase it with:
+The bundle sets the field limit per index to 100,000 by default
+(`config/pimcore/default_index_settings.yaml`). Increase it with:
 
 ```yaml
 pimcore_generic_data_index:
     index_service:
         index_settings:
-            mapping.total_fields.limit: 20000
+            index:
+                mapping:
+                    total_fields:
+                        limit: 200000
 ```
+
+Use the nested keys shown above. Your `index_settings` are merged key by key into the defaults,
+so only the same nested path replaces the default value.
 
 :::info
 
