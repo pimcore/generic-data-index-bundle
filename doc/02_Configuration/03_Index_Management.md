@@ -10,6 +10,8 @@ to power search and listing features in Pimcore.
 
 ## Console Commands Overview
 
+For an overview of which changes require a reindex, which of them are handled automatically and which command to run for the rest, see the [Reindexing Guide](../03_Reindexing/README.md).
+
 | Command | Description |
 |---------|-------------|
 | `generic-data-index:update:index` | Update index mappings and queue all elements for reindex from the database |
