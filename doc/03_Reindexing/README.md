@@ -1,3 +1,8 @@
+---
+title: Reindexing Guide
+description: Which changes require a reindex of the Generic Data Index, which are handled automatically, and which command to run for the rest.
+---
+
 # Reindexing Guide
 
 This guide describes which changes to a Pimcore installation require a reindex of the Generic Data Index, which of
@@ -24,6 +29,7 @@ the general term "reindex". `<id>` stands for a class definition ID.
 | Field added, removed or renamed in a class (admin UI or Studio) | Yes: mapping | Yes | None |
 | Field type changed to one with a different index type (e.g. input to numeric) | Yes: mapping; index recreated if the existing values don't fit | Yes | None |
 | Field type changed within the same index type (e.g. input to textarea) | No | Not needed | None |
+| Numeric, numeric range or quantity value: integer option toggled (`long` ↔ `double`) | Yes: mapping | Yes | None |
 | Allowed field collection or object brick types changed in a class field | Yes: mapping | Yes | None |
 | Table column config, structured table rows/columns, or advanced many-to-many columns changed | Yes: mapping | Yes | None |
 | Field moved into or out of localized fields or a block | Yes: mapping | Yes | None |
@@ -39,12 +45,13 @@ the general term "reindex". `<id>` stands for a class definition ID.
 | Calculator code changed (`calculated_fields_index_mode: live`) | Yes: values | No | Raise `index_versions.classes.<id>`, then `deployment:reindex --classes` |
 | Calculator code changed (`query_store` mode) | Yes: values | No | Re-save the objects |
 | Data a calculated value depends on changed (another object, external service) | Yes: values | No | Re-save the object, or `update:index -c <id>` |
+| Calculated value element type changed (text, numeric, boolean, date) | Yes: mapping | Yes | None |
 | Predefined asset metadata definition added, changed or removed | Yes: asset mapping and values | No | `deployment:reindex --assets` |
 | Tag moved to another parent tag | Yes: `parentTags` values | No | `update:index` |
 | Tag with child tags deleted, or tag deleted that was assigned to documents | Yes: `tags` values of the affected elements | Partly (assets and data objects with the exact tag) | `update:index` |
 | Element copied | Yes: the copy's tags | No | Re-save the copy, or `update:index` |
 | Reverse object relation changed by saving the referenced object | Yes: values of the objects pointing to it | No | Re-save them, or `update:index -c <id>` |
-| Data written by SQL, DAO methods or raw imports | Yes: values | No | `update:index -c <id>` or `-a`; `update:index` for documents |
+| Data written by SQL, DAO methods or raw imports | Yes: values | No | `update:index -c <id>`, `-a` or `-d` |
 | Workflow place permissions changed | Yes: `hasWorkflowWithPermissions` values | No | `update:index` |
 | Custom `ExtractMappingEvent` subscriber added or changed | Yes: mapping | No | `deployment:reindex` (classes), `--assets` or `--documents` |
 | Custom `UpdateIndexDataEvent` subscriber or custom field definition adapter changed | Yes: values | No | Raise the matching `index_versions` entry, then `deployment:reindex --all` |
@@ -143,7 +150,7 @@ Two risks of odd/even copying:
   the next `update:index -r`. Run odd/even copies in a quiet period, ideally with the messenger workers stopped.
 - **`generic-data-index:reindex` never adds elements to the index queue.** If its odd/even copy fails because the
   values don't fit the mapping, the live index is recreated empty and stays empty, and the new checksum is stored,
-  so a later `deployment:reindex` doesn't notice. Run `update:index -c <id>` or `-a` afterwards.
+  so a later `deployment:reindex` doesn't notice. Run `update:index -c <id>`, `-a` or `-d` afterwards.
 
 :::
 
@@ -159,6 +166,8 @@ Changes that alter the mapping (automatic reindex on save):
   A new field's default value needs no rebuild: Pimcore applies defaults only when an object is created, so existing
   objects stay empty.
 - Changing a field's data type to one with a different index type (see the table below).
+- Toggling the **integer** option on numeric, numeric range or quantity value fields (`long` ↔ `double`; slider is always `double`).
+- Changing a calculated value's **element type** (text, numeric, boolean or date).
 - Changing the **allowed types** of a field collections or object bricks field.
 - Changing a table's **column config** (when activated), or a structured table's rows and columns.
 - Changing the **metadata columns** of an advanced many-to-many relation.
@@ -170,13 +179,13 @@ between data types that share an index type. The class icon is updated in the in
 
 | Index type | Data types that share it (switching between them needs no reindex) |
 | --- | --- |
-| Text + keyword | input, textarea, wysiwyg, select, multiselect, country, countrymultiselect, language, languagemultiselect, password, user, firstname, lastname, email, gender, calculatedValue |
-| Numeric (`float`) | numeric, slider. In 2026.x these fields are mapped as `double`, or `long` with the integer option, so toggling the integer option changes the mapping there. |
+| Text + keyword | input, textarea, wysiwyg, select, multiselect, country, countrymultiselect, language, languagemultiselect, password, user, firstname, lastname, email, gender |
+| Numeric (`double`, or `long` with the integer option) | numeric, slider |
 | Boolean | checkbox, booleanSelect |
 | Relation | manyToOneRelation, manyToManyRelation, manyToManyObjectRelation, reverseObjectRelation |
 | Advanced relation | advancedManyToManyRelation, advancedManyToManyObjectRelation |
 | Geo point | geopoint, geopolygon, geopolyline |
-| Own type each | date, datetime, dateRange, time, quantityValue, inputQuantityValue, quantityValueRange, numericRange, rgbaColor, geobounds, urlSlug, link, consent, image, hotspotimage, imageGallery, externalImage, video, table, structuredTable, block, localizedfields, fieldcollections, objectbricks, classificationstore |
+| Own type each | date, datetime, dateRange, time, quantityValue, inputQuantityValue, quantityValueRange, numericRange, rgbaColor, geobounds, urlSlug, link, consent, image, hotspotimage, imageGallery, externalImage, video, table, structuredTable, block, localizedfields, fieldcollections, objectbricks, classificationstore, calculatedValue (typed by its element type) |
 
 Data types not in this table (for example encrypted fields) are not indexed; adding or removing them doesn't change
 the mapping.
@@ -300,9 +309,8 @@ without saving that object leaves a stale value in the index. What to do depends
 | Calculator reads related objects, prices, stock or an external service, and that data changed | Stale until that object is rebuilt: re-save it, or `update:index -c <id>` | Stale until that object is saved: re-save it |
 | Switching `live` ↔ `query_store` | No mapping change and no automatic reindex; values converge as objects are saved or rebuilt. Run `update:index -c <id>` to apply the switch now | Same |
 
-Calculated values are mapped as text and keyword, so changing a calculated field's element type doesn't change
-the mapping. In 2026.x (since 2026.2.9) calculated values are mapped by their element type (boolean, numeric,
-date, text), so an element type change is a mapping change and reindexes on class save.
+Calculated values are mapped by their element type (boolean, numeric, date or text; since 2026.2.9), so changing
+the element type is a mapping change and reindexes on class save.
 
 Calculated fields inside field collections, object bricks and blocks always behave as `live`, even in
 `query_store` mode. Inside localized fields the calculator runs once per valid language.
@@ -338,7 +346,7 @@ and from data the bundle derives from other elements.
 
 | Change | Why the index goes stale | Command |
 | --- | --- | --- |
-| SQL `UPDATE`/`INSERT` on object, asset or document tables, DAO methods such as `saveIndex()`, importers writing tables directly | No element event fires | `update:index -c <id>` or `-a`; `update:index` for documents |
+| SQL `UPDATE`/`INSERT` on object, asset or document tables, DAO methods such as `saveIndex()`, importers writing tables directly | No element event fires | `update:index -c <id>`, `-a` or `-d` |
 | Database restored from a dump into an existing installation | The index reflects the old state | `update:index -r` |
 | Object B saved, changing what object A shows in a `reverseObjectRelation` field | Only the saved object and, for classes with inheritance, its same-class descendants are queued | Re-save A, or `update:index -c <id>` |
 | Workflow place permissions changed | Each element stores `hasWorkflowWithPermissions` | `update:index` |
@@ -419,7 +427,7 @@ configuration: [Other Index Changes](../02_Configuration/03_Index_Management.md#
 ### `generic-data-index:update:index`
 
 ```bash
-bin/console generic-data-index:update:index [-c|--class-definition-id[=ID]] [-a|--update-asset-index] [-r|--recreate_index] [--update-global-aliases-only]
+bin/console generic-data-index:update:index [-c|--class-definition-id[=ID]] [-a|--update-asset-index] [-d|--update-document-index] [-r|--recreate_index] [--update-global-aliases-only]
 ```
 
 Updates the mapping of the selected indices in place and adds every element in scope to the index queue.
@@ -428,12 +436,12 @@ Updates the mapping of the selected indices in place and adds every element in s
 | --- | --- |
 | `-c`, `--class-definition-id` | Only that class index and its objects. The value is the class definition ID, not the name. |
 | `-a`, `--update-asset-index` | Only the asset index and all assets |
-| `-r`, `--recreate_index` | Deletes each index in scope first and creates it again empty; combine with `-c` or `-a` to limit the scope |
+| `-d`, `--update-document-index` | Only the document index and all documents |
+| `-r`, `--recreate_index` | Deletes each index in scope first and creates it again empty; combine with `-c`, `-a` or `-d` to limit the scope |
 | `--update-global-aliases-only` | Only rebuilds the global data object and element search aliases, then exits |
 
-Without `-c` or `-a` the command updates everything, in this order: data object folders, every class, assets,
-documents. The document and folder indices are only updated in this run; 2026.x adds `-d`,
-`--update-document-index` for the document index. Without `-r`, search keeps working and
+Without `-c`, `-a` or `-d` the command updates everything, in this order: data object folders, every class, assets,
+documents. The folder index is only updated in this run. Without `-r`, search keeps working and
 values refresh as the index queue is processed; with `-r`, the indices in scope are empty until the queue has been
 processed, so use it only for a broken index or to remove fields that are no longer used.
 
@@ -449,8 +457,7 @@ runs each `_reindex` as a background task that the bundle polls according to `re
 
 Read-only. Shows the index queue depth, every index with its document count and size, and a warning for any index
 that exists as both `-even` and `-odd`, which is the sign of an interrupted odd/even copy. Such leftover indices are not
-used by the bundle and can be deleted in the search engine; 2026.x provides `generic-data-index:cleanup:unused-indices`
-for this.
+used by the bundle; remove them with `generic-data-index:cleanup:unused-indices` (run `--dry-run` first).
 
 ### Snapshots
 
@@ -467,7 +474,7 @@ The import doesn't add anything to the index queue. See [Index Snapshots](../02_
 | Element copied | The copy's tags are missing from the index until it is saved again | Re-save the copy, or `update:index` |
 | Reverse object relations | Saving the referenced object doesn't update objects that point to it | Re-save them, or `update:index -c <id>` |
 | Deletes during an odd/even copy | Deleted elements stay in the index | Reindex in a quiet period; `update:index -r` removes them |
-| `generic-data-index:reindex` with values that don't fit the mapping | The index is recreated empty and nothing refills it | `update:index -c <id>` or `-a` |
+| `generic-data-index:reindex` with values that don't fit the mapping | The index is recreated empty and nothing refills it | `update:index -c <id>`, `-a` or `-d` |
 | Languages changed in config files, class with only a localized classification store | Not detected by `deployment:reindex` | `index_versions.classes.<id>` or `update:index -c <id>` |
 | Removed fields and removed languages | Stay in the mapping after an odd/even copy or an in-place update | `update:index -r` |
 | Calculator code changes | Cannot be detected | `index_versions`, see above |
