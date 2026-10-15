@@ -5,6 +5,13 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 # Upgrade Information
 
+## Upgrade to 2026.3.3
+- [Commands] `generic-data-index:deployment:reindex` has new opt-in options (`--all`, `--assets`, `--dry-run`, …) that
+  also cover the folder, asset and document indices and `index_settings`. Without options nothing changes. See
+  [Deployment and Index Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).
+- [Indexing] A native reindex now fails if the new index cannot be created (e.g. invalid `index_settings`) instead of
+  switching to an index with dynamic mapping.
+
 ## Upgrade to 2026.3.2
 - [Permissions] Searches that check a permission other than `list` (for example `byId()`, which checks `view`) no
   longer return the parent elements of a user's workspaces. As in Pimcore core, only `list` includes them, so the

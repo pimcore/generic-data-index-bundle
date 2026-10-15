@@ -14,7 +14,10 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexStateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DocumentIndexHandler;
@@ -31,6 +34,7 @@ final readonly class ReindexService implements ReindexServiceInterface
         private DocumentIndexHandler $documentIndexHandler,
         private EnqueueServiceInterface $enqueueService,
         private ClassDefinitionReindexServiceInterface $classDefinitionReindexService,
+        private IndexStateServiceInterface $indexStateService,
     ) {
 
     }
@@ -86,6 +90,13 @@ final readonly class ReindexService implements ReindexServiceInterface
             $enqueueElements
         );
 
+        $this->indexStateService->refresh(
+            IndexStateTarget::forClassDefinition($classDefinition),
+            true,
+            true,
+            $enqueueElements
+        );
+
         return $this;
     }
 
@@ -102,6 +113,14 @@ final readonly class ReindexService implements ReindexServiceInterface
                 ->enqueueAssets();
         }
 
+        // Without the rebuild, fields added to the mapping stay empty, so the mapping is not current yet.
+        $this->indexStateService->refresh(
+            IndexStateTarget::forScope(DeploymentReindexScope::ASSETS),
+            $enqueueElements,
+            true,
+            $enqueueElements
+        );
+
         return $this;
     }
 
@@ -117,6 +136,14 @@ final readonly class ReindexService implements ReindexServiceInterface
                 ->enqueueService
                 ->enqueueDocuments();
         }
+
+        // Without the rebuild, fields added to the mapping stay empty, so the mapping is not current yet.
+        $this->indexStateService->refresh(
+            IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS),
+            $enqueueElements,
+            true,
+            $enqueueElements
+        );
 
         return $this;
     }

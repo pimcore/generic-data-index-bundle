@@ -181,6 +181,10 @@ per-class reindex (`generic-data-index:deployment:reindex`, or the class-definit
 index instead of skipping it as unchanged. After a class definition change, that per-class
 reindex still applies as usual.
 
+Asset, document and folder indices are not checked against the manifest: if the exporting installation differs
+in their configuration (e.g. predefined asset metadata, valid languages), run `generic-data-index:update:index`
+after the import.
+
 `--dry-run` runs the compatibility check and prints the import plan (which indices, how many
 documents each) without writing anything ("Nothing written."). A real import exits with a non-zero
 status if the compatibility check refuses the snapshot, if the snapshot or `--from-path` directory
