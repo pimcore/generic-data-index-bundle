@@ -136,16 +136,37 @@ final readonly class FieldTypeFilters
             && $multiSelectFilter->isMatchMissingForEmptyValueEnabled()
             && in_array('', $multiSelectFilter->getValues(), true)
         ) {
-            // check presence on the field itself: the keyword subfield skips values above ignore_above
-            $existsField = str_ends_with($fieldName, '.keyword') ? substr($fieldName, 0, -strlen('.keyword')) : $fieldName;
-
-            return new MultiBoolQuery($fieldName, $multiSelectFilter->getValues(), $existsField);
+            return new MultiBoolQuery(
+                $fieldName,
+                $multiSelectFilter->getValues(),
+                $this->getPresenceFieldName($multiSelectFilter, $fieldName, $search)
+            );
         }
 
         return new TermsFilterQuery(
             $fieldName,
             $multiSelectFilter->getValues(),
         );
+    }
+
+    /**
+     * Presence is checked on the field itself, not on its keyword multi-field: the keyword multi-field skips
+     * values above ignore_above. Only the index mapping tells a keyword multi-field apart from a regular field
+     * or object property named "keyword", so without field name resolution the field is used as it is.
+     */
+    private function getPresenceFieldName(
+        MultiSelectFilter $multiSelectFilter,
+        string $fieldName,
+        ?SearchInterface $search
+    ): string {
+        if ($search
+            && $multiSelectFilter->isPqlFieldNameResolutionEnabled()
+            && $this->fieldNameTransformationService->isKeywordMultiField($search, $fieldName)
+        ) {
+            return substr($fieldName, 0, -strlen('.keyword'));
+        }
+
+        return $fieldName;
     }
 
     #[AsSearchModifierHandler]

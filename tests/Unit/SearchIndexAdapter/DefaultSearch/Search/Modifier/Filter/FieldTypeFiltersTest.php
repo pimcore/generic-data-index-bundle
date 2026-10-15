@@ -115,6 +115,10 @@ final class FieldTypeFiltersTest extends Unit
     {
         $filters = new FieldTypeFilters($this->makeEmpty(SearchPqlFieldNameTransformationServiceInterface::class, [
             'transformFieldnameForSearch' => 'standard_fields.color.keyword',
+            'isKeywordMultiField' => static fn (
+                SearchInterface $search,
+                string $fieldName
+            ): bool => $fieldName === 'standard_fields.color.keyword',
         ]));
 
         $query = $filters->getMultiSelectQuery(
@@ -128,6 +132,65 @@ final class FieldTypeFiltersTest extends Unit
                 'should' => [
                     ['bool' => ['must_not' => ['exists' => ['field' => 'standard_fields.color']]]],
                     ['terms' => ['standard_fields.color.keyword' => ['']]],
+                ],
+                'minimum_should_match' => 1,
+            ],
+        ], $query->toArrayAsSubQuery());
+    }
+
+    /**
+     * Without field name resolution there is no mapping lookup: a field literally named "keyword" is not a
+     * keyword subfield, so presence is checked on that field itself.
+     *
+     * @throws Exception
+     */
+    public function testMultiSelectQueryChecksPresenceOnALiteralKeywordField(): void
+    {
+        $filters = new FieldTypeFilters($this->makeEmpty(SearchPqlFieldNameTransformationServiceInterface::class, [
+            'isKeywordMultiField' => true,
+        ]));
+
+        $query = $filters->getMultiSelectQuery(
+            new MultiSelectFilter('standard_fields.keyword', [''], false, true),
+            null,
+            $this->makeEmpty(SearchInterface::class)
+        );
+
+        $this->assertSame([
+            'bool' => [
+                'should' => [
+                    ['bool' => ['must_not' => ['exists' => ['field' => 'standard_fields.keyword']]]],
+                    ['terms' => ['standard_fields.keyword' => ['']]],
+                ],
+                'minimum_should_match' => 1,
+            ],
+        ], $query->toArrayAsSubQuery());
+    }
+
+    /**
+     * A resolved field that the mapping does not know as a keyword multi-field (e.g. an object property named
+     * "keyword") keeps the presence check on the resolved field.
+     *
+     * @throws Exception
+     */
+    public function testMultiSelectQueryKeepsPresenceOnAResolvedFieldThatIsNoKeywordMultiField(): void
+    {
+        $filters = new FieldTypeFilters($this->makeEmpty(SearchPqlFieldNameTransformationServiceInterface::class, [
+            'transformFieldnameForSearch' => 'standard_fields.keyword',
+            'isKeywordMultiField' => false,
+        ]));
+
+        $query = $filters->getMultiSelectQuery(
+            new MultiSelectFilter('keyword', [''], matchMissingForEmptyValue: true),
+            null,
+            $this->makeEmpty(SearchInterface::class)
+        );
+
+        $this->assertSame([
+            'bool' => [
+                'should' => [
+                    ['bool' => ['must_not' => ['exists' => ['field' => 'standard_fields.keyword']]]],
+                    ['terms' => ['standard_fields.keyword' => ['']]],
                 ],
                 'minimum_should_match' => 1,
             ],
