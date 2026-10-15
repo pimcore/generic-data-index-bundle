@@ -123,8 +123,8 @@ final class BulkOperationService implements BulkOperationServiceInterface
      */
     private function getTotalFieldsLimitMessage(array $response): string
     {
-        $indexNames = [];
-        $limit = null;
+        // a batch can span several indices, each with its own limit
+        $limits = [];
         foreach ($response['items'] ?? [] as $item) {
             foreach ($item as $result) {
                 if (isset($result['error']) && preg_match(
@@ -132,24 +132,29 @@ final class BulkOperationService implements BulkOperationServiceInterface
                     json_encode($result['error'], JSON_THROW_ON_ERROR),
                     $matches
                 ) === 1) {
-                    $indexNames[$result['_index'] ?? 'unknown'] = true;
-                    $limit = $matches[1];
+                    $limits[$result['_index'] ?? 'unknown'] = $matches[1];
                 }
             }
         }
 
-        if ($limit === null) {
+        if ($limits === []) {
             return '';
         }
 
+        $exceeded = [];
+        foreach ($limits as $indexName => $limit) {
+            $exceeded[] = sprintf('%s [%s]', $indexName, $limit);
+        }
+
         return sprintf(
-            'Index %s exceeds its limit of total fields [%s]: the mapping has too many fields. Large ' .
+            'Limit of total fields exceeded for index %s: the mapping has too many fields. Large ' .
             'classification stores are mapped per group x key x language. Restrict the allowed groups of the ' .
             'classification store field in the class definition, or raise ' .
             '"pimcore_generic_data_index.index_service.index_settings.index.mapping.total_fields.limit" ' .
-            '(nested keys) and recreate the index with "bin/console generic-data-index:update:index -r". ',
-            implode(', ', array_keys($indexNames)),
-            $limit
+            '(nested keys) and recreate only the affected index, e.g. "bin/console ' .
+            'generic-data-index:update:index --class-definition-id=<id> -r" for a data object class ' .
+            '(without --class-definition-id, -a or -d, -r deletes and recreates every index). ',
+            implode(', ', $exceeded)
         );
     }
 

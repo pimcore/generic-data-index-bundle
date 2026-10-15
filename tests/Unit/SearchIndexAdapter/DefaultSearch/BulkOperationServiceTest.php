@@ -47,15 +47,48 @@ final class BulkOperationServiceTest extends Unit
             ],
         ]);
 
-        $this->assertStringStartsWith('Index pimcore_data_object_car', $message);
-        $this->assertStringContainsString('[100000]', $message);
+        $this->assertStringStartsWith(
+            'Limit of total fields exceeded for index pimcore_data_object_car [100000]',
+            $message
+        );
         $this->assertStringContainsString('allowed groups', $message);
         $this->assertStringContainsString(
             'pimcore_generic_data_index.index_service.index_settings.index.mapping.total_fields.limit',
             $message
         );
-        $this->assertStringContainsString('generic-data-index:update:index -r', $message);
+        $this->assertStringContainsString(
+            'generic-data-index:update:index --class-definition-id=<id> -r',
+            $message,
+            'the suggested rebuild is scoped to the affected index'
+        );
+        $this->assertStringContainsString('-r deletes and recreates every index', $message);
         $this->assertStringContainsString('"_id":2', $message, 'the raw response stays available for debugging');
+    }
+
+    public function testEachIndexIsReportedWithItsOwnLimit(): void
+    {
+        $message = $this->commitAndGetExceptionMessage([
+            'errors' => true,
+            'items' => [
+                ['index' => [
+                    '_index' => 'pimcore_data_object_car',
+                    '_id' => 1,
+                    'status' => 400,
+                    'error' => ['type' => 'illegal_argument_exception', 'reason' => 'Limit of total fields [100000] has been exceeded'],
+                ]],
+                ['index' => [
+                    '_index' => 'pimcore_data_object_bike',
+                    '_id' => 2,
+                    'status' => 400,
+                    'error' => ['type' => 'illegal_argument_exception', 'reason' => 'Limit of total fields [200000] has been exceeded'],
+                ]],
+            ],
+        ]);
+
+        $this->assertStringStartsWith(
+            'Limit of total fields exceeded for index pimcore_data_object_car [100000], pimcore_data_object_bike [200000]',
+            $message
+        );
     }
 
     public function testOtherBulkErrorsKeepTheGenericMessage(): void
