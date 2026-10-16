@@ -92,6 +92,7 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
                 ['fields' => array_keys($newPaths), 'attempt' => $attempt]
             );
             $stripPaths += $newPaths;
+            $keptPaths = $this->withoutStripped($keptPaths, array_keys($newPaths));
         }
 
         return new IndexCopyResult(
@@ -100,6 +101,30 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
             $keptPaths,
             min($attempt, self::MAX_ATTEMPTS)
         );
+    }
+
+    /**
+     * A kept field that failed in the copy is stripped after all; so is everything below a stripped path.
+     *
+     * @param string[] $keptPaths
+     * @param string[] $strippedPaths
+     *
+     * @return string[]
+     */
+    private function withoutStripped(array $keptPaths, array $strippedPaths): array
+    {
+        return array_values(array_filter(
+            $keptPaths,
+            static function (string $kept) use ($strippedPaths): bool {
+                foreach ($strippedPaths as $stripped) {
+                    if ($kept === $stripped || str_starts_with($kept, $stripped . '.')) {
+                        return false;
+                    }
+                }
+
+                return true;
+            }
+        ));
     }
 
     /**

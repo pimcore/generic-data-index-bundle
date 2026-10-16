@@ -88,6 +88,35 @@ final class IndexCopyServiceTest extends Unit
         $this->assertSame(2, $result->getAttempts());
     }
 
+    public function testAKeptFieldThatFailsInTheCopyIsReportedAsStrippedOnly(): void
+    {
+        $calls = [];
+        $service = $this->createService(
+            $this->liveMapping([
+                'count' => ['type' => 'long'],
+                'tags' => ['properties' => ['a' => ['type' => 'long']]],
+            ]),
+            $calls,
+            [
+                new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['standard_fields', 'count']]),
+                new ReindexOutcome(ReindexResult::SUCCESS),
+            ]
+        );
+
+        $result = $service->copy(self::ALIAS, $this->mapping([
+            'count' => ['type' => 'keyword'],
+            'tags' => ['type' => 'nested', 'properties' => ['a' => ['type' => 'long']]],
+        ]));
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame(['standard_fields.count'], $result->getStrippedPaths());
+        $this->assertSame(
+            ['standard_fields.tags'],
+            $result->getKeptPaths(),
+            'A field stripped by the retry is no longer kept; other kept fields stay'
+        );
+    }
+
     public function testCopyGivesUpWhenAFailureNamesNoNewField(): void
     {
         $calls = [];
