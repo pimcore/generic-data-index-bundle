@@ -65,6 +65,21 @@ final readonly class MappingDiff
     }
 
     /**
+     * @return string[][] path segments of the stripped fields, for the copy script
+     */
+    public function getStripPathSegments(): array
+    {
+        $paths = [];
+        foreach ($this->changes as $change) {
+            if ($change->getAction() === MappingFieldChangeAction::STRIP) {
+                $paths[] = $change->getPathSegments();
+            }
+        }
+
+        return $paths;
+    }
+
+    /**
      * @return string[]
      */
     public function getKeptPaths(): array

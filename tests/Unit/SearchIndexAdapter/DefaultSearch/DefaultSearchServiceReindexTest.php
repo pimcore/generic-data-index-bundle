@@ -731,6 +731,134 @@ final class DefaultSearchServiceReindexTest extends Unit
      * Builds a client stub that sequences through $taskResponses on each tasks()->get() call.
      * Uses a concrete stub (not a PHPUnit mock) to avoid return-type enforcement on getOriginalClient().
      */
+    // -------------------------------------------------------------------------
+    // Copy without fields (no index recreation on field type changes)
+    // -------------------------------------------------------------------------
+
+    public function testReindexSendsNoScript(): void
+    {
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]]],
+            withAliasSwitchSupport: true,
+        );
+
+        $this->createService(client: $client)->reindex('test_index', []);
+
+        $this->assertArrayNotHasKey('script', $client->reIndexParams[0]['body']);
+    }
+
+    public function testReindexWithoutFieldsSendsTheRequestOfAPlainReindexForAnEmptyList(): void
+    {
+        $plain = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]]],
+            withAliasSwitchSupport: true,
+        );
+        $stripping = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]]],
+            withAliasSwitchSupport: true,
+        );
+
+        $this->createService(client: $plain)->reindex('test_index', []);
+        $outcome = $this->createService(client: $stripping)->reindexWithoutFields('test_index', [], []);
+
+        $this->assertSame(ReindexResult::SUCCESS, $outcome->getResult());
+        $this->assertSame($plain->reIndexParams, $stripping->reIndexParams);
+    }
+
+    public function testReindexWithoutFieldsSendsTheStripScript(): void
+    {
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]]],
+            withAliasSwitchSupport: true,
+        );
+        $paths = [['standard_fields', 'price'], ['standard_fields', 'l_text', 'en']];
+
+        $outcome = $this->createService(client: $client)->reindexWithoutFields('test_index', [], $paths);
+
+        $this->assertSame(ReindexResult::SUCCESS, $outcome->getResult());
+        $script = $client->reIndexParams[0]['body']['script'];
+        $this->assertSame('painless', $script['lang']);
+        $this->assertSame($paths, $script['params']['paths']);
+    }
+
+    /**
+     * @dataProvider parsingFailureProvider
+     */
+    public function testIncompatibleOutcomeNamesTheFailingFields(array $causes, array $expectedPaths): void
+    {
+        $failures = array_map(static fn (array $cause): array => [
+            'index' => 'test_index-even',
+            'id' => '42',
+            'cause' => $cause,
+            'status' => 400,
+        ], $causes);
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [['completed' => true, 'response' => ['timed_out' => false, 'failures' => $failures]]],
+        );
+
+        $outcome = $this->createService(client: $client)->reindexWithoutFields('test_index', [], []);
+
+        $this->assertSame(ReindexResult::MAPPING_INCOMPATIBLE, $outcome->getResult());
+        $this->assertSame($expectedPaths, $outcome->getFailingFieldPaths());
+    }
+
+    public static function parsingFailureProvider(): array
+    {
+        return [
+            // Captured from OpenSearch 2 (devcontainer 2025.4, GDI 2.5.14).
+            'OpenSearch scalar' => [
+                [[
+                    'type' => 'mapper_parsing_exception',
+                    'reason' => 'failed to parse field [standard_fields.f_text] of type [float] '
+                        . "in document with id '1637'. Preview of field's value: 'abc-68'",
+                ]],
+                [['standard_fields', 'f_text']],
+            ],
+            'OpenSearch nested leaf' => [
+                [[
+                    'type' => 'mapper_parsing_exception',
+                    'reason' => 'failed to parse field [standard_fields.items.GdiE2eItem.i_text] '
+                        . "of type [float] in document with id '7'.",
+                ]],
+                [['standard_fields', 'items', 'GdiE2eItem', 'i_text']],
+            ],
+            'object mapping conflict' => [
+                [[
+                    'type' => 'mapper_parsing_exception',
+                    'reason' => 'object mapping for [standard_fields.rel] tried to parse field [rel] as object, '
+                        . 'but found a concrete value',
+                ]],
+                [['standard_fields', 'rel']],
+            ],
+            // Elasticsearch 8 prefixes the location and uses document_parsing_exception.
+            'Elasticsearch 8' => [
+                [[
+                    'type' => 'document_parsing_exception',
+                    'reason' => '[1:57] failed to parse field [standard_fields.price] of type [double] '
+                        . "in document with id '3'.",
+                ]],
+                [['standard_fields', 'price']],
+            ],
+            'several documents, one field each, deduplicated' => [
+                [
+                    ['type' => 'mapper_parsing_exception', 'reason' => 'failed to parse field [a.b] of type [long]'],
+                    ['type' => 'mapper_parsing_exception', 'reason' => 'failed to parse field [a.b] of type [long]'],
+                    ['type' => 'mapper_parsing_exception', 'reason' => 'failed to parse field [a.c] of type [date]'],
+                ],
+                [['a', 'b'], ['a', 'c']],
+            ],
+            'unknown message format' => [
+                [['type' => 'mapper_parsing_exception', 'reason' => 'something else entirely']],
+                [],
+            ],
+        ];
+    }
+
     private function buildClientWithTaskResponses(
         string $taskId,
         array $taskResponses,
@@ -802,9 +930,13 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
         return $this->existsIndexValue;
     }
 
-    public function reIndex(array $_params): array
+    /** @var array<int, array> */
+    public array $reIndexParams = [];
+
+    public function reIndex(array $params): array
     {
         $this->reIndexCalls++;
+        $this->reIndexParams[] = $params;
 
         return $this->reindexResponseOverride ?? ['task' => $this->taskId];
     }

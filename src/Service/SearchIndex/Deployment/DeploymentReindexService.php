@@ -81,6 +81,9 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
             $reasons[] = $stored->getMappingChecksum() === IndexStateServiceInterface::INVALIDATED
                 ? 'previous snapshot import did not finish'
                 : 'mapping changed';
+            if (!$indexMissing) {
+                array_push($reasons, ...$this->describeFieldChanges($target));
+            }
         }
 
         $settingsChanged = $stored->getSettingsHash() !== null
@@ -152,8 +155,14 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
             return true;
         }
 
-        if ($plan->isSettingsChanged()) {
-            $this->dataObjectIndexHandler->reindexMapping($classDefinition);
+        if ($plan->isSettingsChanged()
+            && $this->dataObjectIndexHandler->reindexMapping($classDefinition)->requiresRebuild()
+        ) {
+            // The mapping was current, but fields could still be left out of the copy (e.g. values
+            // written under an older mapping); only the rebuild restores them.
+            $this->enqueueService->enqueueByClassDefinition($classDefinition);
+
+            return true;
         }
 
         if ($plan->isDataVersionChanged()) {
@@ -169,13 +178,14 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
     {
         $handler = $this->getHandler($plan->getTarget());
 
+        $copyRequiresRebuild = false;
         if ($plan->isIndexMissing()) {
             $handler->updateMapping();
         } elseif ($plan->needsNativeReindex()) {
-            $handler->reindexMapping();
+            $copyRequiresRebuild = $handler->reindexMapping()->requiresRebuild();
         }
 
-        if (!$plan->needsRebuild()) {
+        if (!$plan->needsRebuild() && !$copyRequiresRebuild) {
             return false;
         }
 
@@ -187,6 +197,25 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
         };
 
         return true;
+    }
+
+    /**
+     * The fields the copy will keep or leave out, for the plan output (also shown by --dry-run).
+     *
+     * @return string[]
+     */
+    private function describeFieldChanges(IndexStateTarget $target): array
+    {
+        $diff = $this->getHandler($target)->getMappingDiff($target->getClassDefinition());
+        $reasons = [];
+        if ($diff->getStripPaths() !== []) {
+            $reasons[] = 'fields stripped in the copy: ' . implode(', ', $diff->getStripPaths());
+        }
+        if ($diff->getKeptPaths() !== []) {
+            $reasons[] = 'fields kept in the copy: ' . implode(', ', $diff->getKeptPaths());
+        }
+
+        return $reasons;
     }
 
     private function getHandler(IndexStateTarget $target): IndexHandlerInterface

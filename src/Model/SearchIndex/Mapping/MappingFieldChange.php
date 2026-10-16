@@ -24,24 +24,35 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingFieldChangeAct
 final readonly class MappingFieldChange
 {
     /**
-     * @param string $path dotted path of the field in the documents, e.g. "standard_fields.l_text.en"
+     * @param string[] $pathSegments path of the field in the documents, e.g. ['standard_fields', 'l_text', 'en']
      * @param string $oldShape mapping type in the live index ("object" / "nested" for containers)
      * @param string $newShape mapping type in the new mapping
      */
     public function __construct(
-        private string $path,
+        private array $pathSegments,
         private string $oldShape,
         private string $newShape,
         private MappingFieldChangeAction $action,
     ) {
-        if ($path === '') {
-            throw new InvalidArgumentException('A mapping field change needs a path.');
+        if ($pathSegments === [] || in_array('', $pathSegments, true)) {
+            throw new InvalidArgumentException('A mapping field change needs a path without empty segments.');
         }
     }
 
+    /**
+     * Dotted path for logs and messages, e.g. "standard_fields.l_text.en".
+     */
     public function getPath(): string
     {
-        return $this->path;
+        return implode('.', $this->pathSegments);
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getPathSegments(): array
+    {
+        return $this->pathSegments;
     }
 
     public function getOldShape(): string

@@ -47,13 +47,15 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
 
     public function diff(array $liveProperties, array $newProperties): MappingDiff
     {
-        return new MappingDiff($this->compareProperties($liveProperties, $newProperties, ''));
+        return new MappingDiff($this->compareProperties($liveProperties, $newProperties, []));
     }
 
     /**
+     * @param string[] $parentPath
+     *
      * @return MappingFieldChange[]
      */
-    private function compareProperties(array $live, array $new, string $prefix): array
+    private function compareProperties(array $live, array $new, array $parentPath): array
     {
         $changes = [];
         foreach ($new as $name => $newNode) {
@@ -61,16 +63,18 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
             if (!is_array($liveNode) || !is_array($newNode)) {
                 continue;
             }
-            array_push($changes, ...$this->compareNode($liveNode, $newNode, $prefix . $name));
+            array_push($changes, ...$this->compareNode($liveNode, $newNode, [...$parentPath, (string) $name]));
         }
 
         return $changes;
     }
 
     /**
+     * @param string[] $path
+     *
      * @return MappingFieldChange[]
      */
-    private function compareNode(array $live, array $new, string $path): array
+    private function compareNode(array $live, array $new, array $path): array
     {
         $liveShape = $this->shape($live);
         $newShape = $this->shape($new);
@@ -78,7 +82,7 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
         $newIsContainer = $this->isContainer($newShape);
 
         if ($liveIsContainer && $newIsContainer) {
-            $changes = $this->compareProperties($live['properties'] ?? [], $new['properties'] ?? [], $path . '.');
+            $changes = $this->compareProperties($live['properties'] ?? [], $new['properties'] ?? [], $path);
             if ($liveShape !== $newShape) {
                 // object <-> nested: both hold objects (or lists of objects) in the documents.
                 $changes[] = new MappingFieldChange($path, $liveShape, $newShape, MappingFieldChangeAction::KEEP);

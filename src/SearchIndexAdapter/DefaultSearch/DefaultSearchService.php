@@ -23,6 +23,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Debug\SearchInform
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexOutcome;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexStripScript;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
@@ -112,6 +114,23 @@ final class DefaultSearchService implements SearchIndexServiceInterface
      */
     public function reindex(string $indexName, array $mapping): ReindexResult
     {
+        return $this->copyIntoNewIndex($indexName, $mapping, null)->getResult();
+    }
+
+    public function reindexWithoutFields(string $indexName, array $mapping, array $stripPaths): ReindexOutcome
+    {
+        return $this->copyIntoNewIndex(
+            $indexName,
+            $mapping,
+            $stripPaths === [] ? null : new ReindexStripScript($stripPaths)
+        );
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function copyIntoNewIndex(string $indexName, array $mapping, ?ReindexStripScript $script): ReindexOutcome
+    {
         $currentIndexVersion = $this->getCurrentIndexVersion($indexName);
         $newIndexVersion = $currentIndexVersion === self::INDEX_VERSION_EVEN
             ? self::INDEX_VERSION_ODD
@@ -138,6 +157,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 'index' => $newIndexName,
             ],
         ];
+        if ($script !== null) {
+            $body['script'] = $script->toRequestScript();
+        }
 
         $taskId = null;
 
@@ -189,7 +211,10 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                     json_encode(array_slice($failures, 0, 5), JSON_PARTIAL_OUTPUT_ON_ERROR)
                 ));
 
-                return ReindexResult::MAPPING_INCOMPATIBLE;
+                return new ReindexOutcome(
+                    ReindexResult::MAPPING_INCOMPATIBLE,
+                    $this->extractFailingFieldPaths($failures)
+                );
             }
 
             throw new ReindexFailedException(
@@ -200,7 +225,33 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
 
-        return ReindexResult::SUCCESS;
+        return new ReindexOutcome(ReindexResult::SUCCESS);
+    }
+
+    /**
+     * Field paths named in parsing failures. OpenSearch and Elasticsearch name the full dotted
+     * path of the field ("failed to parse field [a.b.c] of type [float] ..."), or of the object
+     * for object/scalar conflicts ("object mapping for [a.b] tried to parse field [b] as object").
+     * The engine reports only the first failing field per document, and only for one batch.
+     *
+     * @param array<int, array<string, mixed>> $failures
+     *
+     * @return string[][]
+     */
+    private function extractFailingFieldPaths(array $failures): array
+    {
+        $paths = [];
+        foreach ($failures as $failure) {
+            $reason = (string) ($failure['cause']['reason'] ?? '');
+            $matched = preg_match('/failed to parse field \[([^\]]+)\]/', $reason, $match) === 1
+                || preg_match('/object mapping for \[([^\]]+)\]/', $reason, $match) === 1;
+            if (!$matched) {
+                continue;
+            }
+            $paths[$match[1]] = explode('.', $match[1]);
+        }
+
+        return array_values($paths);
     }
 
     /**
