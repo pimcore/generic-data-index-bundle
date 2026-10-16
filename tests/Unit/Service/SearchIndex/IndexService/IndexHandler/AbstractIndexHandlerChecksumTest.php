@@ -100,7 +100,13 @@ final class AbstractIndexHandlerChecksumTest extends Unit
 
     private function getIndexHandler(): AbstractIndexHandler
     {
-        return new class($this->makeEmpty(SearchIndexServiceInterface::class), $this->makeEmpty(SearchIndexConfigServiceInterface::class), $this->makeEmpty(EventDispatcherInterface::class), $this->makeEmpty(IndexMappingServiceInterface::class), $this->makeEmpty(IndexCopyServiceInterface::class)) extends AbstractIndexHandler {
+        $search = $this->makeEmpty(SearchIndexServiceInterface::class);
+        $config = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $events = $this->makeEmpty(EventDispatcherInterface::class);
+        $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
+        $copy = $this->makeEmpty(IndexCopyServiceInterface::class);
+
+        return new class($search, $config, $events, $mapping, $copy) extends AbstractIndexHandler {
             protected function extractMappingProperties(mixed $context = null): array
             {
                 return [];

@@ -267,19 +267,15 @@ final class AbstractIndexHandlerTest extends Unit
     }
 
     private function createHandlerWithService(
-        SearchIndexServiceInterface $searchIndexService,
-        array $mappingProperties = []
+        SearchIndexServiceInterface $search,
+        array $properties = []
     ): AbstractIndexHandler {
-        $indexCopyService = new IndexCopyService($searchIndexService, new MappingDiffService(), new NullLogger());
+        $copy = new IndexCopyService($search, new MappingDiffService(), new NullLogger());
+        $config = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $events = $this->makeEmpty(EventDispatcherInterface::class);
+        $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
 
-        return new class(
-            $searchIndexService,
-            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
-            $this->makeEmpty(EventDispatcherInterface::class),
-            $this->makeEmpty(IndexMappingServiceInterface::class),
-            $indexCopyService,
-            $mappingProperties
-        ) extends AbstractIndexHandler {
+        return new class($search, $config, $events, $mapping, $copy, $properties) extends AbstractIndexHandler {
             public function __construct(
                 SearchIndexServiceInterface $searchIndexService,
                 SearchIndexConfigServiceInterface $searchIndexConfigService,
