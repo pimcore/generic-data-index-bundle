@@ -69,7 +69,49 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
      */
     private function asSentToTheEngine(array $properties): array
     {
-        return json_decode(json_encode($properties, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        return $this->expandDottedNames(
+            json_decode(json_encode($properties, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR)
+        );
+    }
+
+    /**
+     * The engine maps a property name with dots ("spec.width", e.g. a classification store key) as
+     * nested objects (spec -> width), and returns the live mapping that way.
+     */
+    private function expandDottedNames(array $properties): array
+    {
+        $expanded = [];
+        foreach ($properties as $name => $node) {
+            if (is_array($node) && is_array($node['properties'] ?? null)) {
+                $node['properties'] = $this->expandDottedNames($node['properties']);
+            }
+            $expanded = $this->insertAt($expanded, explode('.', (string) $name), $node);
+        }
+
+        return $expanded;
+    }
+
+    /**
+     * @param string[] $segments
+     */
+    private function insertAt(array $properties, array $segments, mixed $node): array
+    {
+        $name = (string) array_shift($segments);
+        $existing = $properties[$name] ?? null;
+        if ($segments === []) {
+            $properties[$name] = is_array($existing) && is_array($node)
+                ? array_replace_recursive($existing, $node)
+                : $node;
+
+            return $properties;
+        }
+
+        $container = is_array($existing) ? $existing : [];
+        $children = is_array($container['properties'] ?? null) ? $container['properties'] : [];
+        $container['properties'] = $this->insertAt($children, $segments, $node);
+        $properties[$name] = $container;
+
+        return $properties;
     }
 
     /**

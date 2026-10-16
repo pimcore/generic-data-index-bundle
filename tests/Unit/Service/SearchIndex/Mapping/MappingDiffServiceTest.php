@@ -145,6 +145,39 @@ final class MappingDiffServiceTest extends Unit
         );
     }
 
+    /**
+     * Classification store keys and groups may contain dots ("spec.width"). The engine expands such
+     * property names into objects, so the live mapping holds spec -> width.
+     */
+    public function testDottedPropertyNamesAreComparedLikeTheEngineExpandsThem(): void
+    {
+        $live = $this->standardFields(['cs' => ['properties' => ['default' => ['properties' => [
+            'spec' => ['properties' => ['width' => self::TEXT_KEYWORD, 'height' => ['type' => 'float']]],
+        ]]]]]);
+        $new = $this->standardFields(['cs' => ['properties' => ['default' => ['properties' => [
+            'spec.width' => ['type' => 'float'],
+            'spec.height' => ['type' => 'float'],
+        ]]]]]);
+
+        $diff = $this->service->diff($live, $new);
+
+        $this->assertSame(['standard_fields.cs.default.spec.width'], $diff->getStripPaths());
+        $this->assertSame(
+            [['standard_fields', 'cs', 'default', 'spec', 'width']],
+            $diff->getStripPathSegments()
+        );
+    }
+
+    public function testUnchangedDottedPropertyNamesHaveNoChanges(): void
+    {
+        $live = $this->standardFields([
+            'a' => ['properties' => ['b' => ['properties' => ['c' => ['type' => 'long']]]]],
+        ]);
+        $new = $this->standardFields(['a.b.c' => ['type' => 'long']]);
+
+        $this->assertTrue($this->service->diff($live, $new)->isEmpty());
+    }
+
     public function testParameterOnlyChangesAreIgnored(): void
     {
         $live = $this->standardFields([

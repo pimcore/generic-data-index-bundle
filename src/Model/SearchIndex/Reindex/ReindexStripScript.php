@@ -21,6 +21,8 @@ use InvalidArgumentException;
  * The Painless source is fixed: the field paths are passed as params and never become part of
  * the source. The script walks maps and lists, so a path reaches into localized fields
  * (field.language), object bricks and every item of a nested list (field collections, blocks).
+ * Keys with dots (e.g. classification store keys like "spec.width") stay one literal key in the
+ * document while the engine maps them as objects, so each step also tries the joined segments.
  *
  * @internal
  */
@@ -30,9 +32,12 @@ final readonly class ReindexStripScript
         void strip(def node, List path, int i) {
           if (node instanceof List) { for (def item : node) { strip(item, path, i); } return; }
           if (!(node instanceof Map)) { return; }
-          String key = path.get(i);
-          if (i == path.size() - 1) { node.remove(key); return; }
-          strip(node.get(key), path, i + 1);
+          String key = null;
+          for (int j = i; j < path.size(); j++) {
+            key = key == null ? path.get(j) : key + '.' + path.get(j);
+            if (!node.containsKey(key)) { continue; }
+            if (j == path.size() - 1) { node.remove(key); } else { strip(node.get(key), path, j + 1); }
+          }
         }
         for (def p : params.paths) { strip(ctx._source, p, 0); }
         PAINLESS;

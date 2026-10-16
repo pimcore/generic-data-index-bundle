@@ -222,6 +222,34 @@ final class ShapeTransitionTest extends Unit
      * S44: a leaf inside a nested list (the layout of field collections, items[].Type.field) is
      * removed from every item; the other leaves and the number of items stay.
      */
+    /**
+     * S45: a classification store key (or group) with a dot in its name stays one literal key in the
+     * document ("spec.width"), while the engine maps it as spec -> width. The diff finds it and the
+     * strip script removes the literal key.
+     */
+    public function testLiteralDottedKeyIsStripped(): void
+    {
+        $storeMapping = static fn (string $type): array => [
+            'cs' => ['properties' => ['spec.width' => ['type' => $type], 'other' => ['type' => 'keyword']]],
+            self::OTHER_FIELD => ['type' => 'keyword'],
+        ];
+        $this->createAliasWithDocuments(
+            $storeMapping('text'),
+            ['cs' => ['spec.width' => 'abc', 'other' => 'x'], self::OTHER_FIELD => self::OTHER_VALUE]
+        );
+
+        $result = $this->copy($storeMapping('float'));
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame(1, $result->getAttempts(), 'The diff must find the dotted key, not the retry');
+        $this->assertSame(['cs.spec.width'], $result->getStrippedPaths());
+        $this->assertCopiedIntoOtherIndex();
+        foreach ($this->getSources() as $source) {
+            $this->assertSame(['other' => 'x'], $source['cs']);
+            $this->assertSame(self::OTHER_VALUE, $source[self::OTHER_FIELD]);
+        }
+    }
+
     public function testNestedLeafIsStrippedInEveryItem(): void
     {
         $itemMapping = static fn (string $leafType): array => [
