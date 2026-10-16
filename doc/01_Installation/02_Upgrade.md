@@ -12,6 +12,34 @@ description: Version-specific upgrade instructions and breaking changes for the 
 - [Indexing] A native reindex now fails if the new index cannot be created (e.g. invalid `index_settings`) instead of
   switching to an index with dynamic mapping.
 
+### Re-indexing required
+
+- [Indexing] Fixed: localized fields inside object bricks, field collections and blocks were normalized with the
+  class-level localized field definitions instead of the container's. Their values were indexed unconverted
+  (relations as empty objects), or converted with the type of a class-level localized field of the same name. Their
+  mapping (`localizedfields.<language>.<field>`) did not match the documents (`localizedfields.<field>.<language>`),
+  so the values were only mapped dynamically, and filtering or sorting a localized object brick column in the
+  Studio grid found nothing or failed.
+- [Indexing] They are now mapped and indexed like the class-level localized fields, without the `localizedfields`
+  level: `<container path>.<field>.<language>`, for example `bricks.SaleInformation.title.en`. This is the key the
+  Studio grid filters and sorts object brick columns by. Values of data types without a Generic Data Index adapter
+  are no longer indexed there.
+- [Indexing] In `query_store` mode, calculated values inside object bricks, field collections and blocks are always
+  calculated live. Before, one with the same name as a class-level localized calculated value got the class-level
+  value.
+- [Indexing] The mapping of classes with localized fields inside object bricks, field collections or blocks changes.
+  Run `generic-data-index:deployment:reindex` after the update; it re-indexes only the classes whose mapping
+  changed. Saving such a class in the class editor has the same effect. `generic-data-index:update:index -c <class id>
+  -r` builds the index from scratch; `deployment:reindex` copies the existing documents into the new index first, so
+  the old `localizedfields` fields stay in its mapping (with values only until the elements are re-indexed).
+- [Indexing] Until the re-index, elements saved with the new version are indexed at the new paths, but these are
+  mapped dynamically: the first value decides the type. A decimal in a field first indexed with a whole number is
+  indexed as a whole number, and a text in a field first indexed with a date-like value is rejected, so the element
+  is not updated in the index (logged as `mapper_parsing_exception`). Elements not saved yet are not found by
+  filters on these fields.
+- [Indexing] Snapshots exported before the update are refused for these classes, and `--force` skips them: export
+  them again after the re-index.
+
 ## Upgrade to 2026.3.2
 - [Permissions] Searches that check a permission other than `list` (for example `byId()`, which checks `view`) no
   longer return the parent elements of a user's workspaces. As in Pimcore core, only `list` includes them, so the
