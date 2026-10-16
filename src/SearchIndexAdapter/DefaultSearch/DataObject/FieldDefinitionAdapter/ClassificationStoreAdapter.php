@@ -62,7 +62,10 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $classificationStore = $this->getClassificationStoreDefinition();
         $mapping = [];
 
-        $groups = $this->getClassificationStoreGroups($classificationStore->getStoreId());
+        $groups = $this->filterAllowedGroups(
+            $this->getClassificationStoreGroups($classificationStore->getStoreId()),
+            $classificationStore
+        );
         foreach ($groups as $group) {
             $groupName = $this->normalizeNameSegment($group->getName(), 'group', $group->getId(), true);
             if ($groupName === null
@@ -495,6 +498,30 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $listing->setCondition('storeId = :storeId', ['storeId' => $id]);
 
         return $listing->getList();
+    }
+
+    /**
+     * Every group is mapped with all of its keys (and languages), so mapping groups that an object of this
+     * class cannot get assigned can exceed the index total fields limit. When the field restricts the
+     * allowed groups, only those are mapped; without a restriction, all groups of the store stay mapped.
+     * The property has no default and stays uninitialized for definitions that never set it.
+     *
+     * @param GroupConfig[] $groups
+     *
+     * @return GroupConfig[]
+     */
+    private function filterAllowedGroups(array $groups, Classificationstore $classificationStore): array
+    {
+        if (!isset($classificationStore->allowedGroupIds) || $classificationStore->getAllowedGroupIds() === []) {
+            return $groups;
+        }
+
+        $allowedGroupIds = array_map('intval', $classificationStore->getAllowedGroupIds());
+
+        return array_filter(
+            $groups,
+            static fn (GroupConfig $group): bool => in_array($group->getId(), $allowedGroupIds, true)
+        );
     }
 
     /**
