@@ -236,7 +236,11 @@ for as long as the rebuild from the database takes:
 - A **stripped** field is absent from every document until the rebuild has refilled that object. Filters on that
   field match nothing, sorting on it puts every object last, and aggregations on it are empty. Everything else about
   the documents is unchanged.
-- A **kept** field holds its old value, for example a number as text, until the rebuild.
+- A **kept** field holds its old value in the new type, for example a number as text or a date as its ISO string,
+  until the rebuild. Only the rebuild writes the value as Pimcore converted it in the database. A class save,
+  `deployment:reindex` with a mapping change and `update:index` run that rebuild; `generic-data-index:reindex` and a
+  settings-only `deployment:reindex` don't, so after those the old value stays until the object is saved or
+  `update:index -c <id>` runs.
 - The index is recreated, and empty, only as a last resort when the copy still fails after the retries.
 
 How long the changed fields stay empty is the time the messenger workers need to process all objects of the class,
