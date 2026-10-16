@@ -56,9 +56,36 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
      */
     public function diff(array $liveProperties, array $newProperties): MappingDiff
     {
+        $newProperties = $this->asSentToTheEngine($newProperties);
+
         return new MappingDiff(
-            $this->compareProperties($liveProperties, $this->asSentToTheEngine($newProperties), [])
+            $this->compareProperties($liveProperties, $newProperties, []),
+            $this->findRemoved($liveProperties, $newProperties, [])
         );
+    }
+
+    /**
+     * @throws JsonException
+     */
+    public function resolveSourceField(array $newProperties, array $segments): array
+    {
+        $children = $this->asSentToTheEngine($newProperties);
+        $node = null;
+        foreach ($segments as $position => $segment) {
+            if (is_array($children[$segment] ?? null)) {
+                $node = $children[$segment];
+                $children = is_array($node['properties'] ?? null) ? $node['properties'] : [];
+
+                continue;
+            }
+
+            // A sub-field of the field reached so far: the document holds that field.
+            return $position > 0 && is_array($node['fields'][$segment] ?? null)
+                ? array_slice($segments, 0, $position)
+                : $segments;
+        }
+
+        return $segments;
     }
 
     /**
@@ -131,6 +158,39 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
         }
 
         return $changes;
+    }
+
+    /**
+     * Live fields the new mapping no longer has; within objects present on both sides per field.
+     *
+     * @param string[] $parentPath
+     *
+     * @return string[][]
+     */
+    private function findRemoved(array $live, array $new, array $parentPath): array
+    {
+        $removed = [];
+        foreach ($live as $name => $liveNode) {
+            if (!is_array($liveNode)) {
+                continue;
+            }
+            $path = [...$parentPath, (string) $name];
+            $newNode = $new[$name] ?? null;
+            if (!is_array($newNode)) {
+                $removed[] = $path;
+
+                continue;
+            }
+            if ($this->isContainer($this->shape($liveNode)) && $this->isContainer($this->shape($newNode))) {
+                array_push($removed, ...$this->findRemoved(
+                    is_array($liveNode['properties'] ?? null) ? $liveNode['properties'] : [],
+                    is_array($newNode['properties'] ?? null) ? $newNode['properties'] : [],
+                    $path
+                ));
+            }
+        }
+
+        return $removed;
     }
 
     /**

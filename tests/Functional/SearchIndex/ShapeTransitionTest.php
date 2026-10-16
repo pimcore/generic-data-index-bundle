@@ -252,28 +252,59 @@ final class ShapeTransitionTest extends Unit
 
     /**
      * S46: a sub-field (multi-field) of another type fails in the copy and the engine names it
-     * (title.num). The document only has the parent value, so the parent is stripped.
+     * (title.num). The sub-field exists only in the mapping; its field is stripped, whether the
+     * document holds one value or a list.
      */
-    public function testFailingSubFieldStripsItsParentValue(): void
+    public function testFailingSubFieldStripsItsField(): void
     {
-        $textWithSubField = static fn (array $fields): array => [
+        $withSubField = static fn (array $fields): array => [
             'title' => ['type' => 'text', 'fields' => $fields],
+            'tags' => ['type' => 'text', 'fields' => $fields],
             self::OTHER_FIELD => ['type' => 'keyword'],
         ];
         $this->createAliasWithDocuments(
-            $textWithSubField(['keyword' => ['type' => 'keyword']]),
-            ['title' => 'abc', self::OTHER_FIELD => self::OTHER_VALUE]
+            $withSubField(['keyword' => ['type' => 'keyword']]),
+            ['title' => 'abc', 'tags' => ['abc', 'def'], self::OTHER_FIELD => self::OTHER_VALUE]
         );
 
-        $result = $this->copy($textWithSubField(['num' => ['type' => 'long']]));
+        $result = $this->copy($withSubField(['num' => ['type' => 'long']]));
 
         $this->assertTrue($result->isSuccessful());
-        $this->assertSame(['title.num'], $result->getStrippedPaths());
-        $this->assertSame(2, $result->getAttempts(), 'Only the engine knows the sub-field fails');
+        $this->assertContains('title', $result->getStrippedPaths());
+        $this->assertContains('tags', $result->getStrippedPaths());
         $this->assertCopiedIntoOtherIndex();
         foreach ($this->getSources() as $source) {
-            $this->assertArrayNotHasKey('title', $source);
-            $this->assertSame(self::OTHER_VALUE, $source[self::OTHER_FIELD]);
+            $this->assertSame([self::OTHER_FIELD => self::OTHER_VALUE], $source);
+        }
+    }
+
+    /**
+     * S47: the engine maps removed fields again from the first copied document. "2026-01-01" makes
+     * a removed text field a date, and "abc" in the next document fails - one field per attempt. A
+     * failure on one removed field strips all of them, so four such fields need two attempts.
+     */
+    public function testConflictingRemovedFieldsAreStrippedTogether(): void
+    {
+        $removed = ['gone1', 'gone2', 'gone3', 'gone4'];
+        $this->createAliasWithDocuments(
+            [
+                ...array_fill_keys($removed, ['type' => 'text']),
+                self::OTHER_FIELD => ['type' => 'keyword'],
+            ],
+            static fn (string $id): array => [
+                ...array_fill_keys($removed, $id === self::DOCUMENT_IDS[0] ? '2026-01-01' : 'abc-' . $id),
+                self::OTHER_FIELD => self::OTHER_VALUE,
+            ]
+        );
+
+        $result = $this->copy([self::OTHER_FIELD => ['type' => 'keyword']]);
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame(2, $result->getAttempts());
+        $this->assertEqualsCanonicalizing($removed, $result->getStrippedPaths());
+        $this->assertCopiedIntoOtherIndex();
+        foreach ($this->getSources() as $source) {
+            $this->assertSame([self::OTHER_FIELD => self::OTHER_VALUE], $source);
         }
     }
 
@@ -356,7 +387,10 @@ final class ShapeTransitionTest extends Unit
     /**
      * The live index is the -odd one, so the copy has to switch the alias to -even.
      */
-    private function createAliasWithDocuments(array $mapping, array $document): void
+    /**
+     * @param array|callable(string): array $document the same document for every id, or one per id
+     */
+    private function createAliasWithDocuments(array $mapping, array|callable $document): void
     {
         $indexName = $this->alias . '-' . DefaultSearchService::INDEX_VERSION_ODD;
         $this->getSearchIndexService()->createIndex($indexName, $mapping)->addAlias($this->alias, $indexName);
@@ -364,7 +398,8 @@ final class ShapeTransitionTest extends Unit
 
         $client = $this->getClient();
         foreach (self::DOCUMENT_IDS as $id) {
-            $client->index(['index' => $this->alias, 'id' => $id, 'body' => $document, 'refresh' => true]);
+            $body = is_callable($document) ? $document($id) : $document;
+            $client->index(['index' => $this->alias, 'id' => $id, 'body' => $body, 'refresh' => true]);
         }
         $this->assertSame(3, $this->tester->countIndexDocuments($this->alias), 'Documents of the old shape');
     }

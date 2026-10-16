@@ -117,6 +117,59 @@ final class IndexCopyServiceTest extends Unit
         );
     }
 
+    /**
+     * The engine maps removed fields again from the first copied document; values that disagree
+     * ("2026-01-01" and "abc") fail, one field per attempt. A failure on one removed field strips
+     * all of them in the next attempt.
+     */
+    public function testAFailureOnARemovedFieldStripsAllRemovedFields(): void
+    {
+        $calls = [];
+        $service = $this->createService(
+            $this->liveMapping([
+                'price' => self::TEXT,
+                'gone1' => self::TEXT,
+                'gone2' => self::TEXT,
+                'gone3' => self::TEXT,
+                'gone4' => self::TEXT,
+            ]),
+            $calls,
+            [
+                new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['standard_fields', 'gone2']]),
+                new ReindexOutcome(ReindexResult::SUCCESS),
+            ]
+        );
+
+        $result = $service->copy(self::ALIAS, $this->mapping(['price' => self::TEXT]));
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame(2, $result->getAttempts());
+        $this->assertSame([], $calls[0], 'Removed fields are copied as before while nothing fails');
+        $this->assertEqualsCanonicalizing(
+            ['standard_fields.gone1', 'standard_fields.gone2', 'standard_fields.gone3', 'standard_fields.gone4'],
+            $result->getStrippedPaths()
+        );
+    }
+
+    public function testAFailingSubFieldStripsItsFieldAndNoLongerKeepsIt(): void
+    {
+        $calls = [];
+        $service = $this->createService($this->liveMapping(['title' => ['type' => 'keyword']]), $calls, [
+            new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['standard_fields', 'title', 'num']]),
+            new ReindexOutcome(ReindexResult::SUCCESS),
+        ]);
+
+        $result = $service->copy(
+            self::ALIAS,
+            $this->mapping(['title' => ['type' => 'text', 'fields' => ['num' => ['type' => 'long']]]])
+        );
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame([[], [['standard_fields', 'title']]], $calls);
+        $this->assertSame(['standard_fields.title'], $result->getStrippedPaths());
+        $this->assertSame([], $result->getKeptPaths(), 'The kept field failed and was stripped');
+    }
+
     public function testCopyGivesUpWhenAFailureNamesNoNewField(): void
     {
         $calls = [];

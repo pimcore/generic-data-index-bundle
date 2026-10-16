@@ -88,7 +88,8 @@ copy this means:
   long change strips the field instead.
 - Text copied into a number, date or boolean field doesn't fit: the field is stripped, and the index is not recreated.
 - Fields that are no longer in the mapping are re-mapped dynamically and stay in the mapping until the index is
-  recreated with `update:index -r`.
+  recreated with `update:index -r`. If their values don't fit the re-mapped type (for example "2026-01-01" in one
+  document and "abc" in the next), all removed fields are left out of the copy.
 
 Whenever fields were stripped, or the index had to be created empty, the bundle adds all elements of that index to the
 index queue, even if the trigger doesn't rebuild otherwise. Search keeps working during this; only the stripped fields

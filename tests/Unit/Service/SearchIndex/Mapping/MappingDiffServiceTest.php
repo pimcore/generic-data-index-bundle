@@ -178,6 +178,63 @@ final class MappingDiffServiceTest extends Unit
         $this->assertTrue($this->service->diff($live, $new)->isEmpty());
     }
 
+    public function testRemovedFieldsAreReportedSeparatelyFromChanges(): void
+    {
+        $live = $this->standardFields([
+            'kept' => ['type' => 'long'],
+            'gone' => self::TEXT_KEYWORD,
+            'brick' => ['properties' => ['a' => ['type' => 'long'], 'b' => ['type' => 'long']]],
+            'cs' => ['properties' => ['spec' => ['properties' => ['width' => ['type' => 'long']]]]],
+        ]);
+        $new = $this->standardFields([
+            'kept' => ['type' => 'long'],
+            'brick' => ['properties' => ['a' => ['type' => 'long']]],
+            'cs' => ['properties' => ['spec.depth' => ['type' => 'long']]],
+        ]);
+
+        $diff = $this->service->diff($live, $new);
+
+        $this->assertSame([], $diff->getChanges());
+        $this->assertSame(
+            [
+                ['standard_fields', 'gone'],
+                ['standard_fields', 'brick', 'b'],
+                ['standard_fields', 'cs', 'spec', 'width'],
+            ],
+            $diff->getRemovedPathSegments()
+        );
+    }
+
+    /**
+     * @dataProvider failingFieldProvider
+     */
+    public function testFailingPathsAreResolvedToTheirSourceField(array $failing, array $expected): void
+    {
+        $new = $this->standardFields([
+            'title' => ['type' => 'text', 'fields' => ['num' => ['type' => 'long']]],
+            'brick' => ['properties' => ['B' => ['properties' => ['price' => ['type' => 'float']]]]],
+            'cs' => ['properties' => ['spec.width' => ['type' => 'keyword', 'fields' => ['n' => ['type' => 'long']]]]],
+        ]);
+
+        $this->assertSame($expected, $this->service->resolveSourceField($new, $failing));
+    }
+
+    public static function failingFieldProvider(): array
+    {
+        return [
+            'sub-field of a text field' => [['standard_fields', 'title', 'num'], ['standard_fields', 'title']],
+            'object child' => [
+                ['standard_fields', 'brick', 'B', 'price'],
+                ['standard_fields', 'brick', 'B', 'price'],
+            ],
+            'sub-field below a dotted name' => [
+                ['standard_fields', 'cs', 'spec', 'width', 'n'],
+                ['standard_fields', 'cs', 'spec', 'width'],
+            ],
+            'field unknown to the new mapping' => [['standard_fields', 'gone'], ['standard_fields', 'gone']],
+        ];
+    }
+
     public function testParameterOnlyChangesAreIgnored(): void
     {
         $live = $this->standardFields([

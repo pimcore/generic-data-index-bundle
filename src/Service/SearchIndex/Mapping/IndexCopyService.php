@@ -79,7 +79,14 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
                 return new IndexCopyResult(ReindexResult::SUCCESS, array_keys($stripPaths), $keptPaths, $attempt);
             }
 
-            $newPaths = array_diff_key($this->keyed($outcome->getFailingFieldPaths()), $stripPaths);
+            $failingPaths = $this->keyed(array_map(
+                fn (array $path): array => $this->mappingDiffService->resolveSourceField($mappingProperties, $path),
+                $outcome->getFailingFieldPaths()
+            ));
+            $newPaths = array_diff_key(
+                $failingPaths + $this->removedFieldsIfOneFailed($failingPaths, $diff->getRemovedPathSegments()),
+                $stripPaths
+            );
             if ($newPaths === []) {
                 break;
             }
@@ -101,6 +108,29 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
             $keptPaths,
             min($attempt, self::MAX_ATTEMPTS)
         );
+    }
+
+    /**
+     * The engine maps removed fields again from the first copied document, and values that disagree
+     * ("2026-01-01" and "abc") fail - one field per attempt. When one removed field fails, all removed
+     * fields are left out of the next attempt; they are no longer part of the mapping anyway.
+     *
+     * @param array<string, string[]> $failingPaths
+     * @param string[][] $removedPaths
+     *
+     * @return array<string, string[]>
+     */
+    private function removedFieldsIfOneFailed(array $failingPaths, array $removedPaths): array
+    {
+        foreach ($failingPaths as $failing) {
+            foreach ($removedPaths as $removed) {
+                if (array_slice($failing, 0, count($removed)) === $removed) {
+                    return $this->keyed($removedPaths);
+                }
+            }
+        }
+
+        return [];
     }
 
     /**

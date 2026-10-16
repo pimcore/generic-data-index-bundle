@@ -37,4 +37,18 @@ interface MappingDiffServiceInterface
      * @throws JsonException when the new mapping cannot be encoded as JSON
      */
     public function diff(array $liveProperties, array $newProperties): MappingDiff;
+
+    /**
+     * The field in the documents a failing path belongs to. The engine names sub-fields
+     * ("title.num" of a multi-field), which exist only in the mapping; the document holds "title".
+     * Paths the new mapping does not know are returned as they are.
+     *
+     * @param array<string, mixed> $newProperties mapping properties the index is updated to
+     * @param string[] $segments path named by the engine
+     *
+     * @return string[]
+     *
+     * @throws JsonException when the new mapping cannot be encoded as JSON
+     */
+    public function resolveSourceField(array $newProperties, array $segments): array;
 }

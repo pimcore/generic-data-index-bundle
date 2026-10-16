@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping;
 
+use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingFieldChangeAction;
 
 /**
@@ -26,11 +27,21 @@ final readonly class MappingDiff
     /** @var MappingFieldChange[] */
     private array $changes;
 
+    /** @var string[][] */
+    private array $removedPathSegments;
+
     /**
      * @param MappingFieldChange[] $changes
+     * @param string[][] $removedPathSegments fields of the live mapping the new mapping no longer has
      */
-    public function __construct(array $changes)
+    public function __construct(array $changes, array $removedPathSegments = [])
     {
+        foreach ($removedPathSegments as $segments) {
+            if ($segments === []) {
+                throw new InvalidArgumentException('A removed field path needs at least one segment');
+            }
+        }
+        $this->removedPathSegments = array_values($removedPathSegments);
         usort(
             $changes,
             static fn (MappingFieldChange $a, MappingFieldChange $b): int => strcmp($a->getPath(), $b->getPath())
@@ -44,6 +55,17 @@ final readonly class MappingDiff
     public function getChanges(): array
     {
         return $this->changes;
+    }
+
+    /**
+     * Fields of the live mapping the new mapping no longer has. They are no changes: the copy keeps
+     * their values and the engine maps them again.
+     *
+     * @return string[][]
+     */
+    public function getRemovedPathSegments(): array
+    {
+        return $this->removedPathSegments;
     }
 
     public function isEmpty(): bool
