@@ -255,6 +255,12 @@ automatically; run enough workers and check `generic-data-index:status` to see w
 Fields that are only found during the copy, for example values that fit the old mapping but not the new one, are
 stripped as well and named in the log; `--dry-run` cannot list them in advance.
 
+The rebuild refills a field only for objects whose database value fits the new type. Pimcore keeps values that don't
+fit, for example a time truncated from a datetime or relation metadata text in a column that is now numeric, and
+such an object fails its whole queue batch: the batch lands in the failed transport, and its queue entries are
+dispatched again after 24 hours. If a changed field stays empty for some objects, check the failed messages (see
+[Handling Failed Messages](../02_Configuration/03_Index_Management.md#handling-failed-messages)) and fix the data.
+
 ### Expand and Contract for Fields That Must Stay Searchable
 
 If a field must stay searchable without interruption, treat a type change like a database column migration: add the
