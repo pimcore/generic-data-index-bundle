@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexPlan;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexState;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
@@ -78,12 +79,7 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
                 && $stored->getMappingChecksum() !== $current->getMappingChecksum();
         }
         if ($mappingChanged) {
-            $reasons[] = $stored->getMappingChecksum() === IndexStateServiceInterface::INVALIDATED
-                ? 'previous snapshot import did not finish'
-                : 'mapping changed';
-            if (!$indexMissing) {
-                array_push($reasons, ...$this->describeFieldChanges($target));
-            }
+            array_push($reasons, ...$this->describeMappingChange($target, $stored, $indexMissing));
         }
 
         $settingsChanged = $stored->getSettingsHash() !== null
@@ -197,6 +193,23 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
         };
 
         return true;
+    }
+
+    /**
+     * @return string[]
+     */
+    private function describeMappingChange(IndexStateTarget $target, IndexState $stored, bool $indexMissing): array
+    {
+        $reasons = [
+            $stored->getMappingChecksum() === IndexStateServiceInterface::INVALIDATED
+                ? 'previous snapshot import did not finish'
+                : 'mapping changed',
+        ];
+        if ($indexMissing) {
+            return $reasons;
+        }
+
+        return [...$reasons, ...$this->describeFieldChanges($target)];
     }
 
     /**
