@@ -22,9 +22,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Sort\FieldSortList
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\OrderByPageNumber;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFoldersFirst;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByIndexField;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Model\DataObject\AbstractObject;
 
 /**
  * @internal
@@ -52,6 +54,31 @@ final class TreeSortHandlers
                 new FieldSort(
                     SystemField::FULL_PATH->getPath('sort'),
                     $fullPathSort->getDirection()->value
+                )
+            );
+    }
+
+    #[AsSearchModifierHandler]
+    public function handleFoldersFirstSort(
+        OrderByFoldersFirst $foldersFirstSort,
+        SearchModifierContextInterface $context
+    ): void {
+        $typeField = SystemField::TYPE->getPath();
+
+        $context->getSearch()
+            ->addSort(
+                new FieldSort(
+                    '_script',
+                    SortDirection::ASC->value,
+                    [
+                        'type' => 'number',
+                        'script' => [
+                            'lang' => 'painless',
+                            'source' => "doc['$typeField'].size() > 0 && doc['$typeField'].value == params.folderType"
+                                . ' ? 0 : 1',
+                            'params' => ['folderType' => AbstractObject::OBJECT_TYPE_FOLDER],
+                        ],
+                    ]
                 )
             );
     }
