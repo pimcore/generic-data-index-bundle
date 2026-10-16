@@ -78,7 +78,10 @@ Before the copy, the bundle compares the live mapping with the new mapping and s
   old values.
 
 If the engine still reports a parsing failure for a field, the bundle adds that field to the stripped fields and
-retries the copy, up to 3 attempts. Only if the copy still fails after that is the index recreated.
+retries the copy, up to 3 attempts. Only if the copy still fails after that is the index recreated. Every attempt is
+a full copy of the index, and the engine names one failing field per document of the first failing batch, so a large
+index can spend several copy durations before the alias switches. Run type changes on large classes in a quiet period
+with enough workers; the live index serves reads throughout.
 
 The bundle creates indices with the engine defaults for `dynamic`, `coerce` and `ignore_malformed`. During an odd/even
 copy this means:
