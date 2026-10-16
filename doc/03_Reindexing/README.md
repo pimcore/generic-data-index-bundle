@@ -271,8 +271,8 @@ definitions are not searchable or filterable as intended.
 
 Adding or removing a valid language always requires a reindex of every class with localized fields and of the asset
 index; the document and folder indices don't depend on the language list. Localized fields are mapped once per
-valid language (`localizedfields.<lang>.<field>`), including localized fields inside object bricks, and predefined
-asset metadata is mapped per language as well.
+valid language (`<field>.<lang>`), including localized fields inside object bricks, field collections and blocks,
+and predefined asset metadata is mapped per language as well.
 
 - **Changed in the system settings (admin UI or Studio):** automatic. The bundle compares the old and new language
   lists and, if they differ, runs a forced odd/even copy of every class, asset and document index, then adds every
