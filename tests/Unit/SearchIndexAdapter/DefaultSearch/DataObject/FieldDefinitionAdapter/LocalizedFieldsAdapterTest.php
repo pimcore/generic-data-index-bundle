@@ -34,6 +34,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\CalculatedValue;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyRelation;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Numeric;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Fieldcollection\Definition as FieldcollectionDefinition;
 use Pimcore\Model\DataObject\Localizedfield;
@@ -190,6 +191,71 @@ final class LocalizedFieldsAdapterTest extends Unit
         );
 
         $this->assertSame(['calculated' => ['en' => null]], $adapter->normalize($localizedField));
+    }
+
+    /**
+     * A field inside a container with the same name as a class-level localized field, but another type:
+     * the value goes through the container's definition. Localizedfield::getFieldDefinition() without a
+     * context returns the class-level field of that name.
+     */
+    public function testNormalizeUsesTheContainerDefinitionForAFieldNameTheClassLevelAlsoHas(): void
+    {
+        $containerDefinition = $this->createLocalizedFieldsDefinition(['title']);
+        $classLevelTitle = (new Numeric())->setName('title');
+
+        $localizedField = $this->createContainerLocalizedField(
+            $this->createLocalizedFieldsDefinition([], [$classLevelTitle]),
+            $containerDefinition,
+            ['en' => ['title' => 'Hello'], 'de' => ['title' => 'Hallo']],
+            ['containerType' => 'objectbrick', 'containerKey' => 'B1', 'fieldname' => 'saleInformation']
+        );
+
+        $adapter = $this->createAdapter(
+            $containerDefinition,
+            normalizeValue: static fn (?Data $fieldDefinition, mixed $value) => [
+                'normalizedAs' => $fieldDefinition?->getFieldtype(),
+                'value' => $value,
+            ]
+        );
+
+        $expected = [
+            'title' => [
+                'en' => ['normalizedAs' => 'input', 'value' => 'Hello'],
+                'de' => ['normalizedAs' => 'input', 'value' => 'Hallo'],
+            ],
+        ];
+        $this->assertSame($expected, $adapter->normalize($localizedField));
+        $this->assertSame($expected, $adapter->normalizeInContainer($localizedField));
+    }
+
+    /**
+     * The object brick, field collection and block adapters call normalizeInContainer(): no query store,
+     * whatever the context says.
+     */
+    public function testNormalizeInContainerDoesNotUseTheQueryStoreWithoutAContext(): void
+    {
+        $calculatedValue = (new CalculatedValue())->setName('calculated');
+        $calculatedValue->setCalculatorClass('');
+        $containerDefinition = $this->createLocalizedFieldsDefinition([], [$calculatedValue]);
+
+        $localizedField = new Localizedfield(['en' => ['calculated' => null]]);
+        // Without a context Localizedfield falls back to the class-level localized fields, here with a
+        // calculated field of the same name. They list no fields, so getInternalData() does not reset
+        // calculated values (that needs the system configuration).
+        $localizedField->setObject($this->createDataObject($this->createDefinitionWithoutFieldList(
+            $this->createLocalizedFieldsDefinition([], [$calculatedValue])
+        )));
+        $localizedField->setLoadedAllLazyData();
+
+        $adapter = $this->createAdapter(
+            $containerDefinition,
+            mode: CalculatedFieldsIndexMode::QUERY_STORE,
+            queryStore: $this->makeEmpty(CalculatedValueQueryStoreServiceInterface::class, [
+                'getLocalizedValue' => Expected::never(),
+            ])
+        );
+
+        $this->assertSame(['calculated' => ['en' => null]], $adapter->normalizeInContainer($localizedField));
     }
 
     /**

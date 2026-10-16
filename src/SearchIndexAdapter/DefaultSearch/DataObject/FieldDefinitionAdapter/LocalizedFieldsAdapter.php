@@ -39,9 +39,9 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
     private CalculatedValueQueryStoreServiceInterface $calculatedValueQueryStoreService;
 
     /**
-     * Mapped as <attribute>.<language>, the structure normalize() writes. IndexMappingService moves the
-     * attributes of the class-level localized fields to the top level; inside object bricks, field
-     * collections and blocks they stay below "localizedfields".
+     * Mapped as <attribute>.<language>, the structure normalize() writes. The attributes are then moved up
+     * next to the other fields: IndexMappingService does that for the class-level localized fields, the
+     * object brick, field collection and block adapters for theirs (ContainerFieldsTrait).
      */
     public function getIndexMapping(): array
     {
@@ -62,9 +62,11 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
             }
 
             $mappingKey = $fieldDefinitionAdapter->getIndexAttributeName();
+            // once: the adapter instance is shared, a nested container switches its field definition
+            $childMapping = $fieldDefinitionAdapter->getIndexMapping();
             $languageProperties = [];
             foreach ($languages as $language) {
-                $languageProperties[$language] = $fieldDefinitionAdapter->getIndexMapping();
+                $languageProperties[$language] = $childMapping;
             }
 
             $mapping['properties'][$mappingKey] = [
@@ -77,6 +79,12 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
     }
 
     /**
+     * The class-level localized fields. Calculated values may come from the localized query table.
+     * The object brick, field collection and block adapters call normalizeInContainer() instead.
+     * Localized fields of a container passed in here directly are recognized by their context (Pimcore
+     * sets it when a container is loaded or its localized fields are created); without a context they
+     * are treated as class-level.
+     *
      * @param mixed $value
      *
      * @return array|null
@@ -84,6 +92,28 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
      * @throws Exception
      */
     public function normalize(mixed $value): ?array
+    {
+        return $this->normalizeLocalizedValues(
+            $value,
+            !$value instanceof Localizedfield || !$this->isInContainer($value)
+        );
+    }
+
+    /**
+     * Localized fields inside an object brick, field collection or block. The localized query table only
+     * holds the class-level localized fields, so calculated values are always calculated live.
+     *
+     * @throws Exception
+     */
+    public function normalizeInContainer(mixed $value): ?array
+    {
+        return $this->normalizeLocalizedValues($value, false);
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function normalizeLocalizedValues(mixed $value, bool $mayUseQueryStore): ?array
     {
         [$languages, $attributes] = $this->getLanguagesAndAttributes($value);
         if ($languages === []) {
@@ -93,20 +123,17 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
         $dataObject = $value->getObject();
         // The adapter's own definition is the one of the container (class, object brick, field
         // collection or block). Localizedfield::getFieldDefinition() without a context only knows
-        // the class-level localized fields and returns null for fields inside a container.
+        // the class-level localized fields: it returns null for a field inside a container, or the
+        // class-level field of the same name.
         /** @var Data\Localizedfields $localizedFieldsDefinition */
         $localizedFieldsDefinition = $this->getFieldDefinition();
-        // only decides whether calculated values may come from the class-level localized query table;
-        // when in doubt they are calculated live, which is always correct
-        $inContainer = $this->isInContainer($value);
         $result = [];
         foreach ($attributes as $attribute) {
             $fieldDefinition = $localizedFieldsDefinition->getFieldDefinition($attribute);
             // In query_store mode localized calculated values come from the localized query
             // table (save-time snapshot, per language); the calculator never runs here. This
-            // is the dominant saving on many-language installations. The query table only
-            // holds the class-level localized fields.
-            $useQueryStore = !$inContainer
+            // is the dominant saving on many-language installations.
+            $useQueryStore = $mayUseQueryStore
                 && $dataObject instanceof Concrete
                 && $fieldDefinition instanceof CalculatedValue
                 && $this->calculatedFieldsIndexModeResolver->getMode() === CalculatedFieldsIndexMode::QUERY_STORE;
@@ -246,9 +273,7 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
     }
 
     /**
-     * Localized fields inside an object brick, field collection or block carry the container in their
-     * context (set by Pimcore when the container is loaded or its localized fields are created). The
-     * class-level localized fields have no container type, or "object" after the object was saved.
+     * The class-level localized fields have no container type, or "object" after the object was saved.
      */
     private function isInContainer(Localizedfield $value): bool
     {

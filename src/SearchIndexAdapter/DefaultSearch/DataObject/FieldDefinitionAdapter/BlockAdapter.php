@@ -14,14 +14,19 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter;
 
 use InvalidArgumentException;
+use function is_array;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\ContainerAdapterInterface;
+use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Block;
 use Pimcore\Model\DataObject\Data\BlockElement;
 
 /**
  * @internal
  */
-final class BlockAdapter extends AbstractAdapter
+final class BlockAdapter extends AbstractAdapter implements ContainerAdapterInterface
 {
+    use ContainerFieldsTrait;
+
     public function getIndexMapping(): array
     {
         $fieldDefinition = $this->getFieldDefinition();
@@ -29,18 +34,12 @@ final class BlockAdapter extends AbstractAdapter
             throw new InvalidArgumentException('FieldDefinition must be an instance of ' . Block::class);
         }
 
-        $items = $fieldDefinition->getFieldDefinitions();
-        $properties = [];
-        foreach ($items as $item) {
-            $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($item);
-            if ($adapter) {
-                $properties[$item->getName()] = $adapter->getIndexMapping();
-            }
-        }
-
         return [
             'type' => 'nested',
-            'properties' => $properties,
+            'properties' => $this->getContainerFieldsMapping(
+                $fieldDefinition->getFieldDefinitions(),
+                static fn (Data $item) => $item->getName()
+            ),
         ];
     }
 
@@ -61,9 +60,8 @@ final class BlockAdapter extends AbstractAdapter
 
             /** @var BlockElement $fieldValue */
             foreach ($block as $key => $fieldValue) {
-                $blockDefinition = $fieldDefinitions[$key];
-                $resultItem[$key] = $this->fieldDefinitionService->normalizeValue(
-                    $blockDefinition,
+                $resultItem[$key] = $this->normalizeContainerField(
+                    $fieldDefinitions[$key],
                     $fieldValue->getData()
                 );
             }
@@ -72,5 +70,23 @@ final class BlockAdapter extends AbstractAdapter
         }
 
         return $resultItems;
+    }
+
+    public function flattenLocalizedFields(mixed $normalizedValue): mixed
+    {
+        $fieldDefinition = $this->getFieldDefinition();
+        if (!is_array($normalizedValue) || !$fieldDefinition instanceof Block) {
+            return $normalizedValue;
+        }
+
+        // read once: a nested block uses the same adapter instance and changes its field definition
+        $fieldDefinitions = $fieldDefinition->getFieldDefinitions();
+        foreach ($normalizedValue as $index => $item) {
+            if (is_array($item)) {
+                $normalizedValue[$index] = $this->flattenFields($item, $fieldDefinitions);
+            }
+        }
+
+        return $normalizedValue;
     }
 }
