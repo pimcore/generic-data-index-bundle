@@ -41,6 +41,7 @@
         "phpunit/phpunit": "^12.5.23 || ^13.1.7",
         "nyholm/psr7": "^1",
         "symfony/phpunit-bridge": "^6",
+        "symfony/http-kernel": "!=6.4.48, !=7.4.21",
         "fakerphp/faker": "^1.23",
         "friendsofphp/php-cs-fixer": "^3.4",
         "league/flysystem-memory": "^3.0"
