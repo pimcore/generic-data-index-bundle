@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Functional\SearchIndex;
 
+use Carbon\Carbon;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
@@ -26,11 +27,28 @@ use Pimcore\Cache\RuntimeCache;
 use Pimcore\Db;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
+use Pimcore\Model\DataObject\ClassDefinition\Data\AdvancedManyToManyObjectRelation;
+use Pimcore\Model\DataObject\ClassDefinition\Data\BooleanSelect;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Country;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Date;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Datetime;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Email;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Fieldcollections;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Language;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Languagemultiselect;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Localizedfields;
+use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyObjectRelation;
+use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyRelation;
+use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToOneRelation;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Multiselect;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Numeric;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Objectbricks;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Select;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Slider;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Textarea;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Wysiwyg;
 use Pimcore\Model\DataObject\ClassDefinition\Layout\Panel;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Fieldcollection;
@@ -93,6 +111,12 @@ final class FieldTypeChangeTest extends Unit
     private const BRICK_KEEP_FIELD = 'b_keep';
 
     private const SEEDS = [1, 2, 3];
+
+    private const NONE = 'none';
+
+    private const KEEP = 'keep';
+
+    private const STRIP = 'strip';
 
     protected IndexTester $tester;
 
@@ -519,6 +543,250 @@ final class FieldTypeChangeTest extends Unit
     }
 
     /**
+     * Type changes that must stay compatible: the old values fit the new field, so the index keeps
+     * every value. Changes within one index type leave the mapping as it is; safe transitions are
+     * copied with the values kept; date format changes are stripped in the first attempt.
+     *
+     * @dataProvider compatibleTypeChangeProvider
+     */
+    public function testCompatibleTypeChange(string $case): void
+    {
+        $changes = $this->compatibleTypeChanges();
+        [$from, $to, $value, $expected] = $changes[$case];
+        // Short class names: Pimcore derives table names from the class id (64 characters at most).
+        $class = $this->createClass(
+            'GdiFtcCompat' . array_search($case, array_keys($changes), true),
+            [$from(self::FIELD), $this->input(self::KEEP_FIELD)]
+        );
+        $created = [];
+        $objects = $this->createObjects(
+            $class,
+            static function (Concrete $object, int $seed) use ($value, &$created): void {
+                $object->set(self::FIELD, $value($seed, $created));
+                $object->set(self::KEEP_FIELD, 'keep-' . $seed);
+                $created[$seed] = $object;
+            }
+        );
+        $before = [];
+        foreach ($objects as $seed => $object) {
+            $before[$seed] = $this->getStandardFields($class, $object);
+            $this->assertNotNull($before[$seed][self::FIELD] ?? null, 'Precondition: the old value is indexed');
+        }
+        $liveIndex = $this->tester->getIndexName($class->getName(), true);
+
+        $this->tester->disableSynchronousProcessing();
+        $this->changeClassFields($class, [$to(self::FIELD), $this->input(self::KEEP_FIELD)]);
+        $this->tester->clearQueue();
+        $result = $this->applyClassMapping($class, false);
+
+        $this->assertFalse($result?->isRecreated() ?? false, 'The index must never be recreated');
+        $this->assertSame(count($objects), $this->tester->countIndexDocuments($this->getAlias($class)));
+        if ($expected === self::STRIP) {
+            $this->assertSame([$this->standardFieldPath(self::FIELD)], $result?->getStrippedPaths());
+            $this->assertCopiedIntoOtherIndex($class, $liveIndex);
+            foreach ($objects as $seed => $object) {
+                $fields = $this->getStandardFields($class, $object);
+                $this->assertArrayNotHasKey(self::FIELD, $fields);
+                $this->assertSame('keep-' . $seed, $fields[self::KEEP_FIELD]);
+            }
+            $this->assertSame(count($objects), $this->tester->countQueuedDataObjects($this->getIds($objects)));
+
+            return;
+        }
+
+        $this->assertSame([], $result?->getStrippedPaths() ?? [], 'A compatible change strips nothing');
+        $this->assertSame(0, $this->tester->countQueuedDataObjects($this->getIds($objects)));
+        if ($expected === self::KEEP) {
+            $this->assertSame([$this->standardFieldPath(self::FIELD)], $result?->getKeptPaths());
+            $this->assertCopiedIntoOtherIndex($class, $liveIndex);
+        }
+        foreach ($objects as $seed => $object) {
+            $this->assertSame(
+                $before[$seed],
+                $this->getStandardFields($class, $object),
+                'Every indexed value is unchanged'
+            );
+        }
+    }
+
+    public static function compatibleTypeChangeProvider(): array
+    {
+        $cases = [
+            'input to textarea', 'textarea to wysiwyg', 'wysiwyg to input', 'input to select',
+            'select to multiselect', 'multiselect to select', 'input to email', 'country to input',
+            'language to languagemultiselect', 'numeric to slider', 'checkbox to boolean select',
+            'many to one to many to many', 'many to many to many to many objects',
+            'many to many objects to advanced', 'numeric to input', 'slider to textarea', 'date to input',
+            'datetime to input', 'checkbox to input', 'date to datetime', 'datetime to date',
+            'datetime respect timezone off', 'date respect timezone on',
+        ];
+
+        return array_combine($cases, array_map(static fn (string $case): array => [$case], $cases));
+    }
+
+    /**
+     * T46: four date fields change from date to datetime in one save. The engine reports one failing
+     * field per document, so the mapping diff has to find all of them before the first attempt.
+     */
+    public function testSeveralDateFieldsChangedInOneSaveAreStrippedTogether(): void
+    {
+        $names = ['d1', 'd2', 'd3', 'd4'];
+        $class = $this->createClass('GdiFtcDates', [
+            ...array_map(fn (string $name): Date => $this->date($name), $names),
+            $this->input(self::KEEP_FIELD),
+        ]);
+        $objects = $this->createObjects($class, static function (Concrete $object, int $seed) use ($names): void {
+            foreach ($names as $position => $name) {
+                $object->set($name, Carbon::create(2026, 1 + $position, $seed));
+            }
+            $object->set(self::KEEP_FIELD, 'keep-' . $seed);
+        });
+        $liveIndex = $this->tester->getIndexName($class->getName(), true);
+
+        $this->tester->disableSynchronousProcessing();
+        $this->changeClassFields($class, [
+            ...array_map(fn (string $name): Datetime => $this->datetime($name, false), $names),
+            $this->input(self::KEEP_FIELD),
+        ]);
+        $this->tester->clearQueue();
+        $result = $this->applyClassMapping($class);
+
+        $this->assertFalse($result->isRecreated());
+        $this->assertSame(
+            array_map(fn (string $name): string => $this->standardFieldPath($name), $names),
+            $result->getStrippedPaths()
+        );
+        $this->assertCopiedIntoOtherIndex($class, $liveIndex);
+        foreach ($objects as $seed => $object) {
+            $fields = $this->getStandardFields($class, $object);
+            foreach ($names as $name) {
+                $this->assertArrayNotHasKey($name, $fields);
+            }
+            $this->assertSame('keep-' . $seed, $fields[self::KEEP_FIELD]);
+        }
+    }
+
+    /**
+     * Field factory, field factory, value(seed, objects created so far), expected outcome.
+     * NONE = the mapping does not change, KEEP = copied with the value kept, STRIP = left out of the copy.
+     *
+     * @return array<string, array{callable(string): Data, callable(string): Data, callable, string}>
+     */
+    private function compatibleTypeChanges(): array
+    {
+        $text = static fn (int $seed): string => 'text-' . $seed;
+        $option = static fn (): string => 'b';
+        $number = static fn (int $seed): float => 12.5 + $seed;
+        $flag = static fn (int $seed): bool => $seed % 2 === 1;
+        $day = static fn (int $seed): Carbon => Carbon::create(2026, 1, $seed);
+        $moment = static fn (int $seed): Carbon => Carbon::create(2026, 1, $seed, 10, 30);
+        // Relations point to the objects created before; the first object relates to nothing.
+        $one = static fn (int $seed, array $created): ?Concrete => $created[$seed - 1] ?? null;
+        $many = static fn (int $seed, array $created): array => array_values($created);
+
+        return [
+            'input to textarea' => [$this->input(...), $this->field(Textarea::class), $text, self::NONE],
+            'textarea to wysiwyg' => [$this->field(Textarea::class), $this->field(Wysiwyg::class), $text, self::NONE],
+            'wysiwyg to input' => [
+                $this->field(Wysiwyg::class),
+                $this->input(...),
+                static fn (int $seed): string => '<p>text-' . $seed . '</p>',
+                self::NONE,
+            ],
+            'input to select' => [$this->input(...), $this->options(Select::class), $option, self::NONE],
+            'select to multiselect' => [
+                $this->options(Select::class),
+                $this->options(Multiselect::class),
+                $option,
+                self::NONE,
+            ],
+            'multiselect to select' => [
+                $this->options(Multiselect::class),
+                $this->options(Select::class),
+                static fn (): array => ['a', 'b'],
+                self::NONE,
+            ],
+            'input to email' => [
+                $this->input(...),
+                $this->field(Email::class),
+                static fn (int $seed): string => sprintf('user%d@example.com', $seed),
+                self::NONE,
+            ],
+            'country to input' => [
+                $this->field(Country::class),
+                $this->input(...),
+                static fn (): string => 'AT',
+                self::NONE,
+            ],
+            'language to languagemultiselect' => [
+                $this->field(Language::class),
+                $this->field(Languagemultiselect::class),
+                static fn (): string => 'de',
+                self::NONE,
+            ],
+            'numeric to slider' => [$this->numeric(...), $this->field(Slider::class), $number, self::NONE],
+            'checkbox to boolean select' => [
+                $this->field(Checkbox::class),
+                $this->field(BooleanSelect::class),
+                $flag,
+                self::NONE,
+            ],
+            'many to one to many to many' => [
+                $this->relation(ManyToOneRelation::class),
+                $this->relation(ManyToManyRelation::class),
+                $one,
+                self::NONE,
+            ],
+            'many to many to many to many objects' => [
+                $this->relation(ManyToManyRelation::class),
+                $this->field(ManyToManyObjectRelation::class),
+                $many,
+                self::NONE,
+            ],
+            'many to many objects to advanced' => [
+                $this->field(ManyToManyObjectRelation::class),
+                $this->advancedRelation(...),
+                $many,
+                self::NONE,
+            ],
+            'numeric to input' => [$this->numeric(...), $this->input(...), $number, self::KEEP],
+            'slider to textarea' => [$this->field(Slider::class), $this->field(Textarea::class), $number, self::KEEP],
+            'date to input' => [$this->date(...), $this->input(...), $day, self::KEEP],
+            'datetime to input' => [
+                fn (string $name): Datetime => $this->datetime($name, false),
+                $this->input(...),
+                $moment,
+                self::KEEP,
+            ],
+            'checkbox to input' => [$this->field(Checkbox::class), $this->input(...), $flag, self::KEEP],
+            'date to datetime' => [
+                $this->date(...),
+                fn (string $name): Datetime => $this->datetime($name, false),
+                $day,
+                self::STRIP,
+            ],
+            'datetime to date' => [
+                fn (string $name): Datetime => $this->datetime($name, false),
+                $this->date(...),
+                $moment,
+                self::STRIP,
+            ],
+            'datetime respect timezone off' => [
+                fn (string $name): Datetime => $this->datetime($name, true),
+                fn (string $name): Datetime => $this->datetime($name, false),
+                $moment,
+                self::STRIP,
+            ],
+            'date respect timezone on' => [
+                $this->date(...),
+                fn (string $name): Date => $this->date($name, 'bigint(20)'),
+                $day,
+                self::STRIP,
+            ],
+        ];
+    }
+
+    /**
      * @param Data[] $fields
      */
     private function createClass(string $name, array $fields, bool $createIndex = true): ClassDefinition
@@ -581,12 +849,14 @@ final class FieldTypeChangeTest extends Unit
      * Applies the current class definition to its index like the class mapping message does, but
      * without asking for the rebuild: queue entries afterwards come from the mapping update itself.
      */
-    private function applyClassMapping(ClassDefinition $class): MappingUpdateResult
+    private function applyClassMapping(ClassDefinition $class, bool $mappingMustChange = true): ?MappingUpdateResult
     {
         /** @var ClassDefinitionReindexServiceInterface $reindexService */
         $reindexService = $this->tester->grabService(ClassDefinitionReindexServiceInterface::class);
         $result = $reindexService->reindexClassDefinitionMapping($this->reloadClass($class), true, false);
-        $this->assertNotNull($result, 'The changed mapping must be applied');
+        if ($mappingMustChange) {
+            $this->assertNotNull($result, 'The changed mapping must be applied');
+        }
 
         return $result;
     }
@@ -648,6 +918,83 @@ final class FieldTypeChangeTest extends Unit
     {
         $field = new Numeric();
         $field->setName($name);
+
+        return $field;
+    }
+
+    /**
+     * @param class-string<Data> $type
+     *
+     * @return callable(string): Data
+     */
+    private function field(string $type): callable
+    {
+        return static function (string $name) use ($type): Data {
+            $field = new $type();
+            $field->setName($name);
+
+            return $field;
+        };
+    }
+
+    /**
+     * @param class-string<Select|Multiselect> $type
+     *
+     * @return callable(string): Data
+     */
+    private function options(string $type): callable
+    {
+        return static function (string $name) use ($type): Data {
+            $field = new $type();
+            $field->setName($name);
+            $field->setOptions(array_map(
+                static fn (string $value): array => ['key' => strtoupper($value), 'value' => $value],
+                ['a', 'b', 'c']
+            ));
+
+            return $field;
+        };
+    }
+
+    /**
+     * @param class-string<ManyToOneRelation|ManyToManyRelation> $type
+     *
+     * @return callable(string): Data
+     */
+    private function relation(string $type): callable
+    {
+        return static function (string $name) use ($type): Data {
+            $field = new $type();
+            $field->setName($name);
+            $field->setObjectsAllowed(true);
+
+            return $field;
+        };
+    }
+
+    private function advancedRelation(string $name): AdvancedManyToManyObjectRelation
+    {
+        $field = new AdvancedManyToManyObjectRelation();
+        $field->setName($name);
+        $field->setAllowedClassId($this->classDefinition?->getName());
+
+        return $field;
+    }
+
+    private function date(string $name, string $columnType = 'date'): Date
+    {
+        $field = new Date();
+        $field->setName($name);
+        $field->setColumnType($columnType);
+
+        return $field;
+    }
+
+    private function datetime(string $name, bool $respectTimezone): Datetime
+    {
+        $field = new Datetime();
+        $field->setName($name);
+        $field->setRespectTimezone($respectTimezone);
 
         return $field;
     }
