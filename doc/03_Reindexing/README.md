@@ -81,7 +81,9 @@ If the engine still reports a parsing failure for a field, the bundle adds that 
 retries the copy, up to 3 attempts. Only if the copy still fails after that is the index recreated. Every attempt is
 a full copy of the index, and the engine names one failing field per document of the first failing batch, so a large
 index can spend several copy durations before the alias switches. Run type changes on large classes in a quiet period
-with enough workers; the live index serves reads throughout.
+with enough workers; the live index serves reads throughout. The failure messages this relies on were verified on
+OpenSearch 2 and Elasticsearch 8.5; on an engine that words them differently, the copy falls back to the recreation
+after the first attempt, as before.
 
 The bundle creates indices with the engine defaults for `dynamic`, `coerce` and `ignore_malformed`. During an odd/even
 copy this means:
