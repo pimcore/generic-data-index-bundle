@@ -308,6 +308,74 @@ final class ShapeTransitionTest extends Unit
         }
     }
 
+    /**
+     * S48: the parent of a dotted key ("spec" of "spec.width") exists only in the mapping. When the
+     * parent changes from an object to a scalar, stripping it removes the literal dotted keys.
+     */
+    public function testDottedParentChangedToScalarStripsTheDottedKeys(): void
+    {
+        $this->createAliasWithDocuments(
+            [
+                'cs' => ['properties' => ['spec.width' => ['type' => 'text'], 'other' => ['type' => 'keyword']]],
+                self::OTHER_FIELD => ['type' => 'keyword'],
+            ],
+            [
+                'cs' => ['spec.width' => 'abc', 'spec.depth' => 'def', 'other' => 'x'],
+                self::OTHER_FIELD => self::OTHER_VALUE,
+            ]
+        );
+
+        $result = $this->copy([
+            'cs' => ['properties' => ['spec' => ['type' => 'keyword'], 'other' => ['type' => 'keyword']]],
+            self::OTHER_FIELD => ['type' => 'keyword'],
+        ]);
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame(1, $result->getAttempts());
+        $this->assertSame(['cs.spec'], $result->getStrippedPaths());
+        foreach ($this->getSources() as $source) {
+            $this->assertSame(['other' => 'x'], $source['cs']);
+        }
+    }
+
+    /**
+     * S49: all spec.* keys of a classification store were removed and their values conflict when the
+     * engine maps them again; the removed parent "spec" is stripped together with its dotted keys.
+     */
+    public function testRemovedDottedParentStripsTheDottedKeys(): void
+    {
+        $this->createAliasWithDocuments(
+            [
+                'cs' => ['properties' => [
+                    'spec.width' => ['type' => 'text'],
+                    'spec.depth' => ['type' => 'text'],
+                    'other' => ['type' => 'keyword'],
+                ]],
+                self::OTHER_FIELD => ['type' => 'keyword'],
+            ],
+            static fn (string $id): array => [
+                'cs' => [
+                    'spec.width' => $id === self::DOCUMENT_IDS[0] ? '2026-01-01' : 'abc-' . $id,
+                    'spec.depth' => $id === self::DOCUMENT_IDS[0] ? '2026-02-01' : 'def-' . $id,
+                    'other' => 'x',
+                ],
+                self::OTHER_FIELD => self::OTHER_VALUE,
+            ]
+        );
+
+        $result = $this->copy([
+            'cs' => ['properties' => ['other' => ['type' => 'keyword']]],
+            self::OTHER_FIELD => ['type' => 'keyword'],
+        ]);
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame(2, $result->getAttempts());
+        $this->assertContains('cs.spec', $result->getStrippedPaths());
+        foreach ($this->getSources() as $source) {
+            $this->assertSame(['other' => 'x'], $source['cs']);
+        }
+    }
+
     public function testNestedLeafIsStrippedInEveryItem(): void
     {
         $itemMapping = static fn (string $leafType): array => [
