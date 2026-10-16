@@ -26,8 +26,10 @@ interface MappingDiffServiceInterface
     /**
      * Fields that exist in both mappings with a different type or shape. Fields that were
      * added or removed are not changes: an added field is empty in the copy, a removed field
-     * is dropped by the rebuild. Parameters other than the type (analyzer, sub-fields, format)
-     * are ignored, because the copy re-analyzes every document anyway.
+     * is dropped by the rebuild. Parameters other than the type (analyzer, sub-fields) are ignored,
+     * because the copy re-analyzes every document anyway. The one exception is the format of date
+     * fields: date, datetime and time fields differ only in it, and a format that does not accept
+     * every old format would fail the copy.
      *
      * @param array<string, mixed> $liveProperties mapping properties of the live index as the engine returns them
      * @param array<string, mixed> $newProperties mapping properties the index is updated to

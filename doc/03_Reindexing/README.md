@@ -73,7 +73,9 @@ Before the copy, the bundle compares the live mapping with the new mapping and s
   a number as text, until the rebuild from the database.
 - **Stripped** in all other cases: the field is removed from every document in the copy and stays empty until the
   rebuild. This includes numeric to date, because the engine would read the number as epoch milliseconds, and double
-  to long, which would truncate the decimals.
+  to long, which would truncate the decimals. Date, datetime and time fields differ only in their date format, so a
+  change between them, or switching "respect timezone" on or off, strips the field unless the new format accepts the
+  old values.
 
 If the engine still reports a parsing failure for a field, the bundle adds that field to the stripped fields and
 retries the copy, up to 3 attempts. Only if the copy still fails after that is the index recreated.

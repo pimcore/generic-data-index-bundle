@@ -81,6 +81,70 @@ final class MappingDiffServiceTest extends Unit
         $this->assertSame('long', $diff->getChanges()[0]->getNewShape());
     }
 
+    /**
+     * Date, datetime and time fields all map to the engine type date and differ only in the format.
+     * Old values that the new format cannot parse fail the copy, so such a change is stripped.
+     *
+     * @dataProvider dateFormatProvider
+     */
+    public function testDateFormatChanges(?string $oldFormat, ?string $newFormat, ?string $expectedAction): void
+    {
+        $live = $this->standardFields(['when' => array_filter(['type' => 'date', 'format' => $oldFormat])]);
+        $new = $this->standardFields(['when' => array_filter(['type' => 'date', 'format' => $newFormat])]);
+
+        $diff = $this->service->diff($live, $new);
+
+        if ($expectedAction === null) {
+            $this->assertTrue($diff->isEmpty(), 'Every old format is accepted by the new one');
+
+            return;
+        }
+        $this->assertSame(['standard_fields.when'], $diff->getStripPaths());
+        $change = $diff->getChanges()[0];
+        $this->assertSame(MappingFieldChangeAction::from($expectedAction), $change->getAction());
+        $this->assertStringContainsString((string) $oldFormat, $change->getOldShape());
+    }
+
+    public static function dateFormatProvider(): array
+    {
+        return [
+            'date to datetime' => ['strict_date', 'strict_date_hour_minute_second', 'strip'],
+            'datetime to date' => ['strict_date_hour_minute_second', 'strict_date', 'strip'],
+            'date to time' => ['strict_date', 'strict_hour_minute', 'strip'],
+            'respect timezone switched on' => ['strict_date', 'strict_date_time_no_millis', 'strip'],
+            'respect timezone switched off' => [
+                'strict_date_time_no_millis',
+                'strict_date_hour_minute_second',
+                'strip',
+            ],
+            'engine default to a strict format' => [null, 'strict_date', 'strip'],
+            'same format' => ['strict_date', 'strict_date', null],
+            'format added as alternative' => ['strict_date', 'strict_date||epoch_millis', null],
+            'alternatives with spaces' => ['strict_date||epoch_millis', 'epoch_millis || strict_date', null],
+        ];
+    }
+
+    public function testSeveralDateFieldsWithChangedFormatsAreAllStripped(): void
+    {
+        $fields = static fn (string $format): array => [
+            'd1' => ['type' => 'date', 'format' => $format],
+            'd2' => ['type' => 'date', 'format' => $format],
+            'd3' => ['type' => 'date', 'format' => $format],
+            'd4' => ['type' => 'date', 'format' => $format],
+        ];
+
+        $diff = $this->service->diff(
+            $this->standardFields($fields('strict_date')),
+            $this->standardFields($fields('strict_date_hour_minute_second'))
+        );
+
+        $this->assertSame(
+            ['standard_fields.d1', 'standard_fields.d2', 'standard_fields.d3', 'standard_fields.d4'],
+            $diff->getStripPaths(),
+            'All of them in the first attempt: the engine reports only one failing field per document'
+        );
+    }
+
     public function testParameterOnlyChangesAreIgnored(): void
     {
         $live = $this->standardFields([

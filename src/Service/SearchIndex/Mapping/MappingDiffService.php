@@ -36,6 +36,11 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
 
     private const TEXT_TYPES = ['text', 'keyword'];
 
+    private const DATE_TYPES = ['date', 'date_nanos'];
+
+    /** The format the engine applies to date fields without an explicit one. */
+    private const DEFAULT_DATE_FORMAT = 'strict_date_optional_time||epoch_millis';
+
     /** Numeric widening that keeps every value (old type => accepted new types). */
     private const NUMERIC_WIDENING = [
         'byte' => ['short', 'integer', 'long', 'float', 'double'],
@@ -109,7 +114,7 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
         }
 
         if ($liveShape === $newShape) {
-            return [];
+            return $this->compareDateFormats($live, $new, $path);
         }
 
         $action = !$liveIsContainer && !$newIsContainer && $this->isSafeTransition($liveShape, $newShape)
@@ -117,6 +122,48 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
             : MappingFieldChangeAction::STRIP;
 
         return [new MappingFieldChange($path, $liveShape, $newShape, $action)];
+    }
+
+    /**
+     * Date, datetime and time fields share the engine type date and differ only in the format.
+     * The copy parses every old value with the new format, so a new format that does not accept
+     * all old formats would fail the copy for each such field, one field per attempt.
+     *
+     * @param string[] $path
+     *
+     * @return MappingFieldChange[]
+     */
+    private function compareDateFormats(array $live, array $new, array $path): array
+    {
+        if (!in_array($this->shape($live), self::DATE_TYPES, true)) {
+            return [];
+        }
+
+        $liveFormats = $this->dateFormats($live);
+        $newFormats = $this->dateFormats($new);
+        if (array_diff($liveFormats, $newFormats) === []) {
+            return [];
+        }
+
+        return [new MappingFieldChange(
+            $path,
+            sprintf('%s [%s]', $this->shape($live), implode('||', $liveFormats)),
+            sprintf('%s [%s]', $this->shape($new), implode('||', $newFormats)),
+            MappingFieldChangeAction::STRIP
+        )];
+    }
+
+    /**
+     * @return string[]
+     */
+    private function dateFormats(array $node): array
+    {
+        $format = $node['format'] ?? null;
+        if (!is_string($format) || trim($format) === '') {
+            $format = self::DEFAULT_DATE_FORMAT;
+        }
+
+        return array_map('trim', explode('||', $format));
     }
 
     private function isSafeTransition(string $from, string $to): bool
