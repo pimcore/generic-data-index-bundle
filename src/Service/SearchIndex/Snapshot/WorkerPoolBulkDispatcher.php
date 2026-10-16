@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\BulkChunk;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Process\Exception\ExceptionInterface as ProcessException;
+use Symfony\Component\Process\Exception\ProcessSignaledException;
 use Symfony\Component\Process\InputStream;
 use Symfony\Component\Process\Process;
 
@@ -38,6 +39,8 @@ final class WorkerPoolBulkDispatcher
     private const MAX_QUEUED_PER_WORKER = 2;
 
     private const POLL_MICROSECONDS = 20_000;
+
+    private const NO_ERROR_OUTPUT = 'no error output';
 
     /** @var Process[] */
     private array $processes = [];
@@ -138,18 +141,7 @@ final class WorkerPoolBulkDispatcher
             usleep(self::POLL_MICROSECONDS);
         }
         foreach ($this->processes as $i => $process) {
-            $process->wait();
-            if (!$process->isSuccessful()) {
-                $this->abort();
-
-                throw new SnapshotImportException(sprintf(
-                    'Snapshot replay worker %d exited with code %d for index "%s": %s',
-                    $i,
-                    (int) $process->getExitCode(),
-                    $this->indexShortName,
-                    trim($process->getErrorOutput()) !== '' ? trim($process->getErrorOutput()) : 'no error output',
-                ));
-            }
+            $this->waitForWorker($i, $process);
         }
         $this->processes = [];
     }
@@ -171,6 +163,50 @@ final class WorkerPoolBulkDispatcher
         }
         $this->processes = [];
         $this->inFlight = [];
+    }
+
+    /**
+     * @throws SnapshotImportException when the worker was killed by a signal or exited with a failure
+     */
+    private function waitForWorker(int $worker, Process $process): void
+    {
+        try {
+            $process->wait();
+        } catch (ProcessSignaledException $e) {
+            // wait() throws for a worker killed by a signal (e.g. SIGABRT) before isSuccessful() can report it,
+            // which would leak a Symfony exception and drop the worker's stderr
+            $this->abort();
+
+            throw new SnapshotImportException(
+                sprintf(
+                    'Snapshot replay worker %d was terminated by signal %d for index "%s": %s',
+                    $worker,
+                    $e->getSignal(),
+                    $this->indexShortName,
+                    $this->errorOutputOf($process),
+                ),
+                0,
+                $e,
+            );
+        }
+        if (!$process->isSuccessful()) {
+            $this->abort();
+
+            throw new SnapshotImportException(sprintf(
+                'Snapshot replay worker %d exited with code %d for index "%s": %s',
+                $worker,
+                (int) $process->getExitCode(),
+                $this->indexShortName,
+                $this->errorOutputOf($process),
+            ));
+        }
+    }
+
+    private function errorOutputOf(Process $process): string
+    {
+        $errorOutput = trim($process->getErrorOutput());
+
+        return $errorOutput !== '' ? $errorOutput : self::NO_ERROR_OUTPUT;
     }
 
     /**
@@ -222,7 +258,7 @@ final class WorkerPoolBulkDispatcher
                     (int) $process->getExitCode(),
                     $lost,
                     $this->indexShortName,
-                    trim($process->getErrorOutput()) !== '' ? trim($process->getErrorOutput()) : 'no error output',
+                    $this->errorOutputOf($process),
                 ));
             }
         }

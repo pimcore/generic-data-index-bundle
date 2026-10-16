@@ -165,6 +165,30 @@ final class WorkerPoolBulkDispatcherTest extends Unit
         }
     }
 
+    public function testWorkerPoolReportsAWorkerKilledBySignalAfterItsAnswer(): void
+    {
+        if (!function_exists('posix_kill')) {
+            $this->markTestSkipped('The posix extension is required to signal the fake worker.');
+        }
+
+        // answers its chunk, then dies by signal on the way out: wait() throws for that, not isSuccessful()
+        $dispatcher = new WorkerPoolBulkDispatcher($this->fakeWorker(
+            'unlink($path); echo "OK\t$path\n"; fwrite(STDERR, "free(): invalid pointer"); posix_kill(posix_getpid(), 9);',
+        ), 1);
+        $chunk = $this->chunk('a');
+        $dispatcher->start(new IndexTarget('asset', 'pimcore_asset', 'asset'));
+
+        try {
+            $dispatcher->dispatch($chunk);
+            $dispatcher->finish();
+            $this->fail('expected SnapshotImportException');
+        } catch (SnapshotImportException $e) {
+            $this->assertStringContainsString('terminated by signal 9', $e->getMessage());
+            $this->assertStringContainsString('"asset"', $e->getMessage());
+            $this->assertStringContainsString('free(): invalid pointer', $e->getMessage());
+        }
+    }
+
     /**
      * A worker process as an inline PHP script: reads chunk paths from stdin and runs $perPath
      * for each (with $path set); extra argv is available as $argv[1..].
