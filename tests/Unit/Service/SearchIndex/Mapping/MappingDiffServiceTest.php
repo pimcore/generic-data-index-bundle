@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\Mapping;
 
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingFieldChangeAction;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
 
@@ -44,6 +45,40 @@ final class MappingDiffServiceTest extends Unit
         $diff = $this->service->diff($mapping, $mapping);
 
         $this->assertTrue($diff->isEmpty());
+    }
+
+    /**
+     * Some field adapters put the enum case itself into the mapping (e.g. video, advanced
+     * many-to-many relations); the engine receives its JSON value, so the diff must compare that.
+     */
+    public function testEnumTypesInTheNewMappingAreComparedByTheirValue(): void
+    {
+        $live = $this->standardFields(['video' => ['properties' => [
+            'id' => ['type' => 'text'],
+            'details' => ['type' => 'nested', 'properties' => ['title' => ['type' => 'keyword']]],
+        ]]]);
+        $new = $this->standardFields(['video' => ['properties' => [
+            'id' => ['type' => AttributeType::TEXT],
+            'details' => [
+                'type' => AttributeType::NESTED,
+                'properties' => ['title' => ['type' => AttributeType::KEYWORD]],
+            ],
+        ]]]);
+
+        $diff = $this->service->diff($live, $new);
+
+        $this->assertTrue($diff->isEmpty(), 'An unchanged mapping built with enum cases has no changes');
+    }
+
+    public function testEnumTypeChangeIsDetected(): void
+    {
+        $live = $this->standardFields(['asset' => ['type' => 'text']]);
+        $new = $this->standardFields(['asset' => ['type' => AttributeType::LONG]]);
+
+        $diff = $this->service->diff($live, $new);
+
+        $this->assertSame(['standard_fields.asset'], $diff->getStripPaths());
+        $this->assertSame('long', $diff->getChanges()[0]->getNewShape());
     }
 
     public function testParameterOnlyChangesAreIgnored(): void

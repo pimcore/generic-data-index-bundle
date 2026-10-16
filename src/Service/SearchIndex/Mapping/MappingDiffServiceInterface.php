@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping;
 
+use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
 
 /**
@@ -30,6 +31,8 @@ interface MappingDiffServiceInterface
      *
      * @param array<string, mixed> $liveProperties mapping properties of the live index as the engine returns them
      * @param array<string, mixed> $newProperties mapping properties the index is updated to
+     *
+     * @throws JsonException when the new mapping cannot be encoded as JSON
      */
     public function diff(array $liveProperties, array $newProperties): MappingDiff;
 }

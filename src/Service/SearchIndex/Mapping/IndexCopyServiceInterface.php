@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping;
 
 use Exception;
+use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexCopyResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
 
@@ -28,6 +29,8 @@ interface IndexCopyServiceInterface
 {
     /**
      * Fields of the live index behind the alias whose mapping differs from the new mapping.
+     *
+     * @throws JsonException when the new mapping cannot be encoded as JSON
      */
     public function diff(string $aliasName, array $mappingProperties): MappingDiff;
 

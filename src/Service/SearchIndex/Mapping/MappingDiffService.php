@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping;
 
+use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingFieldChangeAction;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingFieldChange;
@@ -45,9 +46,25 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
         'float' => ['double'],
     ];
 
+    /**
+     * @throws JsonException
+     */
     public function diff(array $liveProperties, array $newProperties): MappingDiff
     {
-        return new MappingDiff($this->compareProperties($liveProperties, $newProperties, []));
+        return new MappingDiff(
+            $this->compareProperties($liveProperties, $this->asSentToTheEngine($newProperties), [])
+        );
+    }
+
+    /**
+     * Field adapters may put enum cases or other serializable values into the mapping. The engine
+     * receives their JSON form, so the comparison with the live mapping uses that form too.
+     *
+     * @throws JsonException
+     */
+    private function asSentToTheEngine(array $properties): array
+    {
+        return json_decode(json_encode($properties, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
     }
 
     /**
