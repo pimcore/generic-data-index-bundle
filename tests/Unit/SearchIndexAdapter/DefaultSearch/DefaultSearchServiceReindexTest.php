@@ -887,6 +887,14 @@ final class DefaultSearchServiceReindexTest extends Unit
                 ]],
                 [['standard_fields', 'o', 'x']],
             ],
+            // A strict root mapping (e.g. from an index template) names the root "_doc".
+            'strict dynamic mapping at the root' => [
+                [[
+                    'type' => 'strict_dynamic_mapping_exception',
+                    'reason' => 'mapping set to strict, dynamic introduction of [x] within [_doc] is not allowed',
+                ]],
+                [['x']],
+            ],
         ];
     }
 

@@ -77,6 +77,8 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
     private const MAX_CAUSE_DEPTH = 5;
 
+    private const ROOT_OBJECT_NAME = '_doc';
+
     use LoggerAwareTrait;
 
     public function __construct(
@@ -286,7 +288,10 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 }
             }
             if (preg_match(self::STRICT_DYNAMIC_FIELD_PATTERN, $reason, $match) === 1) {
-                return [...explode('.', $match[2]), $match[1]];
+                // "_doc" names the document root, not a key in the document.
+                $parent = $match[2] === self::ROOT_OBJECT_NAME ? [] : explode('.', $match[2]);
+
+                return [...$parent, $match[1]];
             }
             $cause = is_array($cause['caused_by'] ?? null) ? $cause['caused_by'] : [];
         }
