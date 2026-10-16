@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexCopyResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
@@ -122,6 +123,12 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
      */
     private function removedFieldsIfOneFailed(array $failingPaths, array $removedPaths): array
     {
+        // Only class fields: the engine maps some system fields dynamically (classId, className,
+        // checksum), and custom fields may come without a mapping; neither may be stripped here.
+        $removedPaths = array_values(array_filter(
+            $removedPaths,
+            static fn (array $path): bool => $path[0] === FieldCategory::STANDARD_FIELDS->value && count($path) > 1
+        ));
         foreach ($failingPaths as $failing) {
             foreach ($removedPaths as $removed) {
                 if (array_slice($failing, 0, count($removed)) === $removed) {

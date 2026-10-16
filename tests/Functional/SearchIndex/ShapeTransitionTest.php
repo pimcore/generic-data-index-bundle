@@ -288,23 +288,38 @@ final class ShapeTransitionTest extends Unit
         $removed = ['gone1', 'gone2', 'gone3', 'gone4'];
         $this->createAliasWithDocuments(
             [
-                ...array_fill_keys($removed, ['type' => 'text']),
+                'standard_fields' => ['properties' => [
+                    ...array_fill_keys($removed, ['type' => 'text']),
+                    'kept' => ['type' => 'keyword'],
+                ]],
+                'system_fields' => ['properties' => ['classId' => ['type' => 'keyword']]],
                 self::OTHER_FIELD => ['type' => 'keyword'],
             ],
             static fn (string $id): array => [
-                ...array_fill_keys($removed, $id === self::DOCUMENT_IDS[0] ? '2026-01-01' : 'abc-' . $id),
+                'standard_fields' => [
+                    ...array_fill_keys($removed, $id === self::DOCUMENT_IDS[0] ? '2026-01-01' : 'abc-' . $id),
+                    'kept' => 'k',
+                ],
+                'system_fields' => ['classId' => 'C1'],
                 self::OTHER_FIELD => self::OTHER_VALUE,
             ]
         );
 
-        $result = $this->copy([self::OTHER_FIELD => ['type' => 'keyword']]);
+        // Neither system_fields.classId nor the other field is in the new mapping (the engine maps
+        // some system fields dynamically): only the removed class fields may be stripped.
+        $result = $this->copy(['standard_fields' => ['properties' => ['kept' => ['type' => 'keyword']]]]);
 
         $this->assertTrue($result->isSuccessful());
         $this->assertSame(2, $result->getAttempts());
-        $this->assertEqualsCanonicalizing($removed, $result->getStrippedPaths());
+        $this->assertEqualsCanonicalizing(
+            array_map(static fn (string $field): string => 'standard_fields.' . $field, $removed),
+            $result->getStrippedPaths()
+        );
         $this->assertCopiedIntoOtherIndex();
         foreach ($this->getSources() as $source) {
-            $this->assertSame([self::OTHER_FIELD => self::OTHER_VALUE], $source);
+            $this->assertSame(['kept' => 'k'], $source['standard_fields']);
+            $this->assertSame(['classId' => 'C1'], $source['system_fields']);
+            $this->assertSame(self::OTHER_VALUE, $source[self::OTHER_FIELD]);
         }
     }
 
@@ -346,33 +361,33 @@ final class ShapeTransitionTest extends Unit
     {
         $this->createAliasWithDocuments(
             [
-                'cs' => ['properties' => [
+                'standard_fields' => ['properties' => ['cs' => ['properties' => [
                     'spec.width' => ['type' => 'text'],
                     'spec.depth' => ['type' => 'text'],
                     'other' => ['type' => 'keyword'],
-                ]],
+                ]]]],
                 self::OTHER_FIELD => ['type' => 'keyword'],
             ],
             static fn (string $id): array => [
-                'cs' => [
+                'standard_fields' => ['cs' => [
                     'spec.width' => $id === self::DOCUMENT_IDS[0] ? '2026-01-01' : 'abc-' . $id,
                     'spec.depth' => $id === self::DOCUMENT_IDS[0] ? '2026-02-01' : 'def-' . $id,
                     'other' => 'x',
-                ],
+                ]],
                 self::OTHER_FIELD => self::OTHER_VALUE,
             ]
         );
 
         $result = $this->copy([
-            'cs' => ['properties' => ['other' => ['type' => 'keyword']]],
+            'standard_fields' => ['properties' => ['cs' => ['properties' => ['other' => ['type' => 'keyword']]]]],
             self::OTHER_FIELD => ['type' => 'keyword'],
         ]);
 
         $this->assertTrue($result->isSuccessful());
         $this->assertSame(2, $result->getAttempts());
-        $this->assertContains('cs.spec', $result->getStrippedPaths());
+        $this->assertContains('standard_fields.cs.spec', $result->getStrippedPaths());
         foreach ($this->getSources() as $source) {
-            $this->assertSame(['other' => 'x'], $source['cs']);
+            $this->assertSame(['other' => 'x'], $source['standard_fields']['cs']);
         }
     }
 

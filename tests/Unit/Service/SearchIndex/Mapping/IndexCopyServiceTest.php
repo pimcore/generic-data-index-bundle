@@ -170,6 +170,38 @@ final class IndexCopyServiceTest extends Unit
         $this->assertSame([], $result->getKeptPaths(), 'The kept field failed and was stripped');
     }
 
+    /**
+     * The engine maps some system fields dynamically (classId, className, checksum); they are not
+     * in the generated mapping but must never be stripped with the removed class fields.
+     */
+    public function testRemovedFieldsOutsideTheClassFieldsAreNeverStripped(): void
+    {
+        $calls = [];
+        $service = $this->createService(
+            [self::ALIAS . '-odd' => ['mappings' => ['properties' => [
+                'system_fields' => ['properties' => ['id' => ['type' => 'long'], 'classId' => self::TEXT]],
+                'custom_fields' => ['properties' => ['extra' => self::TEXT]],
+                'standard_fields' => ['properties' => ['gone1' => self::TEXT, 'gone2' => self::TEXT]],
+            ]]]],
+            $calls,
+            [
+                new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['standard_fields', 'gone1']]),
+                new ReindexOutcome(ReindexResult::SUCCESS),
+            ]
+        );
+
+        $result = $service->copy(self::ALIAS, [
+            'system_fields' => ['properties' => ['id' => ['type' => 'long']]],
+            'standard_fields' => ['properties' => []],
+        ]);
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertEqualsCanonicalizing(
+            ['standard_fields.gone1', 'standard_fields.gone2'],
+            $result->getStrippedPaths()
+        );
+    }
+
     public function testCopyGivesUpWhenAFailureNamesNoNewField(): void
     {
         $calls = [];
