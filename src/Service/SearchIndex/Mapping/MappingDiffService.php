@@ -112,33 +112,36 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
             if (is_array($node) && is_array($node['properties'] ?? null)) {
                 $node['properties'] = $this->expandDottedNames($node['properties']);
             }
-            $expanded = $this->insertAt($expanded, explode('.', (string) $name), $node);
+            $this->insertAt($expanded, explode('.', (string) $name), $node);
         }
 
         return $expanded;
     }
 
     /**
+     * Inserts in place: the map grows with every property, copying it per insert would be quadratic.
+     *
      * @param string[] $segments
      */
-    private function insertAt(array $properties, array $segments, mixed $node): array
+    private function insertAt(array &$properties, array $segments, mixed $node): void
     {
         $name = (string) array_shift($segments);
-        $existing = $properties[$name] ?? null;
         if ($segments === []) {
+            $existing = $properties[$name] ?? null;
             $properties[$name] = is_array($existing) && is_array($node)
                 ? array_replace_recursive($existing, $node)
                 : $node;
 
-            return $properties;
+            return;
         }
 
-        $container = is_array($existing) ? $existing : [];
-        $children = is_array($container['properties'] ?? null) ? $container['properties'] : [];
-        $container['properties'] = $this->insertAt($children, $segments, $node);
-        $properties[$name] = $container;
-
-        return $properties;
+        if (!is_array($properties[$name] ?? null)) {
+            $properties[$name] = [];
+        }
+        if (!is_array($properties[$name]['properties'] ?? null)) {
+            $properties[$name]['properties'] = [];
+        }
+        $this->insertAt($properties[$name]['properties'], $segments, $node);
     }
 
     /**
