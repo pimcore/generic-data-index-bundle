@@ -229,16 +229,22 @@ Management](../02_Configuration/03_Index_Management.md#deployment-and-index-mana
 
 ## Field Type Changes
 
-A field type change no longer interrupts search. The odd/even copy keeps the fields whose old values still fit and
-strips the others, so the alias switches and the index stays searchable. What remains:
+A field type change no longer empties the index. The odd/even copy keeps the fields whose old values still fit and
+strips the others, so the alias switches and every document stays in the index. The changed fields are the exception,
+for as long as the rebuild from the database takes:
 
-- A **stripped** field is empty in every document until the rebuild from the database has filled it. Queries, filters
-  and sorting on that field find nothing in the meantime.
+- A **stripped** field is absent from every document until the rebuild has refilled that object. Filters on that
+  field match nothing, sorting on it puts every object last, and aggregations on it are empty. Everything else about
+  the documents is unchanged.
 - A **kept** field holds its old value, for example a number as text, until the rebuild.
 - The index is recreated, and empty, only as a last resort when the copy still fails after the retries.
 
-The rebuild is queued automatically. Run enough messenger workers and check `generic-data-index:status` to see when
-the index queue has drained.
+How long the changed fields stay empty is the time the messenger workers need to process all objects of the class,
+not the time of the copy. It grows with the number of objects and shrinks with the number of workers (see
+[Index Queue Options](../02_Configuration/03_Index_Management.md#index-queue-options)). The rebuild is queued
+automatically; run enough workers and check `generic-data-index:status` to see when the index queue has drained.
+Fields that are only found during the copy, for example values that fit the old mapping but not the new one, are
+stripped as well and named in the log; `--dry-run` cannot list them in advance.
 
 ### Expand and Contract for Fields That Must Stay Searchable
 
