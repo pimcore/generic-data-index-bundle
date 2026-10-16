@@ -856,7 +856,58 @@ final class DefaultSearchServiceReindexTest extends Unit
                 [['type' => 'mapper_parsing_exception', 'reason' => 'something else entirely']],
                 [],
             ],
+            // OpenSearch rejects a term over 32766 bytes in a keyword field this way (Elasticsearch 8
+            // reports it as a parsing failure).
+            'OpenSearch immense term' => [
+                [[
+                    'type' => 'illegal_argument_exception',
+                    'reason' => 'Document contains at least one immense term in field="standard_fields.t" '
+                        . '(whose UTF8 encoding is longer than the max length 32766), all of which were skipped.',
+                ]],
+                [['standard_fields', 't']],
+            ],
+            // The engine wraps exceptions thrown while parsing a document; the field is in the cause.
+            'field named only in the wrapped cause' => [
+                [[
+                    'type' => 'mapper_parsing_exception',
+                    'reason' => 'failed to parse',
+                    'caused_by' => [
+                        'type' => 'illegal_argument_exception',
+                        'reason' => 'Could not dynamically add mapping for field [standard_fields.a.b]. '
+                            . 'Existing mapping for [standard_fields.a] must be of type object but found [keyword].',
+                    ],
+                ]],
+                [['standard_fields', 'a', 'b']],
+            ],
+            'strict dynamic mapping' => [
+                [[
+                    'type' => 'strict_dynamic_mapping_exception',
+                    'reason' => 'mapping set to strict, dynamic introduction of [x] within [standard_fields.o] '
+                        . 'is not allowed',
+                ]],
+                [['standard_fields', 'o', 'x']],
+            ],
         ];
+    }
+
+    public function testOtherIllegalArgumentFailuresStillAbortTheCopy(): void
+    {
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [[
+                'completed' => true,
+                'response' => ['timed_out' => false, 'failures' => [[
+                    'cause' => [
+                        'type' => 'illegal_argument_exception',
+                        'reason' => 'Limit of total fields [1000] has been exceeded',
+                    ],
+                ]]],
+            ]],
+        );
+
+        $this->expectException(ReindexFailedException::class);
+
+        $this->createService(client: $client)->reindexWithoutFields('test_index', [], []);
     }
 
     private function buildClientWithTaskResponses(

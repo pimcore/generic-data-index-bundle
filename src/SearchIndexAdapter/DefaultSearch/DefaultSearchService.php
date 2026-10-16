@@ -58,6 +58,25 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         'document_parsing_exception',
     ];
 
+    /**
+     * OpenSearch reports a term over 32766 bytes in a keyword field as illegal_argument_exception;
+     * it is caused by the data like a parsing failure, never transient.
+     */
+    private const IMMENSE_TERM_MARKER = 'immense term in field="';
+
+    /** Reasons that name the failing field; the first capture group is its full dotted path. */
+    private const FAILING_FIELD_PATTERNS = [
+        '/failed to parse field \[([^\]]+)\]/',
+        '/object mapping for \[([^\]]+)\]/',
+        '/Could not dynamically add mapping for field \[([^\]]+)\]/',
+        '/immense term in field="([^"]+)"/',
+    ];
+
+    /** "dynamic introduction of [name] within [parent.path] is not allowed" */
+    private const STRICT_DYNAMIC_FIELD_PATTERN = '/dynamic introduction of \[([^\]]+)\] within \[([^\]]+)\]/';
+
+    private const MAX_CAUSE_DEPTH = 5;
+
     use LoggerAwareTrait;
 
     public function __construct(
@@ -242,16 +261,37 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     {
         $paths = [];
         foreach ($failures as $failure) {
-            $reason = (string) ($failure['cause']['reason'] ?? '');
-            $matched = preg_match('/failed to parse field \[([^\]]+)\]/', $reason, $match) === 1
-                || preg_match('/object mapping for \[([^\]]+)\]/', $reason, $match) === 1;
-            if (!$matched) {
-                continue;
+            $path = $this->findFailingFieldPath($failure['cause'] ?? []);
+            if ($path !== null) {
+                $paths[implode('.', $path)] = $path;
             }
-            $paths[$match[1]] = explode('.', $match[1]);
         }
 
         return array_values($paths);
+    }
+
+    /**
+     * The field named in a failure reason, looking into the wrapped causes too: the engine wraps
+     * exceptions thrown while parsing a document ("failed to parse") and names the field inside.
+     *
+     * @return string[]|null
+     */
+    private function findFailingFieldPath(array $cause): ?array
+    {
+        for ($depth = 0; $depth < self::MAX_CAUSE_DEPTH && $cause !== []; $depth++) {
+            $reason = (string) ($cause['reason'] ?? '');
+            foreach (self::FAILING_FIELD_PATTERNS as $pattern) {
+                if (preg_match($pattern, $reason, $match) === 1) {
+                    return explode('.', $match[1]);
+                }
+            }
+            if (preg_match(self::STRICT_DYNAMIC_FIELD_PATTERN, $reason, $match) === 1) {
+                return [...explode('.', $match[2]), $match[1]];
+            }
+            $cause = is_array($cause['caused_by'] ?? null) ? $cause['caused_by'] : [];
+        }
+
+        return null;
     }
 
     /**
@@ -327,7 +367,10 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     {
         foreach ($failures as $failure) {
             $causeType = $failure['cause']['type'] ?? '';
-            if (!\in_array($causeType, self::MAPPING_INCOMPATIBILITY_FAILURE_TYPES, true)) {
+            $reason = (string) ($failure['cause']['reason'] ?? '');
+            $isImmenseTerm = $causeType === 'illegal_argument_exception'
+                && str_contains($reason, self::IMMENSE_TERM_MARKER);
+            if (!$isImmenseTerm && !\in_array($causeType, self::MAPPING_INCOMPATIBILITY_FAILURE_TYPES, true)) {
                 return false;
             }
         }

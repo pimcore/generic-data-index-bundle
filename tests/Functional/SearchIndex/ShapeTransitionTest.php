@@ -250,6 +250,33 @@ final class ShapeTransitionTest extends Unit
         }
     }
 
+    /**
+     * S46: a sub-field (multi-field) of another type fails in the copy and the engine names it
+     * (title.num). The document only has the parent value, so the parent is stripped.
+     */
+    public function testFailingSubFieldStripsItsParentValue(): void
+    {
+        $textWithSubField = static fn (array $fields): array => [
+            'title' => ['type' => 'text', 'fields' => $fields],
+            self::OTHER_FIELD => ['type' => 'keyword'],
+        ];
+        $this->createAliasWithDocuments(
+            $textWithSubField(['keyword' => ['type' => 'keyword']]),
+            ['title' => 'abc', self::OTHER_FIELD => self::OTHER_VALUE]
+        );
+
+        $result = $this->copy($textWithSubField(['num' => ['type' => 'long']]));
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame(['title.num'], $result->getStrippedPaths());
+        $this->assertSame(2, $result->getAttempts(), 'Only the engine knows the sub-field fails');
+        $this->assertCopiedIntoOtherIndex();
+        foreach ($this->getSources() as $source) {
+            $this->assertArrayNotHasKey('title', $source);
+            $this->assertSame(self::OTHER_VALUE, $source[self::OTHER_FIELD]);
+        }
+    }
+
     public function testNestedLeafIsStrippedInEveryItem(): void
     {
         $itemMapping = static fn (string $leafType): array => [

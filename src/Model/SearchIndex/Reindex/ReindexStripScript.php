@@ -23,6 +23,8 @@ use InvalidArgumentException;
  * (field.language), object bricks and every item of a nested list (field collections, blocks).
  * Keys with dots (e.g. classification store keys like "spec.width") stay one literal key in the
  * document while the engine maps them as objects, so each step also tries the joined segments.
+ * A path that continues below a plain value (a failing sub-field such as "title.num") removes
+ * that value, the nearest field that exists in the document.
  *
  * @internal
  */
@@ -36,7 +38,9 @@ final readonly class ReindexStripScript
           for (int j = i; j < path.size(); j++) {
             key = key == null ? path.get(j) : key + '.' + path.get(j);
             if (!node.containsKey(key)) { continue; }
-            if (j == path.size() - 1) { node.remove(key); } else { strip(node.get(key), path, j + 1); }
+            def child = node.get(key);
+            boolean plainValue = child != null && !(child instanceof Map) && !(child instanceof List);
+            if (j == path.size() - 1 || plainValue) { node.remove(key); } else { strip(child, path, j + 1); }
           }
         }
         for (def p : params.paths) { strip(ctx._source, p, 0); }
