@@ -159,8 +159,14 @@ pimcore_generic_data_index:
 Transient failures while polling (e.g. a temporarily unreachable or overloaded search cluster) are retried and do not
 abort a running reindex. If reindexing fails for a different reason — the cluster is unreachable, the task reports an
 error or times out server-side — the command fails instead of modifying the live index, and the reindex is retried on
-the next run. The index is only recreated (and repopulated via the index queue) when the already indexed documents are
-incompatible with the new mapping, for example after a field type change.
+the next run.
+
+After a field type change, the copy keeps the changed fields whose old values still fit (for example a number copied
+into a text field) and leaves out the others, so the index is not recreated and search keeps working. The index is
+only recreated, as a last resort, when the copy still fails after the retries. If fields were left out of the copy or
+the index had to be created empty, the command queues all elements of that index for a rebuild from the database and
+prints a notice per index. Run the messenger workers to fill these indices. See the
+[Reindexing Guide](../03_Reindexing/README.md#how-reindexing-works).
 
 ### Handling Failed Messages
 

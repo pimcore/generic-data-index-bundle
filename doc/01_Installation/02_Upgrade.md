@@ -2,6 +2,25 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 2.5.15
+- [Indexing] A field type change no longer recreates the index empty. The odd/even copy now leaves out the changed
+  fields whose old values don't fit the new type and keeps the others (for example a number copied into a text field).
+  The index is only recreated as a last resort, when the copy still fails after 3 attempts. Search keeps working; the
+  left-out fields are empty until the rebuild from the database. See the
+  [Reindexing Guide](../03_Reindexing/README.md#how-reindexing-works).
+- [Commands] Behavior change: `generic-data-index:reindex` now adds all elements of an index to the index queue if its
+  copy left out fields or the index had to be created empty, and prints a notice per index. Before, it never filled
+  the index queue. Operators who relied on that need messenger workers running after the command.
+- [Commands] `generic-data-index:deployment:reindex` and its `--dry-run` list per index the fields stripped and the
+  fields kept in the copy.
+- [Indexing] `@internal` signature changes, relevant only for custom implementations:
+  - `IndexHandlerInterface::reindexMapping()` returns a `MappingUpdateResult`.
+  - New `IndexHandlerInterface::getMappingDiff()`.
+  - New `SearchIndexServiceInterface::reindexWithoutFields()`.
+  - New `ReindexServiceInterface::reindexAllIndicesWithReport()`.
+  - New `ClassDefinitionReindexServiceInterface::reindexClassDefinitionMapping()`.
+  - The `AbstractIndexHandler` constructor has a new `IndexCopyServiceInterface` argument.
+
 ## Upgrade to 2.5.14
 - [Permissions] Fixed: a workspace now only applies to its own path and the paths below it. Before, the permission
   check also applied it to any path that merely contained the workspace path (for example `/Products` to
