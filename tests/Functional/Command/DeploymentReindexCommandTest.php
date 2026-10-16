@@ -162,6 +162,55 @@ class DeploymentReindexCommandTest extends Unit
         );
     }
 
+    /**
+     * The dry run lists the fields the mapping diff strips and keeps; fields whose old values fail
+     * only during the copy are stripped as well, and the output says so for a planned copy.
+     */
+    public function testDryRunSaysThatFieldsFailingDuringTheCopyAreStrippedToo(): void
+    {
+        $plan = static fn (IndexStateTarget $target, bool $indexMissing): IndexPlan => new IndexPlan(
+            $target,
+            new IndexState('mapping', 'settings', '1.0'),
+            $indexMissing,
+            true,
+            false,
+            false,
+            false,
+            $indexMissing ? ['index missing', 'mapping changed'] : ['mapping changed', 'fields kept in the copy: a']
+        );
+        $note = 'Fields whose old values fail only during the copy are stripped as well';
+
+        $targets = [IndexStateTarget::forScope(DeploymentReindexScope::ASSETS)];
+
+        $output = $this->dryRunOutput($targets, static fn (IndexStateTarget $t): IndexPlan => $plan($t, false));
+        $this->assertStringContainsString($note, $output, 'A copy of an existing index is planned');
+
+        $output = $this->dryRunOutput($targets, static fn (IndexStateTarget $t): IndexPlan => $plan($t, true));
+        $this->assertStringNotContainsString($note, $output, 'A missing index is created, nothing is copied');
+    }
+
+    /**
+     * @param IndexStateTarget[] $targets
+     * @param callable(IndexStateTarget): IndexPlan $plan
+     */
+    private function dryRunOutput(array $targets, callable $plan): string
+    {
+        $deploymentReindexService = $this->makeEmpty(DeploymentReindexServiceInterface::class, [
+            'getTargets' => $targets,
+            'plan' => $plan,
+            'execute' => Expected::never(),
+        ]);
+        $commandTester = new CommandTester(new DeploymentReindexCommand(
+            $this->makeEmpty(EnqueueServiceInterface::class, ['dispatchQueueMessages' => Expected::never()]),
+            $this->makeEmpty(ClassDefinitionReindexServiceInterface::class),
+            $deploymentReindexService
+        ));
+        $commandTester->execute(['--all' => true, '--dry-run' => true]);
+        $this->assertSame(Command::SUCCESS, $commandTester->getStatusCode());
+
+        return $commandTester->getDisplay();
+    }
+
     public function testDryRunExecutesNothing(): void
     {
         $deploymentReindexService = $this->makeEmpty(DeploymentReindexServiceInterface::class, [
