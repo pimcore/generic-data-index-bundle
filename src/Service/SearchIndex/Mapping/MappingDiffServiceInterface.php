@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping;
 
 use JsonException;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\CopyMapping;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
 
 /**
@@ -38,18 +37,4 @@ interface MappingDiffServiceInterface
      * @throws JsonException when the new mapping cannot be encoded as JSON
      */
     public function diff(array $liveProperties, array $newProperties): MappingDiff;
-
-    /**
-     * The mapping for the copy target: the new mapping, plus the live mapping of every field the new
-     * mapping no longer has. Without it the engine would map such fields again from the first copied
-     * document, and documents that disagree ("2026-01-01" and "abc") would fail the copy. Carried
-     * definitions lose analyzer and normalizer settings, and nested fields become objects. Without
-     * removed fields the new mapping is returned as given.
-     *
-     * @param array<string, mixed> $liveProperties mapping properties of the live index as the engine returns them
-     * @param array<string, mixed> $newProperties mapping properties the index is updated to
-     *
-     * @throws JsonException when the new mapping cannot be encoded as JSON
-     */
-    public function mappingForCopy(array $liveProperties, array $newProperties): CopyMapping;
 }

@@ -87,9 +87,8 @@ copy this means:
 - Decimals copied into an integer field are accepted but truncated, unless the field is a changed field: a double to
   long change strips the field instead.
 - Text copied into a number, date or boolean field doesn't fit: the field is stripped, and the index is not recreated.
-- Fields that are no longer in the mapping keep their previous mapping in the copy (without analyzer settings; nested
-  fields become objects), so their values fit as before. They stay in the mapping until the index is recreated with
-  `update:index -r`.
+- Fields that are no longer in the mapping are re-mapped dynamically and stay in the mapping until the index is
+  recreated with `update:index -r`.
 
 Whenever fields were stripped, or the index had to be created empty, the bundle adds all elements of that index to the
 index queue, even if the trigger doesn't rebuild otherwise. Search keeps working during this; only the stripped fields
@@ -251,7 +250,7 @@ new field, move the data, switch the consumers, remove the old field. Every step
    reindexes the object. For large classes, batch the saves and disable versioning for the run.
 3. **Switch** the consumers to the new field: code, grid configurations, Studio listings, PQL filters and
    Data Hub queries.
-4. **Remove** the old field. The copy succeeds, because a removed field keeps its previous mapping, and the
+4. **Remove** the old field. The copy succeeds, because a removed field is re-mapped dynamically, and the
    following rebuild drops it from the documents. Its mapping entry stays until the index is recreated with
    `update:index -r`; schedule that for a quiet period, or leave it.
 

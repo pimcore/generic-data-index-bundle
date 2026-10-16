@@ -277,43 +277,6 @@ final class ShapeTransitionTest extends Unit
         }
     }
 
-    /**
-     * S47: fields removed from the class keep their live mapping in the copy. Mapped again from the
-     * first copied document, "2026-01-01" would make the field a date and "abc" in the next document
-     * would fail the copy.
-     */
-    public function testRemovedFieldsKeepTheirTypeInTheCopy(): void
-    {
-        $this->createAliasWithDocuments(
-            [
-                'gone_text' => ['type' => 'text', 'fields' => ['keyword' => ['type' => 'keyword']]],
-                'gone_items' => ['type' => 'nested', 'properties' => ['v' => ['type' => 'keyword']]],
-                self::OTHER_FIELD => ['type' => 'keyword'],
-            ],
-            fn (string $id): array => [
-                'gone_text' => $id === self::DOCUMENT_IDS[0] ? '2026-01-01' : 'abc-' . $id,
-                'gone_items' => [['v' => 'x'], ['v' => 'y']],
-                self::OTHER_FIELD => self::OTHER_VALUE,
-            ]
-        );
-
-        $result = $this->copy([self::OTHER_FIELD => ['type' => 'keyword']]);
-
-        $this->assertTrue($result->isSuccessful());
-        $this->assertSame(1, $result->getAttempts());
-        $this->assertSame([], $result->getStrippedPaths());
-        $this->assertCopiedIntoOtherIndex();
-        $mapping = $this->tester->getIndexMapping($this->alias . '-' . DefaultSearchService::INDEX_VERSION_EVEN);
-        $properties = reset($mapping)['mappings']['properties'];
-        $this->assertSame('text', $properties['gone_text']['type'] ?? null, 'The live type, not a detected date');
-        $this->assertArrayNotHasKey('type', $properties['gone_items'], 'Carried as object, not nested');
-        foreach ($this->getSources() as $id => $source) {
-            $expected = (string) $id === self::DOCUMENT_IDS[0] ? '2026-01-01' : 'abc-' . $id;
-            $this->assertSame($expected, $source['gone_text']);
-            $this->assertSame([['v' => 'x'], ['v' => 'y']], $source['gone_items']);
-        }
-    }
-
     public function testNestedLeafIsStrippedInEveryItem(): void
     {
         $itemMapping = static fn (string $leafType): array => [
@@ -393,10 +356,7 @@ final class ShapeTransitionTest extends Unit
     /**
      * The live index is the -odd one, so the copy has to switch the alias to -even.
      */
-    /**
-     * @param array $document the same document for every id, or a callable(string $id): array per id
-     */
-    private function createAliasWithDocuments(array $mapping, array|callable $document): void
+    private function createAliasWithDocuments(array $mapping, array $document): void
     {
         $indexName = $this->alias . '-' . DefaultSearchService::INDEX_VERSION_ODD;
         $this->getSearchIndexService()->createIndex($indexName, $mapping)->addAlias($this->alias, $indexName);
@@ -404,8 +364,7 @@ final class ShapeTransitionTest extends Unit
 
         $client = $this->getClient();
         foreach (self::DOCUMENT_IDS as $id) {
-            $body = is_callable($document) ? $document($id) : $document;
-            $client->index(['index' => $this->alias, 'id' => $id, 'body' => $body, 'refresh' => true]);
+            $client->index(['index' => $this->alias, 'id' => $id, 'body' => $document, 'refresh' => true]);
         }
         $this->assertSame(3, $this->tester->countIndexDocuments($this->alias), 'Documents of the old shape');
     }

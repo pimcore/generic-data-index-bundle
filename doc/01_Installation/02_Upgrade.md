@@ -13,8 +13,6 @@ Following steps are necessary during updating to newer versions.
   the index queue. Operators who relied on that need messenger workers running after the command.
 - [Commands] `generic-data-index:deployment:reindex` and its `--dry-run` list per index the fields stripped and the
   fields kept in the copy.
-- [Indexing] Fields removed from a class keep their previous mapping in the odd/even copy instead of being mapped
-  again from the first copied document, which could fail the copy for values like "2026-01-01" next to "abc".
 - [Indexing] `@internal` signature changes, relevant only for custom implementations:
   - `IndexHandlerInterface::reindexMapping()` returns a `MappingUpdateResult`.
   - New `IndexHandlerInterface::getMappingDiff()`.

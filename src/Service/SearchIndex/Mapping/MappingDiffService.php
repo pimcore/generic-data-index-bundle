@@ -15,7 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping;
 
 use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingFieldChangeAction;
-use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\CopyMapping;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingFieldChange;
 
@@ -39,9 +38,6 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
 
     private const DATE_TYPES = ['date', 'date_nanos'];
 
-    /** Parameters a carried (removed) field keeps; properties and fields are sanitized recursively. */
-    private const CARRIED_PARAMETERS = ['type', 'format', 'scaling_factor', 'ignore_above', 'enabled', 'dynamic'];
-
     /** The format the engine applies to date fields without an explicit one. */
     private const DEFAULT_DATE_FORMAT = 'strict_date_optional_time||epoch_millis';
 
@@ -63,131 +59,6 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
         return new MappingDiff(
             $this->compareProperties($liveProperties, $this->asSentToTheEngine($newProperties), [])
         );
-    }
-
-    /**
-     * @throws JsonException
-     */
-    public function mappingForCopy(array $liveProperties, array $newProperties): CopyMapping
-    {
-        $carriedPaths = [];
-        $properties = $this->carryRemovedFields(
-            $liveProperties,
-            $newProperties,
-            $this->asSentToTheEngine($newProperties),
-            '',
-            [],
-            $carriedPaths
-        );
-
-        return new CopyMapping($carriedPaths === [] ? $newProperties : $properties, $carriedPaths);
-    }
-
-    /**
-     * Adds every live field missing from the new mapping to $target, the new mapping as given (one
-     * properties level of it). $prefix is set while a live object is matched by dotted names of the
-     * new mapping ("spec.width" for spec -> width); carried fields are added the same way.
-     *
-     * @param array<string, mixed> $live live properties of this level
-     * @param array<string, mixed> $target new properties as given, of the level the names are added to
-     * @param array<string, mixed> $expanded new properties of this level, expanded like the engine does
-     * @param string[] $path
-     * @param string[] $carriedPaths
-     *
-     * @return array<string, mixed> $target with the carried fields
-     */
-    private function carryRemovedFields(
-        array $live,
-        array $target,
-        array $expanded,
-        string $prefix,
-        array $path,
-        array &$carriedPaths
-    ): array {
-        foreach ($live as $name => $liveNode) {
-            $name = (string) $name;
-            if (!is_array($liveNode)) {
-                continue;
-            }
-            $key = $prefix . $name;
-            $expandedNode = $expanded[$name] ?? null;
-
-            if (!is_array($expandedNode)) {
-                $target[$key] = $this->sanitizeCarried($liveNode);
-                $carriedPaths[] = implode('.', [...$path, $name]);
-
-                continue;
-            }
-
-            $bothContainers = $this->isContainer($this->shape($liveNode))
-                && $this->isContainer($this->shape($expandedNode));
-            if (!$bothContainers) {
-                // A changed field: the diff strips or keeps it.
-                continue;
-            }
-
-            $liveChildren = is_array($liveNode['properties'] ?? null) ? $liveNode['properties'] : [];
-            $expandedChildren = is_array($expandedNode['properties'] ?? null) ? $expandedNode['properties'] : [];
-            $targetNode = $target[$key] ?? null;
-            if (is_array($targetNode)) {
-                $children = is_array($targetNode['properties'] ?? null) ? $targetNode['properties'] : [];
-                $before = count($carriedPaths);
-                $children = $this->carryRemovedFields(
-                    $liveChildren,
-                    $children,
-                    $expandedChildren,
-                    '',
-                    [...$path, $name],
-                    $carriedPaths
-                );
-                if (count($carriedPaths) > $before) {
-                    $targetNode['properties'] = $children;
-                    $target[$key] = $targetNode;
-                }
-
-                continue;
-            }
-
-            // The object exists only through dotted names of the new mapping: stay on this level.
-            $target = $this->carryRemovedFields(
-                $liveChildren,
-                $target,
-                $expandedChildren,
-                $key . '.',
-                [...$path, $name],
-                $carriedPaths
-            );
-        }
-
-        return $target;
-    }
-
-    /**
-     * Keeps what the values need to be indexed as before; drops analyzers and normalizers (they may
-     * be gone from the index settings) and turns nested into object (nested_fields limit).
-     */
-    private function sanitizeCarried(array $node): array
-    {
-        $sanitized = [];
-        foreach (self::CARRIED_PARAMETERS as $parameter) {
-            if (array_key_exists($parameter, $node)) {
-                $sanitized[$parameter] = $node[$parameter];
-            }
-        }
-        if (($sanitized['type'] ?? null) === self::SHAPE_NESTED) {
-            unset($sanitized['type']);
-        }
-        foreach (['properties', 'fields'] as $children) {
-            if (!is_array($node[$children] ?? null) || $node[$children] === []) {
-                continue;
-            }
-            $sanitized[$children] = array_map(
-                fn (mixed $child): mixed => is_array($child) ? $this->sanitizeCarried($child) : $child,
-                $node[$children]
-            );
-        }
-
-        return $sanitized;
     }
 
     /**

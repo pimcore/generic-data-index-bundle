@@ -117,31 +117,6 @@ final class IndexCopyServiceTest extends Unit
         );
     }
 
-    public function testRemovedFieldsAreCarriedIntoTheCopyMappingInEveryAttempt(): void
-    {
-        $mappings = [];
-        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
-            'getMapping' => $this->liveMapping(['price' => self::TEXT, 'gone' => ['type' => 'date']]),
-            'reindexWithoutFields' => static function (string $alias, array $mapping) use (&$mappings): ReindexOutcome {
-                $mappings[] = $mapping;
-
-                return count($mappings) === 1
-                    ? new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['custom_fields', 'x']])
-                    : new ReindexOutcome(ReindexResult::SUCCESS);
-            },
-        ]);
-        $service = new IndexCopyService($searchIndexService, new MappingDiffService(), new NullLogger());
-
-        $result = $service->copy(self::ALIAS, $this->mapping(['price' => self::TEXT]));
-
-        $this->assertTrue($result->isSuccessful());
-        $this->assertCount(2, $mappings);
-        foreach ($mappings as $mapping) {
-            $this->assertSame(['type' => 'date'], $mapping['standard_fields']['properties']['gone']);
-            $this->assertSame(self::TEXT, $mapping['standard_fields']['properties']['price']);
-        }
-    }
-
     public function testCopyGivesUpWhenAFailureNamesNoNewField(): void
     {
         $calls = [];

@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping;
 
 use Exception;
-use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexCopyResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
@@ -38,25 +37,30 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
 
     public function diff(string $aliasName, array $mappingProperties): MappingDiff
     {
-        $liveProperties = $this->readLiveProperties($aliasName);
-        if ($liveProperties === null) {
+        try {
+            $liveMapping = $this->searchIndexService->getMapping($aliasName);
+        } catch (Exception $e) {
+            // Without the live mapping the copy runs as before; the failure loop still applies.
+            $this->pimcoreGenericDataIndexLogger->warning(
+                sprintf('Reading the mapping of "%s" failed, copying without a field diff', $aliasName),
+                ['exception' => $e]
+            );
+
             return new MappingDiff([]);
         }
+
+        // The engine answers an alias with {"<concrete index>": {"mappings": {"properties": ...}}}.
+        $index = reset($liveMapping);
+        $liveProperties = is_array($index) ? ($index['mappings']['properties'] ?? []) : [];
 
         return $this->mappingDiffService->diff($liveProperties, $mappingProperties);
     }
 
     public function copy(string $aliasName, array $mappingProperties): IndexCopyResult
     {
-        $liveProperties = $this->readLiveProperties($aliasName);
-        $diff = $liveProperties === null
-            ? new MappingDiff([])
-            : $this->mappingDiffService->diff($liveProperties, $mappingProperties);
+        $diff = $this->diff($aliasName, $mappingProperties);
         $stripPaths = $this->keyed($diff->getStripPathSegments());
         $keptPaths = $diff->getKeptPaths();
-        $copyMapping = $liveProperties === null
-            ? $mappingProperties
-            : $this->carryRemovedFields($aliasName, $liveProperties, $mappingProperties);
 
         if ($stripPaths !== [] || $keptPaths !== []) {
             $this->pimcoreGenericDataIndexLogger->info(
@@ -68,7 +72,7 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
         for ($attempt = 1; $attempt <= self::MAX_ATTEMPTS; $attempt++) {
             $outcome = $this->searchIndexService->reindexWithoutFields(
                 $aliasName,
-                $copyMapping,
+                $mappingProperties,
                 array_values($stripPaths)
             );
             if ($outcome->getResult() === ReindexResult::SUCCESS) {
@@ -97,49 +101,6 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
             $keptPaths,
             min($attempt, self::MAX_ATTEMPTS)
         );
-    }
-
-    /**
-     * The live mapping properties, or null when they cannot be read: then the copy runs as before,
-     * and the failure loop still applies.
-     */
-    private function readLiveProperties(string $aliasName): ?array
-    {
-        try {
-            $liveMapping = $this->searchIndexService->getMapping($aliasName);
-        } catch (Exception $e) {
-            $this->pimcoreGenericDataIndexLogger->warning(
-                sprintf('Reading the mapping of "%s" failed, copying without a field diff', $aliasName),
-                ['exception' => $e]
-            );
-
-            return null;
-        }
-
-        // The engine answers an alias with {"<concrete index>": {"mappings": {"properties": ...}}}.
-        $index = reset($liveMapping);
-
-        return is_array($index) && is_array($index['mappings']['properties'] ?? null)
-            ? $index['mappings']['properties']
-            : [];
-    }
-
-    /**
-     * Removed fields keep their live mapping in the copy (see MappingDiffServiceInterface::mappingForCopy).
-     *
-     * @throws JsonException
-     */
-    private function carryRemovedFields(string $aliasName, array $liveProperties, array $mappingProperties): array
-    {
-        $copyMapping = $this->mappingDiffService->mappingForCopy($liveProperties, $mappingProperties);
-        if ($copyMapping->getCarriedPaths() !== []) {
-            $this->pimcoreGenericDataIndexLogger->info(
-                sprintf('Copying "%s" with the live mapping of fields the new mapping no longer has', $aliasName),
-                ['fields' => $copyMapping->getCarriedPaths()]
-            );
-        }
-
-        return $copyMapping->getProperties();
     }
 
     /**
