@@ -23,7 +23,9 @@ use InvalidArgumentException;
  * (field.language), object bricks and every item of a nested list (field collections, blocks).
  * Keys with dots (e.g. classification store keys like "spec.width") stay one literal key in the
  * document while the engine maps them as objects, so each step also tries the joined segments, and
- * removing a key also removes the literal keys below it ("spec" removes "spec.width").
+ * removing a key also removes the literal keys below it ("spec" removes "spec.width"). The stored
+ * checksum is removed too: the index service skips a document whose rebuilt version has the same
+ * checksum, and the rebuild must write every document to refill the stripped fields.
  *
  * @internal
  */
@@ -46,6 +48,7 @@ final readonly class ReindexStripScript
           }
         }
         for (def p : params.paths) { strip(ctx._source, p, 0); }
+        if (ctx._source.system_fields instanceof Map) { ctx._source.system_fields.remove('checksum'); }
         PAINLESS;
 
     /** @var string[][] */

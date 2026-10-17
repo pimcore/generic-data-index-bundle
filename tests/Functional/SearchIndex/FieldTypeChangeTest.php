@@ -591,6 +591,16 @@ final class FieldTypeChangeTest extends Unit
             }
             $this->assertSame(count($objects), $this->tester->countQueuedDataObjects($this->getIds($objects)));
 
+            $this->tester->processIndexQueue();
+
+            foreach ($objects as $seed => $object) {
+                $this->assertArrayHasKey(
+                    self::FIELD,
+                    $this->getStandardFields($class, $object),
+                    'The rebuild refilled the stripped field'
+                );
+            }
+
             return;
         }
 

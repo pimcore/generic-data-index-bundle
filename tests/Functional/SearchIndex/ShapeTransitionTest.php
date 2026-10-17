@@ -97,19 +97,16 @@ final class ShapeTransitionTest extends Unit
         $this->assertSame(3, $this->tester->countIndexDocuments($this->alias), 'Document count after the copy');
 
         if (in_array([$oldShape, $newShape], self::CONTAINER_SWITCHES, true)) {
-            // Expected: the engine accepts objects for nested fields (as a list of one) and lists of
-            // objects for object fields, so the copy succeeds in the first attempt and keeps the
-            // values. If an engine rejected them, the copy service would retry without the failing
-            // path, which A1/A2 still cover; the outcome is written to the debug output.
-            codecept_debug(sprintf(
-                '%s -> %s: result %s, attempts %d, stripped [%s], kept [%s]',
-                $oldShape,
-                $newShape,
-                $result->getResult()->name,
-                $result->getAttempts(),
-                implode(', ', $result->getStrippedPaths()),
-                implode(', ', $result->getKeptPaths())
-            ));
+            // The engine accepts an object for a nested field (as a list of one) and a list of
+            // objects for an object field, so the copy succeeds in the first attempt and keeps the values.
+            $this->assertTrue($result->isSuccessful());
+            $this->assertSame(1, $result->getAttempts());
+            $this->assertSame([], $result->getStrippedPaths());
+            $this->assertSame([self::FIELD], $result->getKeptPaths());
+            foreach ($this->getSources() as $id => $source) {
+                $this->assertSame($this->valueFor($oldShape), $source[self::FIELD] ?? null, "Document {$id}");
+                $this->assertSame(self::OTHER_VALUE, $source[self::OTHER_FIELD]);
+            }
 
             return;
         }
@@ -258,23 +255,26 @@ final class ShapeTransitionTest extends Unit
     public function testFailingSubFieldStripsItsField(): void
     {
         $withSubField = static fn (array $fields): array => [
-            'title' => ['type' => 'text', 'fields' => $fields],
-            'tags' => ['type' => 'text', 'fields' => $fields],
+            'standard_fields' => ['properties' => [
+                'title' => ['type' => 'text', 'fields' => $fields],
+                'tags' => ['type' => 'text', 'fields' => $fields],
+            ]],
             self::OTHER_FIELD => ['type' => 'keyword'],
         ];
         $this->createAliasWithDocuments(
             $withSubField(['keyword' => ['type' => 'keyword']]),
-            ['title' => 'abc', 'tags' => ['abc', 'def'], self::OTHER_FIELD => self::OTHER_VALUE]
+            ['standard_fields' => ['title' => 'abc', 'tags' => ['abc', 'def']], self::OTHER_FIELD => self::OTHER_VALUE]
         );
 
         $result = $this->copy($withSubField(['num' => ['type' => 'long']]));
 
         $this->assertTrue($result->isSuccessful());
-        $this->assertContains('title', $result->getStrippedPaths());
-        $this->assertContains('tags', $result->getStrippedPaths());
+        $this->assertContains('standard_fields.title', $result->getStrippedPaths());
+        $this->assertContains('standard_fields.tags', $result->getStrippedPaths());
         $this->assertCopiedIntoOtherIndex();
         foreach ($this->getSources() as $source) {
-            $this->assertSame([self::OTHER_FIELD => self::OTHER_VALUE], $source);
+            $this->assertSame([], $source['standard_fields']);
+            $this->assertSame(self::OTHER_VALUE, $source[self::OTHER_FIELD]);
         }
     }
 
@@ -388,6 +388,39 @@ final class ShapeTransitionTest extends Unit
         $this->assertContains('standard_fields.cs.spec', $result->getStrippedPaths());
         foreach ($this->getSources() as $source) {
             $this->assertSame(['other' => 'x'], $source['standard_fields']['cs']);
+        }
+    }
+
+    /**
+     * S50: a document whose rebuilt version is identical to the indexed one is skipped by the
+     * checksum comparison of the index service. A stripped copy therefore removes the stored
+     * checksum, so the rebuild writes every document; a plain copy keeps it.
+     */
+    public function testStrippedCopyRemovesTheStoredChecksum(): void
+    {
+        $document = [
+            'standard_fields' => ['f' => 'abc', 'g' => 'keep'],
+            'system_fields' => ['id' => 1, 'checksum' => 12345],
+        ];
+        $mapping = static fn (string $type): array => [
+            'standard_fields' => ['properties' => ['f' => ['type' => $type], 'g' => ['type' => 'keyword']]],
+            'system_fields' => ['properties' => ['id' => ['type' => 'long'], 'checksum' => ['type' => 'long']]],
+        ];
+        $this->createAliasWithDocuments($mapping('text'), $document);
+
+        $plain = $this->copy($mapping('text'));
+        $this->assertTrue($plain->isSuccessful());
+        $this->assertSame([], $plain->getStrippedPaths());
+        foreach ($this->getSources() as $source) {
+            $this->assertSame(12345, $source['system_fields']['checksum'], 'A plain copy keeps the checksum');
+        }
+
+        $stripped = $this->copy($mapping('float'));
+        $this->assertTrue($stripped->isSuccessful());
+        $this->assertSame(['standard_fields.f'], $stripped->getStrippedPaths());
+        foreach ($this->getSources() as $source) {
+            $this->assertSame(['g' => 'keep'], $source['standard_fields']);
+            $this->assertSame(['id' => 1], $source['system_fields'], 'The checksum is gone, the id stays');
         }
     }
 
