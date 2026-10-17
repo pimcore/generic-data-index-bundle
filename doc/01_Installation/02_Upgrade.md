@@ -23,9 +23,9 @@ Following steps are necessary during updating to newer versions.
   `ClassDefinitionReindexServiceInterface::reindexClassDefinitionMapping()`.
 - [Deprecation] `AbstractIndexHandler` has a new optional constructor argument `IndexCopyServiceInterface`.
   Subclasses that call the parent constructor without it keep working and trigger a deprecation; the argument will
-  be required in the next major version. `reindexMapping()` keeps its signature; the bundle itself calls the new
-  `reindexMappingWithResult()`, so a subclass that overrides `reindexMapping()` is no longer called for the odd/even
-  copy. Override `reindexMappingWithResult()` instead.
+  be required in the next major version. `reindexMapping()` keeps its signature. A subclass that overrides it is
+  still called by the bundle; because the bundle cannot tell what the override did, it then queues a rebuild of the
+  index from the database. Override `reindexMappingWithResult()` to report stripped fields instead.
 
 ## Upgrade to 2.5.14
 - [Permissions] Fixed: a workspace now only applies to its own path and the paths below it. Before, the permission

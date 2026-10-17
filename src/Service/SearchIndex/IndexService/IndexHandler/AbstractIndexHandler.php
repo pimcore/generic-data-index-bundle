@@ -27,6 +27,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Psr\Log\NullLogger;
+use ReflectionMethod;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 abstract class AbstractIndexHandler implements IndexHandlerInterface
@@ -35,6 +36,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
 
     /** Created on first use for subclasses that call the constructor with the four arguments of 2.5.14. */
     private ?IndexCopyServiceInterface $defaultIndexCopyService = null;
+
+    private ?bool $reindexMappingOverridden = null;
 
     public function __construct(
         protected readonly SearchIndexServiceInterface $searchIndexService,
@@ -103,10 +106,13 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): void {
-        $this->reindexMappingWithResult($context, $mappingProperties);
+        $this->copyMapping($context, $mappingProperties);
     }
 
     /**
+     * A subclass that overrides reindexMapping() (written against 2.5.14) keeps being called; its outcome is unknown,
+     * so the result asks the caller for a rebuild from the database.
+     *
      * @internal returns a model that is not part of the public API
      *
      * @throws Exception
@@ -115,6 +121,20 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): MappingUpdateResult {
+        if ($this->isReindexMappingOverridden()) {
+            $this->reindexMapping($context, $mappingProperties);
+
+            return new MappingUpdateResult(outcomeUnknown: true);
+        }
+
+        return $this->copyMapping($context, $mappingProperties);
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function copyMapping(?ClassDefinition $context, ?array $mappingProperties): MappingUpdateResult
+    {
         $alias = $this->getAliasIndexName($context);
         $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
 
@@ -210,6 +230,16 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         }
 
         return $normalizedValue;
+    }
+
+    private function isReindexMappingOverridden(): bool
+    {
+        if ($this->reindexMappingOverridden === null) {
+            $declaringClass = (new ReflectionMethod($this, 'reindexMapping'))->getDeclaringClass()->getName();
+            $this->reindexMappingOverridden = $declaringClass !== self::class;
+        }
+
+        return $this->reindexMappingOverridden;
     }
 
     private function getIndexCopyService(): IndexCopyServiceInterface

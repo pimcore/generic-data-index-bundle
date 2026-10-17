@@ -13,16 +13,22 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\IndexService\IndexHandler;
 
+use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexOutcome;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AbstractIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
+use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
@@ -99,6 +105,65 @@ final class AbstractIndexHandlerBcTest extends Unit
         $handler->reindexMapping();
 
         $this->assertSame(1, $handler->calls, 'The released void signature can still be overridden');
+    }
+
+    /**
+     * A project that replaces a handler service with its own subclass keeps its reindexMapping() override:
+     * the bundle calls it, and because its outcome is unknown, the class is queued for a rebuild.
+     */
+    public function testAnOverriddenReindexMappingIsCalledByTheBundleAndTriggersARebuild(): void
+    {
+        $search = $this->makeEmpty(SearchIndexServiceInterface::class);
+        $config = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $events = $this->makeEmpty(EventDispatcherInterface::class);
+        $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
+        $copy = new IndexCopyService($search, new MappingDiffService(), new NullLogger());
+        $handler = new class($search, $config, $events, $mapping, $copy) extends AbstractIndexHandler {
+            public int $calls = 0;
+
+            public function reindexMapping(
+                ?ClassDefinition $context = null,
+                ?array $mappingProperties = null
+            ): void {
+                $this->calls++;
+            }
+
+            protected function extractMappingProperties(mixed $context = null): array
+            {
+                return ['standard_fields' => ['properties' => ['price' => ['type' => 'float']]]];
+            }
+
+            protected function getAliasIndexName(mixed $context = null): string
+            {
+                return 'test_alias';
+            }
+        };
+        $handler->setLogger(new NullLogger());
+        $enqueue = null;
+        $enqueue = $this->makeEmpty(EnqueueServiceInterface::class, [
+            'enqueueByClassDefinition' => Expected::once(static function () use (&$enqueue): EnqueueServiceInterface {
+                return $enqueue;
+            }),
+        ]);
+        $service = new ClassDefinitionReindexService(
+            $handler,
+            $enqueue,
+            $this->makeEmpty(SettingsStoreServiceInterface::class, ['getClassMappingCheckSum' => 999]),
+            $this->makeEmpty(IndexIconUpdateServiceInterface::class, ['updateIcon' => null]),
+            $this->makeEmpty(LoggerInterface::class),
+        );
+        $classDefinition = new ClassDefinition();
+        $classDefinition->setId('TEST');
+        $classDefinition->setName('Test');
+        $classDefinition->setIcon('/bundles/pimcoreadmin/img/flat-color-icons/cube.svg');
+
+        $result = $service->reindexClassDefinitionMapping($classDefinition, true);
+
+        $this->assertSame(1, $handler->calls, 'The override is called on a class save');
+        $this->assertNotNull($result);
+        $this->assertTrue($result->requiresRebuild());
+        $this->assertFalse($result->isRecreated());
+        $this->assertSame([], $result->getStrippedPaths());
     }
 
     /**

@@ -55,6 +55,7 @@ final class ReindexItemsCommandTest extends Unit
                     new MappingUpdateResult(['standard_fields.price', 'standard_fields.l_text.en'])
                 ),
                 new IndexRebuild('assets', new MappingUpdateResult(recreated: true)),
+                new IndexRebuild('documents', new MappingUpdateResult(outcomeUnknown: true)),
             ]),
         ]);
 
@@ -68,6 +69,7 @@ final class ReindexItemsCommandTest extends Unit
             $display
         );
         $this->assertStringContainsString('assets: the index had to be created empty', $display);
+        $this->assertStringContainsString('documents: the mapping was applied by a custom index handler', $display);
         $this->assertStringContainsString('Run the messenger workers', $display);
     }
 

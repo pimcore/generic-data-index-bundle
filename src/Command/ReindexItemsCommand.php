@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Command;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
 use Pimcore\Console\AbstractCommand;
 use Symfony\Component\Console\Command\LockableTrait;
@@ -64,13 +65,10 @@ final class ReindexItemsCommand extends AbstractCommand
 
             $report = $this->reindexService->reindexAllIndicesWithReport();
             foreach ($report->getRebuilds() as $rebuild) {
-                $result = $rebuild->getResult();
                 $output->writeln(sprintf(
                     '<comment>%s: %s; all its elements were queued for a rebuild from the database.</comment>',
                     $rebuild->getLabel(),
-                    $result->isRecreated()
-                        ? 'the index had to be created empty'
-                        : 'fields left out of the copy: ' . implode(', ', $result->getStrippedPaths())
+                    $this->describeRebuildReason($rebuild->getResult())
                 ));
             }
             if (!$report->isEmpty()) {
@@ -90,5 +88,14 @@ final class ReindexItemsCommand extends AbstractCommand
         );
 
         return self::SUCCESS;
+    }
+
+    private function describeRebuildReason(MappingUpdateResult $result): string
+    {
+        return match (true) {
+            $result->isRecreated() => 'the index had to be created empty',
+            $result->isOutcomeUnknown() => 'the mapping was applied by a custom index handler',
+            default => 'fields left out of the copy: ' . implode(', ', $result->getStrippedPaths()),
+        };
     }
 }
