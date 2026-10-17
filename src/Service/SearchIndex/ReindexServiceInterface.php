@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
+use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexRebuildReport;
 use Pimcore\Model\DataObject\ClassDefinition;
 
 /**
@@ -23,6 +25,14 @@ interface ReindexServiceInterface
     public function reindexAll(): ReindexServiceInterface;
 
     public function reindexAllIndices(): ReindexServiceInterface;
+
+    /**
+     * Same as {@see reindexAllIndices()}, and reports the indices that were queued for a rebuild
+     * because fields were left out of the copy or the index had to be created empty.
+     *
+     * @throws Exception
+     */
+    public function reindexAllIndicesWithReport(): IndexRebuildReport;
 
     public function reindexClassDefinitions(bool $enqueueElements = true): ReindexServiceInterface;
 
