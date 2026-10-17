@@ -67,9 +67,27 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
     /**
      * @throws JsonException
      */
-    public function resolveSourceField(array $newProperties, array $segments): array
+    public function resolveSourceFields(array $newProperties, array $paths): array
     {
-        $children = $this->asSentToTheEngine($newProperties);
+        $expanded = $this->asSentToTheEngine($newProperties);
+        $resolved = [];
+        foreach ($paths as $segments) {
+            $field = $this->resolveSourceField($expanded, $segments);
+            $resolved[implode('.', $field)] = $field;
+        }
+
+        return array_values($resolved);
+    }
+
+    /**
+     * @param array<string, mixed> $expanded the new mapping, expanded like the engine does
+     * @param string[] $segments
+     *
+     * @return string[]
+     */
+    private function resolveSourceField(array $expanded, array $segments): array
+    {
+        $children = $expanded;
         $node = null;
         foreach ($segments as $position => $segment) {
             if (is_array($children[$segment] ?? null)) {

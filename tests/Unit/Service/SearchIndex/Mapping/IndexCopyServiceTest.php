@@ -70,7 +70,7 @@ final class IndexCopyServiceTest extends Unit
     {
         $calls = [];
         $service = $this->createService($this->liveMapping(['price' => self::TEXT]), $calls, [
-            new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['custom_fields', 'score']]),
+            new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['standard_fields', 'score']]),
             new ReindexOutcome(ReindexResult::SUCCESS),
         ]);
 
@@ -80,11 +80,11 @@ final class IndexCopyServiceTest extends Unit
         $this->assertSame(
             [
                 [['standard_fields', 'price']],
-                [['standard_fields', 'price'], ['custom_fields', 'score']],
+                [['standard_fields', 'price'], ['standard_fields', 'score']],
             ],
             $calls
         );
-        $this->assertSame(['standard_fields.price', 'custom_fields.score'], $result->getStrippedPaths());
+        $this->assertSame(['standard_fields.price', 'standard_fields.score'], $result->getStrippedPaths());
         $this->assertSame(2, $result->getAttempts());
     }
 
@@ -232,9 +232,9 @@ final class IndexCopyServiceTest extends Unit
     {
         $calls = [];
         $service = $this->createService($this->liveMapping([]), $calls, [
-            new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['a']]),
-            new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['b']]),
-            new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['c']]),
+            new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['standard_fields', 'a']]),
+            new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['standard_fields', 'b']]),
+            new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['standard_fields', 'c']]),
             new ReindexOutcome(ReindexResult::SUCCESS),
         ]);
 
@@ -243,6 +243,30 @@ final class IndexCopyServiceTest extends Unit
         $this->assertFalse($result->isSuccessful());
         $this->assertCount(3, $calls);
         $this->assertSame(3, $result->getAttempts());
+        $this->assertSame(
+            ['standard_fields.a', 'standard_fields.b'],
+            $result->getStrippedPaths(),
+            'Only paths a copy attempt was run without'
+        );
+    }
+
+    /**
+     * System and custom fields are never stripped on a failure: a document without its id or
+     * class id breaks search results, which is worse than the recreation that follows.
+     */
+    public function testFailuresOnSystemOrCustomFieldsDoNotStripThem(): void
+    {
+        $calls = [];
+        $service = $this->createService($this->liveMapping(['title' => self::TEXT]), $calls, [
+            new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['system_fields', 'id'], ['custom_fields', 'x']]),
+            new ReindexOutcome(ReindexResult::SUCCESS),
+        ]);
+
+        $result = $service->copy(self::ALIAS, $this->mapping(['title' => self::TEXT]));
+
+        $this->assertFalse($result->isSuccessful());
+        $this->assertCount(1, $calls);
+        $this->assertSame([], $result->getStrippedPaths());
     }
 
     public function testGenuineErrorsPropagate(): void

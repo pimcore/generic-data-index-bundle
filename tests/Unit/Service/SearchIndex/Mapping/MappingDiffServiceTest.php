@@ -216,7 +216,20 @@ final class MappingDiffServiceTest extends Unit
             'cs' => ['properties' => ['spec.width' => ['type' => 'keyword', 'fields' => ['n' => ['type' => 'long']]]]],
         ]);
 
-        $this->assertSame($expected, $this->service->resolveSourceField($new, $failing));
+        $this->assertSame([$expected], $this->service->resolveSourceFields($new, [$failing]));
+    }
+
+    public function testSeveralFailingPathsAreResolvedAndDeduplicated(): void
+    {
+        $new = $this->standardFields(['title' => ['type' => 'text', 'fields' => ['num' => ['type' => 'long']]]]);
+
+        $resolved = $this->service->resolveSourceFields($new, [
+            ['standard_fields', 'title', 'num'],
+            ['standard_fields', 'title'],
+            ['standard_fields', 'other'],
+        ]);
+
+        $this->assertSame([['standard_fields', 'title'], ['standard_fields', 'other']], $resolved);
     }
 
     public static function failingFieldProvider(): array

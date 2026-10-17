@@ -80,15 +80,14 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
                 return new IndexCopyResult(ReindexResult::SUCCESS, array_keys($stripPaths), $keptPaths, $attempt);
             }
 
-            $failingPaths = $this->keyed(array_map(
-                fn (array $path): array => $this->mappingDiffService->resolveSourceField($mappingProperties, $path),
-                $outcome->getFailingFieldPaths()
+            $failingPaths = $this->classFieldsOnly($this->keyed(
+                $this->mappingDiffService->resolveSourceFields($mappingProperties, $outcome->getFailingFieldPaths())
             ));
             $newPaths = array_diff_key(
                 $failingPaths + $this->removedFieldsIfOneFailed($failingPaths, $diff->getRemovedPathSegments()),
                 $stripPaths
             );
-            if ($newPaths === []) {
+            if ($newPaths === [] || $attempt === self::MAX_ATTEMPTS) {
                 break;
             }
 
@@ -123,12 +122,7 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
      */
     private function removedFieldsIfOneFailed(array $failingPaths, array $removedPaths): array
     {
-        // Only class fields: the engine maps some system fields dynamically (classId, className,
-        // checksum), and custom fields may come without a mapping; neither may be stripped here.
-        $removedPaths = array_values(array_filter(
-            $removedPaths,
-            static fn (array $path): bool => $path[0] === FieldCategory::STANDARD_FIELDS->value && count($path) > 1
-        ));
+        $removedPaths = array_values($this->classFieldsOnly($this->keyed($removedPaths)));
         foreach ($failingPaths as $failing) {
             foreach ($removedPaths as $removed) {
                 if (array_slice($failing, 0, count($removed)) === $removed) {
@@ -138,6 +132,24 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
         }
 
         return [];
+    }
+
+    /**
+     * Only class fields are ever stripped. A document without its id or class id breaks search
+     * results, which is worse than the recreation that follows; custom fields may be indexed by
+     * project code without a mapping. The engine also maps some system fields dynamically
+     * (classId, className, checksum), so they look like removed fields to the diff.
+     *
+     * @param array<string, string[]> $paths
+     *
+     * @return array<string, string[]>
+     */
+    private function classFieldsOnly(array $paths): array
+    {
+        return array_filter(
+            $paths,
+            static fn (array $path): bool => $path[0] === FieldCategory::STANDARD_FIELDS->value && count($path) > 1
+        );
     }
 
     /**
