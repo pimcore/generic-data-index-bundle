@@ -269,6 +269,60 @@ final class IndexCopyServiceTest extends Unit
         $this->assertSame([], $result->getStrippedPaths());
     }
 
+    /**
+     * The rule of the retries applies to the first attempt as well: only class fields are stripped.
+     * A changed system or custom field is copied as it is; if the engine rejects it, the copy fails
+     * and the index is recreated, as for any failure that no class field explains.
+     */
+    public function testChangedSystemCustomAndRootFieldsAreCopiedAsTheyAre(): void
+    {
+        $calls = [];
+        $service = $this->createService(
+            [self::ALIAS . '-odd' => ['mappings' => ['properties' => [
+                'system_fields' => ['properties' => ['id' => ['type' => 'long']]],
+                'custom_fields' => ['properties' => ['x' => ['type' => 'keyword']]],
+                'root' => ['type' => 'keyword'],
+                'standard_fields' => ['properties' => ['price' => self::TEXT]],
+            ]]]],
+            $calls,
+            [new ReindexOutcome(ReindexResult::SUCCESS)]
+        );
+
+        $result = $service->copy(self::ALIAS, [
+            'system_fields' => ['properties' => ['id' => ['type' => 'integer']]],
+            'custom_fields' => ['properties' => ['x' => ['type' => 'long']]],
+            'root' => ['type' => 'long'],
+            'standard_fields' => ['properties' => ['price' => ['type' => 'float']]],
+        ]);
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame([[['standard_fields', 'price']]], $calls, 'Only the class field is stripped');
+        $this->assertSame(['standard_fields.price'], $result->getStrippedPaths());
+        $this->assertSame(['custom_fields.x', 'root', 'system_fields.id'], $result->getKeptPaths());
+    }
+
+    public function testTheDiffForTheDryRunReportsChangedSystemFieldsAsKept(): void
+    {
+        $calls = [];
+        $service = $this->createService(
+            [self::ALIAS . '-odd' => ['mappings' => ['properties' => [
+                'system_fields' => ['properties' => ['id' => ['type' => 'long']]],
+                'standard_fields' => ['properties' => ['price' => self::TEXT]],
+            ]]]],
+            $calls,
+            []
+        );
+
+        $diff = $service->diff(self::ALIAS, [
+            'system_fields' => ['properties' => ['id' => ['type' => 'integer']]],
+            'standard_fields' => ['properties' => ['price' => ['type' => 'float']]],
+        ]);
+
+        $this->assertSame(['standard_fields.price'], $diff->getStripPaths());
+        $this->assertSame(['system_fields.id'], $diff->getKeptPaths());
+        $this->assertSame([], $calls);
+    }
+
     public function testGenuineErrorsPropagate(): void
     {
         $error = new Exception('No alive nodes found in your cluster');
