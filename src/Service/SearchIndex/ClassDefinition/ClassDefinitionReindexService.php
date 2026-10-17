@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinit
 use Exception;
 use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
@@ -42,15 +43,25 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         bool $skipIfClassNotChanged = false,
         bool $enqueueItems = false,
     ): bool {
+        return $this->reindexClassDefinitionMapping($classDefinition, $skipIfClassNotChanged, $enqueueItems) !== null;
+    }
+
+    public function reindexClassDefinitionMapping(
+        ClassDefinition $classDefinition,
+        bool $skipIfClassNotChanged = false,
+        bool $enqueueItems = false,
+    ): ?MappingUpdateResult {
         try {
-            $mappingChanged = $this->reindexMapping($classDefinition, $skipIfClassNotChanged);
+            $result = $this->reindexMapping($classDefinition, $skipIfClassNotChanged);
             $this->changeIcon($classDefinition);
 
-            if ($mappingChanged && $enqueueItems) {
+            // Fields left out of the copy (or an index created empty) are only restored by the
+            // rebuild from the database, so the objects are queued even if the caller did not ask.
+            if ($result !== null && ($enqueueItems || $result->requiresRebuild())) {
                 $this->enqueueService->enqueueByClassDefinition($classDefinition);
             }
 
-            return $mappingChanged;
+            return $result;
         } catch (Exception $exception) {
             throw new ClassDefinitionIndexUpdateFailedException(
                 message: $exception->getMessage(),
@@ -88,7 +99,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
     private function reindexMapping(
         ClassDefinition $classDefinition,
         bool $skipIfClassNotChanged
-    ): bool {
+    ): ?MappingUpdateResult {
         $mappingProperties = $this->dataObjectIndexHandler->getMappingProperties($classDefinition);
         $currentCheckSum = $this->dataObjectIndexHandler->getClassMappingCheckSum($mappingProperties);
         $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
@@ -105,7 +116,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
                     'currentChecksum' => $currentCheckSum,
                 ]);
 
-                return false;
+                return null;
             }
 
             if ($storedCheckSum === $this->getLegacyClassMappingCheckSum($mappingProperties)) {
@@ -124,7 +135,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
                     data: $currentCheckSum
                 );
 
-                return false;
+                return null;
             }
         }
 
@@ -138,7 +149,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
             'currentChecksum' => $currentCheckSum,
         ]);
 
-        $this->dataObjectIndexHandler
+        $result = $this->dataObjectIndexHandler
             ->reindexMapping(
                 context: $classDefinition,
                 mappingProperties: $mappingProperties
@@ -151,7 +162,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
             )
         );
 
-        return true;
+        return $result;
     }
 
     /**

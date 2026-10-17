@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\C
 
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
@@ -81,7 +82,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMapping' => Expected::once(),
+            'reindexMapping' => Expected::once(new MappingUpdateResult()),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => 999, // neither the current nor the legacy checksum
@@ -120,7 +121,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMapping' => Expected::once(),
+            'reindexMapping' => Expected::once(new MappingUpdateResult()),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => null,
@@ -143,7 +144,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMapping' => Expected::once(),
+            'reindexMapping' => Expected::once(new MappingUpdateResult()),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => $legacyCheckSum,
@@ -182,13 +183,54 @@ final class ClassDefinitionReindexServiceTest extends Unit
         ];
     }
 
+    /**
+     * Fields left out of the copy are only restored by the rebuild, so the objects are queued
+     * even when the caller (e.g. generic-data-index:reindex) did not ask for a rebuild.
+     */
+    public function testStrippedFieldsQueueTheObjectsEvenWithoutAnEnqueueRequest(): void
+    {
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'reindexMapping' => new MappingUpdateResult(['standard_fields.price']),
+        ]);
+        $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
+            'enqueueByClassDefinition' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, ['getClassMappingCheckSum' => 999]);
+
+        $result = $this->createService($handler, $settingsStore, $enqueueService)
+            ->reindexClassDefinitionMapping($this->createClassDefinition(), true, false);
+
+        $this->assertSame(['standard_fields.price'], $result?->getStrippedPaths());
+    }
+
+    public function testAPlainCopyDoesNotQueueWithoutAnEnqueueRequest(): void
+    {
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'reindexMapping' => new MappingUpdateResult(),
+        ]);
+        $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
+            'enqueueByClassDefinition' => Expected::never(),
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, ['getClassMappingCheckSum' => 999]);
+
+        $this->assertTrue(
+            $this->createService($handler, $settingsStore, $enqueueService)
+                ->reindexClassDefinition($this->createClassDefinition(), true, false)
+        );
+    }
+
     private function createService(
         IndexHandlerInterface $handler,
-        SettingsStoreServiceInterface $settingsStore
+        SettingsStoreServiceInterface $settingsStore,
+        ?EnqueueServiceInterface $enqueueService = null,
     ): ClassDefinitionReindexService {
         return new ClassDefinitionReindexService(
             $handler,
-            $this->makeEmpty(EnqueueServiceInterface::class),
+            $enqueueService ?? $this->makeEmpty(EnqueueServiceInterface::class),
             $settingsStore,
             $this->makeEmpty(IndexIconUpdateServiceInterface::class, ['updateIcon' => null]),
             $this->makeEmpty(LoggerInterface::class),

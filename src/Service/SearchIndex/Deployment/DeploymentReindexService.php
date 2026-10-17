@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexPlan;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexState;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
@@ -78,9 +79,7 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
                 && $stored->getMappingChecksum() !== $current->getMappingChecksum();
         }
         if ($mappingChanged) {
-            $reasons[] = $stored->getMappingChecksum() === IndexStateServiceInterface::INVALIDATED
-                ? 'previous snapshot import did not finish'
-                : 'mapping changed';
+            array_push($reasons, ...$this->describeMappingChange($target, $stored, $indexMissing));
         }
 
         $settingsChanged = $stored->getSettingsHash() !== null
@@ -152,8 +151,14 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
             return true;
         }
 
-        if ($plan->isSettingsChanged()) {
-            $this->dataObjectIndexHandler->reindexMapping($classDefinition);
+        if ($plan->isSettingsChanged()
+            && $this->dataObjectIndexHandler->reindexMapping($classDefinition)->requiresRebuild()
+        ) {
+            // The mapping was current, but fields could still be left out of the copy (e.g. values
+            // written under an older mapping); only the rebuild restores them.
+            $this->enqueueService->enqueueByClassDefinition($classDefinition);
+
+            return true;
         }
 
         if ($plan->isDataVersionChanged()) {
@@ -169,13 +174,14 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
     {
         $handler = $this->getHandler($plan->getTarget());
 
+        $copyRequiresRebuild = false;
         if ($plan->isIndexMissing()) {
             $handler->updateMapping();
         } elseif ($plan->needsNativeReindex()) {
-            $handler->reindexMapping();
+            $copyRequiresRebuild = $handler->reindexMapping()->requiresRebuild();
         }
 
-        if (!$plan->needsRebuild()) {
+        if (!$plan->needsRebuild() && !$copyRequiresRebuild) {
             return false;
         }
 
@@ -187,6 +193,42 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
         };
 
         return true;
+    }
+
+    /**
+     * @return string[]
+     */
+    private function describeMappingChange(IndexStateTarget $target, IndexState $stored, bool $indexMissing): array
+    {
+        $reasons = [
+            $stored->getMappingChecksum() === IndexStateServiceInterface::INVALIDATED
+                ? 'previous snapshot import did not finish'
+                : 'mapping changed',
+        ];
+        if ($indexMissing) {
+            return $reasons;
+        }
+
+        return [...$reasons, ...$this->describeFieldChanges($target)];
+    }
+
+    /**
+     * The fields the copy will keep or leave out, for the plan output (also shown by --dry-run).
+     *
+     * @return string[]
+     */
+    private function describeFieldChanges(IndexStateTarget $target): array
+    {
+        $diff = $this->getHandler($target)->getMappingDiff($target->getClassDefinition());
+        $reasons = [];
+        if ($diff->getStripPaths() !== []) {
+            $reasons[] = 'fields stripped in the copy: ' . implode(', ', $diff->getStripPaths());
+        }
+        if ($diff->getKeptPaths() !== []) {
+            $reasons[] = 'fields kept in the copy: ' . implode(', ', $diff->getKeptPaths());
+        }
+
+        return $reasons;
     }
 
     private function getHandler(IndexStateTarget $target): IndexHandlerInterface

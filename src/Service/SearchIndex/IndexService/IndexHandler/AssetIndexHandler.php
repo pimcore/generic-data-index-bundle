@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceI
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataProviderServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
@@ -37,8 +38,15 @@ final class AssetIndexHandler extends AbstractIndexHandler
         private readonly AssetTypeAdapter $assetAdapter,
         private readonly MetadataProviderServiceInterface $metadataProviderService,
         private readonly GlobalIndexAliasServiceInterface $globalIndexAliasService,
+        IndexCopyServiceInterface $indexCopyService,
     ) {
-        parent::__construct($searchIndexService, $searchIndexConfigService, $eventDispatcher, $indexMappingService);
+        parent::__construct(
+            $searchIndexService,
+            $searchIndexConfigService,
+            $eventDispatcher,
+            $indexMappingService,
+            $indexCopyService
+        );
     }
 
     protected function extractMappingProperties(mixed $context = null): array

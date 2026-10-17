@@ -15,11 +15,13 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Exception;
 use JsonException;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -36,6 +38,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         protected readonly EventDispatcherInterface $eventDispatcher,
         protected readonly IndexMappingServiceInterface $indexMappingService,
+        private readonly IndexCopyServiceInterface $indexCopyService,
     ) {
     }
 
@@ -104,8 +107,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     public function reindexMapping(
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
-    ): void {
-        $this->doReindexMapping($context, $mappingProperties, 0);
+    ): MappingUpdateResult {
+        return $this->doReindexMapping($context, $mappingProperties, 0);
     }
 
     /**
@@ -117,7 +120,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?array $mappingProperties,
         int $depth,
         ?\Throwable $cause = null
-    ): void {
+    ): MappingUpdateResult {
         if ($depth >= self::MAX_REINDEX_ATTEMPTS) {
             throw new ReindexFailedException(
                 'Max reindex attempts reached, aborting to prevent infinite recursion.',
@@ -136,28 +139,39 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                 mappingProperties: $mappingProperties,
                 reindexDepth: $depth
             );
+            $result = new MappingUpdateResult(recreated: true);
         } else {
-            $reindexResult = $this->searchIndexService->reindex(
-                $alias,
-                $mappingProperties
-            );
+            // Fields whose old values do not fit the new mapping are left out of the copy, so a
+            // field type change no longer empties the live index; the rebuild from the database
+            // fills them. Genuine errors (unreachable cluster, timeouts) are thrown and propagate.
+            $copy = $this->indexCopyService->copy($alias, $mappingProperties);
+            $result = new MappingUpdateResult($copy->getStrippedPaths(), $copy->getKeptPaths());
 
-            if ($reindexResult === ReindexResult::MAPPING_INCOMPATIBLE) {
-                // The new mapping cannot be applied to the existing documents (e.g.
-                // after a field type change): recreate the index with the new mapping;
-                // its content is re-populated from the index queue. Genuine reindex
-                // errors (unreachable cluster, timeouts) are thrown by reindex() and
-                // propagate — recreating the live index in reaction to a transient
-                // failure would destroy all indexed data.
+            if (!$copy->isSuccessful()) {
+                // Last resort: the copy failed on fields that could not be left out. Recreate
+                // the index with the new mapping; its content is re-populated from the queue.
                 $this->logger->warning(sprintf(
                     'Recreating index for alias "%s": the new mapping is incompatible with the indexed documents',
                     $alias
                 ));
                 $this->doUpdateMappingFull($context, true, $mappingProperties, $depth);
+                $result = new MappingUpdateResult($copy->getStrippedPaths(), $copy->getKeptPaths(), true);
             }
         }
 
         $this->createGlobalIndexAliases($context);
+
+        return $result;
+    }
+
+    public function getMappingDiff(?ClassDefinition $context = null): MappingDiff
+    {
+        $alias = $this->getAliasIndexName($context);
+        if (!$this->searchIndexService->existsAlias($alias)) {
+            return new MappingDiff([]);
+        }
+
+        return $this->indexCopyService->diff($alias, $this->extractMappingProperties($context));
     }
 
     public function deleteIndex(mixed $context = null): void
