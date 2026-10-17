@@ -15,6 +15,7 @@ namespace Functional\SearchIndex;
 
 use Carbon\Carbon;
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
@@ -192,7 +193,10 @@ final class FieldTypeChangeTest extends Unit
         $this->assertSame([$this->standardFieldPath(self::FIELD)], $result->getStrippedPaths());
         $this->assertFalse($result->isRecreated());
         $this->assertCopiedIntoOtherIndex($class, $liveIndex);
-        $this->assertSame('float', $this->getStandardFieldMapping($class)[self::FIELD]['type'] ?? null);
+        $this->assertSame(
+            AttributeType::DOUBLE->value,
+            $this->getStandardFieldMapping($class)[self::FIELD]['type'] ?? null
+        );
         foreach ($objects as $seed => $object) {
             $fields = $this->getStandardFields($class, $object);
             $this->assertArrayNotHasKey(self::FIELD, $fields, 'A3: the changed field is left out of the copy');
@@ -531,7 +535,10 @@ final class FieldTypeChangeTest extends Unit
             $this->tester->countIndexDocuments($this->getAlias($class)),
             'The recreated index is empty until the queue is processed'
         );
-        $this->assertSame('float', $this->getStandardFieldMapping($class)[self::FIELD]['type'] ?? null);
+        $this->assertSame(
+            AttributeType::DOUBLE->value,
+            $this->getStandardFieldMapping($class)[self::FIELD]['type'] ?? null
+        );
         $this->assertSame(count($objects), $this->tester->countQueuedDataObjects($this->getIds($objects)));
 
         $this->tester->processIndexQueue();

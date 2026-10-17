@@ -55,24 +55,28 @@ final readonly class ReindexStripScript
     private array $paths;
 
     /**
-     * @param string[][] $paths path segments per field, e.g. [['standard_fields', 'price']]
+     * @param array<mixed> $paths path segments per field, e.g. [['standard_fields', 'price']]
      */
     public function __construct(array $paths)
     {
         if ($paths === []) {
             throw new InvalidArgumentException('A strip script needs at least one field path.');
         }
+        $validated = [];
         foreach ($paths as $path) {
             if (!is_array($path) || $path === [] || !array_is_list($path)) {
                 throw new InvalidArgumentException('Each field path must be a non-empty list of segments.');
             }
+            $segments = [];
             foreach ($path as $segment) {
                 if (!is_string($segment) || $segment === '') {
                     throw new InvalidArgumentException('Field path segments must be non-empty strings.');
                 }
+                $segments[] = $segment;
             }
+            $validated[] = $segments;
         }
-        $this->paths = array_values($paths);
+        $this->paths = $validated;
     }
 
     /**
