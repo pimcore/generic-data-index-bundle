@@ -212,7 +212,10 @@ final class ShapeTransitionTest extends Unit
         ];
         $this->createAliasWithDocuments(
             $oldMapping,
-            [self::CLASS_FIELDS => [self::FIELD => ['id' => 5, 'name' => 'abc']], self::OTHER_FIELD => self::OTHER_VALUE]
+            [
+                self::CLASS_FIELDS => [self::FIELD => ['id' => 5, 'name' => 'abc']],
+                self::OTHER_FIELD => self::OTHER_VALUE,
+            ]
         );
 
         $result = $this->copy($newMapping);
@@ -247,7 +250,10 @@ final class ShapeTransitionTest extends Unit
         ];
         $this->createAliasWithDocuments(
             $storeMapping('text'),
-            [self::CLASS_FIELDS => ['cs' => ['spec.width' => 'abc', 'other' => 'x']], self::OTHER_FIELD => self::OTHER_VALUE]
+            [
+                self::CLASS_FIELDS => ['cs' => ['spec.width' => 'abc', 'other' => 'x']],
+                self::OTHER_FIELD => self::OTHER_VALUE,
+            ]
         );
 
         $result = $this->copy($storeMapping('float'));
@@ -445,7 +451,7 @@ final class ShapeTransitionTest extends Unit
 
     /**
      * S51: a changed system field is never stripped, not even in the first attempt; search results
-     * need the id. When its values fit the new type, the copy keeps them.
+     * need the id. When its values fit the new type, the copy succeeds with them.
      */
     public function testChangedSystemFieldIsCopiedAsItIs(): void
     {
@@ -455,14 +461,16 @@ final class ShapeTransitionTest extends Unit
         ];
         $this->createAliasWithDocuments(
             $mapping('long'),
-            static fn (string $id): array => ['system_fields' => ['id' => (int) $id], self::CLASS_FIELDS => [self::FIELD => 'x']]
+            static fn (string $id): array => [
+                'system_fields' => ['id' => (int) $id],
+                self::CLASS_FIELDS => [self::FIELD => 'x'],
+            ]
         );
 
         $result = $this->copy($mapping('integer'));
 
         $this->assertTrue($result->isSuccessful());
         $this->assertSame([], $result->getStrippedPaths());
-        $this->assertSame(['system_fields.id'], $result->getKeptPaths());
         $this->assertCopiedIntoOtherIndex();
         foreach ($this->getSources() as $id => $source) {
             $this->assertSame((int) $id, $source['system_fields']['id']);
@@ -470,18 +478,44 @@ final class ShapeTransitionTest extends Unit
     }
 
     /**
-     * S52: a changed custom field whose values do not fit is not stripped either; the copy fails and
-     * the caller falls back to the recreation, as for any failure no class field explains.
+     * S52: a changed custom field whose values do not fit is stripped like a class field; the
+     * indexing subscribers fill it again during the rebuild.
      */
-    public function testIncompatibleCustomFieldFailsTheCopyInsteadOfBeingStripped(): void
+    public function testIncompatibleCustomFieldIsStripped(): void
     {
         $mapping = static fn (string $type): array => [
-            'custom_fields' => ['properties' => ['x' => ['type' => $type]]],
+            'custom_fields' => ['properties' => ['x' => ['type' => $type], 'y' => ['type' => 'keyword']]],
             self::CLASS_FIELDS => ['properties' => [self::FIELD => ['type' => 'keyword']]],
         ];
         $this->createAliasWithDocuments(
             $mapping('keyword'),
-            ['custom_fields' => ['x' => 'abc'], self::CLASS_FIELDS => [self::FIELD => 'x']]
+            ['custom_fields' => ['x' => 'abc', 'y' => 'stays'], self::CLASS_FIELDS => [self::FIELD => 'x']]
+        );
+
+        $result = $this->copy($mapping('long'));
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame(1, $result->getAttempts());
+        $this->assertSame(['custom_fields.x'], $result->getStrippedPaths());
+        $this->assertCopiedIntoOtherIndex();
+        foreach ($this->getSources() as $source) {
+            $this->assertSame(['y' => 'stays'], $source['custom_fields']);
+        }
+    }
+
+    /**
+     * S53: a changed system field whose values do not fit is not stripped; the copy fails and the
+     * caller falls back to the recreation, as for any failure no strippable field explains.
+     */
+    public function testIncompatibleSystemFieldFailsTheCopyInsteadOfBeingStripped(): void
+    {
+        $mapping = static fn (string $type): array => [
+            'system_fields' => ['properties' => ['key' => ['type' => $type]]],
+            self::CLASS_FIELDS => ['properties' => [self::FIELD => ['type' => 'keyword']]],
+        ];
+        $this->createAliasWithDocuments(
+            $mapping('keyword'),
+            ['system_fields' => ['key' => 'abc'], self::CLASS_FIELDS => [self::FIELD => 'x']]
         );
 
         $result = $this->copy($mapping('long'));
@@ -515,7 +549,9 @@ final class ShapeTransitionTest extends Unit
         $this->createAliasWithDocuments(
             $itemMapping('text'),
             [
-                self::CLASS_FIELDS => ['items' => [['T' => ['v' => 'abc', 'w' => 1]], ['T' => ['v' => 'def', 'w' => 2]]]],
+                self::CLASS_FIELDS => [
+                    'items' => [['T' => ['v' => 'abc', 'w' => 1]], ['T' => ['v' => 'def', 'w' => 2]]],
+                ],
                 self::OTHER_FIELD => self::OTHER_VALUE,
             ]
         );

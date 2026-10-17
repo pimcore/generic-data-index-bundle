@@ -174,13 +174,13 @@ final class IndexCopyServiceTest extends Unit
      * The engine maps some system fields dynamically (classId, className, checksum); they are not
      * in the generated mapping but must never be stripped with the removed class fields.
      */
-    public function testRemovedFieldsOutsideTheClassFieldsAreNeverStripped(): void
+    public function testRemovedSystemFieldsAreNeverStrippedButRemovedCustomFieldsAre(): void
     {
         $calls = [];
         $service = $this->createService(
             [self::ALIAS . '-odd' => ['mappings' => ['properties' => [
                 'system_fields' => ['properties' => ['id' => ['type' => 'long'], 'classId' => self::TEXT]],
-                'custom_fields' => ['properties' => ['extra' => self::TEXT]],
+                'custom_fields' => ['properties' => ['extra' => self::TEXT, 'stays' => self::TEXT]],
                 'standard_fields' => ['properties' => ['gone1' => self::TEXT, 'gone2' => self::TEXT]],
             ]]]],
             $calls,
@@ -192,13 +192,15 @@ final class IndexCopyServiceTest extends Unit
 
         $result = $service->copy(self::ALIAS, [
             'system_fields' => ['properties' => ['id' => ['type' => 'long']]],
+            'custom_fields' => ['properties' => ['stays' => self::TEXT]],
             'standard_fields' => ['properties' => []],
         ]);
 
         $this->assertTrue($result->isSuccessful());
         $this->assertEqualsCanonicalizing(
-            ['standard_fields.gone1', 'standard_fields.gone2'],
-            $result->getStrippedPaths()
+            ['custom_fields.extra', 'standard_fields.gone1', 'standard_fields.gone2'],
+            $result->getStrippedPaths(),
+            'The removed system field classId stays; the removed custom field goes with the class fields'
         );
     }
 
@@ -251,14 +253,29 @@ final class IndexCopyServiceTest extends Unit
     }
 
     /**
-     * System and custom fields are never stripped on a failure: a document without its id or
-     * class id breaks search results, which is worse than the recreation that follows.
+     * A failure on a system field never strips it: a document without its id breaks search results, which
+     * is worse than the recreation that follows. A failing custom field is stripped like a class field.
      */
-    public function testFailuresOnSystemOrCustomFieldsDoNotStripThem(): void
+    public function testFailuresStripCustomFieldsButNeverSystemFields(): void
     {
         $calls = [];
         $service = $this->createService($this->liveMapping(['title' => self::TEXT]), $calls, [
             new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['system_fields', 'id'], ['custom_fields', 'x']]),
+            new ReindexOutcome(ReindexResult::SUCCESS),
+        ]);
+
+        $result = $service->copy(self::ALIAS, $this->mapping(['title' => self::TEXT]));
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame([[], [['custom_fields', 'x']]], $calls);
+        $this->assertSame(['custom_fields.x'], $result->getStrippedPaths());
+    }
+
+    public function testAFailureOnlyOnASystemFieldGivesUp(): void
+    {
+        $calls = [];
+        $service = $this->createService($this->liveMapping(['title' => self::TEXT]), $calls, [
+            new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['system_fields', 'id']]),
             new ReindexOutcome(ReindexResult::SUCCESS),
         ]);
 
@@ -270,11 +287,11 @@ final class IndexCopyServiceTest extends Unit
     }
 
     /**
-     * The rule of the retries applies to the first attempt as well: only class fields are stripped.
-     * A changed system or custom field is copied as it is; if the engine rejects it, the copy fails
-     * and the index is recreated, as for any failure that no class field explains.
+     * The rule of the retries applies to the first attempt as well: class and custom fields are stripped,
+     * a changed system field (or a field outside the field groups) is copied as it is; if the engine rejects
+     * it, the copy fails and the index is recreated, as for any failure no strippable field explains.
      */
-    public function testChangedSystemCustomAndRootFieldsAreCopiedAsTheyAre(): void
+    public function testChangedSystemAndRootFieldsAreProtectedWhileCustomFieldsAreStripped(): void
     {
         $calls = [];
         $service = $this->createService(
@@ -296,12 +313,12 @@ final class IndexCopyServiceTest extends Unit
         ]);
 
         $this->assertTrue($result->isSuccessful());
-        $this->assertSame([[['standard_fields', 'price']]], $calls, 'Only the class field is stripped');
-        $this->assertSame(['standard_fields.price'], $result->getStrippedPaths());
-        $this->assertSame(['custom_fields.x', 'root', 'system_fields.id'], $result->getKeptPaths());
+        $this->assertSame([[['custom_fields', 'x'], ['standard_fields', 'price']]], $calls);
+        $this->assertSame(['custom_fields.x', 'standard_fields.price'], $result->getStrippedPaths());
+        $this->assertSame([], $result->getKeptPaths(), 'Protected fields are not reported as kept');
     }
 
-    public function testTheDiffForTheDryRunReportsChangedSystemFieldsAsKept(): void
+    public function testTheDiffForTheDryRunReportsChangedSystemFieldsAsProtected(): void
     {
         $calls = [];
         $service = $this->createService(
@@ -319,7 +336,8 @@ final class IndexCopyServiceTest extends Unit
         ]);
 
         $this->assertSame(['standard_fields.price'], $diff->getStripPaths());
-        $this->assertSame(['system_fields.id'], $diff->getKeptPaths());
+        $this->assertSame([], $diff->getKeptPaths());
+        $this->assertSame(['system_fields.id'], $diff->getProtectedPaths());
         $this->assertSame([], $calls);
     }
 

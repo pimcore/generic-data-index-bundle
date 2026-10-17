@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
 use Exception;
+use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -55,6 +56,8 @@ interface IndexHandlerInterface
     /**
      * Fields of the live index whose mapping differs from the current mapping, classified into
      * kept and stripped as the next copy would handle them. Empty when the index does not exist.
+     *
+     * @throws JsonException
      */
     public function getMappingDiff(?ClassDefinition $context = null): MappingDiff;
 

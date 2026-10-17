@@ -49,7 +49,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                 '2.5.15',
                 'Calling the constructor of %s without an %s is deprecated; the argument will be required in the '
                 . 'next major version.',
-                self::class,
+                static::class,
                 IndexCopyServiceInterface::class
             );
         }
@@ -107,6 +107,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     }
 
     /**
+     * @internal returns a model that is not part of the public API
+     *
      * @throws Exception
      */
     public function reindexMappingWithResult(
@@ -146,6 +148,11 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         return $result;
     }
 
+    /**
+     * @internal returns a model that is not part of the public API
+     *
+     * @throws JsonException
+     */
     public function getMappingDiff(?ClassDefinition $context = null): MappingDiff
     {
         $alias = $this->getAliasIndexName($context);
@@ -207,11 +214,18 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
 
     private function getIndexCopyService(): IndexCopyServiceInterface
     {
-        return $this->indexCopyService ?? $this->defaultIndexCopyService ??= new IndexCopyService(
-            $this->searchIndexService,
-            new MappingDiffService(),
-            $this->logger ?? new NullLogger()
-        );
+        if ($this->indexCopyService !== null) {
+            return $this->indexCopyService;
+        }
+        if ($this->defaultIndexCopyService === null) {
+            $this->defaultIndexCopyService = new IndexCopyService(
+                $this->searchIndexService,
+                new MappingDiffService(),
+                $this->logger ?? new NullLogger()
+            );
+        }
+
+        return $this->defaultIndexCopyService;
     }
 
     abstract protected function extractMappingProperties(mixed $context = null): array;

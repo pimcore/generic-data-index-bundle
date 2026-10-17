@@ -56,7 +56,7 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
         $index = reset($liveMapping);
         $liveProperties = is_array($index) ? ($index['mappings']['properties'] ?? []) : [];
 
-        return $this->classFieldsStrippedOnly(
+        return $this->withSystemFieldsProtected(
             $this->mappingDiffService->diff($liveProperties, $mappingProperties)
         );
     }
@@ -67,10 +67,10 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
         $stripPaths = $this->keyed($diff->getStripPathSegments());
         $keptPaths = $diff->getKeptPaths();
 
-        if ($stripPaths !== [] || $keptPaths !== []) {
+        if ($stripPaths !== [] || $keptPaths !== [] || $diff->getProtectedPaths() !== []) {
             $this->pimcoreGenericDataIndexLogger->info(
                 sprintf('Copying "%s" into a new index with changed fields', $aliasName),
-                ['stripped' => array_keys($stripPaths), 'kept' => $keptPaths]
+                ['stripped' => array_keys($stripPaths), 'kept' => $keptPaths, 'protected' => $diff->getProtectedPaths()]
             );
         }
 
@@ -84,7 +84,7 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
                 return new IndexCopyResult(ReindexResult::SUCCESS, array_keys($stripPaths), $keptPaths, $attempt);
             }
 
-            $failingPaths = $this->classFieldsOnly($this->keyed(
+            $failingPaths = $this->strippableOnly($this->keyed(
                 $this->mappingDiffService->resolveSourceFields($mappingProperties, $outcome->getFailingFieldPaths())
             ));
             $newPaths = array_diff_key(
@@ -126,7 +126,7 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
      */
     private function removedFieldsIfOneFailed(array $failingPaths, array $removedPaths): array
     {
-        $removedPaths = array_values($this->classFieldsOnly($this->keyed($removedPaths)));
+        $removedPaths = array_values($this->strippableOnly($this->keyed($removedPaths)));
         foreach ($failingPaths as $failing) {
             foreach ($removedPaths as $removed) {
                 if (array_slice($failing, 0, count($removed)) === $removed) {
@@ -139,39 +139,40 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
     }
 
     /**
-     * Only class fields are ever stripped. A document without its id or class id breaks search
-     * results, which is worse than the recreation that follows; custom fields may be indexed by
-     * project code without a mapping. The engine also maps some system fields dynamically
-     * (classId, className, checksum), so they look like removed fields to the diff.
+     * Class fields and custom fields are stripped; the rebuild from the database refills both, the custom
+     * fields through the indexing subscribers. System fields are never stripped: a document without its id
+     * or class breaks search results, which is worse than the recreation that follows. Fields outside these
+     * groups (for example dynamically mapped ones) are not stripped either.
      *
      * @param array<string, string[]> $paths
      *
      * @return array<string, string[]>
      */
-    private function classFieldsOnly(array $paths): array
+    private function strippableOnly(array $paths): array
     {
+        $strippable = [FieldCategory::STANDARD_FIELDS->value, FieldCategory::CUSTOM_FIELDS->value];
+
         return array_filter(
             $paths,
-            static fn (array $path): bool => $path[0] === FieldCategory::STANDARD_FIELDS->value && count($path) > 1
+            static fn (array $path): bool => in_array($path[0], $strippable, true) && count($path) > 1
         );
     }
 
     /**
-     * The first attempt follows the rule of the retries: only class fields are stripped. A changed
-     * system or custom field is copied as it is; if the engine rejects it, the copy fails and the
-     * index is recreated, as for any failure that no class field explains.
+     * The first attempt follows the rule of the retries: a change the diff would strip on a field that is never
+     * stripped is copied as it is. If the engine rejects its values, the copy fails and the index is recreated.
      */
-    private function classFieldsStrippedOnly(MappingDiff $diff): MappingDiff
+    private function withSystemFieldsProtected(MappingDiff $diff): MappingDiff
     {
         $changes = [];
         foreach ($diff->getChanges() as $change) {
-            $isClassField = $this->classFieldsOnly([$change->getPath() => $change->getPathSegments()]) !== [];
-            $changes[] = $change->getAction() === MappingFieldChangeAction::STRIP && !$isClassField
+            $strippable = $this->strippableOnly([$change->getPath() => $change->getPathSegments()]) !== [];
+            $changes[] = $change->getAction() === MappingFieldChangeAction::STRIP && !$strippable
                 ? new MappingFieldChange(
                     $change->getPathSegments(),
                     $change->getOldShape(),
                     $change->getNewShape(),
-                    MappingFieldChangeAction::KEEP
+                    MappingFieldChangeAction::PROTECT
                 )
                 : $change;
         }

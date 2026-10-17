@@ -110,6 +110,14 @@ final readonly class MappingDiff
     }
 
     /**
+     * @return string[] system fields whose values may not fit; copied as they are
+     */
+    public function getProtectedPaths(): array
+    {
+        return $this->pathsFor(MappingFieldChangeAction::PROTECT);
+    }
+
+    /**
      * @return string[]
      */
     private function pathsFor(MappingFieldChangeAction $action): array

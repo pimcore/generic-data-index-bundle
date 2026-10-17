@@ -144,7 +144,8 @@ the task has finished. Two options control how long the process waits:
 - **max_polls** (default 720): maximum number of polling attempts before the reindex is aborted
 - **poll_interval** (default 5): seconds to wait between two status polls
 
-With the defaults, a reindex may therefore run for up to one hour (720 × 5 seconds). If reindexing an index takes
+With the defaults, a reindex may therefore run for up to one hour (720 × 5 seconds) per copy attempt; a copy that
+strips fields after a field type change can take up to 3 attempts. If reindexing an index takes
 longer than this budget, the command aborts with an error and a non-zero exit code — increase `max_polls` for very
 large indices:
 

@@ -25,4 +25,10 @@ enum MappingFieldChangeAction: string
 
     /** The old values do not fit, or would be converted wrongly; the field is removed in the copy. */
     case STRIP = 'strip';
+
+    /**
+     * The old values may not fit, but the field is a system field that search results need; it is copied as it is.
+     * If the engine rejects its values, the copy fails and the index is recreated.
+     */
+    case PROTECT = 'protect';
 }

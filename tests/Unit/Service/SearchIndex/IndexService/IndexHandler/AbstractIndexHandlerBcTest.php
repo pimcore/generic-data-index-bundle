@@ -19,13 +19,15 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexOutco
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AbstractIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Psr\Log\NullLogger;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
- * AbstractIndexHandler is not internal: subclasses written against the released 2.5 API keep working.
+ * AbstractIndexHandler is not internal: subclasses written against the released API keep working.
  *
  * @internal
  */
@@ -33,47 +35,37 @@ final class AbstractIndexHandlerBcTest extends Unit
 {
     public function testSubclassCallingTheParentConstructorWithFourArgumentsStillCopies(): void
     {
-        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
+        $search = $this->makeEmpty(SearchIndexServiceInterface::class, [
             'existsAlias' => true,
             'getMapping' => ['test_alias-odd' => ['mappings' => ['properties' => [
                 'standard_fields' => ['properties' => ['price' => ['type' => 'text']]],
             ]]]],
             'reindexWithoutFields' => new ReindexOutcome(ReindexResult::SUCCESS),
         ]);
-        $config = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
-        $events = $this->makeEmpty(EventDispatcherInterface::class);
-        $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
-        $handler = new class($searchIndexService, $config, $events, $mapping) extends AbstractIndexHandler {
-            public function __construct(
-                SearchIndexServiceInterface $searchIndexService,
-                SearchIndexConfigServiceInterface $searchIndexConfigService,
-                EventDispatcherInterface $eventDispatcher,
-                IndexMappingServiceInterface $indexMappingService,
-            ) {
-                @parent::__construct(
-                    $searchIndexService,
-                    $searchIndexConfigService,
-                    $eventDispatcher,
-                    $indexMappingService
-                );
-            }
+        $handler = null;
 
-            protected function extractMappingProperties(mixed $context = null): array
-            {
-                return ['standard_fields' => ['properties' => ['price' => ['type' => 'float']]]];
-            }
-
-            protected function getAliasIndexName(mixed $context = null): string
-            {
-                return 'test_alias';
-            }
-        };
+        $deprecations = $this->captureDeprecations(function () use ($search, &$handler): void {
+            $handler = $this->createLegacyHandler($search);
+        });
         $handler->setLogger(new NullLogger());
-
         $result = $handler->reindexMappingWithResult();
 
         $this->assertSame(['standard_fields.price'], $result->getStrippedPaths());
         $this->assertFalse($result->isRecreated());
+        $this->assertCount(1, $deprecations);
+        $this->assertStringContainsString('IndexCopyServiceInterface', $deprecations[0]);
+        $this->assertStringContainsString('is deprecated', $deprecations[0]);
+    }
+
+    public function testPassingTheCopyServiceTriggersNoDeprecation(): void
+    {
+        $search = $this->makeEmpty(SearchIndexServiceInterface::class);
+
+        $deprecations = $this->captureDeprecations(function () use ($search): void {
+            $this->createHandler($search);
+        });
+
+        $this->assertSame([], $deprecations);
     }
 
     public function testSubclassOverridingReindexMappingWithTheReleasedSignatureLoads(): void
@@ -82,7 +74,8 @@ final class AbstractIndexHandlerBcTest extends Unit
         $config = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $events = $this->makeEmpty(EventDispatcherInterface::class);
         $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
-        $handler = new class($search, $config, $events, $mapping) extends AbstractIndexHandler {
+        $copy = new IndexCopyService($search, new MappingDiffService(), new NullLogger());
+        $handler = new class($search, $config, $events, $mapping, $copy) extends AbstractIndexHandler {
             public int $calls = 0;
 
             public function reindexMapping(
@@ -106,5 +99,68 @@ final class AbstractIndexHandlerBcTest extends Unit
         $handler->reindexMapping();
 
         $this->assertSame(1, $handler->calls, 'The released void signature can still be overridden');
+    }
+
+    /**
+     * A subclass as written for the released version: it is constructed with the four original arguments.
+     */
+    private function createLegacyHandler(SearchIndexServiceInterface $search): AbstractIndexHandler
+    {
+        $config = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $events = $this->makeEmpty(EventDispatcherInterface::class);
+        $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
+
+        return new class($search, $config, $events, $mapping) extends AbstractIndexHandler {
+            protected function extractMappingProperties(mixed $context = null): array
+            {
+                return ['standard_fields' => ['properties' => ['price' => ['type' => 'float']]]];
+            }
+
+            protected function getAliasIndexName(mixed $context = null): string
+            {
+                return 'test_alias';
+            }
+        };
+    }
+
+    private function createHandler(SearchIndexServiceInterface $search): AbstractIndexHandler
+    {
+        $config = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $events = $this->makeEmpty(EventDispatcherInterface::class);
+        $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
+        $copy = new IndexCopyService($search, new MappingDiffService(), new NullLogger());
+
+        return new class($search, $config, $events, $mapping, $copy) extends AbstractIndexHandler {
+            protected function extractMappingProperties(mixed $context = null): array
+            {
+                return [];
+            }
+
+            protected function getAliasIndexName(mixed $context = null): string
+            {
+                return 'test_alias';
+            }
+        };
+    }
+
+    /**
+     * @return string[] messages of the deprecations triggered by $code
+     */
+    private function captureDeprecations(callable $code): array
+    {
+        $messages = [];
+        set_error_handler(static function (int $level, string $message) use (&$messages): bool {
+            $messages[] = $message;
+
+            return true;
+        }, E_USER_DEPRECATED);
+
+        try {
+            $code();
+        } finally {
+            restore_error_handler();
+        }
+
+        return $messages;
     }
 }

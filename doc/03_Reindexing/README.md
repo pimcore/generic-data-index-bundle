@@ -77,9 +77,11 @@ Before the copy, the bundle compares the live mapping with the new mapping and s
   change between them, or switching "respect timezone" on or off, strips the field unless the new format still lists
   every old format.
 
-Only class fields (`standard_fields`) are ever stripped. A changed system field, or a custom field added by an
-`ExtractMappingEvent` subscriber, is copied as it is: a document without its id or class breaks search results. If
-its old values don't fit the new type, the copy fails and the index is recreated as a last resort.
+Class fields and custom fields (added by `ExtractMappingEvent` and `UpdateIndexDataEvent` subscribers) can be
+stripped; the rebuild from the database fills both again. System fields are never stripped, because a document
+without its id or class breaks search results: a changed system field is copied as it is, and if its old values don't
+fit the new type, the copy fails and the index is recreated as a last resort. `--dry-run` lists such fields as
+"system fields copied as they are".
 
 If the engine still reports a parsing failure for a field, the bundle adds that field to the stripped fields and
 retries the copy, up to 3 attempts. Only if the copy still fails after that is the index recreated. Every attempt is
@@ -95,10 +97,11 @@ copy this means:
 - Numbers copied into a `keyword` field and numeric strings copied into a number field are accepted.
 - Decimals copied into an integer field are accepted but truncated, unless the field is a changed field: a double to
   long change strips the field instead.
-- Text copied into a number, date or boolean field doesn't fit: the field is stripped, and the index is not recreated.
+- Text copied into a number, date or boolean field doesn't fit: a class or custom field is stripped, and the index is
+  not recreated.
 - Fields that are no longer in the mapping are re-mapped dynamically and stay in the mapping until the index is
   recreated with `update:index -r`. If their values don't fit the re-mapped type (for example "2026-01-01" in one
-  document and "abc" in the next), all removed fields are left out of the copy.
+  document and "abc" in the next), all removed class and custom fields are left out of the copy.
 
 Whenever fields were stripped, or the index had to be created empty, the bundle adds all elements of that index to the
 index queue, even if the trigger doesn't rebuild otherwise. Search keeps working during this; only the stripped fields
@@ -243,8 +246,12 @@ strips the others, so the alias switches and every document stays in the index. 
 for as long as the rebuild from the database takes:
 
 - A **stripped** field is absent from every document until the rebuild has refilled that object. Filters on that
-  field match nothing, sorting on it puts every object last, and aggregations on it are empty. Everything else about
-  the documents is unchanged.
+  field match nothing, sorting on it puts every object last, and aggregations on it are empty. Negative filters are
+  the exception: "is empty", `must_not` or "not equal" on the field match every document during that time. If project
+  code hides documents with a negative filter on a class field (for example `must_not` on a "hidden" flag), those
+  documents show up until the rebuild; the bundle's own permission and workspace filters use system fields only and
+  are not affected. A stripped copy also drops the stored document checksum, so the rebuild rewrites every document.
+  Everything else about the documents is unchanged.
 - A **kept** field holds its old value in the new type, for example a number as text or a date as its ISO string,
   until the rebuild. Only the rebuild writes the value as Pimcore converted it in the database. A class save,
   `deployment:reindex` with a mapping change and `update:index` run that rebuild; `generic-data-index:reindex` and a
@@ -515,7 +522,7 @@ database." or "Car: the index had to be created empty; ...", and ends with "Run 
 indices." Without stripped fields it queues nothing; use it mainly to apply changed `index_settings`, and read the
 warning in [How Reindexing Works](#how-reindexing-works) first. The engine runs each `_reindex` as a background
 task that the bundle polls according to `reindex_settings` (default: up to 720 polls every 5 seconds, so up to one
-hour per index).
+hour per copy attempt; a copy with stripped fields can take up to 3 attempts).
 
 ### `generic-data-index:status`
 

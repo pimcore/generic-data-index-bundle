@@ -6,12 +6,12 @@ Following steps are necessary during updating to newer versions.
 - [Indexing] A field type change no longer recreates the index empty. The odd/even copy now leaves out the changed
   fields whose old values don't fit the new type and keeps the others (for example a number copied into a text field).
   The index is only recreated as a last resort, when the copy fails and no further field can be left out (after at
-  most 3 attempts). The documents stay
-  searchable; the left-out fields are empty, so filters and sorting on them find nothing, until the messenger workers
-  have rebuilt all objects of the class from the database. The copy blocks the messenger worker that handles the
-  class mapping message for about 1.2 ms per document (measured: 100,000 documents of about 6 KB in 2 minutes,
-  300,000 in 6 minutes on a development machine with OpenSearch 2); the rebuild runs at the usual indexing rate. See
-  the [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
+  most 3 attempts). System fields are never left out: if their old values don't fit, the index is recreated. The
+  documents stay searchable; the left-out fields are empty, so filters and sorting on them find nothing, until the
+  messenger workers have rebuilt all objects of the class from the database. The copy blocks the messenger worker that
+  handles the class mapping message for about 1.2 ms per document (measured: 100,000 documents of about 6 KB in 2
+  minutes, 300,000 in 6 minutes on a development machine with OpenSearch 2); the rebuild runs at the usual indexing
+  rate. See the [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
 - [Commands] Behavior change: `generic-data-index:reindex` now adds all elements of an index to the index queue if its
   copy left out fields or the index had to be created empty, and prints a notice per index. Before, it never filled
   the index queue. Operators who relied on that need messenger workers running after the command.

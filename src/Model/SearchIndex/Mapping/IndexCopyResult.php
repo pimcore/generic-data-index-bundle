@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping;
 
+use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 
 /**
@@ -32,6 +33,9 @@ final readonly class IndexCopyResult
         private array $keptPaths = [],
         private int $attempts = 1,
     ) {
+        if ($attempts < 1) {
+            throw new InvalidArgumentException('A copy result needs at least one attempt.');
+        }
     }
 
     public function getResult(): ReindexResult

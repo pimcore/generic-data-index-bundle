@@ -310,6 +310,7 @@ final class DeploymentReindexServiceTest extends Unit
         $diff = new MappingDiff([
             new MappingFieldChange(['standard_fields', 'price'], 'text', 'float', MappingFieldChangeAction::STRIP),
             new MappingFieldChange(['standard_fields', 'count'], 'long', 'text', MappingFieldChangeAction::KEEP),
+            new MappingFieldChange(['system_fields', 'id'], 'long', 'integer', MappingFieldChangeAction::PROTECT),
         ]);
         $handler = $this->makeEmpty(IndexHandlerInterface::class, ['getMappingDiff' => $diff]);
         $service = $this->createService(
@@ -321,6 +322,10 @@ final class DeploymentReindexServiceTest extends Unit
 
         $this->assertContains('fields stripped in the copy: standard_fields.price', $reasons);
         $this->assertContains('fields kept in the copy: standard_fields.count', $reasons);
+        $this->assertContains(
+            'system fields copied as they are, the index is recreated if their values do not fit: system_fields.id',
+            $reasons
+        );
     }
 
     public function testSettingsOnlyCopyThatStrippedFieldsQueuesARebuild(): void
