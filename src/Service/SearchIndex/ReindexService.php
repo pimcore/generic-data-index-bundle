@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexRebuild;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexRebuildReport;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
@@ -77,18 +78,18 @@ final readonly class ReindexService implements ReindexServiceInterface
         foreach ((new Listing())->load() as $classDefinition) {
             $result = $this->applyClassDefinition($classDefinition, false);
             if ($result?->requiresRebuild() === true) {
-                $rebuilds[$classDefinition->getName()] = $result;
+                $rebuilds[] = new IndexRebuild($classDefinition->getName(), $result);
             }
         }
 
         $assets = $this->applyAssets(false);
         if ($assets->requiresRebuild()) {
-            $rebuilds[self::LABEL_ASSETS] = $assets;
+            $rebuilds[] = new IndexRebuild(self::LABEL_ASSETS, $assets);
         }
 
         $documents = $this->applyDocuments(false);
         if ($documents->requiresRebuild()) {
-            $rebuilds[self::LABEL_DOCUMENTS] = $documents;
+            $rebuilds[] = new IndexRebuild(self::LABEL_DOCUMENTS, $documents);
         }
 
         return new IndexRebuildReport($rebuilds);

@@ -21,15 +21,19 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping;
  */
 final readonly class IndexRebuildReport
 {
+    /** @var IndexRebuild[] */
+    private array $rebuilds;
+
     /**
-     * @param array<string, MappingUpdateResult> $rebuilds keyed by index label (class name, "assets", "documents")
+     * @param IndexRebuild[] $rebuilds in the order the indices were reindexed
      */
-    public function __construct(private array $rebuilds = [])
+    public function __construct(array $rebuilds = [])
     {
+        $this->rebuilds = array_values($rebuilds);
     }
 
     /**
-     * @return array<string, MappingUpdateResult>
+     * @return IndexRebuild[]
      */
     public function getRebuilds(): array
     {

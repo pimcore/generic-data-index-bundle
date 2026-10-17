@@ -63,10 +63,11 @@ final class ReindexItemsCommand extends AbstractCommand
             );
 
             $report = $this->reindexService->reindexAllIndicesWithReport();
-            foreach ($report->getRebuilds() as $index => $result) {
+            foreach ($report->getRebuilds() as $rebuild) {
+                $result = $rebuild->getResult();
                 $output->writeln(sprintf(
                     '<comment>%s: %s; all its elements were queued for a rebuild from the database.</comment>',
-                    $index,
+                    $rebuild->getLabel(),
                     $result->isRecreated()
                         ? 'the index had to be created empty'
                         : 'fields left out of the copy: ' . implode(', ', $result->getStrippedPaths())

@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Command;
 use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Command\ReindexItemsCommand;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexRebuild;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexRebuildReport;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
@@ -49,8 +50,11 @@ final class ReindexItemsCommandTest extends Unit
     {
         $reindexService = $this->makeEmpty(ReindexServiceInterface::class, [
             'reindexAllIndicesWithReport' => new IndexRebuildReport([
-                'Car' => new MappingUpdateResult(['standard_fields.price', 'standard_fields.l_text.en']),
-                'assets' => new MappingUpdateResult(recreated: true),
+                new IndexRebuild(
+                    'Car',
+                    new MappingUpdateResult(['standard_fields.price', 'standard_fields.l_text.en'])
+                ),
+                new IndexRebuild('assets', new MappingUpdateResult(recreated: true)),
             ]),
         ]);
 
