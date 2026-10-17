@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex;
 
 use InvalidArgumentException;
+use stdClass;
 
 /**
  * The script of a _reindex that removes fields from every copied document.
@@ -31,23 +32,36 @@ use InvalidArgumentException;
  */
 final readonly class ReindexStripScript
 {
+    /**
+     * Removes the stripped fields in one pass per object. params.tree holds the paths as a trie of
+     * {c: children by segment, e: strip here}. Each key of an object is walked along its dot-separated
+     * segments, because a document may hold a nested field as a literal dotted key ("spec.width"): reaching
+     * a stripped prefix removes the key (the field itself, or a literal dotted child of it), consuming the
+     * whole key in the middle of a path descends into its value, lists of objects item by item.
+     */
     private const SOURCE = <<<'PAINLESS'
-        void removeWithDottedChildren(Map node, String key) {
-          node.remove(key);
-          String prefix = key + '.';
-          for (def k : new ArrayList(node.keySet())) { if (k.startsWith(prefix)) { node.remove(k); } }
-        }
-        void strip(def node, List path, int i) {
-          if (node instanceof List) { for (def item : node) { strip(item, path, i); } return; }
-          if (!(node instanceof Map)) { return; }
-          String key = null;
-          for (int j = i; j < path.size(); j++) {
-            key = key == null ? path.get(j) : key + '.' + path.get(j);
-            if (j == path.size() - 1) { removeWithDottedChildren(node, key); return; }
-            if (node.containsKey(key)) { strip(node.get(key), path, j + 1); }
+        void strip(def node, Map trie) {
+          if (node instanceof List) { for (def item : node) { strip(item, trie); } return; }
+          if (!(node instanceof Map) || !trie.containsKey('c')) { return; }
+          Map children = trie.get('c');
+          for (def key : new ArrayList(node.keySet())) {
+            String k = key.toString();
+            Map t = null;
+            Map level = children;
+            int from = 0;
+            while (level != null) {
+              int dot = k.indexOf('.', from);
+              String segment = dot < 0 ? k.substring(from) : k.substring(from, dot);
+              t = level.get(segment);
+              if (t == null) { break; }
+              if (t.containsKey('e')) { node.remove(key); break; }
+              if (dot < 0) { strip(node.get(key), t); break; }
+              level = t.containsKey('c') ? t.get('c') : null;
+              from = dot + 1;
+            }
           }
         }
-        for (def p : params.paths) { strip(ctx._source, p, 0); }
+        strip(ctx._source, params.tree);
         if (ctx._source.system_fields instanceof Map) { ctx._source.system_fields.remove('checksum'); }
         PAINLESS;
 
@@ -86,14 +100,34 @@ final readonly class ReindexStripScript
     /**
      * The "script" part of a _reindex request body.
      *
-     * @return array{lang: string, source: string, params: array{paths: string[][]}}
+     * @return array{lang: string, source: string, params: array{tree: stdClass}}
      */
     public function toRequestScript(): array
     {
         return [
             'lang' => 'painless',
             'source' => self::SOURCE,
-            'params' => ['paths' => $this->paths],
+            'params' => ['tree' => $this->buildTree()],
         ];
+    }
+
+    /**
+     * The paths as a trie. Nodes are objects, so the request carries JSON objects even for a segment such as
+     * "0" that a PHP array would turn into a list.
+     */
+    private function buildTree(): stdClass
+    {
+        $root = new stdClass();
+        foreach ($this->paths as $path) {
+            $node = $root;
+            foreach ($path as $segment) {
+                $node->c ??= new stdClass();
+                $node->c->{$segment} ??= new stdClass();
+                $node = $node->c->{$segment};
+            }
+            $node->e = true;
+        }
+
+        return $root;
     }
 }

@@ -18,6 +18,7 @@ use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexStripScript;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
@@ -782,7 +783,11 @@ final class DefaultSearchServiceReindexTest extends Unit
         $this->assertSame(ReindexResult::SUCCESS, $outcome->getResult());
         $script = $client->reIndexParams[0]['body']['script'];
         $this->assertSame('painless', $script['lang']);
-        $this->assertSame($paths, $script['params']['paths']);
+        $this->assertEquals(
+            (new ReindexStripScript($paths))->toRequestScript(),
+            $script,
+            'The request carries the strip script of exactly these paths'
+        );
     }
 
     /**

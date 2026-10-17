@@ -530,6 +530,47 @@ final class ShapeTransitionTest extends Unit
         $this->assertSame(3, $this->tester->countIndexDocuments($this->alias));
     }
 
+    /**
+     * S55: a large classification store: 1,000 of 2,000 keys of one object change at once. The strip script walks
+     * every key of the object once, independent of the number of stripped paths.
+     */
+    public function testManyStrippedKeysOfOneObject(): void
+    {
+        $keys = array_map(static fn (int $i): string => 'k' . $i, range(1, 2000));
+        $stripped = array_slice($keys, 0, 1000);
+        $mapping = static fn (string $changedType): array => [
+            self::CLASS_FIELDS => ['properties' => ['cs' => ['properties' => array_combine(
+                $keys,
+                array_map(
+                    static fn (string $key): array => [
+                        'type' => in_array($key, $stripped, true) ? $changedType : 'keyword',
+                    ],
+                    $keys
+                )
+            )]]],
+            self::OTHER_FIELD => ['type' => 'keyword'],
+        ];
+        $values = array_combine($keys, array_map(static fn (string $key): string => 'v-' . $key, $keys));
+        $this->createAliasWithDocuments(
+            $mapping('keyword'),
+            [self::CLASS_FIELDS => ['cs' => $values], self::OTHER_FIELD => self::OTHER_VALUE]
+        );
+
+        $result = $this->copy($mapping('long'));
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame(1, $result->getAttempts());
+        $this->assertCount(1000, $result->getStrippedPaths());
+        $this->assertCopiedIntoOtherIndex();
+        $expected = array_slice($values, 1000, null, true);
+        foreach ($this->getSources() as $source) {
+            $actual = $source[self::CLASS_FIELDS]['cs'];
+            ksort($actual, SORT_STRING);
+            ksort($expected, SORT_STRING);
+            $this->assertSame($expected, $actual, 'The other 1,000 keys keep their values (in any order)');
+        }
+    }
+
     public function testNestedLeafIsStrippedInEveryItem(): void
     {
         $itemMapping = static fn (string $leafType): array => [

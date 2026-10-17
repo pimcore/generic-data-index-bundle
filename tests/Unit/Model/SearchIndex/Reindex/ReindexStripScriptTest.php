@@ -33,10 +33,43 @@ final class ReindexStripScriptTest extends Unit
         $script = (new ReindexStripScript($paths))->toRequestScript();
 
         $this->assertSame('painless', $script['lang']);
-        $this->assertSame($paths, $script['params']['paths']);
+        $this->assertSame(
+            [
+                'c' => ['standard_fields' => ['c' => [
+                    'price' => ['e' => true],
+                    'l_text' => ['c' => ['en' => ['e' => true]]],
+                    'items' => ['c' => ['GdiE2eItem' => ['c' => ['i_text' => ['e' => true]]]]],
+                ]]],
+            ],
+            json_decode(json_encode($script['params']['tree'], JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR),
+            'The paths travel as a trie of children (c) and strip markers (e)'
+        );
         foreach (['price', 'l_text', 'items', 'GdiE2eItem', 'i_text', 'standard_fields'] as $segment) {
             $this->assertStringNotContainsString($segment, $script['source']);
         }
+    }
+
+    /**
+     * A segment such as "0" (a classification store key or group id) would turn a PHP array into a JSON list,
+     * which the script could not look up by name.
+     */
+    public function testTheTreeIsEncodedAsJsonObjectsForNumericSegments(): void
+    {
+        $tree = (new ReindexStripScript([['standard_fields', 'cs', '0'], ['standard_fields', 'cs', '1']]))
+            ->toRequestScript()['params']['tree'];
+
+        $this->assertSame(
+            '{"c":{"standard_fields":{"c":{"cs":{"c":{"0":{"e":true},"1":{"e":true}}}}}}}',
+            json_encode($tree, JSON_THROW_ON_ERROR)
+        );
+    }
+
+    public function testAPathInsideAStrippedPathKeepsTheStripMarkerOfItsParent(): void
+    {
+        $tree = (new ReindexStripScript([['standard_fields', 'spec'], ['standard_fields', 'spec', 'width']]))
+            ->toRequestScript()['params']['tree'];
+
+        $this->assertTrue($tree->c->standard_fields->c->spec->e);
     }
 
     public function testTheSourceIsTheSameForEveryPathList(): void
@@ -53,7 +86,7 @@ final class ReindexStripScriptTest extends Unit
 
         $this->assertStringContainsString('instanceof List', $source);
         $this->assertStringContainsString('instanceof Map', $source);
-        $this->assertStringContainsString('params.paths', $source);
+        $this->assertStringContainsString('params.tree', $source);
         $this->assertStringContainsString('ctx._source', $source);
     }
 
