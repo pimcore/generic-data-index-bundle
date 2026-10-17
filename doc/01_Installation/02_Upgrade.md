@@ -20,13 +20,15 @@ description: Version-specific upgrade instructions and breaking changes for the 
   the index queue. Operators who relied on that need messenger workers running after the command.
 - [Commands] `generic-data-index:deployment:reindex` and its `--dry-run` list per index the fields stripped and the
   fields kept in the copy.
-- [Indexing] `@internal` signature changes, relevant only for custom implementations:
-  - `IndexHandlerInterface::reindexMapping()` returns a `MappingUpdateResult`.
-  - New `IndexHandlerInterface::getMappingDiff()`.
-  - New `SearchIndexServiceInterface::reindexWithoutFields()`.
-  - New `ReindexServiceInterface::reindexAllIndicesWithReport()`.
-  - New `ClassDefinitionReindexServiceInterface::reindexClassDefinitionMapping()`.
-  - The `AbstractIndexHandler` constructor has a new `IndexCopyServiceInterface` argument.
+- [Indexing] New methods on `@internal` interfaces, relevant only for custom implementations of them:
+  `IndexHandlerInterface::reindexMappingWithResult()` and `getMappingDiff()`,
+  `SearchIndexServiceInterface::reindexWithoutFields()`, `ReindexServiceInterface::reindexAllIndicesWithReport()`,
+  `ClassDefinitionReindexServiceInterface::reindexClassDefinitionMapping()`.
+- [Deprecation] `AbstractIndexHandler` has a new optional constructor argument `IndexCopyServiceInterface`.
+  Subclasses that call the parent constructor without it keep working and trigger a deprecation; the argument will
+  be required in the next major version. `reindexMapping()` keeps its signature; the bundle itself calls the new
+  `reindexMappingWithResult()`, so a subclass that overrides `reindexMapping()` is no longer called for the odd/even
+  copy. Override `reindexMappingWithResult()` instead.
 - [Commands] `generic-data-index:deployment:reindex` has new opt-in options (`--all`, `--assets`, `--dry-run`, …) that
   also cover the folder, asset and document indices and `index_settings`. Without options nothing changes. See
   [Deployment and Index Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).

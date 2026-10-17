@@ -34,6 +34,14 @@ interface IndexHandlerInterface
     ): void;
 
     /**
+     * @throws Exception
+     */
+    public function reindexMapping(
+        ?ClassDefinition $context = null,
+        ?array $mappingProperties = null
+    ): void;
+
+    /**
      * Applies the mapping through a copy into the other -odd/-even index. Fields whose old values
      * do not fit the new mapping are left out of the copy; the result says which, and whether the
      * index had to be created empty instead, so callers can queue the rebuild from the database.
@@ -41,7 +49,7 @@ interface IndexHandlerInterface
      * @throws Exception
      * @throws ReindexFailedException
      */
-    public function reindexMapping(
+    public function reindexMappingWithResult(
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): MappingUpdateResult;

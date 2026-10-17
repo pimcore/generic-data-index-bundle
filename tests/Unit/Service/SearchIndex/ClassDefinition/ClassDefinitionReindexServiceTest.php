@@ -57,7 +57,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMapping' => Expected::never(),
+            'reindexMappingWithResult' => Expected::never(),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => $legacyCheckSum,
@@ -82,7 +82,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMapping' => Expected::once(new MappingUpdateResult()),
+            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult()),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => 999, // neither the current nor the legacy checksum
@@ -99,7 +99,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMapping' => Expected::never(),
+            'reindexMappingWithResult' => Expected::never(),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
@@ -121,7 +121,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMapping' => Expected::once(new MappingUpdateResult()),
+            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult()),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => null,
@@ -144,7 +144,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMapping' => Expected::once(new MappingUpdateResult()),
+            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult()),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => $legacyCheckSum,
@@ -192,7 +192,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMapping' => new MappingUpdateResult(['standard_fields.price']),
+            'reindexMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
         ]);
         $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
             'enqueueByClassDefinition' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),
@@ -210,7 +210,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMapping' => new MappingUpdateResult(),
+            'reindexMappingWithResult' => new MappingUpdateResult(),
         ]);
         $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
             'enqueueByClassDefinition' => Expected::never(),

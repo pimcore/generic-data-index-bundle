@@ -152,7 +152,7 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
         }
 
         if ($plan->isSettingsChanged()
-            && $this->dataObjectIndexHandler->reindexMapping($classDefinition)->requiresRebuild()
+            && $this->dataObjectIndexHandler->reindexMappingWithResult($classDefinition)->requiresRebuild()
         ) {
             // The mapping was current, but fields could still be left out of the copy (e.g. values
             // written under an older mapping); only the rebuild restores them.
@@ -178,7 +178,7 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
         if ($plan->isIndexMissing()) {
             $handler->updateMapping();
         } elseif ($plan->needsNativeReindex()) {
-            $copyRequiresRebuild = $handler->reindexMapping()->requiresRebuild();
+            $copyRequiresRebuild = $handler->reindexMappingWithResult()->requiresRebuild();
         }
 
         if (!$plan->needsRebuild() && !$copyRequiresRebuild) {

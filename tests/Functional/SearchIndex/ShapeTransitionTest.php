@@ -35,6 +35,11 @@ final class ShapeTransitionTest extends Unit
 
     private const FIELD = 'f';
 
+    /** Only class fields are stripped, so every changed field lives below standard_fields. */
+    private const CLASS_FIELDS = 'standard_fields';
+
+    private const FIELD_PATH = self::CLASS_FIELDS . '.' . self::FIELD;
+
     private const OTHER_FIELD = 'other';
 
     private const OTHER_VALUE = 'stays unchanged';
@@ -102,9 +107,9 @@ final class ShapeTransitionTest extends Unit
             $this->assertTrue($result->isSuccessful());
             $this->assertSame(1, $result->getAttempts());
             $this->assertSame([], $result->getStrippedPaths());
-            $this->assertSame([self::FIELD], $result->getKeptPaths());
+            $this->assertSame([self::FIELD_PATH], $result->getKeptPaths());
             foreach ($this->getSources() as $id => $source) {
-                $this->assertSame($this->valueFor($oldShape), $source[self::FIELD] ?? null, "Document {$id}");
+                $this->assertSame($this->valueFor($oldShape), $this->field($source), "Document {$id}");
                 $this->assertSame(self::OTHER_VALUE, $source[self::OTHER_FIELD]);
             }
 
@@ -115,9 +120,13 @@ final class ShapeTransitionTest extends Unit
         $this->assertSame(1, $result->getAttempts(), 'The mapping diff alone must find the field');
 
         if ($expectedAction === self::STRIP) {
-            $this->assertSame([self::FIELD], $result->getStrippedPaths());
+            $this->assertSame([self::FIELD_PATH], $result->getStrippedPaths());
             foreach ($this->getSources() as $id => $source) {
-                $this->assertArrayNotHasKey(self::FIELD, $source, sprintf('Document %s still has the field', $id));
+                $this->assertArrayNotHasKey(
+                    self::FIELD,
+                    $source[self::CLASS_FIELDS] ?? [],
+                    sprintf('Document %s still has the field', $id)
+                );
                 $this->assertSame(self::OTHER_VALUE, $source[self::OTHER_FIELD]);
             }
 
@@ -125,11 +134,11 @@ final class ShapeTransitionTest extends Unit
         }
 
         $this->assertSame([], $result->getStrippedPaths(), 'A kept field must not be stripped');
-        $this->assertSame([self::FIELD], $result->getKeptPaths());
+        $this->assertSame([self::FIELD_PATH], $result->getKeptPaths());
         foreach ($this->getSources() as $id => $source) {
             $this->assertSame(
                 $this->valueFor($oldShape),
-                $source[self::FIELD] ?? null,
+                $this->field($source),
                 sprintf('Document %s lost its old value', $id)
             );
             $this->assertSame(self::OTHER_VALUE, $source[self::OTHER_FIELD]);
@@ -169,7 +178,7 @@ final class ShapeTransitionTest extends Unit
         $this->assertCopiedIntoOtherIndex();
         $this->assertSame(3, $this->tester->countIndexDocuments($this->alias));
         foreach ($this->getSources() as $source) {
-            $this->assertSame($this->valueFor($shape), $source[self::FIELD] ?? null);
+            $this->assertSame($this->valueFor($shape), $this->field($source));
         }
     }
 
@@ -190,27 +199,31 @@ final class ShapeTransitionTest extends Unit
     public function testObjectLeafChanges(): void
     {
         $oldMapping = [
-            self::FIELD => ['properties' => ['id' => ['type' => 'long'], 'name' => ['type' => 'text']]],
+            self::CLASS_FIELDS => ['properties' => [
+                self::FIELD => ['properties' => ['id' => ['type' => 'long'], 'name' => ['type' => 'text']]],
+            ]],
             self::OTHER_FIELD => ['type' => 'keyword'],
         ];
         $newMapping = [
-            self::FIELD => ['properties' => ['id' => ['type' => 'keyword'], 'name' => ['type' => 'float']]],
+            self::CLASS_FIELDS => ['properties' => [
+                self::FIELD => ['properties' => ['id' => ['type' => 'keyword'], 'name' => ['type' => 'float']]],
+            ]],
             self::OTHER_FIELD => ['type' => 'keyword'],
         ];
         $this->createAliasWithDocuments(
             $oldMapping,
-            [self::FIELD => ['id' => 5, 'name' => 'abc'], self::OTHER_FIELD => self::OTHER_VALUE]
+            [self::CLASS_FIELDS => [self::FIELD => ['id' => 5, 'name' => 'abc']], self::OTHER_FIELD => self::OTHER_VALUE]
         );
 
         $result = $this->copy($newMapping);
 
         $this->assertTrue($result->isSuccessful());
-        $this->assertSame(['f.name'], $result->getStrippedPaths());
-        $this->assertSame(['f.id'], $result->getKeptPaths());
+        $this->assertSame([self::FIELD_PATH . '.name'], $result->getStrippedPaths());
+        $this->assertSame([self::FIELD_PATH . '.id'], $result->getKeptPaths());
         $this->assertCopiedIntoOtherIndex();
         $this->assertSame(3, $this->tester->countIndexDocuments($this->alias));
         foreach ($this->getSources() as $source) {
-            $this->assertSame(['id' => 5], $source[self::FIELD]);
+            $this->assertSame(['id' => 5], $this->field($source));
             $this->assertSame(self::OTHER_VALUE, $source[self::OTHER_FIELD]);
         }
     }
@@ -227,22 +240,24 @@ final class ShapeTransitionTest extends Unit
     public function testLiteralDottedKeyIsStripped(): void
     {
         $storeMapping = static fn (string $type): array => [
-            'cs' => ['properties' => ['spec.width' => ['type' => $type], 'other' => ['type' => 'keyword']]],
+            self::CLASS_FIELDS => ['properties' => [
+                'cs' => ['properties' => ['spec.width' => ['type' => $type], 'other' => ['type' => 'keyword']]],
+            ]],
             self::OTHER_FIELD => ['type' => 'keyword'],
         ];
         $this->createAliasWithDocuments(
             $storeMapping('text'),
-            ['cs' => ['spec.width' => 'abc', 'other' => 'x'], self::OTHER_FIELD => self::OTHER_VALUE]
+            [self::CLASS_FIELDS => ['cs' => ['spec.width' => 'abc', 'other' => 'x']], self::OTHER_FIELD => self::OTHER_VALUE]
         );
 
         $result = $this->copy($storeMapping('float'));
 
         $this->assertTrue($result->isSuccessful());
         $this->assertSame(1, $result->getAttempts(), 'The diff must find the dotted key, not the retry');
-        $this->assertSame(['cs.spec.width'], $result->getStrippedPaths());
+        $this->assertSame([self::CLASS_FIELDS . '.cs.spec.width'], $result->getStrippedPaths());
         $this->assertCopiedIntoOtherIndex();
         foreach ($this->getSources() as $source) {
-            $this->assertSame(['other' => 'x'], $source['cs']);
+            $this->assertSame(['other' => 'x'], $source[self::CLASS_FIELDS]['cs']);
             $this->assertSame(self::OTHER_VALUE, $source[self::OTHER_FIELD]);
         }
     }
@@ -331,25 +346,29 @@ final class ShapeTransitionTest extends Unit
     {
         $this->createAliasWithDocuments(
             [
-                'cs' => ['properties' => ['spec.width' => ['type' => 'text'], 'other' => ['type' => 'keyword']]],
+                self::CLASS_FIELDS => ['properties' => [
+                    'cs' => ['properties' => ['spec.width' => ['type' => 'text'], 'other' => ['type' => 'keyword']]],
+                ]],
                 self::OTHER_FIELD => ['type' => 'keyword'],
             ],
             [
-                'cs' => ['spec.width' => 'abc', 'spec.depth' => 'def', 'other' => 'x'],
+                self::CLASS_FIELDS => ['cs' => ['spec.width' => 'abc', 'spec.depth' => 'def', 'other' => 'x']],
                 self::OTHER_FIELD => self::OTHER_VALUE,
             ]
         );
 
         $result = $this->copy([
-            'cs' => ['properties' => ['spec' => ['type' => 'keyword'], 'other' => ['type' => 'keyword']]],
+            self::CLASS_FIELDS => ['properties' => [
+                'cs' => ['properties' => ['spec' => ['type' => 'keyword'], 'other' => ['type' => 'keyword']]],
+            ]],
             self::OTHER_FIELD => ['type' => 'keyword'],
         ]);
 
         $this->assertTrue($result->isSuccessful());
         $this->assertSame(1, $result->getAttempts());
-        $this->assertSame(['cs.spec'], $result->getStrippedPaths());
+        $this->assertSame([self::CLASS_FIELDS . '.cs.spec'], $result->getStrippedPaths());
         foreach ($this->getSources() as $source) {
-            $this->assertSame(['other' => 'x'], $source['cs']);
+            $this->assertSame(['other' => 'x'], $source[self::CLASS_FIELDS]['cs']);
         }
     }
 
@@ -424,24 +443,79 @@ final class ShapeTransitionTest extends Unit
         }
     }
 
+    /**
+     * S51: a changed system field is never stripped, not even in the first attempt; search results
+     * need the id. When its values fit the new type, the copy keeps them.
+     */
+    public function testChangedSystemFieldIsCopiedAsItIs(): void
+    {
+        $mapping = static fn (string $idType): array => [
+            'system_fields' => ['properties' => ['id' => ['type' => $idType]]],
+            self::CLASS_FIELDS => ['properties' => [self::FIELD => ['type' => 'keyword']]],
+        ];
+        $this->createAliasWithDocuments(
+            $mapping('long'),
+            static fn (string $id): array => ['system_fields' => ['id' => (int) $id], self::CLASS_FIELDS => [self::FIELD => 'x']]
+        );
+
+        $result = $this->copy($mapping('integer'));
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame([], $result->getStrippedPaths());
+        $this->assertSame(['system_fields.id'], $result->getKeptPaths());
+        $this->assertCopiedIntoOtherIndex();
+        foreach ($this->getSources() as $id => $source) {
+            $this->assertSame((int) $id, $source['system_fields']['id']);
+        }
+    }
+
+    /**
+     * S52: a changed custom field whose values do not fit is not stripped either; the copy fails and
+     * the caller falls back to the recreation, as for any failure no class field explains.
+     */
+    public function testIncompatibleCustomFieldFailsTheCopyInsteadOfBeingStripped(): void
+    {
+        $mapping = static fn (string $type): array => [
+            'custom_fields' => ['properties' => ['x' => ['type' => $type]]],
+            self::CLASS_FIELDS => ['properties' => [self::FIELD => ['type' => 'keyword']]],
+        ];
+        $this->createAliasWithDocuments(
+            $mapping('keyword'),
+            ['custom_fields' => ['x' => 'abc'], self::CLASS_FIELDS => [self::FIELD => 'x']]
+        );
+
+        $result = $this->copy($mapping('long'));
+
+        $this->assertFalse($result->isSuccessful());
+        $this->assertSame([], $result->getStrippedPaths());
+        $this->assertSame(
+            [$this->alias . '-' . DefaultSearchService::INDEX_VERSION_ODD],
+            $this->tester->getIndexAliasTargets($this->alias),
+            'The live index stays untouched by the failed copy'
+        );
+        $this->assertSame(3, $this->tester->countIndexDocuments($this->alias));
+    }
+
     public function testNestedLeafIsStrippedInEveryItem(): void
     {
         $itemMapping = static fn (string $leafType): array => [
-            'items' => [
-                'type' => 'nested',
-                'properties' => [
-                    'T' => [
-                        'type' => 'nested',
-                        'properties' => ['v' => ['type' => $leafType], 'w' => ['type' => 'long']],
+            self::CLASS_FIELDS => ['properties' => [
+                'items' => [
+                    'type' => 'nested',
+                    'properties' => [
+                        'T' => [
+                            'type' => 'nested',
+                            'properties' => ['v' => ['type' => $leafType], 'w' => ['type' => 'long']],
+                        ],
                     ],
                 ],
-            ],
+            ]],
             self::OTHER_FIELD => ['type' => 'keyword'],
         ];
         $this->createAliasWithDocuments(
             $itemMapping('text'),
             [
-                'items' => [['T' => ['v' => 'abc', 'w' => 1]], ['T' => ['v' => 'def', 'w' => 2]]],
+                self::CLASS_FIELDS => ['items' => [['T' => ['v' => 'abc', 'w' => 1]], ['T' => ['v' => 'def', 'w' => 2]]]],
                 self::OTHER_FIELD => self::OTHER_VALUE,
             ]
         );
@@ -449,11 +523,11 @@ final class ShapeTransitionTest extends Unit
         $result = $this->copy($itemMapping('float'));
 
         $this->assertTrue($result->isSuccessful());
-        $this->assertSame(['items.T.v'], $result->getStrippedPaths());
+        $this->assertSame([self::CLASS_FIELDS . '.items.T.v'], $result->getStrippedPaths());
         $this->assertCopiedIntoOtherIndex();
         $this->assertSame(3, $this->tester->countIndexDocuments($this->alias));
         foreach ($this->getSources() as $source) {
-            $this->assertSame([['T' => ['w' => 1]], ['T' => ['w' => 2]]], $source['items']);
+            $this->assertSame([['T' => ['w' => 1]], ['T' => ['w' => 2]]], $source[self::CLASS_FIELDS]['items']);
             $this->assertSame(self::OTHER_VALUE, $source[self::OTHER_FIELD]);
         }
     }
@@ -485,7 +559,7 @@ final class ShapeTransitionTest extends Unit
     private function mapping(string $shape): array
     {
         return [
-            self::FIELD => self::shapes()[$shape]['mapping'],
+            self::CLASS_FIELDS => ['properties' => [self::FIELD => self::shapes()[$shape]['mapping']]],
             self::OTHER_FIELD => ['type' => 'keyword'],
         ];
     }
@@ -497,7 +571,12 @@ final class ShapeTransitionTest extends Unit
 
     private function documentFor(string $shape): array
     {
-        return [self::FIELD => $this->valueFor($shape), self::OTHER_FIELD => self::OTHER_VALUE];
+        return [self::CLASS_FIELDS => [self::FIELD => $this->valueFor($shape)], self::OTHER_FIELD => self::OTHER_VALUE];
+    }
+
+    private function field(array $source): mixed
+    {
+        return $source[self::CLASS_FIELDS][self::FIELD] ?? null;
     }
 
     /**

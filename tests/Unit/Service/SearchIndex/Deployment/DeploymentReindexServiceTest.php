@@ -122,7 +122,7 @@ final class DeploymentReindexServiceTest extends Unit
         );
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingDiff' => new MappingDiff([]),
-            'reindexMapping' => Expected::once(new MappingUpdateResult()),
+            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult()),
             'updateMapping' => Expected::never(),
         ]);
         $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
@@ -141,7 +141,7 @@ final class DeploymentReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingDiff' => new MappingDiff([]),
             'updateMapping' => Expected::once(),
-            'reindexMapping' => Expected::never(),
+            'reindexMappingWithResult' => Expected::never(),
         ]);
         $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
             'enqueueDataObjectFolders' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),
@@ -170,7 +170,7 @@ final class DeploymentReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingDiff' => new MappingDiff([]),
             'updateMapping' => Expected::never(),
-            'reindexMapping' => Expected::never(),
+            'reindexMappingWithResult' => Expected::never(),
         ]);
         $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
             'enqueueAssets' => Expected::never(),
@@ -198,7 +198,7 @@ final class DeploymentReindexServiceTest extends Unit
         $stateService = $this->createStateService(['mapping-old', 'settings-current', '1.0'], true, Expected::never());
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingDiff' => new MappingDiff([]),
-            'reindexMapping' => static function (): MappingUpdateResult {
+            'reindexMappingWithResult' => static function (): MappingUpdateResult {
                 throw new Exception('reindex failed (simulated)');
             },
         ]);
@@ -241,7 +241,7 @@ final class DeploymentReindexServiceTest extends Unit
         ]);
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingDiff' => new MappingDiff([]),
-            'reindexMapping' => Expected::never(),
+            'reindexMappingWithResult' => Expected::never(),
         ]);
         $service = $this->createService(
             $this->createStateService([null, 'settings-current', '1.0'], true),
@@ -264,7 +264,7 @@ final class DeploymentReindexServiceTest extends Unit
         ]);
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingDiff' => new MappingDiff([]),
-            'reindexMapping' => Expected::once(
+            'reindexMappingWithResult' => Expected::once(
                 static function (?ClassDefinition $context) use ($classDefinition): MappingUpdateResult {
                     self::assertSame($classDefinition, $context);
 
@@ -327,7 +327,7 @@ final class DeploymentReindexServiceTest extends Unit
     {
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingDiff' => new MappingDiff([]),
-            'reindexMapping' => Expected::once(new MappingUpdateResult(['standard_fields.price'])),
+            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult(['standard_fields.price'])),
         ]);
         $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
             'enqueueDocuments' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),

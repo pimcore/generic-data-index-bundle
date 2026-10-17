@@ -84,6 +84,10 @@ Before the copy, the bundle compares the live mapping with the new mapping and s
   change between them, or switching "respect timezone" on or off, strips the field unless the new format still lists
   every old format.
 
+Only class fields (`standard_fields`) are ever stripped. A changed system field, or a custom field added by an
+`ExtractMappingEvent` subscriber, is copied as it is: a document without its id or class breaks search results. If
+its old values don't fit the new type, the copy fails and the index is recreated as a last resort.
+
 If the engine still reports a parsing failure for a field, the bundle adds that field to the stripped fields and
 retries the copy, up to 3 attempts. Only if the copy still fails after that is the index recreated. Every attempt is
 a full copy of the index, and the engine names one failing field per document of the first failing batch, so a large

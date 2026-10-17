@@ -21,10 +21,13 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdat
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\DataObject\ClassDefinition;
+use Psr\Log\NullLogger;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 abstract class AbstractIndexHandler implements IndexHandlerInterface
@@ -33,13 +36,26 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
 
     private const MAX_REINDEX_ATTEMPTS = 3;
 
+    /** Created on first use for subclasses that call the constructor with the four arguments of 2026.3.2. */
+    private ?IndexCopyServiceInterface $defaultIndexCopyService = null;
+
     public function __construct(
         protected readonly SearchIndexServiceInterface $searchIndexService,
         protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         protected readonly EventDispatcherInterface $eventDispatcher,
         protected readonly IndexMappingServiceInterface $indexMappingService,
-        private readonly IndexCopyServiceInterface $indexCopyService,
+        private readonly ?IndexCopyServiceInterface $indexCopyService = null,
     ) {
+        if ($indexCopyService === null) {
+            trigger_deprecation(
+                'pimcore/generic-data-index-bundle',
+                '2026.3.3',
+                'Calling the constructor of %s without an %s is deprecated; the argument will be required in the '
+                . 'next major version.',
+                self::class,
+                IndexCopyServiceInterface::class
+            );
+        }
     }
 
     /**
@@ -107,6 +123,16 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     public function reindexMapping(
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
+    ): void {
+        $this->reindexMappingWithResult($context, $mappingProperties);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function reindexMappingWithResult(
+        ?ClassDefinition $context = null,
+        ?array $mappingProperties = null
     ): MappingUpdateResult {
         return $this->doReindexMapping($context, $mappingProperties, 0);
     }
@@ -144,7 +170,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             // Fields whose old values do not fit the new mapping are left out of the copy, so a
             // field type change no longer empties the live index; the rebuild from the database
             // fills them. Genuine errors (unreachable cluster, timeouts) are thrown and propagate.
-            $copy = $this->indexCopyService->copy($alias, $mappingProperties);
+            $copy = $this->getIndexCopyService()->copy($alias, $mappingProperties);
             $result = new MappingUpdateResult($copy->getStrippedPaths(), $copy->getKeptPaths());
 
             if (!$copy->isSuccessful()) {
@@ -171,7 +197,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             return new MappingDiff([]);
         }
 
-        return $this->indexCopyService->diff($alias, $this->extractMappingProperties($context));
+        return $this->getIndexCopyService()->diff($alias, $this->extractMappingProperties($context));
     }
 
     public function deleteIndex(mixed $context = null): void
@@ -221,6 +247,15 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         }
 
         return $normalizedValue;
+    }
+
+    private function getIndexCopyService(): IndexCopyServiceInterface
+    {
+        return $this->indexCopyService ?? $this->defaultIndexCopyService ??= new IndexCopyService(
+            $this->searchIndexService,
+            new MappingDiffService(),
+            $this->logger ?? new NullLogger()
+        );
     }
 
     abstract protected function extractMappingProperties(mixed $context = null): array;

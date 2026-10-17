@@ -15,9 +15,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingFieldChangeAction;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexCopyResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingFieldChange;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Psr\Log\LoggerInterface;
 
@@ -54,7 +56,9 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
         $index = reset($liveMapping);
         $liveProperties = is_array($index) ? ($index['mappings']['properties'] ?? []) : [];
 
-        return $this->mappingDiffService->diff($liveProperties, $mappingProperties);
+        return $this->classFieldsStrippedOnly(
+            $this->mappingDiffService->diff($liveProperties, $mappingProperties)
+        );
     }
 
     public function copy(string $aliasName, array $mappingProperties): IndexCopyResult
@@ -150,6 +154,29 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
             $paths,
             static fn (array $path): bool => $path[0] === FieldCategory::STANDARD_FIELDS->value && count($path) > 1
         );
+    }
+
+    /**
+     * The first attempt follows the rule of the retries: only class fields are stripped. A changed
+     * system or custom field is copied as it is; if the engine rejects it, the copy fails and the
+     * index is recreated, as for any failure that no class field explains.
+     */
+    private function classFieldsStrippedOnly(MappingDiff $diff): MappingDiff
+    {
+        $changes = [];
+        foreach ($diff->getChanges() as $change) {
+            $isClassField = $this->classFieldsOnly([$change->getPath() => $change->getPathSegments()]) !== [];
+            $changes[] = $change->getAction() === MappingFieldChangeAction::STRIP && !$isClassField
+                ? new MappingFieldChange(
+                    $change->getPathSegments(),
+                    $change->getOldShape(),
+                    $change->getNewShape(),
+                    MappingFieldChangeAction::KEEP
+                )
+                : $change;
+        }
+
+        return new MappingDiff($changes, $diff->getRemovedPathSegments());
     }
 
     /**
