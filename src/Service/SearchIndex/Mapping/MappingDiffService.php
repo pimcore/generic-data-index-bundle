@@ -203,11 +203,9 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
                 continue;
             }
             if ($this->isContainer($this->shape($liveNode)) && $this->isContainer($this->shape($newNode))) {
-                array_push($removed, ...$this->findRemoved(
-                    is_array($liveNode['properties'] ?? null) ? $liveNode['properties'] : [],
-                    is_array($newNode['properties'] ?? null) ? $newNode['properties'] : [],
-                    $path
-                ));
+                $liveChildren = is_array($liveNode['properties'] ?? null) ? $liveNode['properties'] : [];
+                $newChildren = is_array($newNode['properties'] ?? null) ? $newNode['properties'] : [];
+                array_push($removed, ...$this->findRemoved($liveChildren, $newChildren, $path));
             }
         }
 
