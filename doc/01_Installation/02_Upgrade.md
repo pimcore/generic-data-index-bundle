@@ -5,7 +5,8 @@ Following steps are necessary during updating to newer versions.
 ## Upgrade to 2.5.15
 - [Indexing] A field type change no longer recreates the index empty. The odd/even copy now leaves out the changed
   fields whose old values don't fit the new type and keeps the others (for example a number copied into a text field).
-  The index is only recreated as a last resort, when the copy still fails after 3 attempts. The documents stay
+  The index is only recreated as a last resort, when the copy fails and no further field can be left out (after at
+  most 3 attempts). The documents stay
   searchable; the left-out fields are empty, so filters and sorting on them find nothing, until the messenger workers
   have rebuilt all objects of the class from the database. See the
   [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
