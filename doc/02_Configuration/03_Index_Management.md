@@ -162,11 +162,12 @@ error or times out server-side — the command fails instead of modifying the li
 the next run.
 
 After a field type change, the copy keeps the changed fields whose old values still fit (for example a number copied
-into a text field) and leaves out the others, so the index is not recreated and search keeps working. The index is
-only recreated, as a last resort, when the copy still fails after the retries. If fields were left out of the copy or
-the index had to be created empty, the command queues all elements of that index for a rebuild from the database and
-prints a notice per index. Run the messenger workers to fill these indices. See the
-[Reindexing Guide](../03_Reindexing/README.md#how-reindexing-works).
+into a text field) and leaves out the others, so the index is not recreated and the documents stay searchable; the
+left-out fields are empty until the rebuild from the database. The index is only recreated, as a last resort, when
+the copy fails and no further field can be left out. If fields were left out of the copy or the index had to be
+created empty, the command queues all elements of that index for a rebuild from the database and prints a notice per
+index. Run the messenger workers to fill these indices. See the
+[Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
 
 ### Handling Failed Messages
 
