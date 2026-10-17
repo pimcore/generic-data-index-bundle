@@ -255,6 +255,14 @@ automatically; run enough workers and check `generic-data-index:status` to see w
 Fields that are only found during the copy, for example values that fit the old mapping but not the new one, are
 stripped as well and named in the log; `--dry-run` cannot list them in advance.
 
+The copy itself costs about as much as the odd/even copy did before this change, and the messenger worker that
+handles the class mapping message is blocked for its duration. Measured on a development machine (OpenSearch 2 with
+a 1 GB heap, documents of 63 fields and about 6 KB): copying 100,000 documents took about 2 minutes and 300,000
+about 6 minutes, roughly 1.2 ms per document, whether 1 field was stripped or none. Stripping is not what costs; the
+copy time follows the amount of data written to the new index, so a copy that strips most of each document is faster
+(60 of 63 fields stripped: 15 s and 30 s). A retry repeats the full copy. The rebuild afterwards runs at the usual
+indexing rate of the workers (about 300 documents per second per worker on that machine).
+
 The rebuild refills a field only for objects whose database value fits the new type. Pimcore keeps values that don't
 fit, for example a time truncated from a datetime or relation metadata text in a column that is now numeric, and
 such an object fails its whole queue batch: the batch lands in the failed transport, and its queue entries are
