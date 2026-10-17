@@ -150,7 +150,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         ]);
 
         $result = $this->dataObjectIndexHandler
-            ->reindexMapping(
+            ->reindexMappingWithResult(
                 context: $classDefinition,
                 mappingProperties: $mappingProperties
             );

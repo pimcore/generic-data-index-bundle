@@ -221,7 +221,7 @@ final class AbstractIndexHandlerTest extends Unit
         );
         $handler->setLogger(new NullLogger());
 
-        $result = $handler->reindexMapping();
+        $result = $handler->reindexMappingWithResult();
 
         $this->assertSame(['standard_fields.price'], $result->getStrippedPaths());
         $this->assertFalse($result->isRecreated());
@@ -241,7 +241,7 @@ final class AbstractIndexHandlerTest extends Unit
         $handler = $this->createHandlerWithService($searchIndexService);
         $handler->setLogger(new NullLogger());
 
-        $result = $handler->reindexMapping();
+        $result = $handler->reindexMappingWithResult();
 
         $this->assertTrue($result->isRecreated());
         $this->assertTrue($result->requiresRebuild());

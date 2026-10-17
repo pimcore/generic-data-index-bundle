@@ -170,7 +170,7 @@ final readonly class ReindexService implements ReindexServiceInterface
      */
     private function applyAssets(bool $enqueueElements): MappingUpdateResult
     {
-        $result = $this->assetIndexHandler->reindexMapping();
+        $result = $this->assetIndexHandler->reindexMappingWithResult();
         $rebuilt = $enqueueElements || $result->requiresRebuild();
         if ($rebuilt) {
             $this
@@ -194,7 +194,7 @@ final readonly class ReindexService implements ReindexServiceInterface
      */
     private function applyDocuments(bool $enqueueElements): MappingUpdateResult
     {
-        $result = $this->documentIndexHandler->reindexMapping();
+        $result = $this->documentIndexHandler->reindexMappingWithResult();
         $rebuilt = $enqueueElements || $result->requiresRebuild();
         if ($rebuilt) {
             $this
