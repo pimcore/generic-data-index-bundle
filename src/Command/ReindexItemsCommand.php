@@ -62,7 +62,20 @@ final class ReindexItemsCommand extends AbstractCommand
                 OutputInterface::VERBOSITY_NORMAL
             );
 
-            $this->reindexService->reindexAllIndices();
+            $report = $this->reindexService->reindexAllIndicesWithReport();
+            foreach ($report->getRebuilds() as $rebuild) {
+                $result = $rebuild->getResult();
+                $output->writeln(sprintf(
+                    '<comment>%s: %s; all its elements were queued for a rebuild from the database.</comment>',
+                    $rebuild->getLabel(),
+                    $result->isRecreated()
+                        ? 'the index had to be created empty'
+                        : 'fields left out of the copy: ' . implode(', ', $result->getStrippedPaths())
+                ));
+            }
+            if (!$report->isEmpty()) {
+                $output->writeln('<comment>Run the messenger workers to fill these indices.</comment>');
+            }
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
 

@@ -17,8 +17,12 @@ use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingFieldChangeAction;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexState;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingFieldChange;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\DeploymentReindexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexStateServiceInterface;
@@ -117,7 +121,8 @@ final class DeploymentReindexServiceTest extends Unit
             }
         );
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
-            'reindexMapping' => Expected::once(),
+            'getMappingDiff' => new MappingDiff([]),
+            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult()),
             'updateMapping' => Expected::never(),
         ]);
         $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
@@ -134,8 +139,9 @@ final class DeploymentReindexServiceTest extends Unit
     public function testMissingIndexIsCreatedAndRebuilt(): void
     {
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingDiff' => new MappingDiff([]),
             'updateMapping' => Expected::once(),
-            'reindexMapping' => Expected::never(),
+            'reindexMappingWithResult' => Expected::never(),
         ]);
         $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
             'enqueueDataObjectFolders' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),
@@ -162,8 +168,9 @@ final class DeploymentReindexServiceTest extends Unit
             }
         );
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingDiff' => new MappingDiff([]),
             'updateMapping' => Expected::never(),
-            'reindexMapping' => Expected::never(),
+            'reindexMappingWithResult' => Expected::never(),
         ]);
         $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
             'enqueueAssets' => Expected::never(),
@@ -190,7 +197,8 @@ final class DeploymentReindexServiceTest extends Unit
     {
         $stateService = $this->createStateService(['mapping-old', 'settings-current', '1.0'], true, Expected::never());
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
-            'reindexMapping' => static function (): void {
+            'getMappingDiff' => new MappingDiff([]),
+            'reindexMappingWithResult' => static function (): MappingUpdateResult {
                 throw new Exception('reindex failed (simulated)');
             },
         ]);
@@ -232,7 +240,8 @@ final class DeploymentReindexServiceTest extends Unit
             ),
         ]);
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
-            'reindexMapping' => Expected::never(),
+            'getMappingDiff' => new MappingDiff([]),
+            'reindexMappingWithResult' => Expected::never(),
         ]);
         $service = $this->createService(
             $this->createStateService([null, 'settings-current', '1.0'], true),
@@ -254,9 +263,12 @@ final class DeploymentReindexServiceTest extends Unit
             'reindexClassDefinition' => Expected::once(false),
         ]);
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
-            'reindexMapping' => Expected::once(
-                static function (?ClassDefinition $context) use ($classDefinition): void {
+            'getMappingDiff' => new MappingDiff([]),
+            'reindexMappingWithResult' => Expected::once(
+                static function (?ClassDefinition $context) use ($classDefinition): MappingUpdateResult {
                     self::assertSame($classDefinition, $context);
+
+                    return new MappingUpdateResult();
                 }
             ),
         ]);
@@ -293,6 +305,44 @@ final class DeploymentReindexServiceTest extends Unit
         );
     }
 
+    public function testPlanNamesTheFieldsTheCopyStripsAndKeeps(): void
+    {
+        $diff = new MappingDiff([
+            new MappingFieldChange(['standard_fields', 'price'], 'text', 'float', MappingFieldChangeAction::STRIP),
+            new MappingFieldChange(['standard_fields', 'count'], 'long', 'text', MappingFieldChangeAction::KEEP),
+        ]);
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, ['getMappingDiff' => $diff]);
+        $service = $this->createService(
+            $this->createStateService(['mapping-old', 'settings-current', '1.0'], true),
+            handler: $handler
+        );
+
+        $reasons = $service->plan(IndexStateTarget::forScope(DeploymentReindexScope::ASSETS))->getReasons();
+
+        $this->assertContains('fields stripped in the copy: standard_fields.price', $reasons);
+        $this->assertContains('fields kept in the copy: standard_fields.count', $reasons);
+    }
+
+    public function testSettingsOnlyCopyThatStrippedFieldsQueuesARebuild(): void
+    {
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingDiff' => new MappingDiff([]),
+            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult(['standard_fields.price'])),
+        ]);
+        $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
+            'enqueueDocuments' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),
+        ]);
+        $service = $this->createService(
+            $this->createStateService(['mapping-current', 'settings-old', '1.0'], true),
+            enqueueService: $enqueueService,
+            handler: $handler
+        );
+
+        $this->assertTrue(
+            $service->execute($service->plan(IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS)))
+        );
+    }
+
     public function testGetTargetsKeepsTheIndexOrderAndSkipsUnselectedScopes(): void
     {
         $targets = $this->createService($this->createStateService(self::CURRENT, true))->getTargets([
@@ -326,7 +376,7 @@ final class DeploymentReindexServiceTest extends Unit
         ?EnqueueServiceInterface $enqueueService = null,
         ?IndexHandlerInterface $handler = null
     ): DeploymentReindexService {
-        $handler ??= $this->makeEmpty(IndexHandlerInterface::class);
+        $handler ??= $this->makeEmpty(IndexHandlerInterface::class, ['getMappingDiff' => new MappingDiff([])]);
 
         return new DeploymentReindexService(
             $stateService,

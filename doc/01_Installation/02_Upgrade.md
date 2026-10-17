@@ -6,6 +6,29 @@ description: Version-specific upgrade instructions and breaking changes for the 
 # Upgrade Information
 
 ## Upgrade to 2026.3.3
+- [Indexing] A field type change no longer recreates the index empty. The odd/even copy now leaves out the changed
+  fields whose old values don't fit the new type and keeps the others (for example a number copied into a text field).
+  The index is only recreated as a last resort, when the copy fails and no further field can be left out (after at
+  most 3 attempts). The documents stay
+  searchable; the left-out fields are empty, so filters and sorting on them find nothing, until the messenger workers
+  have rebuilt all objects of the class from the database. The copy blocks the messenger worker that handles the
+  class mapping message for about 1.2 ms per document (measured: 100,000 documents of about 6 KB in 2 minutes,
+  300,000 in 6 minutes on a development machine with OpenSearch 2); the rebuild runs at the usual indexing rate. See
+  the [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
+- [Commands] Behavior change: `generic-data-index:reindex` now adds all elements of an index to the index queue if its
+  copy left out fields or the index had to be created empty, and prints a notice per index. Before, it never filled
+  the index queue. Operators who relied on that need messenger workers running after the command.
+- [Commands] `generic-data-index:deployment:reindex` and its `--dry-run` list per index the fields stripped and the
+  fields kept in the copy.
+- [Indexing] New methods on `@internal` interfaces, relevant only for custom implementations of them:
+  `IndexHandlerInterface::reindexMappingWithResult()` and `getMappingDiff()`,
+  `SearchIndexServiceInterface::reindexWithoutFields()`, `ReindexServiceInterface::reindexAllIndicesWithReport()`,
+  `ClassDefinitionReindexServiceInterface::reindexClassDefinitionMapping()`.
+- [Deprecation] `AbstractIndexHandler` has a new optional constructor argument `IndexCopyServiceInterface`.
+  Subclasses that call the parent constructor without it keep working and trigger a deprecation; the argument will
+  be required in the next major version. `reindexMapping()` keeps its signature; the bundle itself calls the new
+  `reindexMappingWithResult()`, so a subclass that overrides `reindexMapping()` is no longer called for the odd/even
+  copy. Override `reindexMappingWithResult()` instead.
 - [Commands] `generic-data-index:deployment:reindex` has new opt-in options (`--all`, `--assets`, `--dry-run`, …) that
   also cover the folder, asset and document indices and `index_settings`. Without options nothing changes. See
   [Deployment and Index Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).
