@@ -65,8 +65,8 @@ The duration of a copy follows the amount of data the engine writes into the new
 documents times the time per document.
 
 As an example: on a development machine with OpenSearch 2, a 1 GB heap and documents of 63 fields and about 6 KB, a
-copy took about 1.2 ms per document, about 2 minutes for 100,000 documents and about 6 minutes for 300,000. At that
-rate, 3 million documents take about one hour and 10 million about 3.3 hours. Your cluster can be faster or slower:
+copy took about 1.5 ms per document, about 2.5 minutes for 100,000 documents. At that rate, 3 million documents take
+about 75 minutes and 10 million about 4 hours. Your cluster can be faster or slower:
 more CPU and heap speed it up, larger documents, replicas and concurrent load slow it down. Measure on a staging
 system with production-like data, for example by timing `deployment:reindex` after deploying a new field in a large
 class (with the workers stopped, see [Deployment Procedure](#deployment-procedure)), or by reading
@@ -80,9 +80,9 @@ indices.
 
 ### Rebuild Time
 
-Estimate the rebuild as the number of elements divided by the indexing rate per worker times the number of workers.
-On the development machine above, one worker indexed about 300 documents per second, so 10 million objects take about
-9 hours with one worker. The rate depends on the class (relations, calculated values in `live` mode, related elements)
+Estimate the rebuild as the number of elements divided by the indexing rate of all workers together. On the
+development machine above, five workers indexed about 350 documents per second, so 10 million objects take about
+8 hours; more workers only help as long as the database and the engine keep up. The rate depends on the class (relations, calculated values in `live` mode, related elements)
 and on the database. While the rebuild runs, the index queue table holds one entry per element.
 
 A class save with a mapping change and `deployment:reindex` with a mapping change queue the rebuild of all objects of
@@ -96,9 +96,12 @@ time when several workers handle class messages (for example after `classes-rebu
 when a console command and a worker copy different indices. Indices left behind by aborted copies take space until
 they are removed (see [Housekeeping](#housekeeping)).
 
-When a node passes the engine's flood-stage disk watermark, the engine blocks writes to the indices on that node. This
-includes the live indices the messenger workers write to.
-<!-- VERIFY: flood-stage watermark behavior and default (95%) on OpenSearch 2 and Elasticsearch 8 during a copy; effect on index queue batches -->
+When a node passes the engine's flood-stage disk watermark (`cluster.routing.allocation.disk.watermark.flood_stage`,
+default 95% on OpenSearch 2 and Elasticsearch 8), the engine blocks writes to every index with a shard on that node,
+including the live indices the messenger workers write to. Elasticsearch also limits the threshold by a maximum
+headroom, and OpenSearch doesn't apply the watermarks on a single data node by default
+(`enable_for_single_data_node: false`); a full disk then fails the writes directly. See the disk-based shard
+allocation settings of your engine.
 
 ### Shards, Replicas and Index Settings
 
@@ -128,14 +131,14 @@ copy attempt. Set the budget from your estimate with a margin:
 max_polls >= documents × seconds per document ÷ poll_interval × 2
 ```
 
-Example: 10 million documents at 1.2 ms each take 12,000 seconds; with `poll_interval: 5` that is 2,400 polls, doubled
-4,800 polls (about 6.7 hours):
+Example: 10 million documents at 1.5 ms each take 15,000 seconds; with `poll_interval: 5` that is 3,000 polls, doubled
+6,000 polls (about 8.3 hours):
 
 ```yaml
 pimcore_generic_data_index:
     index_service:
         reindex_settings:
-            max_polls: 4800
+            max_polls: 6000
             poll_interval: 5
 ```
 
@@ -184,20 +187,24 @@ framework:
                 options:
                     redeliver_timeout: 28800
 ```
-<!-- VERIFY: options set in the application config are merged into the bundle's transport definition (DSN from %pimcore.messenger.transport_dsn_prefix% kept); a message handled longer than redeliver_timeout is picked up by a second worker -->
+
+Options set in the application config are merged into the bundle's transport definition; its DSN and failure transport
+stay as they are.
 
 ```bash
 bin/console messenger:consume pimcore_generic_data_index_queue scheduler_generic_data_index --keepalive
 ```
-<!-- VERIFY: minimum Symfony version for --keepalive with the Doctrine transport; SIGALRM every 5 s may cut the sleep() between task polls short, so the effective copy budget may be shorter than max_polls × poll_interval -->
+
+`--keepalive` needs the `pcntl` PHP extension; it renews the message every 5 seconds by default and doesn't shorten
+the copy time budget.
 
 Other transports configured through `PIMCORE_MESSENGER_TRANSPORT_DSN_PREFIX` have their own redelivery settings.
 
 **Retries.** The bundle sets no retry strategy, so Symfony's default applies: 3 retries after about 1, 2 and 4
 seconds, then the message goes to `pimcore_generic_data_index_failed`. A copy that ran out of its budget is retried
 from the start, each time with the full budget: one class save can copy the same index up to four times. A retry
-strategy set on the transport applies to all messages of the bundle, including index queue batches.
-<!-- VERIFY: retry_strategy set for pimcore_generic_data_index_queue in the application config overrides the default -->
+strategy set on the transport in the application config replaces the default and applies to all messages of the
+bundle, including index queue batches.
 
 **Dedicated worker for copies.** To keep copies away from the index queue workers, route the class mapping and
 language messages to a transport of their own and run one worker for it:
@@ -215,7 +222,9 @@ framework:
             Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateClassMappingMessage: pimcore_generic_data_index_mapping
             Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateLanguageSettingsMessage: pimcore_generic_data_index_mapping
 ```
-<!-- VERIFY: the application routing replaces the bundle's routing for these two messages (Symfony uses performNoDeepMerging for routing senders; confirm the load order of the bundle's config/pimcore/messenger.yaml) -->
+
+The bundle's configuration is loaded before the application's, so a route in the application config replaces the
+bundle's route for that message; the other messages stay on `pimcore_generic_data_index_queue`.
 
 ```bash
 bin/console messenger:consume pimcore_generic_data_index_mapping
