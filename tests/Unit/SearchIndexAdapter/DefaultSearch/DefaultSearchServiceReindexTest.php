@@ -620,6 +620,53 @@ final class DefaultSearchServiceReindexTest extends Unit
         $this->assertSame(0, $client->reIndexCalls, 'No documents may be copied into an index that was not created');
     }
 
+    /**
+     * The engine reports a cancelled task as completed, without an error and without failures; only
+     * response.canceled says so. A second reindex of the same index cancels the running task as a leftover and
+     * then writes into the same new index; an operator can cancel it through the tasks API. Either way the
+     * incomplete index must not become live, and it must not be deleted under the reindex that now owns it.
+     */
+    public function testReindexFailsWithoutAliasSwitchWhenTaskWasCancelled(): void
+    {
+        $deletedIndices = [];
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub(new ReindexTestTasksStub([
+                [
+                    'completed' => true,
+                    'response' => [
+                        'timed_out' => false,
+                        'total' => 5000,
+                        'created' => 500,
+                        'canceled' => 'by user request',
+                        'failures' => [],
+                    ],
+                ],
+            ])),
+            taskId: 'node:1',
+            withAliasSwitchSupport: true,
+            onDeleteIndex: static function (array $params) use (&$deletedIndices): array {
+                $deletedIndices[] = $params['index'];
+
+                return [];
+            },
+        );
+
+        try {
+            $this->createService(client: $client)->reindex('test_index', []);
+            $this->fail('Expected ReindexFailedException');
+        } catch (ReindexFailedException $e) {
+            $this->assertStringContainsString('Reindex task node:1 was cancelled: by user request', $e->getMessage());
+        }
+
+        $this->assertSame(0, $client->aliasSwitchCalls, 'The alias must stay on the complete old index');
+        $this->assertSame(
+            1,
+            $this->countDeletes($deletedIndices, 'test_index-even'),
+            'Only the delete before the copy: the cancelled copy\'s index may belong to another reindex by now'
+        );
+        $this->assertSame(0, $this->countDeletes($deletedIndices, 'test_index-odd'), 'The old index must be kept');
+    }
+
     // -------------------------------------------------------------------------
     // Happy path: clean completion on first poll
     // -------------------------------------------------------------------------
@@ -780,6 +827,8 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
 
     public int $reIndexCalls = 0;
 
+    public int $aliasSwitchCalls = 0;
+
     public ?Exception $createIndexException = null;
 
     public function __construct(
@@ -816,6 +865,8 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
 
     public function updateIndexAliases(array $_params): array
     {
+        $this->aliasSwitchCalls++;
+
         return $this->withAliasSwitchSupport ? ['acknowledged' => true] : [];
     }
 
