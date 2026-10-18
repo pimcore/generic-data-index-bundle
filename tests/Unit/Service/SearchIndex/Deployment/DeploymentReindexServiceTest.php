@@ -310,6 +310,7 @@ final class DeploymentReindexServiceTest extends Unit
         $diff = new MappingDiff([
             new MappingFieldChange(['standard_fields', 'price'], 'text', 'float', MappingFieldChangeAction::STRIP),
             new MappingFieldChange(['standard_fields', 'count'], 'long', 'text', MappingFieldChangeAction::KEEP),
+            new MappingFieldChange(['standard_fields', 'qty'], 'float', 'long', MappingFieldChangeAction::KEEP, true),
             new MappingFieldChange(['system_fields', 'id'], 'long', 'integer', MappingFieldChangeAction::PROTECT),
         ]);
         $handler = $this->makeEmpty(IndexHandlerInterface::class, ['getMappingDiff' => $diff]);
@@ -321,7 +322,11 @@ final class DeploymentReindexServiceTest extends Unit
         $reasons = $service->plan(IndexStateTarget::forScope(DeploymentReindexScope::ASSETS))->getReasons();
 
         $this->assertContains('fields stripped in the copy: standard_fields.price', $reasons);
-        $this->assertContains('fields kept in the copy: standard_fields.count', $reasons);
+        $this->assertContains('fields kept in the copy: standard_fields.count, standard_fields.qty', $reasons);
+        $this->assertContains(
+            'float fields kept as long, the rebuild writes their exact values: standard_fields.qty',
+            $reasons
+        );
         $this->assertContains(
             'system fields copied as they are, the index is recreated if their values do not fit: system_fields.id',
             $reasons

@@ -553,15 +553,49 @@ final class ShapeTransitionTest extends Unit
         $this->assertTrue($result->isSuccessful());
         $this->assertSame([], $result->getStrippedPaths());
         $this->assertSame([self::FIELD_PATH], $result->getKeptPaths());
+        $this->assertSame([self::FIELD_PATH], $result->getRebuildPaths(), 'Float to long always asks for the rebuild');
         $this->assertCopiedIntoOtherIndex();
         foreach ($this->getSources() as $id => $source) {
             $this->assertSame(1000 * (int) $id, $this->field($source));
         }
+        // The copy is submitted without refresh; make its documents searchable before counting.
+        $this->getClient()->refreshIndex(['index' => $this->alias]);
         $matches = $this->getClient()->count([
             'index' => $this->alias,
             'body' => ['query' => ['term' => [self::FIELD_PATH => 2000]]],
         ]);
         $this->assertSame(1, (int) ($matches['count'] ?? 0), 'An exact-match filter on the long field finds the value');
+    }
+
+    /**
+     * S56: a float field can also hold fractional values (quantity value ranges, custom fields). The engine
+     * truncates them in a long field without a parsing failure, so no retry catches it. The field is kept, the
+     * stored documents are unchanged, and the result asks for the rebuild that writes the exact values.
+     */
+    public function testFractionalFloatValuesKeptAsLongAskForTheRebuild(): void
+    {
+        $mapping = static fn (string $type): array => [
+            self::CLASS_FIELDS => ['properties' => [self::FIELD => ['type' => $type]]],
+            self::OTHER_FIELD => ['type' => 'keyword'],
+        ];
+        $this->createAliasWithDocuments(
+            $mapping('float'),
+            static fn (string $id): array => [
+                self::CLASS_FIELDS => [self::FIELD => (int) $id + 0.5],
+                self::OTHER_FIELD => self::OTHER_VALUE,
+            ]
+        );
+
+        $result = $this->copy($mapping('long'));
+
+        $this->assertTrue($result->isSuccessful(), 'The engine accepts fractional values in a long field');
+        $this->assertSame([], $result->getStrippedPaths());
+        $this->assertSame([self::FIELD_PATH], $result->getKeptPaths());
+        $this->assertSame([self::FIELD_PATH], $result->getRebuildPaths());
+        $this->assertCopiedIntoOtherIndex();
+        foreach ($this->getSources() as $id => $source) {
+            $this->assertSame((int) $id + 0.5, $this->field($source), 'The stored document keeps the exact value');
+        }
     }
 
     /**

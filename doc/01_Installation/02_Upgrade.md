@@ -17,11 +17,13 @@ description: Version-specific upgrade instructions and breaking changes for the 
   rate. See the [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
 - [Indexing] Upgrading from a version before 2026.2.8: the numeric mapping change of 2026.2.8 (`float` to `double`, or
   `long` for integer fields) is applied by the odd/even copy as well. Both keep their values, so the indices stay
-  complete. Typed `CalculatedValue` fields of 2026.2.9 (text to a number, boolean or date) are left out of the copy
-  and filled again by the rebuild.
+  complete; a field kept as `long` also queues the rebuild from the database, which writes exact values for fields
+  that held fractional numbers. Typed `CalculatedValue` fields of 2026.2.9 (text to a number, boolean or date) are
+  left out of the copy and filled again by the rebuild.
 - [Commands] Behavior change: `generic-data-index:reindex` now adds all elements of an index to the index queue if its
-  copy left out fields or the index had to be created empty, and prints a notice per index. Before, it never filled
-  the index queue. Operators who relied on that need messenger workers running after the command.
+  copy left out fields, kept a `float` field as `long`, or the index had to be created empty, and prints a notice per
+  index. Before, it never filled the index queue. Operators who relied on that need messenger workers running after
+  the command.
 - [Commands] `generic-data-index:deployment:reindex` and its `--dry-run` list per index the fields stripped and the
   fields kept in the copy.
 - [Indexing] New methods on `@internal` interfaces, relevant only for custom implementations of them:

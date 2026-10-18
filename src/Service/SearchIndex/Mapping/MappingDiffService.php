@@ -45,8 +45,8 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
      * Numeric widening that keeps every value (old type => accepted new types).
      *
      * float to long: before 2026.2.8 the bundle mapped every numeric field as float; since then integer fields are
-     * mapped as long. A float in a live index therefore comes from that version, and for an integer field it holds
-     * whole numbers, which the engine copies into long unchanged. A field switched from decimal to integer later is
+     * mapped as long. For an integer field the float index holds whole numbers, which the engine copies into long
+     * unchanged, so an upgraded installation keeps its values. A field switched from decimal to integer later is
      * double, and double to long stays stripped.
      */
     private const NUMERIC_WIDENING = [
@@ -56,6 +56,15 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
         'long' => ['double'],
         'half_float' => ['float', 'double'],
         'float' => ['double', 'long'],
+    ];
+
+    /**
+     * Kept transitions that can still change a value: float fields also hold fractional values (quantity value
+     * ranges, custom fields), which the engine truncates in a long field without a parsing failure. The copy keeps
+     * them, and the rebuild from the database writes the exact values.
+     */
+    private const KEPT_WITH_REBUILD = [
+        'float' => ['long'],
     ];
 
     /**
@@ -248,8 +257,10 @@ final readonly class MappingDiffService implements MappingDiffServiceInterface
         $action = !$liveIsContainer && !$newIsContainer && $this->isSafeTransition($liveShape, $newShape)
             ? MappingFieldChangeAction::KEEP
             : MappingFieldChangeAction::STRIP;
+        $rebuildRequired = $action === MappingFieldChangeAction::KEEP
+            && in_array($newShape, self::KEPT_WITH_REBUILD[$liveShape] ?? [], true);
 
-        return [new MappingFieldChange($path, $liveShape, $newShape, $action)];
+        return [new MappingFieldChange($path, $liveShape, $newShape, $action, $rebuildRequired)];
     }
 
     /**

@@ -185,7 +185,11 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             // field type change no longer empties the live index; the rebuild from the database
             // fills them. Genuine errors (unreachable cluster, timeouts) are thrown and propagate.
             $copy = $this->getIndexCopyService()->copy($alias, $mappingProperties);
-            $result = new MappingUpdateResult($copy->getStrippedPaths(), $copy->getKeptPaths());
+            $result = new MappingUpdateResult(
+                strippedPaths: $copy->getStrippedPaths(),
+                keptPaths: $copy->getKeptPaths(),
+                rebuildPaths: $copy->getRebuildPaths()
+            );
 
             if (!$copy->isSuccessful()) {
                 // Last resort: the copy failed on fields that could not be left out. Recreate
@@ -195,7 +199,12 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                     $alias
                 ));
                 $this->doUpdateMappingFull($context, true, $mappingProperties, $depth);
-                $result = new MappingUpdateResult($copy->getStrippedPaths(), $copy->getKeptPaths(), true);
+                $result = new MappingUpdateResult(
+                    strippedPaths: $copy->getStrippedPaths(),
+                    keptPaths: $copy->getKeptPaths(),
+                    recreated: true,
+                    rebuildPaths: $copy->getRebuildPaths()
+                );
             }
         }
 

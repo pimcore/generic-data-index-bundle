@@ -110,6 +110,21 @@ final readonly class MappingDiff
     }
 
     /**
+     * @return string[] kept fields whose values only the rebuild from the database writes exactly
+     */
+    public function getRebuildPaths(): array
+    {
+        $paths = [];
+        foreach ($this->changes as $change) {
+            if ($change->getAction() === MappingFieldChangeAction::KEEP && $change->isRebuildRequired()) {
+                $paths[] = $change->getPath();
+            }
+        }
+
+        return $paths;
+    }
+
+    /**
      * @return string[] system fields whose values may not fit; copied as they are
      */
     public function getProtectedPaths(): array

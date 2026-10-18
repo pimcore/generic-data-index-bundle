@@ -76,9 +76,11 @@ shows the chain per trigger.
 Before the copy, the bundle compares the live mapping with the new mapping and sorts every changed field:
 
 - **Kept** if the old values still fit: any scalar type to text or keyword, numeric widening (integer to long or
-  double, long to double, float to double or long), and object to nested or back. Float only occurs in indices built
-  before 2026.2.8, which mapped every numeric field as float; an integer field holds whole numbers there. The field keeps its old value, for example
-  a number as text, until the rebuild from the database.
+  double, long to double, float to double or long), and object to nested or back. Float mostly occurs in indices built
+  before 2026.2.8, which mapped every numeric field as float; an integer field holds whole numbers there. The field
+  keeps its old value, for example a number as text, until the rebuild from the database. A float field can also hold
+  fractional values (quantity value ranges, custom fields), which the engine truncates in a long field without an
+  error; a copy that keeps a float field as long therefore always queues the rebuild, which writes the exact values.
 - **Stripped** in all other cases: the field is removed from every document in the copy and stays empty until the
   rebuild. This includes numeric to date, because the engine would read the number as epoch milliseconds, and double
   to long, which would truncate the decimals. Date, datetime and time fields differ only in their date format, so a
@@ -111,9 +113,9 @@ copy this means:
   recreated with `update:index -r`. If their values don't fit the re-mapped type (for example "2026-01-01" in one
   document and "abc" in the next), all removed class and custom fields are left out of the copy.
 
-Whenever fields were stripped, or the index had to be created empty, the bundle adds all elements of that index to the
-index queue, even if the trigger doesn't rebuild otherwise. Search keeps working during this; only the stripped fields
-are empty until the messenger workers have processed the queue.
+Whenever fields were stripped, a float field was kept as long, or the index had to be created empty, the bundle adds
+all elements of that index to the index queue, even if the trigger doesn't rebuild otherwise. Search keeps working
+during this; only the stripped fields are empty until the messenger workers have processed the queue.
 
 ### Flow of a Mapping Change
 
@@ -177,7 +179,7 @@ flowchart TB
 | `deployment:reindex --all` (or an index option) | — | Indices with a changed mapping or changed settings | Last resort | Indices with a changed mapping or data version | Yes |
 | `update:index` (`-c`, `-a`) | Always | If `PUT _mapping` is rejected | Last resort | Everything in scope | No |
 | `update:index -r` | — | — | Always | Everything in scope | Yes |
-| `generic-data-index:reindex` | — | Every class, asset and document index, forced | Last resort | Only for indices with stripped fields or a recreated index | Yes, without downtime |
+| `generic-data-index:reindex` | — | Every class, asset and document index, forced | Last resort | Only for indices with stripped fields, a float field kept as long, or a recreated index | Yes, without downtime |
 
 :::warning
 
@@ -191,8 +193,9 @@ Risk of odd/even copying:
 
 :::info
 
-`generic-data-index:reindex` queues the indices that need it. If its odd/even copy stripped fields, or the index had
-to be created empty, all elements of that index are added to the index queue and the command prints a notice. Run the
+`generic-data-index:reindex` queues the indices that need it. If its odd/even copy stripped fields or kept a float
+field as long, or the index had to be created empty, all elements of that index are added to the index queue and the
+command prints a notice. Run the
 messenger workers to fill them. Other indices are not queued.
 
 :::
