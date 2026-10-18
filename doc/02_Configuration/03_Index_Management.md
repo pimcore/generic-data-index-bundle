@@ -31,17 +31,21 @@ between `-odd` and `-even` suffix. For more details also see 'Updating index str
 
 ### Why `-odd` and `-even` Suffixes?
 
-The alternating suffixes enable zero-downtime reindexing (blue-green approach): when the
-index structure changes, the bundle builds a new index under the opposite suffix while
-the current index keeps serving reads and writes through the alias. Once the new index
-is fully populated, the alias is switched atomically and the old index is deleted.
+The alternating suffixes keep search working during reindexing (blue-green approach): when
+the index structure changes, the bundle builds a new index under the opposite suffix while
+the current index keeps serving reads through the alias. Writes processed during that time
+still go to the current index and are not part of the new one. Once the new index is fully
+populated, the alias is switched atomically and the old index is deleted. For large indices
+and deployments, see the [Operations Guide](./07_Operations_Guide.md).
 
 At rest there is only **one** concrete index — and therefore one set of shards — per
 asset index or class definition. Both suffixes exist side by side only transiently
 while a reindex is running. If `-odd` and `-even` indices for the same alias exist
 permanently, they are leftovers from a reindex that was interrupted (e.g. by a killed
 process) before its cleanup could run. Such orphaned indices are not used by the bundle
-and can safely be deleted, as long as they are not referenced by any alias.
+and can be deleted, as long as they are not referenced by any alias and no reindex task
+writes into them: while a reindex runs, its new index has no alias yet. See
+[Housekeeping](./07_Operations_Guide.md#housekeeping) in the Operations Guide.
 
 The default index settings use `number_of_shards: 1`, so the total shard count of the
 cluster scales with the number of class definitions — not with the suffix scheme.
@@ -125,7 +129,9 @@ for a reindex from the Pimcore database.
 
 ### Updating Index Structure for Data Indices
 
-Index mapping is updated automatically e.g. when adding system languages or new fields to the class definition. 
+Index mapping is updated automatically when a class definition is saved or the valid languages are changed in the
+system settings. Other mapping changes, for example to field collections, object bricks or languages in config files,
+need a command; see the [Reindexing Guide](../03_Reindexing/README.md).
 Sometimes it might be necessary to update the index structure manually.
 
 Do this with the reindex command. This command does native opensearch/elasticsearch re-indexing. So it does not 
@@ -156,6 +162,9 @@ pimcore_generic_data_index:
             poll_interval: 5
 ```
 
+To size `max_polls` from the document count, see
+[Copy Time Budget](./07_Operations_Guide.md#copy-time-budget) in the Operations Guide.
+
 Transient failures while polling (e.g. a temporarily unreachable or overloaded search cluster) are retried and do not
 abort a running reindex. If reindexing fails for a different reason — the cluster is unreachable, the task reports an
 error or times out server-side — the command fails instead of modifying the live index, and the reindex is retried on
@@ -168,8 +177,12 @@ By default, the messenger will retry failed messages 3 times and then send them 
 If you want to retry failed messages, you can use the following command:
 
 ```
-php bin/console messenger:failed:retry -vv
+php bin/console messenger:failed:retry --transport=pimcore_generic_data_index_failed -vv
 ```
+
+Pass `--transport`: the bundle sets its failure transport on its own transport, not as the global default. What to do
+with a failed message whose index copy ran out of time is described in the
+[Operations Guide](./07_Operations_Guide.md#when-a-copy-fails-times-out-or-is-cancelled).
 
 For the further commands please refer to the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html#saving-retrying-failed-messages).
 
@@ -178,30 +191,36 @@ For the further commands please refer to the [Symfony Messenger documentation](h
 You can configure different options to use with your indices. The available options can differ depending on which 
 engine you are using. Make sure to check the corresponding documentation, before using any options.
 
-See the `Maxium Item Limit` and `Total fields limit` section for examples.
+See the `Maximum Item limit` and `Total fields limit` sections for examples.
 
 ### Maximum Item limit
 
-A maximum of 10000 items can be retrieved and viewed, because of the maximum default item limit.
-To increase this limit, configuration can be adjusted as follows:
+The bundle sets the limit of retrievable items (`max_result_window`) to 10,000,000 by default
+(`config/pimcore/default_index_settings.yaml`). Change it with:
 
 ```yaml
 pimcore_generic_data_index:
     index_service:
         index_settings:
-            max_result_window: 20000
+            max_result_window: 20000000
 ```
 
 ### Total fields limit
 
-A maximum of 1000 fields can be used with your indces. 
-To increase this limit, configuration can be adjusted as follows:
+The bundle sets the field limit per index to 100,000 by default
+(`config/pimcore/default_index_settings.yaml`). Classification stores are a common reason to exceed it:
+each group is mapped with each of its keys (and, for a localized store, each language). Restricting the
+allowed groups of the classification store field in the class definition maps only those groups and
+reduces the field count. Otherwise, increase the limit with:
 
 ```yaml
 pimcore_generic_data_index:
     index_service:
         index_settings:
-            mapping.total_fields.limit: 20000
+            index:
+                mapping:
+                    total_fields:
+                        limit: 200000
 ```
 
 :::info
@@ -225,6 +244,8 @@ php bin/console generic-data-index:deployment:reindex
 ```
 
 This command will update the index structure for all data object classes which were created/updated since the last deployment and reindex all data objects for relevant classes.
+On large indices, stop the messenger workers before `pimcore:deployment:classes-rebuild` and follow the
+[Deployment Procedure](./07_Operations_Guide.md#deployment-procedure).
 
 ### Other Index Changes
 
@@ -255,7 +276,9 @@ mapping, run `generic-data-index:update:index` once; for `index_settings`, run `
 (it does not cover the data object folder index).
 
 A native reindex switches the alias to a copy of the index; index updates processed during the copy are lost.
-Run the command while the index queue workers are stopped.
+Run the command while the index queue workers are stopped. Stop them in the process manager before
+`pimcore:deployment:classes-rebuild`, so that no worker copies a class while the command copies it too, and start
+them afterwards for the rebuild. See the [Deployment Procedure](./07_Operations_Guide.md#deployment-procedure).
 
 Code changes that alter indexed values without changing the mapping (calculators, `UpdateIndexDataEvent`
 subscribers, custom adapters) are not detected: raise the matching version in the same change. In
