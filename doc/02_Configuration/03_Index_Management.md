@@ -16,7 +16,7 @@ For an overview of which changes require a reindex, which of them are handled au
 |---------|-------------|
 | `generic-data-index:update:index` | Update index mappings and queue all elements for reindex from the database |
 | `generic-data-index:update:index -r` | Delete and recreate indices, then queue all elements |
-| `generic-data-index:reindex` | Native search engine reindex (reorganizes data within existing indices, no database read) |
+| `generic-data-index:reindex` | Native search engine reindex (odd/even copy of every index; queues a rebuild from the database only for indices whose copy left out fields) |
 | `generic-data-index:deployment:reindex` | Update indices only for class definitions changed since the last deployment |
 | `generic-data-index:cleanup:unused-indices` | Delete managed indices not referenced by any alias (`-odd`/`-even` suffixes only) |
 
@@ -144,7 +144,9 @@ Without `-r`, the command only updates the index mapping and queues all items fo
 
 Index mappings update automatically when system languages or class definition fields change.
 For manual updates, run the reindex command. This performs a native OpenSearch/Elasticsearch
-reindex within the search indices (no database read):
+reindex within the search indices. It reads the database only for indices whose copy left out fields after a field
+type change: their elements are queued for a rebuild (see
+[Field Type Changes](../03_Reindexing/README.md#field-type-changes)).
 
 ```bash
 bin/console generic-data-index:reindex
@@ -286,8 +288,9 @@ bin/console generic-data-index:cleanup:unused-indices --min-age=3600
 > are sure no reindex (e.g. `generic-data-index:reindex` or
 > `generic-data-index:deployment:reindex`) is currently running or expected to take longer
 > than the chosen threshold. A class save that changes a field type also runs an odd/even
-> copy, in a messenger worker, and with the default `reindex_settings` a copy can take up to
-> 3 hours (3 attempts of up to one hour each). Run a `--dry-run` first to review what would be
+> copy, in a messenger worker. With the default `reindex_settings` each copy attempt can take up to
+> one hour; a copy that strips fields after parsing failures makes up to 3 attempts, and the messenger
+> retries of a worker can repeat a copy that timed out. Run a `--dry-run` first to review what would be
 > deleted.
 
 ### Other Index Changes

@@ -271,7 +271,7 @@ for as long as the rebuild from the database takes:
 
 How long the changed fields stay empty is the time the messenger workers need to process all objects of the class,
 not the time of the copy. It grows with the number of objects and shrinks with the number of workers (see
-[Index Queue Options](../02_Configuration/03_Index_Management.md#index-queue-options)). The rebuild is queued
+[Queue Options](../02_Configuration/03_Index_Management.md#queue-options)). The rebuild is queued
 automatically; run enough workers and check `generic-data-index:status` to see when the index queue has drained.
 Fields that are only found during the copy, for example values that fit the old mapping but not the new one, are
 stripped as well and named in the log; `--dry-run` cannot list them in advance.
