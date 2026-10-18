@@ -128,8 +128,9 @@ for a reindex from the Pimcore database.
 Index mapping is updated automatically e.g. when adding system languages or new fields to the class definition. 
 Sometimes it might be necessary to update the index structure manually.
 
-Do this with the reindex command. This command does native opensearch/elasticsearch re-indexing. So it does not 
-index data from the database but reindexes data within the search indices.
+Do this with the reindex command. This command does native opensearch/elasticsearch re-indexing within the search
+indices. It reads the database only for indices whose copy left out fields after a field type change: their elements
+are queued for a rebuild (see [Field Type Changes](../03_Reindexing/README.md#field-type-changes)).
 
 ```
 # updates index mapping with native reindexing
