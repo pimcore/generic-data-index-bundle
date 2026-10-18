@@ -332,10 +332,12 @@ Messenger: `bin/console messenger:stats` shows the messages waiting per transpor
 :::warning
 
 Don't cancel a running copy task of the bundle by hand (`POST _tasks/<task_id>/_cancel`), and don't let two copies of
-the same index overlap. The bundle checks a finished task for errors and failures only. A task cancelled from
-outside, by an operator or by a second copy of the same index (which cancels a running copy of its target before it
-starts), may be taken as a finished copy: the alias would switch to the incomplete index, and the old index would be
-deleted.
+the same index overlap. The engine reports a cancelled task as finished without errors, and versions without the fix
+for [#639](https://github.com/pimcore/platform-version/issues/639) take it as a complete copy: the alias switches to
+the incomplete index and the old index is deleted. When two copies of the same index overlap, the second one cancels
+the first (it removes running copies of its target before it starts), and the class index can disappear completely.
+With the fix, a cancelled copy fails and the alias stays on the complete index, but an overlapping copy still starts
+the first one over.
 
 Copies of the same index overlap when workers run during `classes-rebuild` and `deployment:reindex` (see
 [Deployment Procedure](#deployment-procedure)), when a message is redelivered after `redeliver_timeout`, or when a
@@ -345,7 +347,6 @@ To stop a copy, first stop the process that waits for it (the worker or the cons
 The next copy of the index removes the incomplete index.
 
 :::
-<!-- VERIFY: cancel bug, link issue - a cancelled _reindex task reports completed:true with response.canceled and no failures on OpenSearch 2 and Elasticsearch 8; overlapping copies of the same class (worker + deployment:reindex) -->
 
 ## Backups and Rollback
 
