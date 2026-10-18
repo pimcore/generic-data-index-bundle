@@ -56,13 +56,6 @@ final class ReindexItemsCommandTest extends Unit
                 ),
                 new IndexRebuild('assets', new MappingUpdateResult(recreated: true)),
                 new IndexRebuild('documents', new MappingUpdateResult(outcomeUnknown: true)),
-                new IndexRebuild(
-                    'Product',
-                    new MappingUpdateResult(
-                        keptPaths: ['standard_fields.count'],
-                        rebuildPaths: ['standard_fields.count']
-                    )
-                ),
             ]),
         ]);
 
@@ -77,10 +70,6 @@ final class ReindexItemsCommandTest extends Unit
         );
         $this->assertStringContainsString('assets: the index had to be created empty', $display);
         $this->assertStringContainsString('documents: the mapping was applied by a custom index handler', $display);
-        $this->assertStringContainsString(
-            'Product: float fields kept as long, the rebuild writes their exact values: standard_fields.count',
-            $display
-        );
         $this->assertStringContainsString('Run the messenger workers', $display);
     }
 

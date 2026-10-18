@@ -66,7 +66,6 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
         $diff = $this->diff($aliasName, $mappingProperties);
         $stripPaths = $this->keyed($diff->getStripPathSegments());
         $keptPaths = $diff->getKeptPaths();
-        $rebuildPaths = $diff->getRebuildPaths();
 
         if ($stripPaths !== [] || $keptPaths !== [] || $diff->getProtectedPaths() !== []) {
             $this->pimcoreGenericDataIndexLogger->info(
@@ -82,13 +81,7 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
                 array_values($stripPaths)
             );
             if ($outcome->getResult() === ReindexResult::SUCCESS) {
-                return new IndexCopyResult(
-                    ReindexResult::SUCCESS,
-                    array_keys($stripPaths),
-                    $keptPaths,
-                    $attempt,
-                    $rebuildPaths
-                );
+                return new IndexCopyResult(ReindexResult::SUCCESS, array_keys($stripPaths), $keptPaths, $attempt);
             }
 
             $failingPaths = $this->strippableOnly($this->keyed(
@@ -111,15 +104,13 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
             );
             $stripPaths += $newPaths;
             $keptPaths = $this->withoutStripped($keptPaths, array_keys($newPaths));
-            $rebuildPaths = $this->withoutStripped($rebuildPaths, array_keys($newPaths));
         }
 
         return new IndexCopyResult(
             ReindexResult::MAPPING_INCOMPATIBLE,
             array_keys($stripPaths),
             $keptPaths,
-            min($attempt, self::MAX_ATTEMPTS),
-            $rebuildPaths
+            min($attempt, self::MAX_ATTEMPTS)
         );
     }
 

@@ -46,6 +46,7 @@ interface IndexHandlerInterface
      * Applies the mapping through a copy into the other -odd/-even index. Fields whose old values
      * do not fit the new mapping are left out of the copy; the result says which, and whether the
      * index had to be created empty instead, so callers can queue the rebuild from the database.
+     * A handler that overrides reindexMapping() reports an unknown outcome, which requires the rebuild too.
      *
      * @throws Exception
      * @throws ReindexFailedException

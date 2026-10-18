@@ -117,44 +117,6 @@ final class IndexCopyServiceTest extends Unit
         );
     }
 
-    public function testAFloatFieldKeptAsLongIsReportedForTheRebuild(): void
-    {
-        $calls = [];
-        $service = $this->createService(
-            $this->liveMapping(['count' => ['type' => 'float'], 'size' => ['type' => 'float']]),
-            $calls,
-            [new ReindexOutcome(ReindexResult::SUCCESS)]
-        );
-
-        $result = $service->copy(self::ALIAS, $this->mapping([
-            'count' => ['type' => 'long'],
-            'size' => ['type' => 'double'],
-        ]));
-
-        $this->assertTrue($result->isSuccessful());
-        $this->assertSame(['standard_fields.count', 'standard_fields.size'], $result->getKeptPaths());
-        $this->assertSame(['standard_fields.count'], $result->getRebuildPaths());
-    }
-
-    public function testAFloatFieldStrippedByTheRetryIsNoLongerReportedForTheRebuild(): void
-    {
-        $calls = [];
-        $service = $this->createService(
-            $this->liveMapping(['count' => ['type' => 'float']]),
-            $calls,
-            [
-                new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['standard_fields', 'count']]),
-                new ReindexOutcome(ReindexResult::SUCCESS),
-            ]
-        );
-
-        $result = $service->copy(self::ALIAS, $this->mapping(['count' => ['type' => 'long']]));
-
-        $this->assertSame(['standard_fields.count'], $result->getStrippedPaths());
-        $this->assertSame([], $result->getKeptPaths());
-        $this->assertSame([], $result->getRebuildPaths());
-    }
-
     /**
      * The engine maps removed fields again from the first copied document; values that disagree
      * ("2026-01-01" and "abc") fail, one field per attempt. A failure on one removed field strips

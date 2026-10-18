@@ -28,7 +28,8 @@ interface ReindexServiceInterface
 
     /**
      * Same as {@see reindexAllIndices()}, and reports the indices that were queued for a rebuild
-     * because fields were left out of the copy or the index had to be created empty.
+     * because fields were left out of the copy, the index had to be created empty, or a custom index
+     * handler applied the mapping without reporting what it did.
      *
      * @throws Exception
      */

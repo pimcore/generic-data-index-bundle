@@ -53,13 +53,17 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
     ): ?MappingUpdateResult {
         try {
             $result = $this->reindexMapping($classDefinition, $skipIfClassNotChanged);
-            $this->changeIcon($classDefinition);
-
-            // Fields left out of the copy (or an index created empty) are only restored by the
-            // rebuild from the database, so the objects are queued even if the caller did not ask.
-            if ($result !== null && ($enqueueItems || $result->requiresRebuild())) {
-                $this->enqueueService->enqueueByClassDefinition($classDefinition);
+            if ($result !== null) {
+                // Fields left out of the copy (or an index created empty) are only restored by the
+                // rebuild from the database, so the objects are queued even if the caller did not ask.
+                // Queued before the checksum is stored and before the icon update: if either fails, the
+                // stored checksum would let every retry skip the class, and nothing would queue it again.
+                if ($enqueueItems || $result->requiresRebuild()) {
+                    $this->enqueueService->enqueueByClassDefinition($classDefinition);
+                }
+                $this->storeMappingCheckSum($classDefinition);
             }
+            $this->changeIcon($classDefinition);
 
             return $result;
         } catch (Exception $exception) {
@@ -149,20 +153,24 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
             'currentChecksum' => $currentCheckSum,
         ]);
 
-        $result = $this->dataObjectIndexHandler
+        return $this->dataObjectIndexHandler
             ->reindexMappingWithResult(
                 context: $classDefinition,
                 mappingProperties: $mappingProperties
             );
+    }
 
+    /**
+     * @throws JsonException
+     */
+    private function storeMappingCheckSum(ClassDefinition $classDefinition): void
+    {
         $this->settingsStoreService->storeClassMapping(
             classDefinitionId: $classDefinition->getId(),
             data: $this->dataObjectIndexHandler->getClassMappingCheckSum(
-                $mappingProperties
+                $this->dataObjectIndexHandler->getMappingProperties($classDefinition)
             )
         );
-
-        return $result;
     }
 
     /**

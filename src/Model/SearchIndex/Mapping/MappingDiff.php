@@ -33,6 +33,8 @@ final readonly class MappingDiff
     /**
      * @param MappingFieldChange[] $changes
      * @param string[][] $removedPathSegments fields of the live mapping the new mapping no longer has
+     *
+     * @throws InvalidArgumentException
      */
     public function __construct(array $changes, array $removedPathSegments = [])
     {
@@ -73,11 +75,6 @@ final readonly class MappingDiff
         return $this->changes === [];
     }
 
-    public function hasStripPaths(): bool
-    {
-        return $this->getStripPaths() !== [];
-    }
-
     /**
      * @return string[]
      */
@@ -110,22 +107,8 @@ final readonly class MappingDiff
     }
 
     /**
-     * @return string[] kept fields whose values only the rebuild from the database writes exactly
-     */
-    public function getRebuildPaths(): array
-    {
-        $paths = [];
-        foreach ($this->changes as $change) {
-            if ($change->getAction() === MappingFieldChangeAction::KEEP && $change->isRebuildRequired()) {
-                $paths[] = $change->getPath();
-            }
-        }
-
-        return $paths;
-    }
-
-    /**
-     * @return string[] system fields whose values may not fit; copied as they are
+     * @return string[] fields outside class and custom fields (system fields and dynamically mapped root fields)
+     *                  whose values may not fit; copied as they are
      */
     public function getProtectedPaths(): array
     {

@@ -16,7 +16,7 @@ For an overview of which changes require a reindex, which of them are handled au
 |---------|-------------|
 | `generic-data-index:update:index` | Update index mappings and queue all elements for reindex from the database |
 | `generic-data-index:update:index -r` | Delete and recreate indices, then queue all elements |
-| `generic-data-index:reindex` | Native search engine reindex (odd/even copy of every index; queues a rebuild from the database only for indices whose copy left out fields) |
+| `generic-data-index:reindex` | Native search engine reindex (odd/even copy of every index; queues a rebuild from the database only for indices whose copy left out fields, that had to be created empty, or whose mapping a custom index handler applied) |
 | `generic-data-index:deployment:reindex` | Update indices only for class definitions changed since the last deployment |
 | `generic-data-index:cleanup:unused-indices` | Delete managed indices not referenced by any alias (`-odd`/`-even` suffixes only) |
 
@@ -142,10 +142,10 @@ Without `-r`, the command only updates the index mapping and queues all items fo
 
 ### Updating Index Structure
 
-Index mappings update automatically when system languages or class definition fields change.
-For manual updates, run the reindex command. This performs a native OpenSearch/Elasticsearch
-reindex within the search indices. It reads the database only for indices whose copy left out fields after a field
-type change: their elements are queued for a rebuild (see
+Index mappings update automatically when system languages or class definition fields change. For manual updates, run the
+reindex command. This performs a native OpenSearch/Elasticsearch reindex within the search indices. It reads the
+database only for indices whose copy left out fields after a field type change, that had to be created empty, or whose
+mapping a custom index handler applied: their elements are queued for a rebuild (see
 [Field Type Changes](../03_Reindexing/README.md#field-type-changes)).
 
 ```bash
@@ -180,10 +180,10 @@ the next run.
 
 After a field type change, the copy keeps the changed fields whose old values still fit (for example a number copied
 into a text field) and leaves out the others, so the index is not recreated and the documents stay searchable; the
-left-out fields are empty until the rebuild from the database. The index is only recreated, as a last resort, when
-the copy fails and no further field can be left out. If fields were left out of the copy or the index had to be
-created empty, the command queues all elements of that index for a rebuild from the database and prints a notice per
-index. Run the messenger workers to fill these indices. See the
+left-out fields are empty until the rebuild from the database. The index is only recreated, as a last resort, when the
+copy fails and no further field can be left out. If fields were left out of the copy, the index had to be created empty,
+or a custom index handler applied the mapping, the command queues all elements of that index for a rebuild from the
+database and prints a notice per index. Run the messenger workers to fill these indices. See the
 [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
 
 ### Handling Failed Messages

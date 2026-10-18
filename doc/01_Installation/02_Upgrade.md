@@ -16,24 +16,25 @@ description: Version-specific upgrade instructions and breaking changes for the 
   2.5 minutes on a development machine with OpenSearch 2); the rebuild runs at the usual indexing rate. See the [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
 - [Indexing] Upgrading from a version before 2026.2.8: the numeric mapping change of 2026.2.8 (`float` to `double`, or
   `long` for integer fields) is applied by the odd/even copy as well. Both keep their values, so the indices stay
-  complete; a field kept as `long` also queues the rebuild from the database, which writes exact values for fields
-  that held fractional numbers. Typed `CalculatedValue` fields of 2026.2.9 (text to a number, boolean or date) are
-  left out of the copy and filled again by the rebuild.
+  complete. Typed `CalculatedValue` fields of 2026.2.9 (text to a number, boolean or date) are left out of the copy
+  and filled again by the rebuild.
 - [Commands] Behavior change: `generic-data-index:reindex` now adds all elements of an index to the index queue if its
-  copy left out fields, kept a `float` field as `long`, or the index had to be created empty, and prints a notice per
-  index. Before, it never filled the index queue. Operators who relied on that need messenger workers running after
-  the command.
-- [Commands] `generic-data-index:deployment:reindex` and its `--dry-run` list per index the fields stripped and the
-  fields kept in the copy.
+  copy left out fields, the index had to be created empty, or a custom index handler applied the mapping, and prints a
+  notice per index. Before, it never filled the index queue. Operators who relied on that need messenger workers running
+  after the command.
+- [Commands] `generic-data-index:deployment:reindex` and its `--dry-run` list per index the fields stripped, the fields
+  kept and the fields outside class and custom fields that are copied as they are.
 - [Indexing] New methods on `@internal` interfaces, relevant only for custom implementations of them:
   `IndexHandlerInterface::reindexMappingWithResult()` and `getMappingDiff()`,
   `SearchIndexServiceInterface::reindexWithoutFields()`, `ReindexServiceInterface::reindexAllIndicesWithReport()`,
   `ClassDefinitionReindexServiceInterface::reindexClassDefinitionMapping()`.
-- [Deprecation] `AbstractIndexHandler` has a new optional constructor argument `IndexCopyServiceInterface`.
-  Subclasses that call the parent constructor without it keep working and trigger a deprecation; the argument will
-  be required in the next major version. `reindexMapping()` keeps its signature. A subclass that overrides it is
-  still called by the bundle; because the bundle cannot tell what the override did, it then queues a rebuild of the
-  index from the database. Override `reindexMappingWithResult()` to report stripped fields instead.
+- [Deprecation] `AbstractIndexHandler` has a new optional constructor argument `IndexCopyServiceInterface`. Subclasses
+  that call the parent constructor without it keep working and trigger a deprecation; the argument will be required in
+  the next major version. `reindexMapping()` keeps its signature. A subclass that overrides it is still called by the
+  bundle; because the bundle cannot tell what the override did, it then queues a rebuild of the index from the database.
+  Project code that calls `reindexMapping()` directly gets the copy with stripped fields too, but nothing is queued:
+  after a field type change, queue the elements of the index (for example with
+  `generic-data-index:update:index -c <class id>`), or the stripped fields stay empty.
 - [Commands] `generic-data-index:deployment:reindex` has new opt-in options (`--all`, `--assets`, `--dry-run`, …) that
   also cover the folder, asset and document indices and `index_settings`. Without options nothing changes. See
   [Deployment and Index Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).

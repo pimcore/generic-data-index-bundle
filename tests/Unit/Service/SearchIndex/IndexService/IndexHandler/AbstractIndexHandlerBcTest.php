@@ -167,6 +167,54 @@ final class AbstractIndexHandlerBcTest extends Unit
     }
 
     /**
+     * A subclass may keep its old reindexMapping() and let it delegate to the new method. The bundle calls the
+     * override, the override calls back, and the copy runs once instead of calling the override again forever.
+     */
+    public function testAnOverrideDelegatingToTheNewMethodCopiesOnceWithoutRecursion(): void
+    {
+        $search = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => true,
+            'getMapping' => ['test_alias-odd' => ['mappings' => ['properties' => [
+                'standard_fields' => ['properties' => ['price' => ['type' => 'text']]],
+            ]]]],
+            'reindexWithoutFields' => Expected::once(new ReindexOutcome(ReindexResult::SUCCESS)),
+        ]);
+        $config = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $events = $this->makeEmpty(EventDispatcherInterface::class);
+        $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
+        $copy = new IndexCopyService($search, new MappingDiffService(), new NullLogger());
+
+        $handler = new class($search, $config, $events, $mapping, $copy) extends AbstractIndexHandler {
+            public int $calls = 0;
+
+            public function reindexMapping(
+                ?ClassDefinition $context = null,
+                ?array $mappingProperties = null
+            ): void {
+                $this->calls++;
+                $this->reindexMappingWithResult($context, $mappingProperties);
+            }
+
+            protected function extractMappingProperties(mixed $context = null): array
+            {
+                return ['standard_fields' => ['properties' => ['price' => ['type' => 'float']]]];
+            }
+
+            protected function getAliasIndexName(mixed $context = null): string
+            {
+                return 'test_alias';
+            }
+        };
+        $handler->setLogger(new NullLogger());
+
+        $result = $handler->reindexMappingWithResult();
+
+        $this->assertSame(1, $handler->calls);
+        $this->assertTrue($result->isOutcomeUnknown());
+        $this->assertTrue($result->requiresRebuild());
+    }
+
+    /**
      * A subclass as written for the released version: it is constructed with the four original arguments.
      */
     private function createLegacyHandler(SearchIndexServiceInterface $search): AbstractIndexHandler

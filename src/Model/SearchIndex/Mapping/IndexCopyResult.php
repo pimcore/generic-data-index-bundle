@@ -26,14 +26,14 @@ final readonly class IndexCopyResult
     /**
      * @param string[] $strippedPaths fields removed in the copy (dotted paths)
      * @param string[] $keptPaths changed fields whose old values were kept (dotted paths)
-     * @param string[] $rebuildPaths kept fields whose values only the rebuild from the database writes exactly
+     *
+     * @throws InvalidArgumentException
      */
     public function __construct(
         private ReindexResult $result,
         private array $strippedPaths = [],
         private array $keptPaths = [],
         private int $attempts = 1,
-        private array $rebuildPaths = [],
     ) {
         if ($attempts < 1) {
             throw new InvalidArgumentException('A copy result needs at least one attempt.');
@@ -69,13 +69,5 @@ final readonly class IndexCopyResult
     public function getAttempts(): int
     {
         return $this->attempts;
-    }
-
-    /**
-     * @return string[]
-     */
-    public function getRebuildPaths(): array
-    {
-        return $this->rebuildPaths;
     }
 }

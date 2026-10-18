@@ -25,14 +25,12 @@ final readonly class MappingUpdateResult
      * @param string[] $keptPaths changed fields whose old values were kept in the copy (dotted paths)
      * @param bool $recreated the index was created empty (missing index, or the copy was impossible)
      * @param bool $outcomeUnknown a custom handler applied the mapping without reporting what it did
-     * @param string[] $rebuildPaths kept fields whose values only the rebuild from the database writes exactly
      */
     public function __construct(
         private array $strippedPaths = [],
         private array $keptPaths = [],
         private bool $recreated = false,
         private bool $outcomeUnknown = false,
-        private array $rebuildPaths = [],
     ) {
     }
 
@@ -63,19 +61,11 @@ final readonly class MappingUpdateResult
     }
 
     /**
-     * @return string[]
-     */
-    public function getRebuildPaths(): array
-    {
-        return $this->rebuildPaths;
-    }
-
-    /**
-     * Whether the index holds documents with missing or inexact values that only a rebuild from
-     * the database restores, independent of whether the caller planned a rebuild anyway.
+     * Whether the index holds documents with missing values that only a rebuild from the
+     * database restores, independent of whether the caller planned a rebuild anyway.
      */
     public function requiresRebuild(): bool
     {
-        return $this->recreated || $this->outcomeUnknown || $this->strippedPaths !== [] || $this->rebuildPaths !== [];
+        return $this->recreated || $this->outcomeUnknown || $this->strippedPaths !== [];
     }
 }

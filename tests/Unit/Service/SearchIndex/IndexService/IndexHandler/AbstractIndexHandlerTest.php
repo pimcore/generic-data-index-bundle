@@ -273,34 +273,6 @@ final class AbstractIndexHandlerTest extends Unit
         $this->assertTrue($result->requiresRebuild());
     }
 
-    /**
-     * A float field kept as long may hold fractional values that the engine truncated; nothing is stripped, but
-     * only the rebuild writes the exact values, so every caller queues it (generic-data-index:reindex too).
-     */
-    public function testReindexMappingAsksForTheRebuildWhenAFloatFieldIsKeptAsLong(): void
-    {
-        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
-            'existsAlias' => true,
-            'getMapping' => [self::ALIAS_NAME . '-odd' => ['mappings' => ['properties' => [
-                'standard_fields' => ['properties' => ['count' => ['type' => 'float']]],
-            ]]]],
-            'reindexWithoutFields' => Expected::once(new ReindexOutcome(ReindexResult::SUCCESS)),
-            'createIndex' => Expected::never(),
-        ]);
-        $handler = $this->createHandlerWithService(
-            $searchIndexService,
-            ['standard_fields' => ['properties' => ['count' => ['type' => 'long']]]]
-        );
-        $handler->setLogger(new NullLogger());
-
-        $result = $handler->reindexMappingWithResult();
-
-        $this->assertSame([], $result->getStrippedPaths());
-        $this->assertSame(['standard_fields.count'], $result->getKeptPaths());
-        $this->assertSame(['standard_fields.count'], $result->getRebuildPaths());
-        $this->assertTrue($result->requiresRebuild());
-    }
-
     public function testReindexMappingReportsTheRecreationAsLastResort(): void
     {
         $fluent = $this->makeEmpty(SearchIndexServiceInterface::class, ['addAlias' => []]);

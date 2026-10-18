@@ -34,7 +34,8 @@ interface ClassDefinitionReindexServiceInterface
     /**
      * Same as {@see reindexClassDefinition()}, returning what applying the mapping did, or null
      * when the class was skipped because its mapping is unchanged. Objects are queued when
-     * $enqueueItems is set, and always when fields were left out of the copy.
+     * $enqueueItems is set, and always when the result requires a rebuild: fields were left out of
+     * the copy, the index had to be created empty, or a custom index handler applied the mapping.
      *
      * @throws ClassDefinitionIndexUpdateFailedException
      */

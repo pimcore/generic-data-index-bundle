@@ -27,7 +27,7 @@ the general term "reindex". `<id>` stands for a class definition ID.
 | Change | Reindex needed? | Automatic? | Command if manual |
 | --- | --- | --- | --- |
 | Field added, removed or renamed in a class (admin UI or Studio) | Yes: mapping | Yes | None |
-| Field type changed to one with a different index type (e.g. input to numeric) | Yes: mapping; no index recreation, the changed field is empty (or keeps its old value) until the rebuild | Yes | None |
+| Field type changed to one with a different index type (e.g. input to numeric) | Yes: mapping; the index is copied, not recreated (recreation only as a last resort), the changed field is empty (or keeps its old value) until the rebuild | Yes | None |
 | Field type changed within the same index type (e.g. input to textarea) | No | Not needed | None |
 | Numeric, numeric range or quantity value: integer option toggled (`long` ↔ `double`) | Yes: mapping | Yes | None |
 | Allowed field collection or object brick types changed in a class field | Yes: mapping | Yes | None |
@@ -75,23 +75,24 @@ shows the chain per trigger.
 
 Before the copy, the bundle compares the live mapping with the new mapping and sorts every changed field:
 
-- **Kept** if the old values still fit: any scalar type to text or keyword, numeric widening (integer to long or
-  double, long to double, float to double or long), and object to nested or back. Float mostly occurs in indices built
-  before 2026.2.8, which mapped every numeric field as float; an integer field holds whole numbers there. The field
-  keeps its old value, for example a number as text, until the rebuild from the database. A float field can also hold
-  fractional values (quantity value ranges, custom fields), which the engine truncates in a long field without an
-  error; a copy that keeps a float field as long therefore always queues the rebuild, which writes the exact values.
+- **Kept** if the old values still fit: any scalar type to text or keyword, numeric widening (integer to long or double,
+  long to double, float to double or long), and object to nested or back. Float mostly occurs in indices built before
+  2026.2.8, which mapped every numeric field as float; an integer field holds whole numbers there. Fractional values of
+  other float fields (quantity value ranges, custom fields) are truncated in a long field by the engine, in the copy as
+  in any later indexing; the stored documents keep the exact values. The field keeps its old value, for example a number
+  as text, until the rebuild from the database.
 - **Stripped** in all other cases: the field is removed from every document in the copy and stays empty until the
   rebuild. This includes numeric to date, because the engine would read the number as epoch milliseconds, and double
   to long, which would truncate the decimals. Date, datetime and time fields differ only in their date format, so a
   change between them, or switching "respect timezone" on or off, strips the field unless the new format still lists
   every old format.
 
-Class fields and custom fields (added by `ExtractMappingEvent` and `UpdateIndexDataEvent` subscribers) can be
-stripped; the rebuild from the database fills both again. System fields are never stripped, because a document
-without its id or class breaks search results: a changed system field is copied as it is, and if its old values don't
-fit the new type, the copy fails and the index is recreated as a last resort. `--dry-run` lists such fields as
-"system fields copied as they are".
+Class fields and custom fields (added by `ExtractMappingEvent` and `UpdateIndexDataEvent` subscribers) can be stripped;
+the rebuild from the database fills both again. System fields are never stripped, because a document without its id or
+class breaks search results: a changed system field is copied as it is, and if its old values don't fit the new type,
+the copy fails and the index is recreated as a last resort. The same applies to fields outside the class and custom
+fields, such as dynamically mapped root fields. `--dry-run` lists such fields as "fields outside class and custom fields
+copied as they are".
 
 If the engine still reports a parsing failure for a field, the bundle adds that field to the stripped fields and
 retries the copy, up to 3 attempts. Only if the copy still fails after that is the index recreated. Every attempt is
@@ -107,15 +108,15 @@ copy this means:
 - Numbers copied into a `keyword` field and numeric strings copied into a number field are accepted.
 - Decimals copied into an integer field are accepted but truncated, unless the field is a changed field: a double to
   long change strips the field instead.
-- Text copied into a number, date or boolean field doesn't fit: a class or custom field is stripped, and the index is
-  not recreated.
+- Text copied into a number, date or boolean field doesn't fit: a class or custom field is stripped instead of the index
+  being recreated.
 - Fields that are no longer in the mapping are re-mapped dynamically and stay in the mapping until the index is
   recreated with `update:index -r`. If their values don't fit the re-mapped type (for example "2026-01-01" in one
   document and "abc" in the next), all removed class and custom fields are left out of the copy.
 
-Whenever fields were stripped, a float field was kept as long, or the index had to be created empty, the bundle adds
-all elements of that index to the index queue, even if the trigger doesn't rebuild otherwise. Search keeps working
-during this; only the stripped fields are empty until the messenger workers have processed the queue.
+Whenever fields were stripped, or the index had to be created empty, the bundle adds all elements of that index to the
+index queue, even if the trigger doesn't rebuild otherwise. Search keeps working during this; only the stripped fields
+are empty until the messenger workers have processed the queue.
 
 ### Flow of a Mapping Change
 
@@ -179,7 +180,7 @@ flowchart TB
 | `deployment:reindex --all` (or an index option) | — | Indices with a changed mapping or changed settings | Last resort | Indices with a changed mapping or data version | Yes |
 | `update:index` (`-c`, `-a`) | Always | If `PUT _mapping` is rejected | Last resort | Everything in scope | No |
 | `update:index -r` | — | — | Always | Everything in scope | Yes |
-| `generic-data-index:reindex` | — | Every class, asset and document index, forced | Last resort | Only for indices with stripped fields, a float field kept as long, or a recreated index | Yes, without downtime |
+| `generic-data-index:reindex` | — | Every class, asset and document index, forced | Last resort | Only for indices with stripped fields or a recreated index | Yes, without downtime |
 
 :::warning
 
@@ -193,9 +194,8 @@ Risk of odd/even copying:
 
 :::info
 
-`generic-data-index:reindex` queues the indices that need it. If its odd/even copy stripped fields or kept a float
-field as long, or the index had to be created empty, all elements of that index are added to the index queue and the
-command prints a notice. Run the
+`generic-data-index:reindex` queues the indices that need it. If its odd/even copy stripped fields, or the index had
+to be created empty, all elements of that index are added to the index queue and the command prints a notice. Run the
 messenger workers to fill them. Other indices are not queued.
 
 :::
@@ -203,9 +203,9 @@ messenger workers to fill them. Other indices are not queued.
 ## Class Definition Changes
 
 Saving a class definition reindexes only when the class's **mapping checksum** changes. The bundle then runs an odd/even
-copy of the class index, followed by a rebuild from the database of all its objects. The index is not recreated when
-a field type changes: fields whose old values still fit are kept, all other changed fields are stripped from the copy
-(see [How Reindexing Works](#how-reindexing-works)).
+copy of the class index, followed by a rebuild from the database of all its objects. A field type change doesn't
+recreate the index: fields whose old values still fit are kept, all other changed fields are stripped from the copy, and
+the index is only recreated as a last resort (see [How Reindexing Works](#how-reindexing-works)).
 
 Changes that alter the mapping (automatic reindex on save):
 
@@ -526,15 +526,16 @@ processed, so use it only for a broken index or to remove fields that are no lon
 
 ### `generic-data-index:reindex`
 
-Runs a forced odd/even copy of every class, asset and document index (not the folder index) with the current
-mapping and `index_settings`. It adds elements to the index queue only for indices whose copy stripped fields or that
-had to be created empty. For each such index it prints a notice with the class name (or `assets`, `documents`), for
-example "Car: fields left out of the copy: standard_fields.price; all its elements were queued for a rebuild from the
-database." or "Car: the index had to be created empty; ...", and ends with "Run the messenger workers to fill these
-indices." Without stripped fields it queues nothing; use it mainly to apply changed `index_settings`, and read the
-warning in [How Reindexing Works](#how-reindexing-works) first. The engine runs each `_reindex` as a background
-task that the bundle polls according to `reindex_settings` (default: up to 720 polls every 5 seconds, so up to one
-hour per copy attempt; a copy with stripped fields can take up to 3 attempts).
+Runs a forced odd/even copy of every class, asset and document index (not the folder index) with the current mapping and
+`index_settings`. It adds elements to the index queue only for indices whose copy stripped fields, that had to be
+created empty, or whose mapping a custom index handler applied (the bundle can't tell what it did). For each such index
+it prints a notice with the class name (or `assets`, `documents`), for example "Car: fields left out of the copy:
+standard_fields.price; all its elements were queued for a rebuild from the database." or "Car: the index had to be
+created empty; ...", and ends with "Run the messenger workers to fill these indices." Otherwise it queues nothing; use
+it mainly to apply changed `index_settings`, and read the warning in [How Reindexing Works](#how-reindexing-works)
+first. The engine runs each `_reindex` as a background task that the bundle polls according to `reindex_settings`
+(default: up to 720 polls every 5 seconds, so up to one hour per copy attempt; a copy with stripped fields can take up
+to 3 attempts).
 
 ### `generic-data-index:status`
 

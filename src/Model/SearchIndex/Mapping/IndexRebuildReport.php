@@ -15,7 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping;
 
 /**
  * Indices that were queued for a rebuild from the database because applying the mapping left
- * fields out of the copy or created the index empty.
+ * fields out of the copy, created the index empty, or ran in a custom index handler.
  *
  * @internal
  */

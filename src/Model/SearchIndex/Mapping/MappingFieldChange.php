@@ -27,15 +27,14 @@ final readonly class MappingFieldChange
      * @param string[] $pathSegments path of the field in the documents, e.g. ['standard_fields', 'l_text', 'en']
      * @param string $oldShape mapping type in the live index ("object" / "nested" for containers)
      * @param string $newShape mapping type in the new mapping
-     * @param bool $rebuildRequired a kept field whose old values the engine may convert with a loss (float values
-     *                              truncated in a long field); only the rebuild from the database writes them exactly
+     *
+     * @throws InvalidArgumentException
      */
     public function __construct(
         private array $pathSegments,
         private string $oldShape,
         private string $newShape,
         private MappingFieldChangeAction $action,
-        private bool $rebuildRequired = false,
     ) {
         if ($pathSegments === [] || in_array('', $pathSegments, true)) {
             throw new InvalidArgumentException('A mapping field change needs a path without empty segments.');
@@ -71,10 +70,5 @@ final readonly class MappingFieldChange
     public function getAction(): MappingFieldChangeAction
     {
         return $this->action;
-    }
-
-    public function isRebuildRequired(): bool
-    {
-        return $this->rebuildRequired;
     }
 }

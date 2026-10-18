@@ -271,32 +271,6 @@ final class MappingDiffServiceTest extends Unit
     }
 
     /**
-     * A float field can hold fractional values (quantity value ranges, custom fields), which the engine truncates in a
-     * long field without a parsing failure. The field is kept, and only float to long asks for the rebuild.
-     */
-    public function testOnlyFloatToLongAsksForTheRebuild(): void
-    {
-        $diff = $this->service->diff(
-            $this->standardFields([
-                'count' => ['type' => 'float'],
-                'price' => ['type' => 'float'],
-                'id' => ['type' => 'integer'],
-            ]),
-            $this->standardFields([
-                'count' => ['type' => 'long'],
-                'price' => ['type' => 'double'],
-                'id' => ['type' => 'long'],
-            ])
-        );
-
-        $this->assertSame(
-            ['standard_fields.count', 'standard_fields.id', 'standard_fields.price'],
-            $diff->getKeptPaths()
-        );
-        $this->assertSame(['standard_fields.count'], $diff->getRebuildPaths());
-    }
-
-    /**
      * @dataProvider scalarTransitionProvider
      */
     public function testScalarTransitions(array $old, array $new, MappingFieldChangeAction $expected): void
@@ -425,7 +399,7 @@ final class MappingDiffServiceTest extends Unit
 
         $this->assertSame(['standard_fields.b'], $diff->getStripPaths());
         $this->assertSame(['standard_fields.a'], $diff->getKeptPaths());
-        $this->assertTrue($diff->hasStripPaths());
+        $this->assertNotSame([], $diff->getStripPaths());
     }
 
     public function testSystemFieldsAndCustomFieldsAreComparedToo(): void

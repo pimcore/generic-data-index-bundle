@@ -42,6 +42,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
 
     private ?bool $reindexMappingOverridden = null;
 
+    private bool $runningReindexMappingOverride = false;
+
     public function __construct(
         protected readonly SearchIndexServiceInterface $searchIndexService,
         protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
@@ -142,8 +144,15 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): MappingUpdateResult {
-        if ($this->isReindexMappingOverridden()) {
-            $this->reindexMapping($context, $mappingProperties);
+        // An override that delegates back to this method runs the copy itself instead of calling the override again.
+        if ($this->isReindexMappingOverridden() && !$this->runningReindexMappingOverride) {
+            $this->runningReindexMappingOverride = true;
+
+            try {
+                $this->reindexMapping($context, $mappingProperties);
+            } finally {
+                $this->runningReindexMappingOverride = false;
+            }
 
             return new MappingUpdateResult(outcomeUnknown: true);
         }
@@ -185,11 +194,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             // field type change no longer empties the live index; the rebuild from the database
             // fills them. Genuine errors (unreachable cluster, timeouts) are thrown and propagate.
             $copy = $this->getIndexCopyService()->copy($alias, $mappingProperties);
-            $result = new MappingUpdateResult(
-                strippedPaths: $copy->getStrippedPaths(),
-                keptPaths: $copy->getKeptPaths(),
-                rebuildPaths: $copy->getRebuildPaths()
-            );
+            $result = new MappingUpdateResult($copy->getStrippedPaths(), $copy->getKeptPaths());
 
             if (!$copy->isSuccessful()) {
                 // Last resort: the copy failed on fields that could not be left out. Recreate
@@ -199,12 +204,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                     $alias
                 ));
                 $this->doUpdateMappingFull($context, true, $mappingProperties, $depth);
-                $result = new MappingUpdateResult(
-                    strippedPaths: $copy->getStrippedPaths(),
-                    keptPaths: $copy->getKeptPaths(),
-                    recreated: true,
-                    rebuildPaths: $copy->getRebuildPaths()
-                );
+                $result = new MappingUpdateResult($copy->getStrippedPaths(), $copy->getKeptPaths(), true);
             }
         }
 

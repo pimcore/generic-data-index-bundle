@@ -285,6 +285,34 @@ final class DeploymentReindexServiceTest extends Unit
         $this->assertFalse($service->execute($service->plan(IndexStateTarget::forClassDefinition($classDefinition))));
     }
 
+    /**
+     * The class mapping is current, but the settings copy still left out fields (values written under an older
+     * mapping): only the rebuild restores them, so the objects are queued.
+     */
+    public function testClassSettingsCopyThatStripsFieldsQueuesTheObjects(): void
+    {
+        $classDefinition = $this->createClassDefinition();
+        $classDefinitionReindexService = $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, [
+            'isMappingChanged' => false,
+            'reindexClassDefinition' => Expected::once(false),
+        ]);
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingDiff' => new MappingDiff([]),
+            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult(['standard_fields.price'])),
+        ]);
+        $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
+            'enqueueByClassDefinition' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),
+        ]);
+        $service = $this->createService(
+            $this->createStateService(['ignored-for-classes', 'settings-old', '1.0'], true),
+            $classDefinitionReindexService,
+            $enqueueService,
+            $handler
+        );
+
+        $this->assertTrue($service->execute($service->plan(IndexStateTarget::forClassDefinition($classDefinition))));
+    }
+
     public function testClassDataVersionChangeRebuildsTheClass(): void
     {
         $classDefinitionReindexService = $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, [
@@ -310,7 +338,6 @@ final class DeploymentReindexServiceTest extends Unit
         $diff = new MappingDiff([
             new MappingFieldChange(['standard_fields', 'price'], 'text', 'float', MappingFieldChangeAction::STRIP),
             new MappingFieldChange(['standard_fields', 'count'], 'long', 'text', MappingFieldChangeAction::KEEP),
-            new MappingFieldChange(['standard_fields', 'qty'], 'float', 'long', MappingFieldChangeAction::KEEP, true),
             new MappingFieldChange(['system_fields', 'id'], 'long', 'integer', MappingFieldChangeAction::PROTECT),
         ]);
         $handler = $this->makeEmpty(IndexHandlerInterface::class, ['getMappingDiff' => $diff]);
@@ -322,13 +349,10 @@ final class DeploymentReindexServiceTest extends Unit
         $reasons = $service->plan(IndexStateTarget::forScope(DeploymentReindexScope::ASSETS))->getReasons();
 
         $this->assertContains('fields stripped in the copy: standard_fields.price', $reasons);
-        $this->assertContains('fields kept in the copy: standard_fields.count, standard_fields.qty', $reasons);
+        $this->assertContains('fields kept in the copy: standard_fields.count', $reasons);
         $this->assertContains(
-            'float fields kept as long, the rebuild writes their exact values: standard_fields.qty',
-            $reasons
-        );
-        $this->assertContains(
-            'system fields copied as they are, the index is recreated if their values do not fit: system_fields.id',
+            'fields outside class and custom fields copied as they are, '
+            . 'the index is recreated if their values do not fit: system_fields.id',
             $reasons
         );
     }

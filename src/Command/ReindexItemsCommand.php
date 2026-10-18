@@ -95,21 +95,7 @@ final class ReindexItemsCommand extends AbstractCommand
         return match (true) {
             $result->isRecreated() => 'the index had to be created empty',
             $result->isOutcomeUnknown() => 'the mapping was applied by a custom index handler',
-            default => $this->describeCopiedFields($result),
+            default => 'fields left out of the copy: ' . implode(', ', $result->getStrippedPaths()),
         };
-    }
-
-    private function describeCopiedFields(MappingUpdateResult $result): string
-    {
-        $reasons = [];
-        if ($result->getStrippedPaths() !== []) {
-            $reasons[] = 'fields left out of the copy: ' . implode(', ', $result->getStrippedPaths());
-        }
-        if ($result->getRebuildPaths() !== []) {
-            $reasons[] = 'float fields kept as long, the rebuild writes their exact values: '
-                . implode(', ', $result->getRebuildPaths());
-        }
-
-        return implode('; ', $reasons);
     }
 }
