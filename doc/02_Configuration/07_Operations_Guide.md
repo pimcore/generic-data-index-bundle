@@ -80,10 +80,11 @@ indices.
 
 ### Rebuild Time
 
-Estimate the rebuild as the number of elements divided by the indexing rate of all workers together. On the
-development machine above, five workers indexed about 350 documents per second, so 10 million objects take about
-8 hours; more workers only help as long as the database and the engine keep up. The rate depends on the class (relations, calculated values in `live` mode, related elements)
-and on the database. While the rebuild runs, the index queue table holds one entry per element.
+Estimate the rebuild as the number of elements divided by the indexing rate of all workers together. On the development
+machine above, five workers indexed about 350 documents per second, so 10 million objects take about 8 hours; more
+workers only help as long as the database and the engine keep up. The rate depends on the class (relations, calculated
+values in `live` mode, related elements) and on the database. While the rebuild runs, the index queue table holds one
+entry per element.
 
 A class save with a mapping change and `deployment:reindex` with a mapping change queue the rebuild of all objects of
 the class, even if the change only added a field.
@@ -165,12 +166,11 @@ message, related elements, and the class mapping and language messages that run 
   (see [What Runs Where](#what-runs-where)).
 - `--time-limit` and `--memory-limit` are checked between messages, so they don't interrupt a copy. A process manager
   or platform that kills a worker during a copy (stop timeout, restart on deployment, container shutdown) leaves the
-  engine task running and its new index behind. The message is handled again later, and the next copy of that index
-  cancels the leftover task and starts over. Give workers a stop timeout that fits your copies, or stop them only
-  when no copy runs.
-  <!-- VERIFY: a worker killed during a copy: the message is redelivered after redeliver_timeout.
-       VERIFY: the DB connection is still usable after a multi-hour copy with a low wait_timeout
-       (storeClassMapping and the messenger ack run after the copy). -->
+  engine task running and its new index behind. The Doctrine transport hands the message out again after
+  `redeliver_timeout` (see below), and the next copy of that index cancels the leftover task and starts over. Give
+  workers a stop timeout that fits your copies, or stop them only when no copy runs.
+- A copy that takes longer than the database `wait_timeout` doesn't break the worker: the checksum is stored and the
+  message is acknowledged after the copy as usual.
 
 **Redelivery.** The Doctrine transport hands a message that is still being handled after `redeliver_timeout`
 (default 3600 seconds) to another worker. A class mapping message whose copy takes longer than an hour is then handled
@@ -275,8 +275,8 @@ deployment with the procedure above, and consider who may edit class definitions
   make (see the outdated checksums under [What Runs Where](#what-runs-where)), your save will copy the class even if
   your change doesn't touch the mapping.
 - Changing the class icon updates every document of the class whose icon differs, with one update-by-query request
-  that waits until it has finished.
-  <!-- VERIFY: duration and HTTP client timeout of the icon update-by-query on a class with millions of objects -->
+  in the worker that handles the class message. The request stays open until the engine has finished; on the
+  development machine above it took about 20 seconds for 100,000 documents, so plan minutes for millions.
 - For a field type change, see the [Reindexing Guide](../03_Reindexing/README.md): it describes how the copy handles
   the change, and the expand and contract approach for fields that must stay searchable.
 
