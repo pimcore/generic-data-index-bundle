@@ -12,9 +12,8 @@ description: Version-specific upgrade instructions and breaking changes for the 
   most 3 attempts). System fields are never left out: if their old values don't fit, the index is recreated. The
   documents stay searchable; the left-out fields are empty, so filters and sorting on them find nothing, until the
   messenger workers have rebuilt all objects of the class from the database. The copy blocks the messenger worker that
-  handles the class mapping message for about 1.2 ms per document (measured: 100,000 documents of about 6 KB in 2
-  minutes, 300,000 in 6 minutes on a development machine with OpenSearch 2); the rebuild runs at the usual indexing
-  rate. See the [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
+  handles the class mapping message for about 1.5 ms per document (measured: 100,000 documents of about 6 KB in about
+  2.5 minutes on a development machine with OpenSearch 2); the rebuild runs at the usual indexing rate. See the [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
 - [Indexing] Upgrading from a version before 2026.2.8: the numeric mapping change of 2026.2.8 (`float` to `double`, or
   `long` for integer fields) is applied by the odd/even copy as well. Both keep their values, so the indices stay
   complete; a field kept as `long` also queues the rebuild from the database, which writes exact values for fields
