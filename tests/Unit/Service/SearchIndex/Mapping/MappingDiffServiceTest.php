@@ -398,7 +398,7 @@ final class MappingDiffServiceTest extends Unit
 
         $this->assertSame(['standard_fields.b'], $diff->getStripPaths());
         $this->assertSame(['standard_fields.a'], $diff->getKeptPaths());
-        $this->assertTrue($diff->hasStripPaths());
+        $this->assertNotSame([], $diff->getStripPaths());
     }
 
     public function testSystemFieldsAndCustomFieldsAreComparedToo(): void

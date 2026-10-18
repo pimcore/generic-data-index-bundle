@@ -13,19 +13,22 @@ Following steps are necessary during updating to newer versions.
   minutes, 300,000 in 6 minutes on a development machine with OpenSearch 2); the rebuild runs at the usual indexing
   rate. See the [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
 - [Commands] Behavior change: `generic-data-index:reindex` now adds all elements of an index to the index queue if its
-  copy left out fields or the index had to be created empty, and prints a notice per index. Before, it never filled
-  the index queue. Operators who relied on that need messenger workers running after the command.
-- [Commands] `generic-data-index:deployment:reindex` and its `--dry-run` list per index the fields stripped and the
-  fields kept in the copy.
+  copy left out fields, the index had to be created empty, or a custom index handler applied the mapping, and prints a
+  notice per index. Before, it never filled the index queue. Operators who relied on that need messenger workers running
+  after the command.
+- [Commands] `generic-data-index:deployment:reindex` and its `--dry-run` list per index the fields stripped, the fields
+  kept and the fields outside class and custom fields that are copied as they are.
 - [Indexing] New methods on `@internal` interfaces, relevant only for custom implementations of them:
   `IndexHandlerInterface::reindexMappingWithResult()` and `getMappingDiff()`,
   `SearchIndexServiceInterface::reindexWithoutFields()`, `ReindexServiceInterface::reindexAllIndicesWithReport()`,
   `ClassDefinitionReindexServiceInterface::reindexClassDefinitionMapping()`.
-- [Deprecation] `AbstractIndexHandler` has a new optional constructor argument `IndexCopyServiceInterface`.
-  Subclasses that call the parent constructor without it keep working and trigger a deprecation; the argument will
-  be required in the next major version. `reindexMapping()` keeps its signature. A subclass that overrides it is
-  still called by the bundle; because the bundle cannot tell what the override did, it then queues a rebuild of the
-  index from the database. Override `reindexMappingWithResult()` to report stripped fields instead.
+- [Deprecation] `AbstractIndexHandler` has a new optional constructor argument `IndexCopyServiceInterface`. Subclasses
+  that call the parent constructor without it keep working and trigger a deprecation; the argument will be required in
+  the next major version. `reindexMapping()` keeps its signature. A subclass that overrides it is still called by the
+  bundle; because the bundle cannot tell what the override did, it then queues a rebuild of the index from the database.
+  Project code that calls `reindexMapping()` directly gets the copy with stripped fields too, but nothing is queued:
+  after a field type change, queue the elements of the index (for example with
+  `generic-data-index:update:index -c <class id>`), or the stripped fields stay empty.
 
 ## Upgrade to 2.5.14
 - [Permissions] Fixed: a workspace now only applies to its own path and the paths below it. Before, the permission

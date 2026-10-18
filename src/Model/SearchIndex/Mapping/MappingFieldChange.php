@@ -27,6 +27,8 @@ final readonly class MappingFieldChange
      * @param string[] $pathSegments path of the field in the documents, e.g. ['standard_fields', 'l_text', 'en']
      * @param string $oldShape mapping type in the live index ("object" / "nested" for containers)
      * @param string $newShape mapping type in the new mapping
+     *
+     * @throws InvalidArgumentException
      */
     public function __construct(
         private array $pathSegments,

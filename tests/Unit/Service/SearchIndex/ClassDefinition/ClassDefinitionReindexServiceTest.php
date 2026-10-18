@@ -15,6 +15,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\C
 
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
+use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService;
@@ -223,16 +225,67 @@ final class ClassDefinitionReindexServiceTest extends Unit
         );
     }
 
+    /**
+     * The checksum is stored right after the copy; a failing icon update afterwards must not leave a stripped
+     * copy without its rebuild, because the retry finds the checksum current and skips the class.
+     */
+    public function testAFailingIconUpdateDoesNotLoseTheRebuild(): void
+    {
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'reindexMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
+        ]);
+        $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
+            'enqueueByClassDefinition' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
+            'getClassMappingCheckSum' => 999,
+            'storeClassMapping' => Expected::once(),
+        ]);
+        $iconService = $this->makeEmpty(IndexIconUpdateServiceInterface::class, [
+            'updateIcon' => static fn () => throw new Exception('version_conflict_engine_exception'),
+        ]);
+
+        $this->expectException(ClassDefinitionIndexUpdateFailedException::class);
+        $this->createService($handler, $settingsStore, $enqueueService, $iconService)
+            ->reindexClassDefinitionMapping($this->createClassDefinition(), true, false);
+    }
+
+    /**
+     * If queueing the rebuild fails, the checksum stays unstored, so the retry handles the class again.
+     */
+    public function testAFailingEnqueueLeavesTheChecksumUnstored(): void
+    {
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'reindexMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
+        ]);
+        $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
+            'enqueueByClassDefinition' => static fn () => throw new Exception('Connection lost'),
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
+            'getClassMappingCheckSum' => 999,
+            'storeClassMapping' => Expected::never(),
+        ]);
+
+        $this->expectException(ClassDefinitionIndexUpdateFailedException::class);
+        $this->createService($handler, $settingsStore, $enqueueService)
+            ->reindexClassDefinitionMapping($this->createClassDefinition(), true, false);
+    }
+
     private function createService(
         IndexHandlerInterface $handler,
         SettingsStoreServiceInterface $settingsStore,
         ?EnqueueServiceInterface $enqueueService = null,
+        ?IndexIconUpdateServiceInterface $iconService = null,
     ): ClassDefinitionReindexService {
         return new ClassDefinitionReindexService(
             $handler,
             $enqueueService ?? $this->makeEmpty(EnqueueServiceInterface::class),
             $settingsStore,
-            $this->makeEmpty(IndexIconUpdateServiceInterface::class, ['updateIcon' => null]),
+            $iconService ?? $this->makeEmpty(IndexIconUpdateServiceInterface::class, ['updateIcon' => null]),
             $this->makeEmpty(LoggerInterface::class),
         );
     }

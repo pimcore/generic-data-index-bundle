@@ -26,6 +26,8 @@ final readonly class IndexCopyResult
     /**
      * @param string[] $strippedPaths fields removed in the copy (dotted paths)
      * @param string[] $keptPaths changed fields whose old values were kept (dotted paths)
+     *
+     * @throws InvalidArgumentException
      */
     public function __construct(
         private ReindexResult $result,

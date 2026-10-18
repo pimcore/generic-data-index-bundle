@@ -39,6 +39,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
 
     private ?bool $reindexMappingOverridden = null;
 
+    private bool $runningReindexMappingOverride = false;
+
     public function __construct(
         protected readonly SearchIndexServiceInterface $searchIndexService,
         protected readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
@@ -121,8 +123,15 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): MappingUpdateResult {
-        if ($this->isReindexMappingOverridden()) {
-            $this->reindexMapping($context, $mappingProperties);
+        // An override that delegates back to this method runs the copy itself instead of calling the override again.
+        if ($this->isReindexMappingOverridden() && !$this->runningReindexMappingOverride) {
+            $this->runningReindexMappingOverride = true;
+
+            try {
+                $this->reindexMapping($context, $mappingProperties);
+            } finally {
+                $this->runningReindexMappingOverride = false;
+            }
 
             return new MappingUpdateResult(outcomeUnknown: true);
         }

@@ -129,8 +129,9 @@ Index mapping is updated automatically e.g. when adding system languages or new 
 Sometimes it might be necessary to update the index structure manually.
 
 Do this with the reindex command. This command does native opensearch/elasticsearch re-indexing within the search
-indices. It reads the database only for indices whose copy left out fields after a field type change: their elements
-are queued for a rebuild (see [Field Type Changes](../03_Reindexing/README.md#field-type-changes)).
+indices. It reads the database only for indices whose copy left out fields after a field type change, that had to be
+created empty, or whose mapping a custom index handler applied: their elements are queued for a rebuild (see
+[Field Type Changes](../03_Reindexing/README.md#field-type-changes)).
 
 ```
 # updates index mapping with native reindexing
@@ -165,10 +166,10 @@ the next run.
 
 After a field type change, the copy keeps the changed fields whose old values still fit (for example a number copied
 into a text field) and leaves out the others, so the index is not recreated and the documents stay searchable; the
-left-out fields are empty until the rebuild from the database. The index is only recreated, as a last resort, when
-the copy fails and no further field can be left out. If fields were left out of the copy or the index had to be
-created empty, the command queues all elements of that index for a rebuild from the database and prints a notice per
-index. Run the messenger workers to fill these indices. See the
+left-out fields are empty until the rebuild from the database. The index is only recreated, as a last resort, when the
+copy fails and no further field can be left out. If fields were left out of the copy, the index had to be created empty,
+or a custom index handler applied the mapping, the command queues all elements of that index for a rebuild from the
+database and prints a notice per index. Run the messenger workers to fill these indices. See the
 [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
 
 ### Handling Failed Messages

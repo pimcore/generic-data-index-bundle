@@ -70,6 +70,8 @@ final readonly class ReindexStripScript
 
     /**
      * @param string[][] $paths path segments per field, e.g. [['standard_fields', 'price']]
+     *
+     * @throws InvalidArgumentException
      */
     public function __construct(array $paths)
     {
@@ -87,14 +89,6 @@ final readonly class ReindexStripScript
             }
         }
         $this->paths = array_values($paths);
-    }
-
-    /**
-     * @return string[][]
-     */
-    public function getPaths(): array
-    {
-        return $this->paths;
     }
 
     /**

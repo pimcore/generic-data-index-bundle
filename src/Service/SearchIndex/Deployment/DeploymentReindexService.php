@@ -228,7 +228,8 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
             $reasons[] = 'fields kept in the copy: ' . implode(', ', $diff->getKeptPaths());
         }
         if ($diff->getProtectedPaths() !== []) {
-            $reasons[] = 'system fields copied as they are, the index is recreated if their values do not fit: '
+            $reasons[] = 'fields outside class and custom fields copied as they are, '
+                . 'the index is recreated if their values do not fit: '
                 . implode(', ', $diff->getProtectedPaths());
         }
 
