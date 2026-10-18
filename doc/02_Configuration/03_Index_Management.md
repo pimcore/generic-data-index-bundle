@@ -46,10 +46,12 @@ between `-odd` and `-even` suffixes during reindexing (see
 
 ### Why `-odd` and `-even` Suffixes?
 
-The alternating suffixes enable zero-downtime reindexing (blue-green approach): when the
-index structure changes, the bundle builds a new index under the opposite suffix while
-the current index keeps serving reads and writes through the alias. Once the new index
-is fully populated, the alias is switched atomically and the old index is deleted.
+The alternating suffixes keep search working during reindexing (blue-green approach): when
+the index structure changes, the bundle builds a new index under the opposite suffix while
+the current index keeps serving reads through the alias. Writes processed during that time
+still go to the current index and are not part of the new one. Once the new index is fully
+populated, the alias is switched atomically and the old index is deleted. For large indices
+and deployments, see the [Operations Guide](./07_Operations_Guide.md).
 
 At rest there is only **one** concrete index — and therefore one set of shards — per
 asset index or class definition. Both suffixes exist side by side only transiently
@@ -142,7 +144,10 @@ Without `-r`, the command only updates the index mapping and queues all items fo
 
 ### Updating Index Structure
 
-Index mappings update automatically when system languages or class definition fields change.
+Index mappings update automatically when a class definition is saved or the valid languages
+are changed in the system settings. Other mapping changes, for example to field collections,
+object bricks or languages in config files, need a command; see the
+[Reindexing Guide](../03_Reindexing/README.md).
 For manual updates, run the reindex command. This performs a native OpenSearch/Elasticsearch
 reindex within the search indices (no database read):
 
@@ -170,6 +175,9 @@ pimcore_generic_data_index:
             poll_interval: 5
 ```
 
+To size `max_polls` from the document count, see
+[Copy Time Budget](./07_Operations_Guide.md#copy-time-budget) in the Operations Guide.
+
 Transient failures while polling (e.g. a temporarily unreachable or overloaded search cluster) are retried and do not
 abort a running reindex. If reindexing fails for a different reason — the cluster is unreachable, the task reports an
 error or times out server-side — the command fails instead of modifying the live index, and the reindex is retried on
@@ -182,8 +190,12 @@ The messenger retries failed messages 3 times, then routes them to the
 `pimcore_generic_data_index_failed` transport. Retry failed messages with:
 
 ```bash
-bin/console messenger:failed:retry -vv
+bin/console messenger:failed:retry --transport=pimcore_generic_data_index_failed -vv
 ```
+
+Pass `--transport`: the bundle sets its failure transport on its own transport, not as the
+global default. What to do with a failed message whose index copy ran out of time is described
+in the [Operations Guide](./07_Operations_Guide.md#when-a-copy-fails-times-out-or-is-cancelled).
 
 See the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html#saving-retrying-failed-messages)
 for additional commands.
@@ -247,7 +259,9 @@ bin/console generic-data-index:deployment:reindex
 ```
 
 This updates the index structure for all class definitions modified since the last
-deployment and reindexes data objects for affected classes.
+deployment and reindexes data objects for affected classes. On large indices, stop the
+messenger workers before `pimcore:deployment:classes-rebuild` and follow the
+[Deployment Procedure](./07_Operations_Guide.md#deployment-procedure).
 
 ### Cleaning Up Unused Indices
 
@@ -269,6 +283,8 @@ to its alias, so for the duration of that window it carries the configured prefi
 but is not referenced by any alias. To avoid deleting an index that is actively being built,
 indices younger than `--min-age` seconds (default: `86400`, i.e. 24 hours) are never
 considered unused. Indices whose creation date cannot be determined are also skipped.
+On large indices a copy can take hours; see
+[Housekeeping](./07_Operations_Guide.md#housekeeping) in the Operations Guide.
 
 ```bash
 bin/console generic-data-index:cleanup:unused-indices --min-age=3600
@@ -308,7 +324,9 @@ mapping, run `generic-data-index:update:index` once; for `index_settings`, run `
 (it does not cover the data object folder index).
 
 A native reindex switches the alias to a copy of the index; index updates processed during the copy are lost.
-Run the command while the index queue workers are stopped.
+Run the command while the index queue workers are stopped. Stop them in the process manager before
+`pimcore:deployment:classes-rebuild`, so that no worker copies a class while the command copies it too, and start
+them afterwards for the rebuild. See the [Deployment Procedure](./07_Operations_Guide.md#deployment-procedure).
 
 Code changes that alter indexed values without changing the mapping (calculators, `UpdateIndexDataEvent`
 subscribers, custom adapters) are not detected: raise the matching version in the same change. In
