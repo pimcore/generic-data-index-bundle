@@ -3,6 +3,9 @@
 Following steps are necessary during updating to newer versions.
 
 ## Upgrade to 2.5.15
+- [Commands] `generic-data-index:deployment:reindex` without options no longer stops at the first class whose index
+  update fails: it continues with the remaining classes, reports every failed class and exits with a non-zero status,
+  like a run with index options.
 - [Indexing] New **index status**: `IndexStatusServiceInterface` reports per index whether it is complete, rebuilding
   (with the progress in percent), copying, degraded, incomplete or missing, with the counts it is derived from;
   `IndexCompleteEvent` fires in the messenger worker that processes the last batch of a queued full rebuild. See
