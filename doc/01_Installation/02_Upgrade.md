@@ -29,6 +29,23 @@ Following steps are necessary during updating to newer versions.
   Project code that calls `reindexMapping()` directly gets the copy with stripped fields too, but nothing is queued:
   after a field type change, queue the elements of the index (for example with
   `generic-data-index:update:index -c <class id>`), or the stripped fields stay empty.
+- [Indexing] New **index status**: `IndexStatusServiceInterface` reports per index whether it is complete, rebuilding
+  (with the progress in percent), copying, degraded, incomplete or missing, with the counts it is derived from;
+  `IndexCompleteEvent` fires in the messenger worker that processes the last batch of a queued full rebuild. See
+  [Index Status](../02_Configuration/03_Index_Management.md#index-status).
+- [Commands] `generic-data-index:status` shows the status of every index and the number of failed messages, and
+  has new options: `--index`, `--json`, `--check` (exit code 1 while an index is not complete) and `--wait` (block
+  until complete). Its leftover warning no longer lists an index whose odd/even copy is running. Without options the
+  output and the exit code are unchanged.
+- [Indexing] A full rebuild queued by `EnqueueServiceInterface` (class save with a mapping change, `update:index`,
+  `deployment:reindex`) is now marked in the settings store until its last batch is processed; the mark is what tells a
+  rebuild from the normal lag of asynchronous indexing.
+- [Indexing] The progress of a running odd/even copy is logged every minute (documents copied so far).
+- [Database] A new migration adds an index on `generic_data_index_queue.elementIndexName` (the status counts the
+  entries per index). Please make sure to execute migrations.
+- [Indexing] New methods on `@internal` interfaces, relevant only for custom implementations of them:
+  `SearchIndexServiceInterface::countDocuments()` and `getReindexTasks()`, `SettingsStoreServiceInterface::removeIndexState()`,
+  `replaceIndexState()` and `removeIndexStateIfEquals()`, `IndexStateServiceInterface::isMappingCurrent()`.
 
 ## Upgrade to 2.5.14
 - [Permissions] Fixed: a workspace now only applies to its own path and the paths below it. Before, the permission

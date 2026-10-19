@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment;
 
+use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexState;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
@@ -152,6 +153,34 @@ final readonly class IndexStateService implements IndexStateServiceInterface
         }
 
         $this->settingsStoreService->storeIndexState($this->key($target, 'mapping'), self::INVALIDATED);
+    }
+
+    public function isMappingCurrent(IndexStateTarget $target): ?bool
+    {
+        $stored = $this->getStoredState($target)->getMappingChecksum();
+        if ($stored === null) {
+            return null;
+        }
+
+        $handler = $this->getHandler($target);
+        $mappingProperties = $handler->getMappingProperties($target->getClassDefinition());
+        if ($stored === (string) $handler->getClassMappingCheckSum($mappingProperties)) {
+            return true;
+        }
+
+        return $target->isClassIndex() && $stored === (string) $this->getLegacyClassMappingCheckSum($mappingProperties);
+    }
+
+    /**
+     * Checksum as the class definition reindex calculated it before the mapping properties were
+     * normalized (depending on the array key order); recognises entries stored by an older bundle
+     * version, see ClassDefinitionReindexService.
+     *
+     * @throws JsonException
+     */
+    private function getLegacyClassMappingCheckSum(array $mappingProperties): int
+    {
+        return crc32(json_encode($mappingProperties, JSON_THROW_ON_ERROR));
     }
 
     private function getHandler(IndexStateTarget $target): IndexHandlerInterface
