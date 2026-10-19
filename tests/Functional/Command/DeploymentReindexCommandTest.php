@@ -75,6 +75,65 @@ class DeploymentReindexCommandTest extends Unit
         $this->assertStringContainsString('OpenSearch reindex failed (simulated 504)', $commandTester->getDisplay());
     }
 
+    /**
+     * Without options, a failing class must not keep the remaining classes from being updated,
+     * every failed class must be reported and the run must still fail.
+     *
+     * @see https://github.com/pimcore/platform-version/issues/646
+     */
+    public function testFailedClassDoesNotStopTheRemainingClasses(): void
+    {
+        $classes = (new ClassDefinition\Listing())->load();
+        $this->assertGreaterThan(1, count($classes), 'Precondition failed: at least two class definitions needed');
+        $failingClass = $classes[0];
+        $expectedIds = array_map(static fn (ClassDefinition $class): ?string => $class->getId(), $classes);
+        $processedIds = [];
+
+        $classDefinitionReindexService = $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, [
+            'reindexClassDefinition' => static function (ClassDefinition $classDefinition) use (
+                $failingClass,
+                &$processedIds
+            ): bool {
+                $processedIds[] = $classDefinition->getId();
+                if ($classDefinition->getId() === $failingClass->getId()) {
+                    throw new ClassDefinitionIndexUpdateFailedException('copy failed (simulated timeout)');
+                }
+
+                return true;
+            },
+        ]);
+        $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
+            'dispatchQueueMessages' => Expected::once(),
+        ]);
+
+        $commandTester = new CommandTester(
+            new DeploymentReindexCommand(
+                $enqueueService,
+                $classDefinitionReindexService,
+                $this->makeEmpty(DeploymentReindexServiceInterface::class)
+            )
+        );
+        $commandTester->execute([]);
+
+        $display = $commandTester->getDisplay();
+        $this->assertSame(Command::FAILURE, $commandTester->getStatusCode());
+        $this->assertSame($expectedIds, $processedIds, 'All classes must be processed despite the failure');
+        $this->assertStringContainsString(
+            sprintf(
+                'Updating class %s (%s) failed: copy failed (simulated timeout)',
+                $failingClass->getName(),
+                $failingClass->getId()
+            ),
+            $display
+        );
+        $this->assertStringContainsString(
+            sprintf('Updated following ClassDefinitions: [%s]', implode(', ', array_slice($expectedIds, 1))),
+            $display
+        );
+        $this->assertStringContainsString('Finished with errors', $display);
+        $this->assertStringNotContainsString('No updates needed', $display);
+    }
+
     public function testReturnsSuccessWhenNoClassDefinitionChanged(): void
     {
         $classDefinitionReindexService = $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, [
