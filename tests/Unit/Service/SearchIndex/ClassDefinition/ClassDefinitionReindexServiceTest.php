@@ -350,7 +350,9 @@ final class ClassDefinitionReindexServiceTest extends Unit
             obligations: $obligations
         );
 
-        $this->assertTrue($service->reindexClassDefinition($this->createClassDefinition(), true, false));
+        $result = $service->reindexClassDefinitionMapping($this->createClassDefinition(), true, false);
+        $this->assertTrue($result?->isRebuildOwed());
+        $this->assertFalse($result->isMappingApplied(), 'Only the owed rebuild was queued, no mapping applied');
         $this->assertSame([], $store);
     }
 

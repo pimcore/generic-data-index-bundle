@@ -215,7 +215,7 @@ final class DeploymentReindexServiceTest extends Unit
     {
         $classDefinitionReindexService = $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, [
             'isMappingChanged' => false,
-            'reindexClassDefinition' => Expected::once(false),
+            'reindexClassDefinitionMapping' => Expected::once(null),
         ]);
         $service = $this->createService(
             $this->createStateService(self::CURRENT, true, Expected::never()),
@@ -232,12 +232,16 @@ final class DeploymentReindexServiceTest extends Unit
     {
         $classDefinitionReindexService = $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, [
             'isMappingChanged' => true,
-            'reindexClassDefinition' => Expected::once(
-                static function (ClassDefinition $classDefinition, bool $skipIfClassNotChanged, bool $enqueue): bool {
+            'reindexClassDefinitionMapping' => Expected::once(
+                static function (
+                    ClassDefinition $classDefinition,
+                    bool $skipIfClassNotChanged,
+                    bool $enqueue
+                ): MappingUpdateResult {
                     self::assertTrue($skipIfClassNotChanged);
                     self::assertTrue($enqueue);
 
-                    return true;
+                    return new MappingUpdateResult();
                 }
             ),
         ]);
@@ -262,7 +266,7 @@ final class DeploymentReindexServiceTest extends Unit
         $classDefinition = $this->createClassDefinition();
         $classDefinitionReindexService = $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, [
             'isMappingChanged' => false,
-            'reindexClassDefinition' => Expected::once(false),
+            'reindexClassDefinitionMapping' => Expected::once(null),
         ]);
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingDiff' => new MappingDiff([]),
@@ -296,7 +300,7 @@ final class DeploymentReindexServiceTest extends Unit
         $classDefinition = $this->createClassDefinition();
         $classDefinitionReindexService = $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, [
             'isMappingChanged' => false,
-            'reindexClassDefinition' => Expected::once(false),
+            'reindexClassDefinitionMapping' => Expected::once(null),
         ]);
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingDiff' => new MappingDiff([]),
@@ -319,7 +323,7 @@ final class DeploymentReindexServiceTest extends Unit
     {
         $classDefinitionReindexService = $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, [
             'isMappingChanged' => false,
-            'reindexClassDefinition' => Expected::once(false),
+            'reindexClassDefinitionMapping' => Expected::once(null),
         ]);
         $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
             'enqueueByClassDefinition' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),
@@ -411,7 +415,8 @@ final class DeploymentReindexServiceTest extends Unit
     }
 
     /**
-     * Nothing changed since the last run, but that run failed before queuing the rebuild its copy needed.
+     * Nothing changed since the last run, but that run failed before queuing the rebuild its copy needed: the plan
+     * (and so --dry-run) says so, and the rebuild runs without another copy.
      */
     public function testAnUnchangedIndexWithAnOwedRebuildIsRebuilt(): void
     {
@@ -421,6 +426,10 @@ final class DeploymentReindexServiceTest extends Unit
         $service = $this->createService(
             $this->createStateService(self::CURRENT, true),
             enqueueService: $enqueueService,
+            handler: $this->makeEmpty(IndexHandlerInterface::class, [
+                'getMappingDiff' => new MappingDiff([]),
+                'reindexMappingWithResult' => Expected::never(),
+            ]),
             obligations: $this->makeEmpty(IndexRebuildObligationServiceInterface::class, [
                 'isOwed' => true,
                 'settle' => Expected::once(),
@@ -428,8 +437,69 @@ final class DeploymentReindexServiceTest extends Unit
         );
         $plan = $service->plan(IndexStateTarget::forScope(DeploymentReindexScope::ASSETS));
 
-        $this->assertTrue($plan->isSkipped());
+        $this->assertFalse($plan->isSkipped());
+        $this->assertTrue($plan->isRebuildOwed());
+        $this->assertSame('rebuild from database', $plan->getActionLabel());
+        $this->assertContains(
+            'rebuild owed: an earlier run changed the index and failed before queuing it',
+            $plan->getReasons()
+        );
         $this->assertTrue($service->execute($plan));
+    }
+
+    public function testAnUnchangedClassWithAnOwedRebuildIsPlannedAsRebuild(): void
+    {
+        $service = $this->createService(
+            $this->createStateService(['ignored-for-classes', 'settings-current', '1.0'], true),
+            $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, ['isMappingChanged' => false]),
+            obligations: $this->makeEmpty(IndexRebuildObligationServiceInterface::class, ['isOwed' => true])
+        );
+
+        $plan = $service->plan(IndexStateTarget::forClassDefinition($this->createClassDefinition()));
+
+        $this->assertFalse($plan->isSkipped());
+        $this->assertSame('rebuild from database', $plan->getActionLabel());
+        $this->assertContains(
+            'rebuild owed: an earlier run changed the index and failed before queuing it',
+            $plan->getReasons()
+        );
+    }
+
+    /**
+     * A settings-only copy of a class failed before the alias switch and left the obligation. On the retry the class
+     * reindex only queues the owed rebuild: the settings copy must still run, or the stored settings hash would hide
+     * settings the live index never got. The objects are queued once.
+     */
+    public function testAPendingSettingsCopyRunsAfterAnOwedRebuildWasQueued(): void
+    {
+        $classDefinition = $this->createClassDefinition();
+        $classDefinitionReindexService = $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, [
+            'isMappingChanged' => false,
+            'reindexClassDefinitionMapping' => Expected::once(MappingUpdateResult::forOwedRebuildOnly()),
+        ]);
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingDiff' => new MappingDiff([]),
+            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult(['standard_fields.price'])),
+        ]);
+        $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
+            'enqueueByClassDefinition' => Expected::never(),
+        ]);
+        $stored = [];
+        $service = $this->createService(
+            $this->createStateService(
+                ['ignored-for-classes', 'settings-old', '1.0'],
+                true,
+                static function (IndexStateTarget $target, IndexState $state) use (&$stored): void {
+                    $stored[] = $state->getSettingsHash();
+                }
+            ),
+            $classDefinitionReindexService,
+            $enqueueService,
+            $handler
+        );
+
+        $this->assertTrue($service->execute($service->plan(IndexStateTarget::forClassDefinition($classDefinition))));
+        $this->assertSame(['settings-current'], $stored, 'The settings hash is stored after the copy applied it');
     }
 
     public function testExposesTheConfiguredStrategy(): void

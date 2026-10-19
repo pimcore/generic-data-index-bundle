@@ -61,7 +61,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
             if ($rebuildOwed) {
                 // An earlier run changed the index and failed before queuing its rebuild. The mapping is
                 // current now, so this run's copy (if any) reports nothing that would queue it again.
-                $result = ($result ?? new MappingUpdateResult())->withRebuildOwed();
+                $result = $result === null ? MappingUpdateResult::forOwedRebuildOnly() : $result->withRebuildOwed();
             }
             if ($result !== null) {
                 // Fields left out of the copy (or an index created empty) are only restored by the

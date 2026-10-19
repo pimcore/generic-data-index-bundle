@@ -117,6 +117,11 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
             $reasons[] = 'no stored state yet';
         }
 
+        $rebuildOwed = $this->rebuildObligationService->isOwed($target);
+        if ($rebuildOwed) {
+            $reasons[] = 'rebuild owed: an earlier run changed the index and failed before queuing it';
+        }
+
         return new IndexPlan(
             $target,
             $current,
@@ -125,7 +130,8 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
             $settingsChanged,
             $dataVersionChanged,
             $baselineMissing,
-            $reasons
+            $reasons,
+            $rebuildOwed
         );
     }
 
@@ -137,7 +143,7 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
         if ($classDefinition !== null) {
             // Runs for unchanged classes too, like the run without options (icon update).
             $enqueued = $this->executeForClassDefinition($plan, $classDefinition);
-        } elseif ($plan->isSkipped() && !$this->rebuildObligationService->isOwed($target)) {
+        } elseif ($plan->isSkipped()) {
             return false;
         } else {
             $enqueued = $this->executeForIndex($plan);
@@ -158,38 +164,38 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
     private function executeForClassDefinition(IndexPlan $plan, ClassDefinition $classDefinition): bool
     {
         // Keeps the checksum handling of the run without options: legacy checksums, icon update,
-        // reindex and enqueue of changed classes.
-        $reindexed = $this->classDefinitionReindexService->reindexClassDefinition(
+        // reindex and enqueue of changed classes. With the enqueue requested, a result means the
+        // objects were queued.
+        $result = $this->classDefinitionReindexService->reindexClassDefinitionMapping(
             $classDefinition,
             !$plan->isIndexMissing(),
             true
         );
-        if ($reindexed) {
+        if ($result?->isMappingApplied() === true) {
             return true;
         }
+        // Nothing applied, or only the rebuild an earlier run owed was queued: index settings that are
+        // still pending must be applied all the same, or their stored hash would hide them for good.
+        $enqueued = $result !== null;
 
         if ($plan->isSettingsChanged()) {
-            $copyRequiresRebuild = $this->reindexMappingOwingRebuild($plan->getTarget(), $classDefinition)
-                ->requiresRebuild();
-            if ($copyRequiresRebuild) {
-                // The mapping was current, but fields could still be left out of the copy (e.g. values
-                // written under an older mapping); only the rebuild restores them.
+            // The mapping was current, but fields could still be left out of the copy (e.g. values
+            // written under an older mapping); only the rebuild restores them.
+            if ($this->reindexMappingOwingRebuild($plan->getTarget(), $classDefinition)->requiresRebuild()
+                && !$enqueued
+            ) {
                 $this->enqueueService->enqueueByClassDefinition($classDefinition);
+                $enqueued = true;
             }
             $this->rebuildObligationService->settle($plan->getTarget());
-
-            if ($copyRequiresRebuild) {
-                return true;
-            }
         }
 
-        if ($plan->isDataVersionChanged()) {
+        if ($plan->isDataVersionChanged() && !$enqueued) {
             $this->enqueueService->enqueueByClassDefinition($classDefinition);
-
-            return true;
+            $enqueued = true;
         }
 
-        return false;
+        return $enqueued;
     }
 
     private function executeForIndex(IndexPlan $plan): bool
@@ -197,7 +203,7 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
         $target = $plan->getTarget();
         $handler = $this->getHandler($target);
 
-        $copyRequiresRebuild = $this->rebuildObligationService->isOwed($target);
+        $copyRequiresRebuild = false;
         if ($plan->isIndexMissing()) {
             $handler->updateMapping();
         } elseif ($plan->needsNativeReindex()) {
