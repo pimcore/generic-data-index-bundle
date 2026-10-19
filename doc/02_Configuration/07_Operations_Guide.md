@@ -175,8 +175,10 @@ blocked for the whole copy.
 **Redelivery.** The Doctrine transport hands a message that is still being handled after `redeliver_timeout`
 (default 3600 seconds) to another worker. A class mapping message whose copy takes longer than an hour is then handled
 by two workers at the same time, which must not happen (see the warning under
-[When a Copy Fails, Times Out or Is Cancelled](#when-a-copy-fails-times-out-or-is-cancelled)). 2.5 runs on Symfony 6.4
-or 7, and what you can do depends on the version:
+[When a Copy Fails, Times Out or Is Cancelled](#when-a-copy-fails-times-out-or-is-cancelled)). Size it for the whole
+message, not a single copy: the language message copies every class, asset and document index one after the other and
+queues their elements before it is acknowledged. 2.5 runs on Symfony 6.4 or 7, and what you can do depends on the
+version:
 
 - **Symfony 7.3 or newer:** start the workers with `--keepalive`, which keeps the message marked as being handled.
   The keepalive interval must be smaller than `redeliver_timeout`. `--keepalive` needs the `pcntl` PHP extension; it
@@ -187,7 +189,8 @@ or 7, and what you can do depends on the version:
   ```
 
 - **Symfony 6.4, or 7 before 7.3:** the Doctrine transport has no keepalive. Raise `redeliver_timeout` above the
-  longest copy you expect. This works on newer versions as well.
+  longest message you expect, with a margin, also on the dedicated transport below. This works on newer versions as
+  well.
 
   ```yaml
   framework:
@@ -261,10 +264,16 @@ Notes:
 - With an index option (`--all`, `--classes`, …) a failing index doesn't stop the others; the command reports
   "Finished with errors" and exits with a non-zero status. Without options, the first class that fails stops the run.
 - Search keeps working during the deployment: reads go to the old index until the alias of each index switches.
-  Element saves made while the workers are stopped wait in the index queue and are processed after step 5. Writes
+  The exception is a field type change whose existing values don't fit the new mapping: then the index is recreated
+  empty (see the [Reindexing Guide](../03_Reindexing/README.md)), and the class has no or incomplete search results
+  until the rebuild after step 5 has finished.
+- Element saves made while the workers are stopped wait in the index queue and are processed after step 5. Writes
   that a running worker processes during a copy go to the old index and are lost at the switch; a rebuild queued
   after the copy writes them again, except deletes. A copy that only applies changed `index_settings` queues no
   rebuild, so such writes stay lost until the element is saved again. This is why the workers are stopped.
+- Stopped workers don't stop every write: moving or renaming an element rewrites the paths of its children in the
+  index during the request, and elements saved with synchronous processing are written without a worker. Avoid
+  moves, renames and synchronous saves in the editing interface and in imports while the copies run.
 
 ## Class Changes in Production
 
@@ -324,12 +333,12 @@ Messenger: `bin/console messenger:stats` shows the messages waiting per transpor
 
 | Case | What happens | What to do |
 | --- | --- | --- |
-| The copy runs out of its budget (`did not complete within N seconds`) | The bundle cancels the task and deletes the new index. The old index stays live with the old mapping, the checksum is not stored, nothing is queued. A console command exits with a non-zero status; a worker retries the message 3 times, then moves it to the failed transport. | Raise `max_polls` (and the worker redelivery), then run `deployment:reindex --all` in a quiet period. It copies the classes whose checksum was not stored. Failed messages for these classes skip the copy once the checksum matches. |
+| The copy runs out of its budget (`did not complete within N seconds`) | The bundle cancels the task and deletes the new index. The old index stays live with the old mapping, the checksum is not stored, nothing is queued. A console command exits with a non-zero status; a worker retries the message 3 times, then moves it to the failed transport. | Raise `max_polls` (and the worker redelivery), then repeat what failed in a quiet period: run the command again, or retry the failed message (`messenger:failed:retry --transport=pimcore_generic_data_index_failed`). `deployment:reindex --all` only helps where it still detects the change, for example a class whose checksum was not stored; it compares stored states and doesn't know about unfinished copies. |
 | The task reports an error, or the cluster is unreachable | As above. Single failed status polls are retried and don't abort the copy. | Fix the cause, then as above. |
-| The existing documents don't fit the new mapping | The index is recreated empty with the new mapping (`Recreating index for alias`); see the [Reindexing Guide](../03_Reindexing/README.md). | Run enough workers for the rebuild and watch `generic-data-index:status`. After `generic-data-index:reindex`, which queues nothing, run `update:index -c <id>` or `-a`. |
+| The existing documents don't fit the new mapping | The index is recreated empty with the new mapping (`Recreating index for alias`); see the [Reindexing Guide](../03_Reindexing/README.md). | Run enough workers for the rebuild and watch `generic-data-index:status`. After `generic-data-index:reindex`, which queues nothing, run `update:index -c <id>` for a class or `-a` for assets; for the document index, run `update:index` without options, which on 2.5 rebuilds all indices. |
 | The task could not be confirmed as cancelled | The new index is kept (`Keeping index` warning). | The next copy of the index cancels the leftover task and deletes the index; or remove it by hand (see [Housekeeping](#housekeeping)). |
 | The worker or console process was killed during the copy | The engine task keeps running; its new index stays. | The next copy of the index cancels the task. Check the tasks API before you start one by hand. |
-| Valid languages changed in the system settings, and the copies failed | The error is logged (`Updating languages failed`); the message is not retried. | Run `deployment:reindex --all`. Indices it reports with "no stored state yet" need `update:index` once (see [Other Index Changes](./03_Index_Management.md#other-index-changes)). |
+| Valid languages changed in the system settings, and the copies failed | The error is logged (`Updating languages failed`); the message is not retried. | Run `deployment:reindex --all`. Indices it reports with "no stored state yet" need `update:index` once (see [Other Index Changes](./03_Index_Management.md#other-index-changes)). Classes whose only language-dependent data is a localized classification store keep their checksum; rebuild them with `update:index -c <id>` (see [Languages](../03_Reindexing/README.md#languages)). |
 | `deployment:reindex` without options fails for one class | The classes after it are not processed in this run. | Fix the cause and run the command again, or use `--all`, which continues with the other indices. |
 
 :::warning
@@ -390,9 +399,10 @@ the index queue. Limit it with `-c` or `-a` where the note allows; 2.5 has no op
   DELETE /<leftover index>
   ```
 
-  Delete only the index that the alias doesn't point to, and only if no task names it as source or target: while a
-  copy runs, its new index has no alias yet, and deleting it breaks the copy. On large indices a copy can run for
-  hours, so check the tasks API right before the delete.
+  Delete only the index that the alias doesn't point to, only if no task names it as source or target, and only
+  while no worker or command copies: while a copy runs, its new index has no alias yet, and deleting it breaks the
+  copy. A finished task alone is not enough, because the process that waits for it switches the alias a few seconds
+  later. Stop the workers and wait for running commands, then check the tasks API right before the delete.
 - **Mapping growth.** Removed fields and languages stay in the mapping after a copy or an in-place update and count
   against `index.mapping.total_fields.limit` (see [Total fields limit](./03_Index_Management.md#total-fields-limit)).
   Only `update:index -r` removes them, and it leaves the index empty until the rebuild has finished. On large indices
@@ -405,13 +415,13 @@ the index queue. Limit it with `-c` or `-a` where the note allows; 2.5 has no op
 
 | Symptom | Check | Action |
 | --- | --- | --- |
-| A class change is not searchable or filterable after a deployment | `deployment:reindex --all --dry-run` | Run `deployment:reindex --all`; field collection, object brick and classification store changes are never applied by a class save alone |
-| A command or worker fails with `did not complete within N seconds` | Document count of the index, `reindex_settings` | Raise `max_polls`, then run `deployment:reindex --all` |
-| `generic-data-index:status` warns about `-odd` and `-even` | `GET _tasks?actions=*reindex&detailed=true` | Task running: wait. No task: remove the leftover by hand (see [Housekeeping](#housekeeping)) |
+| A class change is not searchable or filterable after a deployment | `deployment:reindex --all --dry-run` | Run `deployment:reindex --all`. Editing a field collection, object brick or classification store triggers nothing; the next save of an affected class or `deployment:reindex` applies the change |
+| A command or worker fails with `did not complete within N seconds` | Document count of the index, `reindex_settings` | Raise `max_polls`, then run the command again or retry the failed message (see [When a Copy Fails](#when-a-copy-fails-times-out-or-is-cancelled)) |
+| `generic-data-index:status` warns about `-odd` and `-even` | `GET _tasks?actions=*reindex&detailed=true` | Task running: wait. No task and no worker or command copying: remove the leftover by hand (see [Housekeeping](#housekeeping)) |
 | The index queue doesn't drain | Are workers running? Does one consume `scheduler_generic_data_index`? `messenger:stats`, failed messages | Start the workers, consume the scheduler transport, handle failed messages |
 | Indexing stalls for a long time after a class save | Tasks API, log line `Reindexing class mapping` | A worker is copying; wait, or run more workers or a dedicated worker for copies |
 | The index is empty or incomplete after a class change | Log line `Recreating index for alias` | Let the rebuild run; watch `generic-data-index:status` |
-| An index is empty after `generic-data-index:reindex` | Log line `Recreating index for alias` | `update:index -c <id>` or `-a` |
+| An index is empty after `generic-data-index:reindex` | Log line `Recreating index for alias` | `update:index -c <id>` for a class, `-a` for assets, `update:index` without options for documents (rebuilds all indices on 2.5) |
 | Elements saved during a copy show old values | Did the copy queue a rebuild (settings-only copy, `generic-data-index:reindex`)? Were workers running? | `update:index -c <id>` or `-a`; `update:index` for documents |
 | Deleted elements are still found | Was the element deleted during a copy? | `update:index -r` for that index in a planned window |
 | A harmless class save started a long copy | `deployment:reindex --all --dry-run` before the save | Run `deployment:reindex --all` after every deployment and upgrade |

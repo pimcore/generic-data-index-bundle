@@ -209,9 +209,8 @@ pimcore_generic_data_index:
 
 The bundle sets the field limit per index to 100,000 by default
 (`config/pimcore/default_index_settings.yaml`). Classification stores are a common reason to exceed it:
-each group is mapped with each of its keys (and, for a localized store, each language). Restricting the
-allowed groups of the classification store field in the class definition maps only those groups and
-reduces the field count. Otherwise, increase the limit with:
+every group of the store is mapped with each of its keys, regardless of the groups allowed in the class
+definition, and the values of a localized store add fields per language. Increase the limit with:
 
 ```yaml
 pimcore_generic_data_index:
