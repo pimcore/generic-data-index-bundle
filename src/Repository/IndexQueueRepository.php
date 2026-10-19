@@ -163,6 +163,29 @@ final class IndexQueueRepository
     }
 
     /**
+     * Removes every entry of one index, e.g. the entries of a deleted class once its index is gone.
+     *
+     * @return int the number of removed entries
+     *
+     * @throws DBALException
+     */
+    public function deleteQueueEntriesByIndexName(ElementType $elementType, string $elementIndexName): int
+    {
+        return (int)$this->connection->executeStatement(
+            sprintf(
+                'DELETE FROM %s WHERE %s = :elementType AND %s = :elementIndexName',
+                $this->connection->quoteIdentifier(IndexQueue::TABLE),
+                $this->connection->quoteIdentifier('elementType'),
+                $this->connection->quoteIdentifier('elementIndexName')
+            ),
+            [
+                'elementType' => $elementType->value,
+                'elementIndexName' => $elementIndexName,
+            ]
+        );
+    }
+
+    /**
      * @throws ExceptionInterface
      */
     public function denormalizeDatabaseEntry(array $entry): IndexQueue
