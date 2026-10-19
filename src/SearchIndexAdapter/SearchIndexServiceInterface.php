@@ -76,6 +76,20 @@ interface SearchIndexServiceInterface
 
     public function getStats(string $indexName): array;
 
+    /**
+     * Number of documents in an index (or behind an alias), optionally those matching $query (engine query DSL).
+     *
+     * @param array<string, mixed> $query
+     */
+    public function countDocuments(string $indexName, array $query = []): int;
+
+    /**
+     * Reindex tasks running in the search engine; empty when the client has no tasks API or listing fails.
+     *
+     * @return list<array{id: string, source: string, target: string, created: int, total: int}>
+     */
+    public function getReindexTasks(): array;
+
     public function getIndexSettings(string $indexName): array;
 
     public function getCount(AdapterSearchInterface $search, string $indexName): int;

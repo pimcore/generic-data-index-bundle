@@ -15,13 +15,16 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue;
 
 use Doctrine\DBAL\Exception;
 use Exception as ThrowableException;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\EnqueueElementsException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\RequiredByElementListServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexRebuildStateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\Element\ElementInterface;
@@ -37,9 +40,9 @@ final readonly class EnqueueService implements EnqueueServiceInterface
         private TimeServiceInterface $timeService,
         private QueueMessagesDispatcher $queueMessagesDispatcher,
         private AdapterServiceInterface $typeAdapterService,
-        private RequiredByElementListServiceInterface $requiredByElementListService
+        private RequiredByElementListServiceInterface $requiredByElementListService,
+        private IndexRebuildStateServiceInterface $rebuildStateService,
     ) {
-
     }
 
     /**
@@ -111,6 +114,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
         $this->indexQueueRepository->enqueueBySelectQuery(
             $selectQuery
         );
+        $this->rebuildStateService->markQueued(IndexStateTarget::forClassDefinition($classDefinition));
 
         return $this;
     }
@@ -130,6 +134,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                 ],
             )->where('type = "folder"');
             $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
+            $this->rebuildStateService->markQueued(IndexStateTarget::forScope(DeploymentReindexScope::FOLDERS));
         } catch (Exception $e) {
             throw new EnqueueElementsException(
                 $e->getMessage()
@@ -157,6 +162,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                 ]
             );
             $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
+            $this->rebuildStateService->markQueued(IndexStateTarget::forScope(DeploymentReindexScope::ASSETS));
         } catch (Exception $e) {
             throw new EnqueueElementsException(
                 $e->getMessage()
@@ -184,6 +190,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                 ]
             );
             $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
+            $this->rebuildStateService->markQueued(IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS));
         } catch (Exception $e) {
             throw new EnqueueElementsException(
                 $e->getMessage()

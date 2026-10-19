@@ -45,6 +45,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
     private const MAX_CONSECUTIVE_POLL_FAILURES = 3;
 
+    /** Log the progress of a running copy every n polls (one minute with the default poll interval). */
+    private const PROGRESS_LOG_EVERY_POLLS = 12;
+
     /**
      * Failure cause types that prove the existing documents are structurally
      * incompatible with the new mapping. Anything else (rejected executions,
@@ -261,6 +264,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             }
 
             if (empty($taskStatus['completed'])) {
+                if ($poll > 0 && $poll % self::PROGRESS_LOG_EVERY_POLLS === 0) {
+                    $this->logProgress($taskId, $taskStatus, $poll);
+                }
                 sleep($this->reindexPollIntervalSeconds);
 
                 continue;
@@ -355,6 +361,94 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         return false;
     }
 
+    public function countDocuments(string $indexName, array $query = []): int
+    {
+        $params = ['index' => $indexName];
+        if ($query !== []) {
+            $params['body'] = ['query' => $query];
+        }
+
+        return (int) ($this->client->count($params)['count'] ?? 0);
+    }
+
+    public function getReindexTasks(): array
+    {
+        try {
+            $tasks = $this->listReindexTasks();
+        } catch (ReindexFailedException $e) {
+            $this->logger->warning('Could not list the running reindex tasks: ' . $e->getMessage());
+
+            return [];
+        }
+
+        $result = [];
+        foreach ($tasks['nodes'] ?? [] as $node) {
+            foreach ($node['tasks'] ?? [] as $taskId => $task) {
+                $description = (string) ($task['description'] ?? '');
+                if (!preg_match('/reindex from \\[([^\\]]+)\\] to \\[([^\\]]+)\\]/', $description, $matches)) {
+                    continue;
+                }
+                $status = $task['status'] ?? [];
+                $result[] = [
+                    'id' => (string) $taskId,
+                    'source' => $matches[1],
+                    'target' => $matches[2],
+                    'created' => (int) ($status['created'] ?? 0) + (int) ($status['updated'] ?? 0),
+                    'total' => (int) ($status['total'] ?? 0),
+                ];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * The raw tasks API response for running reindex tasks.
+     *
+     * @return array<string, mixed>
+     *
+     * @throws ReindexFailedException
+     */
+    private function listReindexTasks(): array
+    {
+        if (!\is_callable([$this->client, 'getOriginalClient'])) {
+            throw new ReindexFailedException(
+                'The configured search client does not expose the tasks API'
+                . ' (getOriginalClient()); the asynchronous reindex cannot be tracked.'
+            );
+        }
+
+        try {
+            $tasks = $this->client->getOriginalClient()->tasks()->list([
+                'actions' => '*reindex',
+                'detailed' => true,
+            ]);
+
+            if (\is_object($tasks) && \method_exists($tasks, 'asArray')) {
+                $tasks = $tasks->asArray();
+            }
+        } catch (\Throwable $e) {
+            throw new ReindexFailedException($e->getMessage(), 0, $e);
+        }
+
+        return \is_array($tasks) ? $tasks : [];
+    }
+
+    /**
+     * @param array<string, mixed> $taskStatus
+     */
+    private function logProgress(string $taskId, array $taskStatus, int $poll): void
+    {
+        $status = $taskStatus['task']['status'] ?? [];
+        $this->logger->info(sprintf(
+            'Reindex task %s: %d of %d documents copied after %d seconds',
+            $taskId,
+            (int) ($status['created'] ?? 0) + (int) ($status['updated'] ?? 0),
+            (int) ($status['total'] ?? 0),
+            $poll * $this->reindexPollIntervalSeconds
+        ));
+    }
+
     /**
      * A previous aborted attempt may have left a reindex task behind that still
      * writes into the target name (see cancelTask()). It must be stopped before
@@ -375,15 +469,8 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         }
 
         try {
-            $tasks = $this->client->getOriginalClient()->tasks()->list([
-                'actions' => '*reindex',
-                'detailed' => true,
-            ]);
-
-            if (\is_object($tasks) && \method_exists($tasks, 'asArray')) {
-                $tasks = $tasks->asArray();
-            }
-        } catch (\Throwable $e) {
+            $tasks = $this->listReindexTasks();
+        } catch (ReindexFailedException $e) {
             throw new ReindexFailedException(
                 sprintf(
                     'Could not verify that no previous reindex task is still writing into "%s": %s',

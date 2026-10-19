@@ -89,4 +89,12 @@ final class SettingsStoreService implements SettingsStoreServiceInterface
             self::SETTINGS_STORE_SCOPE
         );
     }
+
+    public function removeIndexState(string $key): void
+    {
+        $this->settingsStoreResolver->delete(
+            self::INDEX_STATE_PREFIX . $key,
+            self::SETTINGS_STORE_SCOPE
+        );
+    }
 }
