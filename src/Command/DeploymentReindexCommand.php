@@ -149,8 +149,7 @@ final class DeploymentReindexCommand extends AbstractCommand
                     ;
                 } catch (Exception $e) {
                     // Like the run with index options: report the class and go on with the
-                    // remaining ones; the checksum of a failed class is not stored, so it is
-                    // retried on the next run.
+                    // remaining ones.
                     $failed = true;
                     $output->writeln(sprintf(
                         '<error>Updating class %s (%s) failed: %s</error>',
@@ -192,7 +191,7 @@ final class DeploymentReindexCommand extends AbstractCommand
         }
 
         if ($failed) {
-            $output->writeln('<error>Finished with errors - failed classes are retried on the next run</error>');
+            $output->writeln('<error>Finished with errors - see the failed classes above</error>');
 
             return self::FAILURE;
         }
