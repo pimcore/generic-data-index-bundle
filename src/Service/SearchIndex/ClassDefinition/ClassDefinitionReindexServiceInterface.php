@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Model\DataObject\ClassDefinition;
 
 /**
@@ -29,6 +30,20 @@ interface ClassDefinitionReindexServiceInterface
         bool $skipIfClassNotChanged = false,
         bool $enqueueItems = false,
     ): bool;
+
+    /**
+     * Same as {@see reindexClassDefinition()}, returning what applying the mapping did, or null
+     * when the class was skipped because its mapping is unchanged. Objects are queued when
+     * $enqueueItems is set, and always when the result requires a rebuild: fields were left out of
+     * the copy, the index had to be created empty, or a custom index handler applied the mapping.
+     *
+     * @throws ClassDefinitionIndexUpdateFailedException
+     */
+    public function reindexClassDefinitionMapping(
+        ClassDefinition $classDefinition,
+        bool $skipIfClassNotChanged = false,
+        bool $enqueueItems = false,
+    ): ?MappingUpdateResult;
 
     /**
      * Whether {@see reindexClassDefinition()} with $skipIfClassNotChanged would reindex the class.

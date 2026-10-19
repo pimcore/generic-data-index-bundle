@@ -24,6 +24,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Debug\SearchInform
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexOutcome;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexStripScript;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\FieldExpansionFallback;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorPipeline;
@@ -62,6 +64,27 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         'strict_dynamic_mapping_exception',
         'document_parsing_exception',
     ];
+
+    /**
+     * OpenSearch reports a term over 32766 bytes in a keyword field as illegal_argument_exception;
+     * it is caused by the data like a parsing failure, never transient.
+     */
+    private const IMMENSE_TERM_MARKER = 'immense term in field="';
+
+    /** Reasons that name the failing field; the first capture group is its full dotted path. */
+    private const FAILING_FIELD_PATTERNS = [
+        '/failed to parse field \[([^\]]+)\]/',
+        '/object mapping for \[([^\]]+)\]/',
+        '/Could not dynamically add mapping for field \[([^\]]+)\]/',
+        '/immense term in field="([^"]+)"/',
+    ];
+
+    /** "dynamic introduction of [name] within [parent.path] is not allowed" */
+    private const STRICT_DYNAMIC_FIELD_PATTERN = '/dynamic introduction of \[([^\]]+)\] within \[([^\]]+)\]/';
+
+    private const MAX_CAUSE_DEPTH = 5;
+
+    private const ROOT_OBJECT_NAME = '_doc';
 
     use LoggerAwareTrait;
 
@@ -123,6 +146,23 @@ final class DefaultSearchService implements SearchIndexServiceInterface
      */
     public function reindex(string $indexName, array $mapping): ReindexResult
     {
+        return $this->copyIntoNewIndex($indexName, $mapping, null)->getResult();
+    }
+
+    public function reindexWithoutFields(string $indexName, array $mapping, array $stripPaths): ReindexOutcome
+    {
+        return $this->copyIntoNewIndex(
+            $indexName,
+            $mapping,
+            $stripPaths === [] ? null : new ReindexStripScript($stripPaths)
+        );
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function copyIntoNewIndex(string $indexName, array $mapping, ?ReindexStripScript $script): ReindexOutcome
+    {
         $currentIndexVersion = $this->getCurrentIndexVersion($indexName);
         $newIndexVersion = $currentIndexVersion === self::INDEX_VERSION_EVEN
             ? self::INDEX_VERSION_ODD
@@ -149,6 +189,9 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 'index' => $newIndexName,
             ],
         ];
+        if ($script !== null) {
+            $body['script'] = $script->toRequestScript();
+        }
 
         $taskId = null;
 
@@ -184,21 +227,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             throw $e;
         }
 
-        // A cancelled task reports completed without an error and without failures; only response.canceled says so.
-        // It was stopped from outside: by an operator, or by a second reindex of the same index, which then owns the
-        // new index and is writing into it. Neither switch the alias to the incomplete index nor delete it.
-        $cancelReason = $taskStatus['response']['canceled'] ?? null;
-        if (is_string($cancelReason) && $cancelReason !== '') {
-            $this->logger->warning(sprintf(
-                'Reindex task %s into "%s" was cancelled (%s); the alias stays on "%s"',
-                $taskId,
-                $newIndexName,
-                $cancelReason,
-                $oldIndexName
-            ));
-
-            throw new ReindexFailedException(sprintf('Reindex task %s was cancelled: %s', $taskId, $cancelReason));
-        }
+        $this->assertTaskNotCancelled($taskId, $taskStatus, $oldIndexName, $newIndexName);
 
         // The task is completed at this point, so the new index can be deleted safely.
         $failures = $taskStatus['response']['failures'] ?? [];
@@ -216,7 +245,10 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                     json_encode(array_slice($failures, 0, 5), JSON_PARTIAL_OUTPUT_ON_ERROR)
                 ));
 
-                return ReindexResult::MAPPING_INCOMPATIBLE;
+                return new ReindexOutcome(
+                    ReindexResult::MAPPING_INCOMPATIBLE,
+                    $this->extractFailingFieldPaths($failures)
+                );
             }
 
             throw new ReindexFailedException(
@@ -227,7 +259,57 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
 
-        return ReindexResult::SUCCESS;
+        return new ReindexOutcome(ReindexResult::SUCCESS);
+    }
+
+    /**
+     * Field paths named in parsing failures. OpenSearch and Elasticsearch name the full dotted
+     * path of the field ("failed to parse field [a.b.c] of type [float] ..."), or of the object
+     * for object/scalar conflicts ("object mapping for [a.b] tried to parse field [b] as object").
+     * The engine reports only the first failing field per document, and only for one batch.
+     *
+     * @param array<int, array<string, mixed>> $failures
+     *
+     * @return string[][]
+     */
+    private function extractFailingFieldPaths(array $failures): array
+    {
+        $paths = [];
+        foreach ($failures as $failure) {
+            $path = $this->findFailingFieldPath($failure['cause'] ?? []);
+            if ($path !== null) {
+                $paths[implode('.', $path)] = $path;
+            }
+        }
+
+        return array_values($paths);
+    }
+
+    /**
+     * The field named in a failure reason, looking into the wrapped causes too: the engine wraps
+     * exceptions thrown while parsing a document ("failed to parse") and names the field inside.
+     *
+     * @return string[]|null
+     */
+    private function findFailingFieldPath(array $cause): ?array
+    {
+        for ($depth = 0; $depth < self::MAX_CAUSE_DEPTH && $cause !== []; $depth++) {
+            $reason = (string) ($cause['reason'] ?? '');
+            foreach (self::FAILING_FIELD_PATTERNS as $pattern) {
+                if (preg_match($pattern, $reason, $match) === 1) {
+                    return explode('.', $match[1]);
+                }
+            }
+            if (preg_match(self::STRICT_DYNAMIC_FIELD_PATTERN, $reason, $match) === 1) {
+                // "_doc" names the document root, not a key in the document.
+                $parent = $match[2] === self::ROOT_OBJECT_NAME ? [] : explode('.', $match[2]);
+
+                return [...$parent, $match[1]];
+            }
+            $cause = is_array($cause['caused_by'] ?? null) ? $cause['caused_by'] : [];
+        }
+
+        return null;
     }
 
     /**
@@ -272,6 +354,37 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 $this->reindexMaxPolls * $this->reindexPollIntervalSeconds
             )
         );
+    }
+
+    /**
+     * A cancelled task reports completed without an error and without failures; only response.canceled says so.
+     * It was stopped from outside: by an operator, or by a second reindex of the same index, which then owns the
+     * new index and is writing into it. Neither switch the alias to the incomplete index nor delete it.
+     *
+     * @param array<string, mixed> $taskStatus a completed task
+     *
+     * @throws ReindexFailedException when the task was cancelled
+     */
+    private function assertTaskNotCancelled(
+        string $taskId,
+        array $taskStatus,
+        string $oldIndexName,
+        string $newIndexName
+    ): void {
+        $cancelReason = $taskStatus['response']['canceled'] ?? null;
+        if (!is_string($cancelReason) || $cancelReason === '') {
+            return;
+        }
+
+        $this->logger->warning(sprintf(
+            'Reindex task %s into "%s" was cancelled (%s); the alias stays on "%s"',
+            $taskId,
+            $newIndexName,
+            $cancelReason,
+            $oldIndexName
+        ));
+
+        throw new ReindexFailedException(sprintf('Reindex task %s was cancelled: %s', $taskId, $cancelReason));
     }
 
     /**
@@ -324,7 +437,10 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     {
         foreach ($failures as $failure) {
             $causeType = $failure['cause']['type'] ?? '';
-            if (!\in_array($causeType, self::MAPPING_INCOMPATIBILITY_FAILURE_TYPES, true)) {
+            $reason = (string) ($failure['cause']['reason'] ?? '');
+            $isImmenseTerm = $causeType === 'illegal_argument_exception'
+                && str_contains($reason, self::IMMENSE_TERM_MARKER);
+            if (!$isImmenseTerm && !\in_array($causeType, self::MAPPING_INCOMPATIBILITY_FAILURE_TYPES, true)) {
                 return false;
             }
         }

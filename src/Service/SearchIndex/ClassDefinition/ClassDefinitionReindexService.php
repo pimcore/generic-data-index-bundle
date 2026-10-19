@@ -16,9 +16,12 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinit
 use Exception;
 use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Psr\Log\LoggerInterface;
@@ -34,6 +37,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         private SettingsStoreServiceInterface $settingsStoreService,
         private IndexIconUpdateServiceInterface $indexIconUpdateService,
         private LoggerInterface $pimcoreGenericDataIndexLogger,
+        private IndexRebuildObligationServiceInterface $rebuildObligationService,
     ) {
     }
 
@@ -42,15 +46,37 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         bool $skipIfClassNotChanged = false,
         bool $enqueueItems = false,
     ): bool {
+        return $this->reindexClassDefinitionMapping($classDefinition, $skipIfClassNotChanged, $enqueueItems) !== null;
+    }
+
+    public function reindexClassDefinitionMapping(
+        ClassDefinition $classDefinition,
+        bool $skipIfClassNotChanged = false,
+        bool $enqueueItems = false,
+    ): ?MappingUpdateResult {
         try {
-            $mappingChanged = $this->reindexMapping($classDefinition, $skipIfClassNotChanged);
+            $target = IndexStateTarget::forClassDefinition($classDefinition);
+            $rebuildOwed = $this->rebuildObligationService->isOwed($target);
+            $result = $this->reindexMapping($classDefinition, $skipIfClassNotChanged);
+            if ($rebuildOwed) {
+                // An earlier run changed the index and failed before queuing its rebuild. The mapping is
+                // current now, so this run's copy (if any) reports nothing that would queue it again.
+                $result = $result === null ? MappingUpdateResult::forOwedRebuildOnly() : $result->withRebuildOwed();
+            }
+            if ($result !== null) {
+                // Fields left out of the copy (or an index created empty) are only restored by the
+                // rebuild from the database, so the objects are queued even if the caller did not ask.
+                // Queued before the checksum is stored and before the icon update: if either fails, the
+                // stored checksum would let every retry skip the class, and nothing would queue it again.
+                if ($enqueueItems || $result->requiresRebuild()) {
+                    $this->enqueueService->enqueueByClassDefinition($classDefinition);
+                }
+                $this->rebuildObligationService->settle($target);
+                $this->storeMappingCheckSum($classDefinition);
+            }
             $this->changeIcon($classDefinition);
 
-            if ($mappingChanged && $enqueueItems) {
-                $this->enqueueService->enqueueByClassDefinition($classDefinition);
-            }
-
-            return $mappingChanged;
+            return $result;
         } catch (Exception $exception) {
             throw new ClassDefinitionIndexUpdateFailedException(
                 message: $exception->getMessage(),
@@ -88,7 +114,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
     private function reindexMapping(
         ClassDefinition $classDefinition,
         bool $skipIfClassNotChanged
-    ): bool {
+    ): ?MappingUpdateResult {
         $mappingProperties = $this->dataObjectIndexHandler->getMappingProperties($classDefinition);
         $currentCheckSum = $this->dataObjectIndexHandler->getClassMappingCheckSum($mappingProperties);
         $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
@@ -105,7 +131,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
                     'currentChecksum' => $currentCheckSum,
                 ]);
 
-                return false;
+                return null;
             }
 
             if ($storedCheckSum === $this->getLegacyClassMappingCheckSum($mappingProperties)) {
@@ -124,7 +150,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
                     data: $currentCheckSum
                 );
 
-                return false;
+                return null;
             }
         }
 
@@ -138,20 +164,27 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
             'currentChecksum' => $currentCheckSum,
         ]);
 
-        $this->dataObjectIndexHandler
-            ->reindexMapping(
+        // Recorded before the live index changes; settled once the rebuild the update may need is queued.
+        $this->rebuildObligationService->owe(IndexStateTarget::forClassDefinition($classDefinition));
+
+        return $this->dataObjectIndexHandler
+            ->reindexMappingWithResult(
                 context: $classDefinition,
                 mappingProperties: $mappingProperties
             );
+    }
 
+    /**
+     * @throws JsonException
+     */
+    private function storeMappingCheckSum(ClassDefinition $classDefinition): void
+    {
         $this->settingsStoreService->storeClassMapping(
             classDefinitionId: $classDefinition->getId(),
             data: $this->dataObjectIndexHandler->getClassMappingCheckSum(
-                $mappingProperties
+                $this->dataObjectIndexHandler->getMappingProperties($classDefinition)
             )
         );
-
-        return true;
     }
 
     /**

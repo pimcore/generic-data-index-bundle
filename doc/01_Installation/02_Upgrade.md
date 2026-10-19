@@ -6,6 +6,46 @@ description: Version-specific upgrade instructions and breaking changes for the 
 # Upgrade Information
 
 ## Upgrade to 2026.3.3
+- [Indexing] New option `index_service.reindex_settings.mapping_change_strategy` (`recreate`, the default, or `copy`)
+  decides what happens to the documents of an index when its mapping changes. The default keeps the behaviour of
+  previous versions: the documents are copied as they are, and the index is recreated empty when their old values
+  don't fit the new mapping (for example after a field type change). One thing is new in that case: a rebuild of the
+  recreated index from the database is always queued, also by `generic-data-index:reindex` and by a settings-only
+  `deployment:reindex`, so the index fills again without a manual `update:index`.
+  With `copy`, the odd/even copy leaves out the changed fields whose old values don't fit the new type and keeps the
+  others (for example a number copied into a text field). The index is only recreated as a last resort, when the copy
+  fails and no further field can be left out (after at most 3 attempts). System fields are never left out: if their
+  old values don't fit, the index is recreated. The documents stay searchable; the left-out fields are empty, so
+  filters and sorting on them find nothing, until the messenger workers have rebuilt all objects of the class from the
+  database. The copy blocks the messenger worker that handles the class mapping message for about 1.5 ms per document
+  (measured: 100,000 documents of about 6 KB in about 2.5 minutes on a development machine with OpenSearch 2); the
+  rebuild runs at the usual indexing rate. See the [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
+- [Indexing] Upgrading from a version before 2026.2.8: the numeric mapping change of 2026.2.8 (`float` to `double`, or
+  `long` for integer fields) is applied by the odd/even copy as well. Both keep their values, so the indices stay
+  complete. Typed `CalculatedValue` fields of 2026.2.9 (text to a number, boolean or date) are left out of the copy
+  and filled again by the rebuild.
+- [Commands] Behavior change: `generic-data-index:reindex` now adds all elements of an index to the index queue if its
+  copy left out fields, the index had to be created empty, or a custom index handler applied the mapping, and prints a
+  notice per index. Before, it never filled the index queue. Operators who relied on that need messenger workers running
+  after the command.
+- [Indexing] A mapping update that changed an index but failed before its rebuild was queued (for example the
+  database became unavailable after the copy) leaves a mark in the settings store; the next class save,
+  `deployment:reindex` or `generic-data-index:reindex` of that index queues the rebuild, although its own copy
+  changes nothing.
+- [Commands] `generic-data-index:deployment:reindex` and its `--dry-run` list per index the changed fields: with
+  `copy` the fields stripped, the fields kept and the fields outside class and custom fields that are copied as they
+  are; with `recreate` the changed fields copied as they are, and which of them `copy` would leave out.
+- [Indexing] New methods on `@internal` interfaces, relevant only for custom implementations of them:
+  `IndexHandlerInterface::reindexMappingWithResult()` and `getMappingDiff()`,
+  `SearchIndexServiceInterface::reindexWithoutFields()`, `ReindexServiceInterface::reindexAllIndicesWithReport()`,
+  `ClassDefinitionReindexServiceInterface::reindexClassDefinitionMapping()`.
+- [Deprecation] `AbstractIndexHandler` has a new optional constructor argument `IndexCopyServiceInterface`. Subclasses
+  that call the parent constructor without it keep working and trigger a deprecation; the argument will be required in
+  the next major version. `reindexMapping()` keeps its signature. A subclass that overrides it is still called by the
+  bundle; because the bundle cannot tell what the override did, it then queues a rebuild of the index from the database.
+  Project code that calls `reindexMapping()` directly gets the copy with stripped fields too, but nothing is queued:
+  after a field type change, queue the elements of the index (for example with
+  `generic-data-index:update:index -c <class id>`), or the stripped fields stay empty.
 - [Commands] `generic-data-index:deployment:reindex` has new opt-in options (`--all`, `--assets`, `--dry-run`, …) that
   also cover the folder, asset and document indices and `index_settings`. Without options nothing changes. See
   [Deployment and Index Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).

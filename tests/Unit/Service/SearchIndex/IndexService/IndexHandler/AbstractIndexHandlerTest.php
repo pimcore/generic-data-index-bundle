@@ -16,11 +16,15 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\I
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexOutcome;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AbstractIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Psr\Log\NullLogger;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
@@ -90,7 +94,7 @@ final class AbstractIndexHandlerTest extends Unit
             'putMapping' => static function (): array {
                 throw new Exception('putMapping failed');
             },
-            'reindex' => ReindexResult::MAPPING_INCOMPATIBLE,
+            'reindexWithoutFields' => new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE),
             'createIndex' => static function () use ($fluent): SearchIndexServiceInterface {
                 return $fluent;
             },
@@ -131,7 +135,7 @@ final class AbstractIndexHandlerTest extends Unit
         $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
             'existsAlias' => true,
             'getCurrentIndexVersion' => '',
-            'reindex' => ReindexResult::MAPPING_INCOMPATIBLE,
+            'reindexWithoutFields' => new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE),
             'createIndex' => static function () use ($recreationException): void {
                 throw $recreationException;
             },
@@ -169,7 +173,7 @@ final class AbstractIndexHandlerTest extends Unit
         $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
             'existsAlias' => true,
             'getCurrentIndexVersion' => '',
-            'reindex' => static function () use ($transientException): void {
+            'reindexWithoutFields' => static function () use ($transientException): void {
                 throw $transientException;
             },
             'createIndex' => Expected::never(),
@@ -210,7 +214,7 @@ final class AbstractIndexHandlerTest extends Unit
         $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
             'existsAlias' => true,
             'getCurrentIndexVersion' => '',
-            'reindex' => ReindexResult::MAPPING_INCOMPATIBLE,
+            'reindexWithoutFields' => new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE),
             'createIndex' => static function (string $indexName) use (&$createdIndices, $fluent) {
                 $createdIndices[] = $indexName;
 
@@ -235,7 +239,7 @@ final class AbstractIndexHandlerTest extends Unit
     {
         $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
             'existsAlias' => true,
-            'reindex' => ReindexResult::SUCCESS,
+            'reindexWithoutFields' => new ReindexOutcome(ReindexResult::SUCCESS),
             'createIndex' => Expected::never(),
             'deleteIndex' => Expected::never(),
         ]);
@@ -244,6 +248,49 @@ final class AbstractIndexHandlerTest extends Unit
         $handler->setLogger(new NullLogger());
 
         $handler->reindexMapping();
+    }
+
+    public function testReindexMappingReportsStrippedFieldsWithoutRecreating(): void
+    {
+        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => true,
+            'getMapping' => [self::ALIAS_NAME . '-odd' => ['mappings' => ['properties' => [
+                'standard_fields' => ['properties' => ['price' => ['type' => 'text']]],
+            ]]]],
+            'reindexWithoutFields' => Expected::once(new ReindexOutcome(ReindexResult::SUCCESS)),
+            'createIndex' => Expected::never(),
+            'deleteIndex' => Expected::never(),
+        ]);
+        $handler = $this->createHandlerWithService(
+            $searchIndexService,
+            ['standard_fields' => ['properties' => ['price' => ['type' => 'float']]]]
+        );
+        $handler->setLogger(new NullLogger());
+
+        $result = $handler->reindexMappingWithResult();
+
+        $this->assertSame(['standard_fields.price'], $result->getStrippedPaths());
+        $this->assertFalse($result->isRecreated());
+        $this->assertTrue($result->requiresRebuild());
+    }
+
+    public function testReindexMappingReportsTheRecreationAsLastResort(): void
+    {
+        $fluent = $this->makeEmpty(SearchIndexServiceInterface::class, ['addAlias' => []]);
+        $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => true,
+            'getCurrentIndexVersion' => '',
+            'reindexWithoutFields' => new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE),
+            'createIndex' => $fluent,
+            'putMapping' => [],
+        ]);
+        $handler = $this->createHandlerWithService($searchIndexService);
+        $handler->setLogger(new NullLogger());
+
+        $result = $handler->reindexMappingWithResult();
+
+        $this->assertTrue($result->isRecreated());
+        $this->assertTrue($result->requiresRebuild());
     }
 
     private function createHandler(bool $indexSquatsAliasName, array &$deletedIndices): AbstractIndexHandler
@@ -338,6 +385,7 @@ final class AbstractIndexHandlerTest extends Unit
     public function testReindexMappingBoundsAttemptsWhenMappingIncompatibleAndRecreationFails(): void
     {
         $attempts = 0;
+        $copies = 0;
         $fluent = $this->makeEmpty(SearchIndexServiceInterface::class, ['addAlias' => []]);
 
         $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
@@ -345,7 +393,11 @@ final class AbstractIndexHandlerTest extends Unit
             'existsIndex' => false,
             'deleteIndex' => null,
             'getCurrentIndexVersion' => '',
-            'reindex' => ReindexResult::MAPPING_INCOMPATIBLE,
+            'reindexWithoutFields' => static function () use (&$copies): ReindexOutcome {
+                ++$copies;
+
+                return new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE);
+            },
             'createIndex' => static function () use ($fluent): SearchIndexServiceInterface {
                 return $fluent;
             },
@@ -380,6 +432,11 @@ final class AbstractIndexHandlerTest extends Unit
             3,
             $attempts,
             'The number of putMapping attempts must be bounded to MAX_REINDEX_ATTEMPTS to prevent stack overflow'
+        );
+        $this->assertSame(
+            3,
+            $copies,
+            'One copy per depth level: a failure that names no field ends the copy after its first attempt'
         );
     }
 
@@ -459,7 +516,7 @@ final class AbstractIndexHandlerTest extends Unit
             },
         ]);
 
-        $handler = $this->createHandlerWithServiceAndMapping(
+        $handler = $this->createHandlerWithService(
             $searchIndexService,
             // extractMappingProperties returns an empty mapping
             []
@@ -495,7 +552,7 @@ final class AbstractIndexHandlerTest extends Unit
             },
         ]);
 
-        $handler = $this->createHandlerWithServiceAndMapping(
+        $handler = $this->createHandlerWithService(
             $searchIndexService,
             [
                 'my_field' => [
@@ -520,39 +577,41 @@ final class AbstractIndexHandlerTest extends Unit
         );
     }
 
-    private function createHandlerWithService(SearchIndexServiceInterface $searchIndexService): AbstractIndexHandler
-    {
-        return new class($searchIndexService, $this->makeEmpty(SearchIndexConfigServiceInterface::class), $this->makeEmpty(EventDispatcherInterface::class), $this->makeEmpty(IndexMappingServiceInterface::class), ) extends AbstractIndexHandler {
-            protected function extractMappingProperties(mixed $context = null): array
-            {
-                return [];
-            }
-
-            protected function getAliasIndexName(mixed $context = null): string
-            {
-                return 'test_alias';
-            }
-        };
-    }
-
-    private function createHandlerWithServiceAndMapping(
-        SearchIndexServiceInterface $searchIndexService,
-        array $mappingProperties
+    private function createHandlerWithService(
+        SearchIndexServiceInterface $search,
+        array $properties = []
     ): AbstractIndexHandler {
-        return new class($searchIndexService, $this->makeEmpty(SearchIndexConfigServiceInterface::class), $this->makeEmpty(EventDispatcherInterface::class), $this->makeEmpty(IndexMappingServiceInterface::class), $mappingProperties) extends AbstractIndexHandler {
+        $copy = new IndexCopyService(
+            $search,
+            new MappingDiffService(),
+            new NullLogger(),
+            MappingChangeStrategy::COPY->value
+        );
+        $config = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $events = $this->makeEmpty(EventDispatcherInterface::class);
+        $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
+
+        return new class($search, $config, $events, $mapping, $copy, $properties) extends AbstractIndexHandler {
             public function __construct(
                 SearchIndexServiceInterface $searchIndexService,
                 SearchIndexConfigServiceInterface $searchIndexConfigService,
                 EventDispatcherInterface $eventDispatcher,
                 IndexMappingServiceInterface $indexMappingService,
-                private readonly array $properties
+                IndexCopyService $indexCopyService,
+                private readonly array $mappingProperties
             ) {
-                parent::__construct($searchIndexService, $searchIndexConfigService, $eventDispatcher, $indexMappingService);
+                parent::__construct(
+                    $searchIndexService,
+                    $searchIndexConfigService,
+                    $eventDispatcher,
+                    $indexMappingService,
+                    $indexCopyService
+                );
             }
 
             protected function extractMappingProperties(mixed $context = null): array
             {
-                return $this->properties;
+                return $this->mappingProperties;
             }
 
             protected function getAliasIndexName(mixed $context = null): string
