@@ -218,7 +218,8 @@ draining the queue between two chunks of a large enqueue don't end the rebuild) 
 the messenger worker that processes the last batch, or the enqueue itself when the workers were faster or the index
 has no elements. A mark left behind by a worker that died after its last batch doesn't hide missing documents: with
 an empty queue the counts decide, so such an index shows `incomplete` and asks for a rebuild. If the process
-queuing the elements was terminated between two chunks, the mark keeps its queueing phase: the index shows
+queuing the elements was terminated or failed between two chunks, the mark keeps its queueing phase (the chunks
+are committed one by one, so part of the rebuild may be queued already): the index shows
 `rebuilding` at 0 % with `rebuildEnqueuing` and the time it was queued (the command prints
 `rebuilding, queueing since …`); run the full enqueue again (`update:index`, `deployment:reindex`), which replaces
 the mark. A rebuild queued by a version before this feature isn't marked, so the index shows `complete` with
