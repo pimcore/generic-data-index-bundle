@@ -86,6 +86,10 @@ final class IndexCompletionNotifier implements IndexCompletionNotifierInterface
 
         // Read the status while the marker is still there: if the engine fails here, the next batch retries.
         $status = $this->indexStatusService->getStatusByIndexName($this->targetResolver->aliasName($target));
+        if ($status->getPendingEntries() > 0) {
+            // An entry arrived between the two reads (a save during the rebuild); its batch checks again.
+            return;
+        }
 
         // Only the caller that removes the marker reports; another worker may have finished the same rebuild
         // between the two reads above, or a newer rebuild has replaced the marker and is reported on its own.

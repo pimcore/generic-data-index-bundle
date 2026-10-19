@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\S
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexStatusState;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\DocumentCountFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexStatusException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexState;
@@ -200,6 +201,22 @@ final class IndexStatusServiceTest extends Unit
         $service->getAssetStatus();
     }
 
+    /**
+     * A partial count (failed shards) must not pass as a fact: a degraded index would read as complete.
+     */
+    public function testAPartialDocumentCountFailsTheStatusInsteadOfReportingComplete(): void
+    {
+        $service = $this->createService(
+            documents: 10,
+            elements: 10,
+            countException: new DocumentCountFailedException('1 shard(s) failed')
+        );
+
+        $this->expectException(IndexStatusException::class);
+        $this->expectExceptionMessage('1 shard(s) failed');
+        $service->getAssetStatus();
+    }
+
     public function testAnUnknownIndexNameIsRejected(): void
     {
         $this->expectException(IndexStatusException::class);
@@ -243,6 +260,7 @@ final class IndexStatusServiceTest extends Unit
         bool $enqueued = true,
         array $tasks = [],
         ?ReindexFailedException $tasksException = null,
+        ?DocumentCountFailedException $countException = null,
         ?IndexState $stored = null,
         ?bool $mappingCurrent = true,
         int $queueTotal = 0,
@@ -267,9 +285,17 @@ final class IndexStatusServiceTest extends Unit
             'isMappingCurrent' => $mappingCurrent,
         ]);
         $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
-            'countDocuments' => static fn (string $index, array $query = []): int => $query === []
-                ? $documents
-                : $withoutChecksum,
+            'countDocuments' => static function (string $index, array $query = []) use (
+                $documents,
+                $withoutChecksum,
+                $countException
+            ): int {
+                if ($countException !== null) {
+                    throw $countException;
+                }
+
+                return $query === [] ? $documents : $withoutChecksum;
+            },
             'getReindexTasks' => static function () use ($tasks, $tasksException): array {
                 if ($tasksException !== null) {
                     throw $tasksException;
@@ -282,7 +308,7 @@ final class IndexStatusServiceTest extends Unit
             'countElements' => $elements,
             'countQueueEntries' => static fn (?string $name = null): int => $name === null ? $queueTotal : $pending,
         ]);
-        $marker = $queuedAt === null ? null : new IndexRebuildMarker($queuedAt, $enqueued);
+        $marker = $queuedAt === null ? null : new IndexRebuildMarker($queuedAt, $enqueued, 'token');
 
         return new IndexStatusService(
             $resolver,

@@ -17,6 +17,7 @@ use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\DocumentCountFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
@@ -709,6 +710,55 @@ final class DefaultSearchServiceReindexTest extends Unit
         $service = $this->createService(client: $this->makeEmpty(SearchClientInterface::class));
 
         $this->assertSame([], $service->getReindexTasks());
+    }
+
+    /**
+     * HTTP 200 with node or task failures lists only part of the cluster; a copy on an unreported node would go
+     * unnoticed, so the list is no answer either.
+     */
+    public function testAPartialTaskListingThrowsInsteadOfReportingNoTasks(): void
+    {
+        $tasksStub = new ReindexTestTasksStub([]);
+        $tasksStub->listResponse = [
+            'node_failures' => [['type' => 'failed_node_exception', 'reason' => 'node2 unreachable']],
+            'nodes' => ['node1' => ['tasks' => []]],
+        ];
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub($tasksStub),
+            taskId: 'node:1',
+        );
+
+        $this->expectException(ReindexFailedException::class);
+        $this->expectExceptionMessage('partial');
+        $this->createService(client: $client)->getReindexTasks();
+    }
+
+    /**
+     * HTTP 200 with failed shards is a partial count: a degraded index would otherwise pass as complete.
+     */
+    public function testAPartialDocumentCountIsRejected(): void
+    {
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub(new ReindexTestTasksStub([])),
+            taskId: 'node:1',
+        );
+        $client->countResponse = ['count' => 0, '_shards' => ['total' => 2, 'successful' => 1, 'failed' => 1]];
+
+        $this->expectException(DocumentCountFailedException::class);
+        $this->expectExceptionMessage('1 shard(s) failed');
+        $this->createService(client: $client)->countDocuments('test_index');
+    }
+
+    public function testAResponseWithoutACountIsRejected(): void
+    {
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub(new ReindexTestTasksStub([])),
+            taskId: 'node:1',
+        );
+        $client->countResponse = ['_shards' => ['total' => 1, 'successful' => 1, 'failed' => 0]];
+
+        $this->expectException(DocumentCountFailedException::class);
+        $this->createService(client: $client)->countDocuments('test_index');
     }
 
     /**

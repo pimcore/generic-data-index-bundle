@@ -28,7 +28,7 @@ use Pimcore\Model\DataObject\ClassDefinition;
 interface IndexStatusServiceInterface
 {
     /**
-     * @throws IndexStatusException when the running reindex tasks cannot be read
+     * @throws IndexStatusException when the running reindex tasks cannot be read, or a document count is partial
      * @throws Exception
      */
     public function getAll(): IndexStatusReport;

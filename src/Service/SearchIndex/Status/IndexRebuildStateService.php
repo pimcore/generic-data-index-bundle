@@ -33,7 +33,13 @@ final readonly class IndexRebuildStateService implements IndexRebuildStateServic
 
     public function markEnqueuing(IndexStateTarget $target): IndexRebuildMarker
     {
-        $marker = new IndexRebuildMarker($this->timeService->getCurrentMillisecondTimestamp(), false);
+        // The token keeps two rebuilds queued in the same millisecond apart: each conditional transition below
+        // matches the whole stored value.
+        $marker = new IndexRebuildMarker(
+            $this->timeService->getCurrentMillisecondTimestamp(),
+            false,
+            bin2hex(random_bytes(8))
+        );
         $this->settingsStoreService->storeIndexState($this->key($target), $marker->toStoredValue());
 
         return $marker;

@@ -134,6 +134,26 @@ final class IndexCompletionNotifierTest extends Unit
         $this->assertSame(1, $this->statusReads, 'The status is read before the claim, so a failed read keeps the marker');
     }
 
+    /**
+     * A save during the rebuild adds an entry between the queue count and the status read: the marker stays,
+     * the batch of that entry checks again.
+     */
+    public function testAnEntryArrivingBetweenTheTwoReadsKeepsTheMarker(): void
+    {
+        $notifier = $this->createNotifier(
+            marker: $this->marker(enqueued: true),
+            pending: 0,
+            state: IndexStatusState::REBUILDING,
+            statusPending: 1
+        );
+
+        $notifier->afterBatch([$this->entry('asset')]);
+
+        $this->assertSame([], $this->events);
+        $this->assertSame([], $this->claimed);
+        $this->assertSame([], $this->warnings);
+    }
+
     public function testAProcessedRebuildThatLeftTheIndexIncompleteClaimsTheMarkerWithoutAnEvent(): void
     {
         $notifier = $this->createNotifier(marker: $this->marker(enqueued: true), pending: 0, state: IndexStatusState::INCOMPLETE);
@@ -184,15 +204,19 @@ final class IndexCompletionNotifierTest extends Unit
 
     private function marker(bool $enqueued): IndexRebuildMarker
     {
-        return new IndexRebuildMarker(1700000000000, $enqueued);
+        return new IndexRebuildMarker(1700000000000, $enqueued, 'token');
     }
 
+    /**
+     * @param int|null $statusPending pending entries the status read sees; the queue count before it sees $pending
+     */
     private function createNotifier(
         ?IndexRebuildMarker $marker,
         int $pending,
         IndexStatusState $state,
         bool $claimSucceeds = true,
         ?IndexStatusException $statusException = null,
+        ?int $statusPending = null,
     ): IndexCompletionNotifier {
         $target = IndexStateTarget::forScope(DeploymentReindexScope::ASSETS);
         $resolver = $this->makeEmpty(IndexStateTargetResolverInterface::class, [
@@ -211,7 +235,18 @@ final class IndexCompletionNotifierTest extends Unit
                 return $claimSucceeds;
             },
         ]);
-        $status = new IndexStatus('pimcore_asset', 'assets', $state, 10, 10, $pending, 0, false, true, true);
+        $status = new IndexStatus(
+            'pimcore_asset',
+            'assets',
+            $state,
+            10,
+            10,
+            $statusPending ?? $pending,
+            0,
+            false,
+            true,
+            true
+        );
         $statusService = $this->makeEmpty(IndexStatusServiceInterface::class, [
             'getStatusByIndexName' => function () use ($status, $statusException): IndexStatus {
                 $this->statusReads++;

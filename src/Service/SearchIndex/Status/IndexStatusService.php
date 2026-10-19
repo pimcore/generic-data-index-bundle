@@ -17,6 +17,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScop
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexStatusState;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\DocumentCountFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexStatusException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
@@ -127,8 +128,8 @@ final readonly class IndexStatusService implements IndexStatusServiceInterface
         $exists = $this->indexStateService->indexExists($target);
         $copyRunning = $this->isCopyRunning($aliasName, $copyTargets);
 
-        $documentCount = $exists ? $this->searchIndexService->countDocuments($aliasName) : 0;
-        $documentsWithoutChecksum = $exists ? $this->searchIndexService->countDocuments($aliasName, [
+        $documentCount = $exists ? $this->countDocuments($aliasName) : 0;
+        $documentsWithoutChecksum = $exists ? $this->countDocuments($aliasName, [
             'bool' => ['must_not' => [['exists' => ['field' => self::checksumPath()]]]],
         ]) : 0;
         $elementCount = $this->countRepository->countElements($target);
@@ -196,6 +197,20 @@ final readonly class IndexStatusService implements IndexStatusServiceInterface
     private static function checksumPath(): string
     {
         return FieldCategory::SYSTEM_FIELDS->value . '.' . SystemField::CHECKSUM->value;
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     *
+     * @throws IndexStatusException when the count is partial or missing: an unknown count must not pass as a fact
+     */
+    private function countDocuments(string $aliasName, array $query = []): int
+    {
+        try {
+            return $this->searchIndexService->countDocuments($aliasName, $query);
+        } catch (DocumentCountFailedException $e) {
+            throw new IndexStatusException('The documents could not be counted: ' . $e->getMessage(), 0, $e);
+        }
     }
 
     /**

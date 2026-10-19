@@ -37,7 +37,11 @@ final class IndexRebuildStateServiceTest extends Unit
         $this->assertNull($service->getMarker($target));
 
         $marker = $service->markEnqueuing($target);
-        $this->assertSame(['asset_rebuild_queued_at' => '{"queuedAt":1700000000123,"enqueued":false}'], $store);
+        $this->assertSame(['asset_rebuild_queued_at'], array_keys($store));
+        $this->assertSame(
+            ['queuedAt' => 1700000000123, 'enqueued' => false, 'token' => $marker->getToken()],
+            json_decode($store['asset_rebuild_queued_at'], true)
+        );
         $this->assertSame(1700000000123, $service->getMarker($target)?->getQueuedAt());
         $this->assertFalse($service->getMarker($target)?->isEnqueued());
         $this->assertNull($service->getMarker(IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS)));
@@ -71,6 +75,24 @@ final class IndexRebuildStateServiceTest extends Unit
         $this->assertSame([], $store);
     }
 
+    /**
+     * Two rebuilds queued in the same millisecond carry the same timestamp; the token tells them apart.
+     */
+    public function testTwoRebuildsQueuedInTheSameMillisecondAreToldApart(): void
+    {
+        $store = [];
+        $target = IndexStateTarget::forScope(DeploymentReindexScope::ASSETS);
+        $service = $this->createService($store, 1700000000123);
+        $older = $service->markEnqueuing($target);
+        $newer = $service->markEnqueuing($target);
+
+        $this->assertNotSame($older->getToken(), $newer->getToken());
+        $this->assertFalse($service->markEnqueued($target, $older), 'The older enqueue cannot advance the newer');
+        $this->assertFalse($service->claim($target, $older), 'nor remove it on failure cleanup');
+        $this->assertTrue($service->markEnqueued($target, $newer));
+        $this->assertSame($newer->getToken(), $service->getMarker($target)?->getToken());
+    }
+
     public function testAValueThatIsNoMarkerIsIgnored(): void
     {
         $store = ['asset_rebuild_queued_at' => '1700000000123'];
@@ -78,7 +100,10 @@ final class IndexRebuildStateServiceTest extends Unit
 
         $this->assertNull($service->getMarker(IndexStateTarget::forScope(DeploymentReindexScope::ASSETS)));
         $this->assertNull(IndexRebuildMarker::fromStoredValue('not json'));
-        $this->assertNull(IndexRebuildMarker::fromStoredValue('{"queuedAt":"1","enqueued":true}'));
+        $this->assertNull(IndexRebuildMarker::fromStoredValue('{"queuedAt":"1","enqueued":true,"token":"a"}'));
+        $this->assertNull(IndexRebuildMarker::fromStoredValue('{"queuedAt":1,"enqueued":true}'), 'no token');
+        $restored = IndexRebuildMarker::fromStoredValue('{"queuedAt":1,"enqueued":true,"token":"a"}');
+        $this->assertSame('a', $restored?->getToken());
     }
 
     /**

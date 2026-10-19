@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\DocumentCountFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
@@ -81,6 +82,9 @@ interface SearchIndexServiceInterface
      * Number of documents in an index (or behind an alias), optionally those matching $query (engine query DSL).
      *
      * @param array<string, mixed> $query
+     *
+     * @throws DocumentCountFailedException when the count is not authoritative (failed shards, no count in the
+     *                                      response)
      */
     public function countDocuments(string $indexName, array $query = []): int;
 
