@@ -39,14 +39,25 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
  */
 final class AbstractIndexHandlerBcTest extends Unit
 {
+    /**
+     * Without the copy service argument the handler builds one with the default strategy ("recreate"): the copy
+     * runs as it always did, nothing is left out, and the configured strategy is not seen by such a subclass.
+     */
     public function testSubclassCallingTheParentConstructorWithFourArgumentsStillCopies(): void
     {
+        $stripPaths = [];
         $search = $this->makeEmpty(SearchIndexServiceInterface::class, [
             'existsAlias' => true,
             'getMapping' => ['test_alias-odd' => ['mappings' => ['properties' => [
                 'standard_fields' => ['properties' => ['price' => ['type' => 'text']]],
             ]]]],
-            'reindexWithoutFields' => new ReindexOutcome(ReindexResult::SUCCESS),
+            'reindexWithoutFields' => static function (string $alias, array $mapping, array $paths) use (
+                &$stripPaths
+            ): ReindexOutcome {
+                $stripPaths[] = $paths;
+
+                return new ReindexOutcome(ReindexResult::SUCCESS);
+            },
         ]);
         $handler = null;
 
@@ -56,8 +67,10 @@ final class AbstractIndexHandlerBcTest extends Unit
         $handler->setLogger(new NullLogger());
         $result = $handler->reindexMappingWithResult();
 
-        $this->assertSame(['standard_fields.price'], $result->getStrippedPaths());
+        $this->assertSame([[]], $stripPaths, 'One plain copy with the default strategy');
+        $this->assertSame([], $result->getStrippedPaths());
         $this->assertFalse($result->isRecreated());
+        $this->assertFalse($result->requiresRebuild());
         $this->assertCount(1, $deprecations);
         $this->assertStringContainsString('IndexCopyServiceInterface', $deprecations[0]);
         $this->assertStringContainsString('is deprecated', $deprecations[0]);

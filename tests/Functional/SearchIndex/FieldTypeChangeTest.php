@@ -16,12 +16,16 @@ namespace Functional\SearchIndex;
 use Carbon\Carbon;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
 use Pimcore\Cache\RuntimeCache;
 use Pimcore\Db;
@@ -57,6 +61,7 @@ use Pimcore\Model\DataObject\Fieldcollection\Definition as FieldcollectionDefini
 use Pimcore\Model\DataObject\Objectbrick\Data\AbstractData as ObjectbrickItem;
 use Pimcore\Model\DataObject\Objectbrick\Definition as ObjectbrickDefinition;
 use Pimcore\Tests\Support\Util\TestHelper;
+use Psr\Log\NullLogger;
 
 /**
  * A field type change of a class, applied to its index with real objects: the index is copied
@@ -208,6 +213,82 @@ final class FieldTypeChangeTest extends Unit
 
         foreach ($objects as $seed => $object) {
             $this->assertNumericValue(40 + $seed, $this->getStandardFields($class, $object)[self::FIELD] ?? null);
+        }
+    }
+
+    /**
+     * The default strategy of a bugfix release: the copy leaves nothing out, so values that don't fit the new mapping
+     * make it fail, and the caller recreates the index. The functional environment runs with the copy strategy (see
+     * .github/ci/files/config/pimcore/config.yaml), so the recreate strategy is exercised on the copy service itself.
+     */
+    public function testRecreateStrategyCopiesAsIsAndFailsWhenTheValuesDoNotFit(): void
+    {
+        $class = $this->createClass(
+            'GdiFtcStrategyRecreate',
+            [$this->input(self::FIELD), $this->input(self::KEEP_FIELD)]
+        );
+        $objects = $this->createObjects($class, static function (Concrete $object, int $seed): void {
+            $object->set(self::FIELD, 'abc-' . $seed);
+            $object->set(self::KEEP_FIELD, 'keep-' . $seed);
+        });
+        $liveIndex = $this->tester->getIndexName($class->getName(), true);
+
+        $this->tester->disableSynchronousProcessing();
+        $this->updateObjects($objects, static function (Concrete $object): void {
+            $object->set(self::FIELD, null);
+        });
+        $this->changeClassFields($class, [$this->numeric(self::FIELD), $this->input(self::KEEP_FIELD)]);
+        $this->tester->clearQueue();
+        $class = $this->reloadClass($class);
+
+        $copyService = $this->createCopyService(MappingChangeStrategy::RECREATE);
+        $this->assertSame(MappingChangeStrategy::RECREATE, $copyService->getMappingChangeStrategy());
+        $result = $copyService->copy($this->getAlias($class), $this->getMappingProperties($class));
+
+        $this->assertFalse($result->isSuccessful(), 'The text values do not fit the numeric field');
+        $this->assertSame([], $result->getStrippedPaths(), 'Nothing is left out with the recreate strategy');
+        $this->assertSame(1, $result->getAttempts(), 'No retries without fields to leave out');
+        $this->assertSame(
+            $liveIndex,
+            $this->tester->getIndexName($class->getName(), true),
+            'The alias stays on the old index; recreating it is the caller\'s decision'
+        );
+        $this->assertSame(count($objects), $this->tester->countIndexDocuments($this->getAlias($class)));
+
+        // The same change with the copy strategy leaves the field out and succeeds.
+        $result = $this->createCopyService(MappingChangeStrategy::COPY)
+            ->copy($this->getAlias($class), $this->getMappingProperties($class));
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame([$this->standardFieldPath(self::FIELD)], $result->getStrippedPaths());
+        $this->assertCopiedIntoOtherIndex($class, $liveIndex);
+    }
+
+    /**
+     * A compatible change (numeric -> input) is a plain copy with the recreate strategy as well: the values are
+     * kept and nothing is reported for a rebuild.
+     */
+    public function testRecreateStrategyKeepsTheValuesOfACompatibleChange(): void
+    {
+        $class = $this->createClass('GdiFtcStrategyCompatible', [$this->numeric(self::FIELD)]);
+        $objects = $this->createObjects($class, static function (Concrete $object, int $seed): void {
+            $object->set(self::FIELD, 40 + $seed);
+        });
+        $liveIndex = $this->tester->getIndexName($class->getName(), true);
+
+        $this->tester->disableSynchronousProcessing();
+        $this->changeClassFields($class, [$this->input(self::FIELD)]);
+        $this->tester->clearQueue();
+        $class = $this->reloadClass($class);
+
+        $result = $this->createCopyService(MappingChangeStrategy::RECREATE)
+            ->copy($this->getAlias($class), $this->getMappingProperties($class));
+
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame([], $result->getStrippedPaths());
+        $this->assertSame([], $result->getKeptPaths(), 'The copy did what it always did; nothing needs a rebuild');
+        $this->assertCopiedIntoOtherIndex($class, $liveIndex);
+        foreach ($objects as $seed => $object) {
+            $this->assertEquals(40 + $seed, $this->getStandardFields($class, $object)[self::FIELD] ?? null);
         }
     }
 
@@ -1203,6 +1284,21 @@ final class FieldTypeChangeTest extends Unit
     private function getSearchIndexService(): SearchIndexServiceInterface
     {
         return $this->tester->grabService(SearchIndexServiceInterface::class);
+    }
+
+    private function createCopyService(MappingChangeStrategy $strategy): IndexCopyService
+    {
+        return new IndexCopyService(
+            $this->getSearchIndexService(),
+            $this->tester->grabService(MappingDiffServiceInterface::class),
+            new NullLogger(),
+            $strategy->value
+        );
+    }
+
+    private function getMappingProperties(ClassDefinition $class): array
+    {
+        return $this->tester->grabService(DataObjectIndexHandler::class)->getMappingProperties($class);
     }
 
     private function deleteIndices(string $alias): void

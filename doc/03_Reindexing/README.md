@@ -242,9 +242,20 @@ Management](../02_Configuration/03_Index_Management.md#deployment-and-index-mana
 
 ## Field Type Changes
 
-A field type change no longer empties the index. The odd/even copy keeps the fields whose old values still fit and
-strips the others, so the alias switches and every document stays in the index. The changed fields are the exception,
-for as long as the rebuild from the database takes:
+What a field type change does to the index depends on `index_service.reindex_settings.mapping_change_strategy` (see
+[Reindex Options](../02_Configuration/03_Index_Management.md#reindex-options)):
+
+- **`recreate`** (default): the documents are copied as they are into the other odd/even index. If their old values
+  fit the new mapping (for example a number that becomes text), the copy succeeds and nothing else happens. If they
+  don't (text that becomes a number), the index is recreated empty with the new mapping and every element of the
+  index is queued for a rebuild from the database: listings and searches of the class find nothing until the messenger
+  workers have processed the queue. `deployment:reindex --dry-run` names the changed fields and which of them the
+  `copy` strategy would leave out, so the outcome is known before the deployment.
+- **`copy`**: the odd/even copy keeps the fields whose old values still fit and strips the others, so the alias
+  switches and every document stays in the index. The changed fields are the exception, for as long as the rebuild
+  from the database takes, as described in the rest of this section.
+
+The following applies to the `copy` strategy:
 
 - A **stripped** field is absent from every document until the rebuild has refilled that object. Filters on that
   field match nothing, sorting on it puts every object last, and aggregations on it are empty. Negative filters are
@@ -284,7 +295,8 @@ dispatched again after 24 hours. If a changed field stays empty for some objects
 ### Expand and Contract for Fields That Must Stay Searchable
 
 If a field must stay searchable without interruption, treat a type change like a database column migration: add the
-new field, move the data, switch the consumers, remove the old field. Every step is an additive mapping change.
+new field, move the data, switch the consumers, remove the old field. Every step is an additive mapping change, so
+this works with either strategy.
 
 1. **Add** a new field with the target type (for example `priceNumeric` next to `price`). Saving the class
    triggers an odd/even copy; the new field is empty.
@@ -301,13 +313,15 @@ A field rename works the same way, because the bundle treats it as a remove plus
 ### Test the Change Before the Production Deployment
 
 Apply the class change on a staging system with production-like data. `deployment:reindex --dry-run` lists per index
-the fields stripped and the fields kept in the copy. After the real run, check the log of the
-`pimcore_generic_data_index` channel:
+the fields stripped and the fields kept in the copy (with `recreate`: the changed fields copied as they are, and
+which of them `copy` would leave out). After the real run, check the log of the `pimcore_generic_data_index` channel:
 
-- The info line `Copying "..." into a new index with changed fields` lists the stripped and kept fields.
+- The info line `Copying "..." into a new index with changed fields` lists the stripped and kept fields (with
+  `recreate`: the changed fields, copied as they are).
 - A warning that parsing failures named fields the diff missed means the bundle found further fields during the copy.
-- The warning `Recreating index for alias "...": the new mapping is incompatible with the indexed documents` now
-  appears only in the last-resort case. If you see it, the same change will empty the index in production.
+- The warning `Recreating index for alias "...": the new mapping is incompatible with the indexed documents` is the
+  expected outcome of an incompatible change with `recreate`, and the last-resort case with `copy`. If you see it,
+  the same change will empty the index in production.
 
 ## Field Collections, Object Bricks and Classification Store
 

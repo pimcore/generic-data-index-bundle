@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping;
 
 use Exception;
 use JsonException;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexCopyResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
 
@@ -35,12 +36,18 @@ interface IndexCopyServiceInterface
     public function diff(string $aliasName, array $mappingProperties): MappingDiff;
 
     /**
-     * Copies the documents with the fields of the diff removed. Fields named in parsing failures
-     * of a copy attempt are removed too, and the copy is retried a bounded number of times.
-     * MAPPING_INCOMPATIBLE is returned only when no further field can be removed; genuine errors
-     * (unreachable cluster, timeouts, non-parsing failures) are thrown.
+     * Copies the documents into the other index with the new mapping, as the configured
+     * `reindex_settings.mapping_change_strategy` says:
+     * - "recreate": the documents are copied as they are; MAPPING_INCOMPATIBLE when their old values
+     *   do not fit, so that the caller recreates the index and rebuilds it from the database.
+     * - "copy": the fields of the diff are removed from the copy. Fields named in parsing failures
+     *   of a copy attempt are removed too, and the copy is retried a bounded number of times.
+     *   MAPPING_INCOMPATIBLE is returned only when no further field can be removed.
+     * Genuine errors (unreachable cluster, timeouts, non-parsing failures) are thrown.
      *
      * @throws Exception
      */
     public function copy(string $aliasName, array $mappingProperties): IndexCopyResult;
+
+    public function getMappingChangeStrategy(): MappingChangeStrategy;
 }

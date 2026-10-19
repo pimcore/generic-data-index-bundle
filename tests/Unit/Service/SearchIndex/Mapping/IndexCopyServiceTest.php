@@ -15,12 +15,14 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\M
 
 use Codeception\Test\Unit;
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexOutcome;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
 use Psr\Log\NullLogger;
+use ValueError;
 
 /**
  * @internal
@@ -350,7 +352,12 @@ final class IndexCopyServiceTest extends Unit
                 throw $error;
             },
         ]);
-        $service = new IndexCopyService($searchIndexService, new MappingDiffService(), new NullLogger());
+        $service = new IndexCopyService(
+            $searchIndexService,
+            new MappingDiffService(),
+            new NullLogger(),
+            MappingChangeStrategy::COPY->value
+        );
 
         $this->expectExceptionObject($error);
 
@@ -374,7 +381,12 @@ final class IndexCopyServiceTest extends Unit
                 return new ReindexOutcome(ReindexResult::SUCCESS);
             },
         ]);
-        $service = new IndexCopyService($searchIndexService, new MappingDiffService(), new NullLogger());
+        $service = new IndexCopyService(
+            $searchIndexService,
+            new MappingDiffService(),
+            new NullLogger(),
+            MappingChangeStrategy::COPY->value
+        );
 
         $result = $service->copy(self::ALIAS, $this->mapping(['price' => ['type' => 'float']]));
 
@@ -385,8 +397,64 @@ final class IndexCopyServiceTest extends Unit
     /**
      * @param ReindexOutcome[] $outcomes
      */
-    private function createService(array $liveMapping, array &$calls, array $outcomes): IndexCopyService
+    /**
+     * The default strategy copies the documents as they are: nothing is stripped although the diff names a changed
+     * field, and the caller recreates the index when the engine rejects the old values.
+     */
+    public function testTheRecreateStrategyCopiesAsIsAndGivesUpAtTheFirstIncompatibility(): void
     {
+        $calls = [];
+        $service = $this->createService(
+            $this->liveMapping(['price' => ['type' => 'text']]),
+            $calls,
+            [new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['standard_fields', 'price']])],
+            MappingChangeStrategy::RECREATE
+        );
+
+        $result = $service->copy(self::ALIAS, $this->mapping(['price' => ['type' => 'float']]));
+
+        $this->assertSame([[]], $calls, 'One copy, no field left out');
+        $this->assertFalse($result->isSuccessful());
+        $this->assertSame([], $result->getStrippedPaths());
+        $this->assertSame([], $result->getKeptPaths());
+        $this->assertSame(1, $result->getAttempts());
+        $this->assertSame(MappingChangeStrategy::RECREATE, $service->getMappingChangeStrategy());
+    }
+
+    public function testTheRecreateStrategyReportsACompatibleChangeAsAPlainSuccess(): void
+    {
+        $calls = [];
+        $service = $this->createService(
+            $this->liveMapping(['count' => ['type' => 'long']]),
+            $calls,
+            [new ReindexOutcome(ReindexResult::SUCCESS)],
+            MappingChangeStrategy::RECREATE
+        );
+
+        $result = $service->copy(self::ALIAS, $this->mapping(['count' => ['type' => 'text']]));
+
+        $this->assertSame([[]], $calls);
+        $this->assertTrue($result->isSuccessful());
+        $this->assertSame([], $result->getKeptPaths(), 'Nothing to refill: the copy did what it always did');
+    }
+
+    public function testAnUnknownStrategyIsRejected(): void
+    {
+        $this->expectException(ValueError::class);
+        new IndexCopyService(
+            $this->makeEmpty(SearchIndexServiceInterface::class),
+            new MappingDiffService(),
+            new NullLogger(),
+            'keep'
+        );
+    }
+
+    private function createService(
+        array $liveMapping,
+        array &$calls,
+        array $outcomes,
+        MappingChangeStrategy $strategy = MappingChangeStrategy::COPY
+    ): IndexCopyService {
         $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
             'getMapping' => $liveMapping,
             'reindexWithoutFields' => static function (string $alias, array $mapping, array $paths) use (
@@ -399,7 +467,7 @@ final class IndexCopyServiceTest extends Unit
             },
         ]);
 
-        return new IndexCopyService($searchIndexService, new MappingDiffService(), new NullLogger());
+        return new IndexCopyService($searchIndexService, new MappingDiffService(), new NullLogger(), $strategy->value);
     }
 
     private function liveMapping(array $fields): array
