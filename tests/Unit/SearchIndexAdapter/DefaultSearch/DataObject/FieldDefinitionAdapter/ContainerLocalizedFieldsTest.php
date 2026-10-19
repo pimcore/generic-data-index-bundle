@@ -350,7 +350,7 @@ final class ContainerLocalizedFieldsTest extends Unit
         $typeAdapter = fn () => $this->createTypeAdapter($searchIndexConfigService, $this->fieldDefinitionService);
         $this->fieldDefinitionService = new FieldDefinitionService(new ServiceLocator([
             'localizedfields' => fn () => $this->localizedFieldsAdapter,
-            // one cached instance (a test double; the real adapters are shared: false)
+            // one cached instance, stricter than production (the real adapters are shared: false)
             'block' => fn () => $this->blockAdapter ??= new BlockAdapter(
                 $searchIndexConfigService,
                 $this->fieldDefinitionService
