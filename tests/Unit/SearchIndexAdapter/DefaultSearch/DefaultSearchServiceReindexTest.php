@@ -17,12 +17,14 @@ use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\DocumentCountFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\SearchClient\SearchClientInterface;
+use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
 /**
@@ -620,6 +622,208 @@ final class DefaultSearchServiceReindexTest extends Unit
         $this->assertSame(0, $client->reIndexCalls, 'No documents may be copied into an index that was not created');
     }
 
+    /**
+     * The engine reports a cancelled task as completed, without an error and without failures; only
+     * response.canceled says so. A second reindex of the same index cancels the running task as a leftover and
+     * then writes into the same new index; an operator can cancel it through the tasks API. Either way the
+     * incomplete index must not become live, and it must not be deleted under the reindex that now owns it.
+     */
+    public function testReindexFailsWithoutAliasSwitchWhenTaskWasCancelled(): void
+    {
+        $deletedIndices = [];
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub(new ReindexTestTasksStub([
+                [
+                    'completed' => true,
+                    'response' => [
+                        'timed_out' => false,
+                        'total' => 5000,
+                        'created' => 500,
+                        'canceled' => 'by user request',
+                        'failures' => [],
+                    ],
+                ],
+            ])),
+            taskId: 'node:1',
+            withAliasSwitchSupport: true,
+            onDeleteIndex: static function (array $params) use (&$deletedIndices): array {
+                $deletedIndices[] = $params['index'];
+
+                return [];
+            },
+        );
+
+        try {
+            $this->createService(client: $client)->reindex('test_index', []);
+            $this->fail('Expected ReindexFailedException');
+        } catch (ReindexFailedException $e) {
+            $this->assertStringContainsString('Reindex task node:1 was cancelled: by user request', $e->getMessage());
+        }
+
+        $this->assertSame(0, $client->aliasSwitchCalls, 'The alias must stay on the complete old index');
+        $this->assertSame(
+            1,
+            $this->countDeletes($deletedIndices, 'test_index-even'),
+            'Only the delete before the copy: the cancelled copy\'s index may belong to another reindex by now'
+        );
+        $this->assertSame(0, $this->countDeletes($deletedIndices, 'test_index-odd'), 'The old index must be kept');
+    }
+
+    // -------------------------------------------------------------------------
+    // Status helpers: running tasks, document counts, progress log
+    // -------------------------------------------------------------------------
+
+    public function testRunningReindexTasksAreParsedFromTheTaskList(): void
+    {
+        $tasksStub = new ReindexTestTasksStub([]);
+        $tasksStub->listResponse = ['nodes' => ['node1' => ['tasks' => [
+            'node1:7' => [
+                'description' => 'reindex from [test_index-odd] to [test_index-even]',
+                'status' => ['total' => 100, 'created' => 40, 'updated' => 2],
+            ],
+            'node1:8' => ['description' => 'something else'],
+        ]]]];
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub($tasksStub),
+            taskId: 'node:1',
+        );
+
+        $tasks = $this->createService(client: $client)->getReindexTasks();
+
+        $this->assertSame(
+            [[
+                'id' => 'node1:7',
+                'source' => 'test_index-odd',
+                'target' => 'test_index-even',
+                'created' => 42,
+                'total' => 100,
+            ]],
+            $tasks
+        );
+    }
+
+    /**
+     * Without the tasks API no asynchronous copy can be started, so none runs: a known, empty list.
+     */
+    public function testRunningReindexTasksAreEmptyWithoutATasksApi(): void
+    {
+        $service = $this->createService(client: $this->makeEmpty(SearchClientInterface::class));
+
+        $this->assertSame([], $service->getReindexTasks());
+    }
+
+    /**
+     * HTTP 200 with node or task failures lists only part of the cluster; a copy on an unreported node would go
+     * unnoticed, so the list is no answer either.
+     */
+    public function testAPartialTaskListingThrowsInsteadOfReportingNoTasks(): void
+    {
+        $tasksStub = new ReindexTestTasksStub([]);
+        $tasksStub->listResponse = [
+            'node_failures' => [['type' => 'failed_node_exception', 'reason' => 'node2 unreachable']],
+            'nodes' => ['node1' => ['tasks' => []]],
+        ];
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub($tasksStub),
+            taskId: 'node:1',
+        );
+
+        $this->expectException(ReindexFailedException::class);
+        $this->expectExceptionMessage('partial');
+        $this->createService(client: $client)->getReindexTasks();
+    }
+
+    /**
+     * HTTP 200 with failed shards is a partial count: a degraded index would otherwise pass as complete.
+     */
+    public function testAPartialDocumentCountIsRejected(): void
+    {
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub(new ReindexTestTasksStub([])),
+            taskId: 'node:1',
+        );
+        $client->countResponse = ['count' => 0, '_shards' => ['total' => 2, 'successful' => 1, 'failed' => 1]];
+
+        $this->expectException(DocumentCountFailedException::class);
+        $this->expectExceptionMessage('1 shard(s) failed');
+        $this->createService(client: $client)->countDocuments('test_index');
+    }
+
+    public function testAResponseWithoutACountIsRejected(): void
+    {
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub(new ReindexTestTasksStub([])),
+            taskId: 'node:1',
+        );
+        $client->countResponse = ['_shards' => ['total' => 1, 'successful' => 1, 'failed' => 0]];
+
+        $this->expectException(DocumentCountFailedException::class);
+        $this->createService(client: $client)->countDocuments('test_index');
+    }
+
+    /**
+     * A failing tasks API leaves the copy state unknown; that must not read as "no copy running".
+     */
+    public function testAFailingTaskListingThrowsInsteadOfReportingNoTasks(): void
+    {
+        $tasksStub = new ReindexTestTasksStub([]);
+        $tasksStub->listException = new \RuntimeException('tasks API down');
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub($tasksStub),
+            taskId: 'node:1',
+        );
+
+        $this->expectException(ReindexFailedException::class);
+        $this->expectExceptionMessage('tasks API down');
+        $this->createService(client: $client)->getReindexTasks();
+    }
+
+    public function testDocumentsAreCountedWithAnOptionalQuery(): void
+    {
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub(new ReindexTestTasksStub([])),
+            taskId: 'node:1',
+        );
+        $client->countResponse = ['count' => 12];
+        $service = $this->createService(client: $client);
+
+        $this->assertSame(12, $service->countDocuments('test_index'));
+        $this->assertSame(12, $service->countDocuments('test_index', ['term' => ['a' => 1]]));
+        $this->assertSame(['index' => 'test_index'], $client->countParams[0]);
+        $this->assertSame(
+            ['index' => 'test_index', 'body' => ['query' => ['term' => ['a' => 1]]]],
+            $client->countParams[1]
+        );
+    }
+
+    public function testTheProgressOfALongCopyIsLogged(): void
+    {
+        $running = ['completed' => false, 'task' => ['status' => ['total' => 500, 'created' => 120]]];
+        $responses = array_fill(0, 13, $running);
+        $responses[] = ['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]];
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: $responses,
+            withAliasSwitchSupport: true
+        );
+        $messages = [];
+        $service = $this->createService(client: $client, reindexMaxPolls: 20);
+        $service->setLogger($this->makeEmpty(LoggerInterface::class, [
+            'info' => static function (string $message) use (&$messages): void {
+                $messages[] = $message;
+            },
+        ]));
+
+        $service->reindex('test_index', []);
+
+        $progress = array_values(array_filter(
+            $messages,
+            static fn (string $message): bool => str_contains($message, 'documents copied')
+        ));
+        $this->assertCount(1, $progress, 'Progress is logged every 12 polls');
+        $this->assertStringContainsString('120 of 500 documents copied after 0 seconds', $progress[0]);
+    }
+
     // -------------------------------------------------------------------------
     // Happy path: clean completion on first poll
     // -------------------------------------------------------------------------
@@ -780,6 +984,8 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
 
     public int $reIndexCalls = 0;
 
+    public int $aliasSwitchCalls = 0;
+
     public ?Exception $createIndexException = null;
 
     public function __construct(
@@ -816,6 +1022,8 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
 
     public function updateIndexAliases(array $_params): array
     {
+        $this->aliasSwitchCalls++;
+
         return $this->withAliasSwitchSupport ? ['acknowledged' => true] : [];
     }
 
@@ -839,9 +1047,17 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
         return false;
     }
 
-    public function count(array $_params): array
+    /** @var array<string, mixed> */
+    public array $countResponse = [];
+
+    /** @var array<int, array<string, mixed>> */
+    public array $countParams = [];
+
+    public function count(array $params): array
     {
-        return [];
+        $this->countParams[] = $params;
+
+        return $this->countResponse;
     }
 
     public function index(array $_params): array

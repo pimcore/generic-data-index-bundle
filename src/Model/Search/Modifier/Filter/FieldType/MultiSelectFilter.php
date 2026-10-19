@@ -22,6 +22,11 @@ final readonly class MultiSelectFilter implements SearchModifierInterface
         private string $field,
         private array $values,
         private bool $enablePqlFieldNameResolution = true,
+        /**
+         * When true, '' also matches elements where the field has no value (top-level fields only,
+         * nested filters such as ClassificationStoreFilter keep exact matching).
+         */
+        private bool $matchMissingForEmptyValue = false,
     ) {
         $this->validate();
     }
@@ -39,6 +44,14 @@ final readonly class MultiSelectFilter implements SearchModifierInterface
     public function isPqlFieldNameResolutionEnabled(): bool
     {
         return $this->enablePqlFieldNameResolution;
+    }
+
+    /**
+     * Whether an empty string value also matches documents where the field is missing (null).
+     */
+    public function isMatchMissingForEmptyValueEnabled(): bool
+    {
+        return $this->matchMissingForEmptyValue;
     }
 
     private function validate(): void

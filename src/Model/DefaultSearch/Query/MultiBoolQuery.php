@@ -20,14 +20,16 @@ final class MultiBoolQuery extends BoolQuery implements AsSubQueryInterface
 {
     public function __construct(
         private readonly string $field,
-        /** @var (bool)[] */
+        /** @var (bool|string)[] */
         private readonly array $terms,
+        /** field checked for a missing value; defaults to $field */
+        private readonly ?string $existsField = null,
     ) {
         parent::__construct([
             ConditionType::FILTER->value => [
                 QueryType::BOOL->value => [
                     ConditionType::SHOULD->value => [
-                        (new BoolExistsQuery($this->field))->toArrayAsSubQuery(),
+                        (new BoolExistsQuery($this->existsField ?? $this->field))->toArrayAsSubQuery(),
                         (new TermsFilter($this->field, $this->terms))->toArrayAsSubQuery(),
                     ],
                     'minimum_should_match' => 1,
@@ -41,10 +43,15 @@ final class MultiBoolQuery extends BoolQuery implements AsSubQueryInterface
         return $this->field;
     }
 
-    /** @return (bool)[] */
+    /** @return (bool|string)[] */
     public function getTerms(): array
     {
         return $this->terms;
+    }
+
+    public function getExistsField(): string
+    {
+        return $this->existsField ?? $this->field;
     }
 
     public function toArrayAsSubQuery(): array
@@ -52,7 +59,7 @@ final class MultiBoolQuery extends BoolQuery implements AsSubQueryInterface
         return [
             QueryType::BOOL->value => [
                 ConditionType::SHOULD->value => [
-                    (new BoolExistsQuery($this->field))->toArrayAsSubQuery(),
+                    (new BoolExistsQuery($this->existsField ?? $this->field))->toArrayAsSubQuery(),
                     (new TermsFilter($this->field, $this->terms))->toArrayAsSubQuery(),
                 ],
                 'minimum_should_match' => 1,

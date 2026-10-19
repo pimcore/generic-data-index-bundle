@@ -22,9 +22,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Sort\FieldSortList
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Document\DocumentSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\OrderByPageNumber;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFoldersFirst;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByIndexField;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Model\DataObject\AbstractObject;
 
 /**
  * @internal
@@ -57,6 +59,31 @@ final class TreeSortHandlers
     }
 
     #[AsSearchModifierHandler]
+    public function handleFoldersFirstSort(
+        OrderByFoldersFirst $foldersFirstSort,
+        SearchModifierContextInterface $context
+    ): void {
+        $typeField = SystemField::TYPE->getPath();
+
+        $context->getSearch()
+            ->addSort(
+                new FieldSort(
+                    '_script',
+                    $foldersFirstSort->getDirection()->value,
+                    [
+                        'type' => 'number',
+                        'script' => [
+                            'lang' => 'painless',
+                            'source' => "doc['$typeField'].size() > 0 && doc['$typeField'].value == params.folderType"
+                                . ' ? 0 : 1',
+                            'params' => ['folderType' => AbstractObject::OBJECT_TYPE_FOLDER],
+                        ],
+                    ]
+                )
+            );
+    }
+
+    #[AsSearchModifierHandler]
     public function handleSortByPageNumber(
         OrderByPageNumber $pageNumberSort,
         SearchModifierContextInterface $context
@@ -67,12 +94,16 @@ final class TreeSortHandlers
             return;
         }
 
+        $search = $pageNumberSort->getSearch();
+        if ($this->isFrontPageWithinItemsLimit($search->getPage(), $search->getPageSize())) {
+            return;
+        }
+
         $totalItems = $this->searchIndexService->getCount($contextSearch, $pageNumberSort->getIndexName());
         if ($totalItems === 0 || $totalItems <= $this->itemsLimit) {
             return;
         }
 
-        $search = $pageNumberSort->getSearch();
         $pageSize = $search->getPageSize();
         $lastPage = (int)ceil($totalItems / $pageSize);
         $currentPage = $search->getPage();
@@ -116,6 +147,12 @@ final class TreeSortHandlers
                     $indexSort->getDirection()->value
                 )
             );
+    }
+
+    private function isFrontPageWithinItemsLimit(int $page, int $pageSize): bool
+    {
+        // 2 * page * pageSize <= itemsLimit: either total <= itemsLimit or page < lastPage / 2, so nothing to do
+        return $page > 0 && $pageSize > 0 && 2 * $page * $pageSize <= $this->itemsLimit;
     }
 
     private function getInvertedSortList(array $sortListItems): array
