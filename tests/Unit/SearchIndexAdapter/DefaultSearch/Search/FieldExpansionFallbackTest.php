@@ -125,6 +125,28 @@ final class FieldExpansionFallbackTest extends Unit
         $this->assertSame(FieldExpansionFallback::FIELDS, $bodies[1]['query']['simple_query_string']['fields']);
     }
 
+    public function testShardFailureOfTheRepeatedRequestIsReturnedWithoutAnotherRetry(): void
+    {
+        $calls = 0;
+        $response = [
+            '_shards' => ['total' => 2, 'successful' => 1, 'failed' => 1, 'failures' => [['reason' => ['reason' => self::ERROR]]]],
+            'hits' => ['hits' => [1]],
+        ];
+        $request = function () use (&$calls, $response) {
+            $calls++;
+
+            return $response;
+        };
+
+        $result = FieldExpansionFallback::execute(
+            $request,
+            ['body' => ['query' => ['simple_query_string' => ['query' => 'pro']]]]
+        );
+
+        $this->assertSame($response, $result);
+        $this->assertSame(2, $calls);
+    }
+
     public function testResponsesWithOtherShardFailuresAreReturnedAsIs(): void
     {
         $calls = 0;
