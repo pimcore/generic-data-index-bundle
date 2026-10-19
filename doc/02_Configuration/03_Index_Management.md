@@ -161,10 +161,20 @@ the task has finished. Two options control how long the process waits:
 - **max_polls** (default 720): maximum number of polling attempts before the reindex is aborted
 - **poll_interval** (default 5): seconds to wait between two status polls
 
-With the defaults, a reindex may therefore run for up to one hour (720 × 5 seconds) per copy attempt; a copy that
-strips fields after a field type change can take up to 3 attempts. If reindexing an index takes
-longer than this budget, the command aborts with an error and a non-zero exit code — increase `max_polls` for very
-large indices:
+With the defaults, a reindex may therefore run for up to one hour (720 × 5 seconds) per copy attempt; with the `copy`
+strategy (below), a copy that strips fields after a field type change can take up to 3 attempts. If reindexing an
+index takes longer than this budget, the command aborts with an error and a non-zero exit code — increase `max_polls`
+for very large indices.
+
+A third option decides what happens to documents written under the old mapping when the mapping changes:
+
+- **mapping_change_strategy** (default `recreate`): `recreate` copies the documents as they are and, when their old
+  values don't fit the new mapping (for example text in a field that became numeric), recreates the index empty with
+  the new mapping and queues a rebuild from the database; the index is empty until the messenger workers have
+  processed it. `copy` leaves the fields whose old values don't fit out of the copy, so every document stays in the
+  index while the rebuild refills the changed fields; the index is recreated only as a last resort. See
+  [Field Type Changes](../03_Reindexing/README.md#field-type-changes) for what each strategy means for searches
+  during the rebuild.
 
 ```yaml
 pimcore_generic_data_index:
@@ -172,6 +182,7 @@ pimcore_generic_data_index:
         reindex_settings:
             max_polls: 720
             poll_interval: 5
+            mapping_change_strategy: recreate
 ```
 
 Transient failures while polling (e.g. a temporarily unreachable or overloaded search cluster) are retried and do not

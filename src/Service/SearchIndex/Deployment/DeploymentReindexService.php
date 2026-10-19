@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexPlan;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexState;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
@@ -27,6 +28,11 @@ use Pimcore\Model\DataObject\ClassDefinition;
  */
 final readonly class DeploymentReindexService implements DeploymentReindexServiceInterface
 {
+    private MappingChangeStrategy $mappingChangeStrategy;
+
+    /**
+     * @param string $mappingChangeStrategy the configured `reindex_settings.mapping_change_strategy`
+     */
     public function __construct(
         private IndexStateServiceInterface $indexStateService,
         private ClassDefinitionReindexServiceInterface $classDefinitionReindexService,
@@ -34,7 +40,9 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
         private IndexHandlerInterface $assetIndexHandler,
         private IndexHandlerInterface $documentIndexHandler,
         private IndexHandlerInterface $dataObjectIndexHandler,
+        string $mappingChangeStrategy = MappingChangeStrategy::RECREATE->value,
     ) {
+        $this->mappingChangeStrategy = MappingChangeStrategy::from($mappingChangeStrategy);
     }
 
     public function getTargets(array $scopes): array
@@ -213,7 +221,9 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
     }
 
     /**
-     * The fields the copy will keep or leave out, for the plan output (also shown by --dry-run).
+     * The fields the copy will keep or leave out, for the plan output (also shown by --dry-run). With the
+     * "recreate" strategy nothing is left out: the changed fields are named so that the reader knows which
+     * old values have to fit the new mapping, or the index is recreated empty.
      *
      * @return string[]
      */
@@ -221,6 +231,27 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
     {
         $diff = $this->getHandler($target)->getMappingDiff($target->getClassDefinition());
         $reasons = [];
+        if ($this->mappingChangeStrategy === MappingChangeStrategy::RECREATE) {
+            $changed = [...$diff->getStripPaths(), ...$diff->getKeptPaths(), ...$diff->getProtectedPaths()];
+            if ($changed !== []) {
+                $reasons[] = sprintf(
+                    'changed fields copied as they are (mapping_change_strategy "%s"), the index is recreated '
+                    . 'empty and rebuilt from the database if their values do not fit: %s',
+                    $this->mappingChangeStrategy->value,
+                    implode(', ', $changed)
+                );
+            }
+            if ($diff->getStripPaths() !== []) {
+                $reasons[] = sprintf(
+                    'fields the "%s" strategy would leave out of the copy instead: %s',
+                    MappingChangeStrategy::COPY->value,
+                    implode(', ', $diff->getStripPaths())
+                );
+            }
+
+            return $reasons;
+        }
+
         if ($diff->getStripPaths() !== []) {
             $reasons[] = 'fields stripped in the copy: ' . implode(', ', $diff->getStripPaths());
         }

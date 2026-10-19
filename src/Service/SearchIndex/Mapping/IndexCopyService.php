@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingFieldChangeAction;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexCopyResult;
@@ -31,11 +32,24 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
     /** Copy attempts: the first one with the diff, the others add fields named in parsing failures. */
     private const MAX_ATTEMPTS = 3;
 
+    private MappingChangeStrategy $mappingChangeStrategy;
+
+    /**
+     * @param string $mappingChangeStrategy a value of {@see MappingChangeStrategy}; the configured
+     *                                      `reindex_settings.mapping_change_strategy`
+     */
     public function __construct(
         private SearchIndexServiceInterface $searchIndexService,
         private MappingDiffServiceInterface $mappingDiffService,
         private LoggerInterface $pimcoreGenericDataIndexLogger,
+        string $mappingChangeStrategy = MappingChangeStrategy::RECREATE->value,
     ) {
+        $this->mappingChangeStrategy = MappingChangeStrategy::from($mappingChangeStrategy);
+    }
+
+    public function getMappingChangeStrategy(): MappingChangeStrategy
+    {
+        return $this->mappingChangeStrategy;
     }
 
     public function diff(string $aliasName, array $mappingProperties): MappingDiff
@@ -64,6 +78,10 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
     public function copy(string $aliasName, array $mappingProperties): IndexCopyResult
     {
         $diff = $this->diff($aliasName, $mappingProperties);
+        if ($this->mappingChangeStrategy === MappingChangeStrategy::RECREATE) {
+            return $this->copyAsIs($aliasName, $mappingProperties, $diff);
+        }
+
         $stripPaths = $this->keyed($diff->getStripPathSegments());
         $keptPaths = $diff->getKeptPaths();
 
@@ -112,6 +130,41 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
             $keptPaths,
             min($attempt, self::MAX_ATTEMPTS)
         );
+    }
+
+    /**
+     * The "recreate" strategy: one copy of the documents as they are, no field left out. When their old values
+     * do not fit the new mapping, the result is MAPPING_INCOMPATIBLE and the caller recreates the index empty
+     * and rebuilds it from the database, as before the "copy" strategy existed.
+     *
+     * @throws Exception
+     */
+    private function copyAsIs(string $aliasName, array $mappingProperties, MappingDiff $diff): IndexCopyResult
+    {
+        $changedPaths = [...$diff->getStripPaths(), ...$diff->getKeptPaths(), ...$diff->getProtectedPaths()];
+        if ($changedPaths !== []) {
+            $this->pimcoreGenericDataIndexLogger->info(
+                sprintf('Copying "%s" into a new index with changed fields, as they are', $aliasName),
+                ['changed' => $changedPaths, 'strategy' => $this->mappingChangeStrategy->value]
+            );
+        }
+
+        $outcome = $this->searchIndexService->reindexWithoutFields($aliasName, $mappingProperties, []);
+        if ($outcome->getResult() !== ReindexResult::SUCCESS) {
+            $this->pimcoreGenericDataIndexLogger->warning(
+                sprintf(
+                    'The documents of "%s" do not fit the new mapping; with mapping_change_strategy "%s" the index '
+                    . 'is recreated empty and rebuilt from the database. The "%s" strategy would keep the documents '
+                    . 'searchable without the changed fields.',
+                    $aliasName,
+                    MappingChangeStrategy::RECREATE->value,
+                    MappingChangeStrategy::COPY->value
+                ),
+                ['failingFields' => $outcome->getFailingFieldPaths()]
+            );
+        }
+
+        return new IndexCopyResult($outcome->getResult());
     }
 
     /**

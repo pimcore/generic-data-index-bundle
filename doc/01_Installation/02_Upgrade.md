@@ -6,14 +6,20 @@ description: Version-specific upgrade instructions and breaking changes for the 
 # Upgrade Information
 
 ## Upgrade to 2026.3.3
-- [Indexing] A field type change no longer recreates the index empty. The odd/even copy now leaves out the changed
-  fields whose old values don't fit the new type and keeps the others (for example a number copied into a text field).
-  The index is only recreated as a last resort, when the copy fails and no further field can be left out (after at
-  most 3 attempts). System fields are never left out: if their old values don't fit, the index is recreated. The
-  documents stay searchable; the left-out fields are empty, so filters and sorting on them find nothing, until the
-  messenger workers have rebuilt all objects of the class from the database. The copy blocks the messenger worker that
-  handles the class mapping message for about 1.5 ms per document (measured: 100,000 documents of about 6 KB in about
-  2.5 minutes on a development machine with OpenSearch 2); the rebuild runs at the usual indexing rate. See the [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
+- [Indexing] New option `index_service.reindex_settings.mapping_change_strategy` (`recreate`, the default, or `copy`)
+  decides what happens to the documents of an index when its mapping changes. The default keeps the behaviour of
+  previous versions: the documents are copied as they are, and the index is recreated empty when their old values
+  don't fit the new mapping (for example after a field type change). One thing is new in that case: a rebuild of the
+  recreated index from the database is always queued, also by `generic-data-index:reindex` and by a settings-only
+  `deployment:reindex`, so the index fills again without a manual `update:index`.
+  With `copy`, the odd/even copy leaves out the changed fields whose old values don't fit the new type and keeps the
+  others (for example a number copied into a text field). The index is only recreated as a last resort, when the copy
+  fails and no further field can be left out (after at most 3 attempts). System fields are never left out: if their
+  old values don't fit, the index is recreated. The documents stay searchable; the left-out fields are empty, so
+  filters and sorting on them find nothing, until the messenger workers have rebuilt all objects of the class from the
+  database. The copy blocks the messenger worker that handles the class mapping message for about 1.5 ms per document
+  (measured: 100,000 documents of about 6 KB in about 2.5 minutes on a development machine with OpenSearch 2); the
+  rebuild runs at the usual indexing rate. See the [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
 - [Indexing] Upgrading from a version before 2026.2.8: the numeric mapping change of 2026.2.8 (`float` to `double`, or
   `long` for integer fields) is applied by the odd/even copy as well. Both keep their values, so the indices stay
   complete. Typed `CalculatedValue` fields of 2026.2.9 (text to a number, boolean or date) are left out of the copy
@@ -22,8 +28,9 @@ description: Version-specific upgrade instructions and breaking changes for the 
   copy left out fields, the index had to be created empty, or a custom index handler applied the mapping, and prints a
   notice per index. Before, it never filled the index queue. Operators who relied on that need messenger workers running
   after the command.
-- [Commands] `generic-data-index:deployment:reindex` and its `--dry-run` list per index the fields stripped, the fields
-  kept and the fields outside class and custom fields that are copied as they are.
+- [Commands] `generic-data-index:deployment:reindex` and its `--dry-run` list per index the changed fields: with
+  `copy` the fields stripped, the fields kept and the fields outside class and custom fields that are copied as they
+  are; with `recreate` the changed fields copied as they are, and which of them `copy` would leave out.
 - [Indexing] New methods on `@internal` interfaces, relevant only for custom implementations of them:
   `IndexHandlerInterface::reindexMappingWithResult()` and `getMappingDiff()`,
   `SearchIndexServiceInterface::reindexWithoutFields()`, `ReindexServiceInterface::reindexAllIndicesWithReport()`,

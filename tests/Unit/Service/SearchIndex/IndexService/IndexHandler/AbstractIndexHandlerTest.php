@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\I
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexOutcome;
@@ -580,7 +581,12 @@ final class AbstractIndexHandlerTest extends Unit
         SearchIndexServiceInterface $search,
         array $properties = []
     ): AbstractIndexHandler {
-        $copy = new IndexCopyService($search, new MappingDiffService(), new NullLogger());
+        $copy = new IndexCopyService(
+            $search,
+            new MappingDiffService(),
+            new NullLogger(),
+            MappingChangeStrategy::COPY->value
+        );
         $config = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
         $events = $this->makeEmpty(EventDispatcherInterface::class);
         $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);

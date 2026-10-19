@@ -17,6 +17,7 @@ use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingFieldChangeAction;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexState;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
@@ -357,6 +358,37 @@ final class DeploymentReindexServiceTest extends Unit
         );
     }
 
+    /**
+     * With the default strategy nothing is left out; the plan names the changed fields and what the copy strategy
+     * would do instead, so a dry run shows what is at stake before the deployment.
+     */
+    public function testPlanNamesTheChangedFieldsWithTheRecreateStrategy(): void
+    {
+        $diff = new MappingDiff([
+            new MappingFieldChange(['standard_fields', 'price'], 'text', 'float', MappingFieldChangeAction::STRIP),
+            new MappingFieldChange(['standard_fields', 'count'], 'long', 'text', MappingFieldChangeAction::KEEP),
+        ]);
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, ['getMappingDiff' => $diff]);
+        $service = $this->createService(
+            $this->createStateService(['mapping-old', 'settings-current', '1.0'], true),
+            handler: $handler,
+            mappingChangeStrategy: MappingChangeStrategy::RECREATE
+        );
+
+        $reasons = $service->plan(IndexStateTarget::forScope(DeploymentReindexScope::ASSETS))->getReasons();
+
+        $this->assertContains(
+            'changed fields copied as they are (mapping_change_strategy "recreate"), the index is recreated empty '
+            . 'and rebuilt from the database if their values do not fit: standard_fields.price, standard_fields.count',
+            $reasons
+        );
+        $this->assertContains(
+            'fields the "copy" strategy would leave out of the copy instead: standard_fields.price',
+            $reasons
+        );
+        $this->assertNotContains('fields stripped in the copy: standard_fields.price', $reasons);
+    }
+
     public function testSettingsOnlyCopyThatStrippedFieldsQueuesARebuild(): void
     {
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
@@ -408,7 +440,8 @@ final class DeploymentReindexServiceTest extends Unit
         IndexStateServiceInterface $stateService,
         ?ClassDefinitionReindexServiceInterface $classDefinitionReindexService = null,
         ?EnqueueServiceInterface $enqueueService = null,
-        ?IndexHandlerInterface $handler = null
+        ?IndexHandlerInterface $handler = null,
+        MappingChangeStrategy $mappingChangeStrategy = MappingChangeStrategy::COPY
     ): DeploymentReindexService {
         $handler ??= $this->makeEmpty(IndexHandlerInterface::class, ['getMappingDiff' => new MappingDiff([])]);
 
@@ -419,6 +452,7 @@ final class DeploymentReindexServiceTest extends Unit
             $handler,
             $handler,
             $handler,
+            $mappingChangeStrategy->value,
         );
     }
 
