@@ -24,6 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInter
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\FieldExpansionFallback;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
@@ -631,10 +632,13 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             )
         );
 
-        $result = $this->client->count([
-            'index' => $indexName,
-            'body' => $body,
-        ]);
+        $result = FieldExpansionFallback::execute(
+            $this->client->count(...),
+            [
+                'index' => $indexName,
+                'body' => $body,
+            ]
+        );
 
         return $result['count'] ?? 0;
     }
