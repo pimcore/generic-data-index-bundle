@@ -8,3 +8,4 @@ This bundle can be extended and customized to fit your specific needs, for examp
 - [OpenSearch setup](./04_Opensearch.md)
 - [Elasticsearch setup](./05_Elasticsearch.md)
 - [Index snapshots](./06_Index_Snapshots.md)
+- [Operations guide](./07_Operations_Guide.md) - large indices, deployments, monitoring and recovery
