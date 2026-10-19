@@ -238,22 +238,17 @@ final readonly class EnqueueService implements EnqueueServiceInterface
 
     /**
      * Queues every element of an index and keeps the rebuild marker in step with it: set before the first entry
-     * (workers draining the queue between two chunks must not report the rebuild complete), advanced once every
-     * element is queued, removed again when the enqueue fails.
+     * (workers draining the queue between two chunks must not report the rebuild complete) and advanced once
+     * every element is queued. When the enqueue fails, the marker stays in its queueing phase: the chunks are
+     * committed one by one, so part of the rebuild may be queued already, and only a repeated full enqueue (which
+     * replaces the marker) makes the index whole again; the status reports it as still queueing until then.
      *
      * @throws Exception
      */
     private function enqueueRebuild(IndexStateTarget $target, QueryBuilder $selectQuery): void
     {
         $marker = $this->rebuildStateService->markEnqueuing($target);
-
-        try {
-            $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
-        } catch (Exception $e) {
-            $this->rebuildStateService->claim($target, $marker);
-
-            throw $e;
-        }
+        $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
 
         if ($this->rebuildStateService->markEnqueued($target, $marker)) {
             // The workers may have processed every entry already, or the index has no elements.
