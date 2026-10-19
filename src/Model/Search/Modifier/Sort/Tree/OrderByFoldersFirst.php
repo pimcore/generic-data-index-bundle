@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Search\SortDirection;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 
 /**
@@ -21,4 +22,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierIn
  */
 final readonly class OrderByFoldersFirst implements SearchModifierInterface
 {
+    public function getDirection(): SortDirection
+    {
+        return SortDirection::ASC;
+    }
 }

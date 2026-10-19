@@ -69,7 +69,7 @@ final class TreeSortHandlers
             ->addSort(
                 new FieldSort(
                     '_script',
-                    SortDirection::ASC->value,
+                    $foldersFirstSort->getDirection()->value,
                     [
                         'type' => 'number',
                         'script' => [
