@@ -29,6 +29,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterfac
 use Pimcore\Bundle\GenericDataIndexBundle\Service\ElementServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexCompletionNotifierInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Asset;
 use Pimcore\Model\Element\ElementInterface;
@@ -50,7 +51,8 @@ final class IndexQueueService implements IndexQueueServiceInterface
         private readonly ElementServiceInterface $elementService,
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly MessageBusInterface $messageBus,
-        private readonly Connection $connection
+        private readonly Connection $connection,
+        private readonly IndexCompletionNotifierInterface $indexCompletionNotifier,
     ) {
     }
 
@@ -149,6 +151,9 @@ final class IndexQueueService implements IndexQueueServiceInterface
 
             throw new HandleIndexQueueEntriesException('handleIndexQueueEntry failed! Error: ' . $e->getMessage(), 0, $e);
         }
+
+        // After the batch is committed and removed: a queued rebuild whose last entries were in it is complete.
+        $this->indexCompletionNotifier->afterBatch($entries);
     }
 
     public function commit(?string $refreshIndex = null): IndexQueueService

@@ -173,6 +173,93 @@ php bin/console messenger:failed:retry -vv
 
 For the further commands please refer to the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html#saving-retrying-failed-messages).
 
+## Index Status
+
+An index doesn't show whether it is complete. After a mapping change the index is copied or recreated and then
+refilled from the database by the messenger workers; until they are done, filters, saved searches, exports and
+reports see incomplete data. The index status tells, per index, what state it is in and how far a rebuild has got, for
+PHP code, on the command line and as an event.
+
+### States
+
+| State | Meaning | Progress |
+| --- | --- | --- |
+| `complete` | All elements are indexed. Queue entries still waiting are the normal lag of asynchronous indexing and are reported separately. | - |
+| `rebuilding` | A full rebuild from the database was queued (after a class change, `update:index`, a recreated index) and its entries are not all processed yet. | elements already processed / elements |
+| `degraded` | Documents still carry the state of a copy that left out fields; the rebuild rewrites them. Only occurs after a copy that left out fields. | documents rewritten / documents |
+| `copying` | An odd/even copy of the index is running in the search engine; search shows the old index until the alias switches. | - |
+| `incomplete` | Documents are missing and nothing is queued: run `update:index` for the index. | - |
+| `missing` | The index doesn't exist. | - |
+
+Each status also carries the counts it is derived from: documents in the index, elements in the database, waiting
+queue entries, documents without checksum, whether a copy runs, and whether the mapping and the index settings are
+current (`null` when no state is stored yet, see [Deployment and Index Management](#deployment-and-index-management)).
+The measures are read live; nothing is cached.
+
+A rebuild counts as queued from a full enqueue of the index (class save with a mapping change, `update:index`,
+`deployment:reindex` with a change, a recreated index) until the messenger worker that processes its last batch
+finds the queue of that index empty. A rebuild queued by a version before this feature isn't marked, so the index
+shows `complete` with waiting entries, or `incomplete` once the queue is empty.
+
+### Command Line
+
+```bash
+bin/console generic-data-index:status                      # overview: queue, indices, status table
+bin/console generic-data-index:status --index=Car          # one index: alias name, class name, asset, document
+bin/console generic-data-index:status --json               # machine-readable
+bin/console generic-data-index:status --check              # exit code 1 while an index is not complete
+bin/console generic-data-index:status --wait --timeout=7200 --index=Car   # block until complete, exit code 1 on timeout
+```
+
+`--wait` and `--check` are meant for deployment pipelines: run the step that needs the index only after
+`generic-data-index:status --wait` has returned.
+
+### PHP
+
+```php
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexStatusServiceInterface;
+
+public function __construct(private IndexStatusServiceInterface $indexStatusService)
+{
+}
+
+public function export(ClassDefinition $classDefinition): void
+{
+    $status = $this->indexStatusService->getStatusForClassDefinition($classDefinition);
+    if (!$status->isComplete()) {
+        // $status->getState(), $status->getPercentage(), $status->getPendingEntries()
+        throw new RuntimeException(sprintf('Index %s is %s', $status->getIndexName(), $status->getState()->value));
+    }
+    // ...
+}
+```
+
+`getAssetStatus()`, `getDocumentStatus()`, `getDataObjectFolderStatus()` and `getStatusByIndexName()` read the other
+indices; `getAll()` returns a report with every index plus the total queue depth and the number of failed messages;
+`waitUntilComplete($indexName, $timeoutSeconds)` polls until the index is complete and throws an
+`IndexStatusException` on timeout.
+
+### Event
+
+`Pimcore\Bundle\GenericDataIndexBundle\Event\IndexStatus\IndexCompleteEvent` fires once when the last queue
+entries of a queued full rebuild have been processed and the index is complete again. It is dispatched by the
+messenger worker that processes that batch, so listeners run in the worker:
+
+```php
+use Pimcore\Bundle\GenericDataIndexBundle\Event\IndexStatus\IndexCompleteEvent;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+
+#[AsEventListener]
+final class StartExportWhenIndexComplete
+{
+    public function __invoke(IndexCompleteEvent $event): void
+    {
+        $event->getIndexName();           // e.g. "pimcore_data-object_car"
+        $event->getStatus()->getLabel();  // e.g. "class Car (CAR)"
+    }
+}
+```
+
 ## Configuring index options (Maximum Item Limit, ...)
 
 You can configure different options to use with your indices. The available options can differ depending on which 

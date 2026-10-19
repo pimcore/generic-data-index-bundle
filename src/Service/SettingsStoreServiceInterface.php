@@ -42,4 +42,6 @@ interface SettingsStoreServiceInterface
      * @throws Exception
      */
     public function storeIndexState(string $key, string $value): void;
+
+    public function removeIndexState(string $key): void;
 }
