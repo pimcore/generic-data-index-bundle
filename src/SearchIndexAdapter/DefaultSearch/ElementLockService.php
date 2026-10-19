@@ -177,7 +177,13 @@ final class ElementLockService implements ElementLockServiceInterface
             $source = $hit['_source'] ?? [];
             $path = SystemField::FULL_PATH->getData($source);
             $locked = SystemField::LOCKED->getData($source);
-            if (is_string($path) && is_string($locked) && $locked !== '') {
+            if (!is_string($path) || !is_string($locked) || $locked === '') {
+                continue;
+            }
+
+            // Indices combining several element types can hold one path more than once. Keep
+            // "propagate" when it is one of them, as the per-element ancestor query matches any hit.
+            if (($locks[$path] ?? null) !== self::LOCK_PROPAGATE) {
                 $locks[$path] = $locked;
             }
         }

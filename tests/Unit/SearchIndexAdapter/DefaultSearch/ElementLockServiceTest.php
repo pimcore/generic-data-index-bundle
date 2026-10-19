@@ -50,6 +50,23 @@ final class ElementLockServiceTest extends Unit
         $this->assertCount(1, $this->searches, 'one search loads all locks of the index');
     }
 
+    /**
+     * The combined element-search index holds assets, documents and data objects, which can share
+     * a full path. A "self" lock must not hide a "propagate" lock on the same path, in either order.
+     */
+    public function testPropagateLockWinsOverSelfLockOnTheSamePath(): void
+    {
+        foreach ([['propagate', 'self'], ['self', 'propagate']] as $order) {
+            $this->searches = [];
+            $service = $this->createService([['/shared', $order[0]], ['/shared', $order[1]]]);
+
+            $this->assertTrue(
+                $service->isElementLocked('/shared/child', 'element-search'),
+                'propagate lock found with hit order ' . implode(', ', $order)
+            );
+        }
+    }
+
     public function testOwnLockAndRootDoNotQueryTheIndex(): void
     {
         $service = $this->createService([]);
