@@ -8,3 +8,5 @@ services:
         arguments:
             - "@doctrine.orm.default_entity_manager"
 
+    Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexCountRepositoryInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexCountRepository
