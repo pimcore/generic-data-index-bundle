@@ -29,6 +29,8 @@ final class BulkOperationService implements BulkOperationServiceInterface
 {
     use LoggerAwareTrait;
 
+    private const INDEX_NOT_FOUND_EXCEPTION = 'index_not_found_exception';
+
     private array $bulkOperationData = [];
 
     public function __construct(
@@ -105,7 +107,7 @@ final class BulkOperationService implements BulkOperationServiceInterface
 
             $this->bulkOperationData = [];
 
-            if ($response['errors'] ?? true) {
+            if (($response['errors'] ?? true) && !$this->hasOnlyDeletionsFromMissingIndices($response)) {
                 $responseEncoded = json_encode($response, JSON_THROW_ON_ERROR);
 
                 throw new BulkOperationException(
@@ -115,6 +117,41 @@ final class BulkOperationService implements BulkOperationServiceInterface
         } catch (Exception $e) {
             throw new BulkOperationException($e->getMessage());
         }
+    }
+
+    /**
+     * A deletion from an index that no longer exists (e.g. the index of a deleted class, whose objects were
+     * deleted with it) has nothing left to delete: it is done, not failed. Failing the request would leave the
+     * queue entries behind, to fail again on every re-dispatch, and would block the other items of the bulk.
+     * Any other error still fails the whole request.
+     */
+    private function hasOnlyDeletionsFromMissingIndices(array $response): bool
+    {
+        $missingIndices = [];
+        foreach ($response['items'] ?? [] as $item) {
+            foreach ($item as $action => $result) {
+                if (!isset($result['error'])) {
+                    continue;
+                }
+
+                if ($action !== 'delete' || ($result['error']['type'] ?? null) !== self::INDEX_NOT_FOUND_EXCEPTION) {
+                    return false;
+                }
+
+                $missingIndices[$result['_index'] ?? 'unknown'] = true;
+            }
+        }
+
+        // "errors" set without an item error to explain it: not a known harmless case
+        if ($missingIndices === []) {
+            return false;
+        }
+
+        $this->logger->notice('Bulk deletions from indices that no longer exist are treated as done.', [
+            'indices' => array_keys($missingIndices),
+        ]);
+
+        return true;
     }
 
     /**
