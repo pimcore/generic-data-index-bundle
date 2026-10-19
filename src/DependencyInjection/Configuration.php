@@ -102,6 +102,19 @@ class Configuration implements ConfigurationInterface
                                     ->defaultValue(5)
                                     ->info('Seconds to wait between reindex task status polls.')
                                 ->end()
+                                ->enumNode('mapping_change_strategy')
+                                    ->values(['recreate', 'copy'])
+                                    ->defaultValue('recreate')
+                                    ->info(
+                                        'How a mapping change is applied to an index with documents written under '
+                                        . 'the old mapping. "recreate" (default): the documents are copied as they '
+                                        . 'are; if their old values do not fit the new mapping, the index is '
+                                        . 'recreated empty and rebuilt from the database. "copy": fields whose old '
+                                        . 'values do not fit are left out of the copy, so the documents stay '
+                                        . 'searchable while the rebuild refills them; the index is recreated only as '
+                                        . 'a last resort.'
+                                    )
+                                ->end()
                             ->end()
                         ->end()
                         ->arrayNode('queue_settings')

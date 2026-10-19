@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Command;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
 use Pimcore\Console\AbstractCommand;
 use Symfony\Component\Console\Command\LockableTrait;
@@ -62,7 +63,17 @@ final class ReindexItemsCommand extends AbstractCommand
                 OutputInterface::VERBOSITY_NORMAL
             );
 
-            $this->reindexService->reindexAllIndices();
+            $report = $this->reindexService->reindexAllIndicesWithReport();
+            foreach ($report->getRebuilds() as $rebuild) {
+                $output->writeln(sprintf(
+                    '<comment>%s: %s; all its elements were queued for a rebuild from the database.</comment>',
+                    $rebuild->getLabel(),
+                    $this->describeRebuildReason($rebuild->getResult())
+                ));
+            }
+            if (!$report->isEmpty()) {
+                $output->writeln('<comment>Run the messenger workers to fill these indices.</comment>');
+            }
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
 
@@ -77,5 +88,15 @@ final class ReindexItemsCommand extends AbstractCommand
         );
 
         return self::SUCCESS;
+    }
+
+    private function describeRebuildReason(MappingUpdateResult $result): string
+    {
+        return match (true) {
+            $result->isRecreated() => 'the index had to be created empty',
+            $result->isOutcomeUnknown() => 'the mapping was applied by a custom index handler',
+            $result->isRebuildOwed() => 'an earlier run changed the index but did not get to queue its rebuild',
+            default => 'fields left out of the copy: ' . implode(', ', $result->getStrippedPaths()),
+        };
     }
 }
