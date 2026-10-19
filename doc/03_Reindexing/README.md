@@ -450,8 +450,9 @@ runs each `_reindex` as a background task that the bundle polls according to `re
 Read-only. Shows the index queue depth, the number of failed messages, every index with its document count and size,
 and the status of every index: `complete`, `rebuilding` with the progress in percent, `copying`, `degraded`,
 `incomplete` or `missing` (see [Index Status](../02_Configuration/03_Index_Management.md#index-status)). `--index`
-shows one index, `--json` prints the status for scripts, `--check` exits with 1 while an index is not complete, and
-`--wait` blocks until it is. An index that exists as both `-even` and `-odd` without a running copy is reported as
+shows one index, `--json` prints the status for scripts (errors and progress go to stderr), `--check` exits with 1
+while an index is not complete, and `--wait` blocks until it is; both exit with 1 when the status cannot be read. An
+index that exists as both `-even` and `-odd` without a running copy is reported as
 a leftover of an interrupted odd/even copy; such indices are not used by the bundle and can be deleted in the search
 engine (2026.x provides `generic-data-index:cleanup:unused-indices` for this).
 

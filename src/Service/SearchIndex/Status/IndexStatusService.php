@@ -17,14 +17,15 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScop
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexStatusState;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexStatusException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Status\IndexRebuildMarker;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Status\IndexStatus;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Status\IndexStatusReport;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexCountRepositoryInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexStateServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Symfony\Component\Messenger\Transport\Receiver\MessageCountAwareInterface;
@@ -37,7 +38,6 @@ final readonly class IndexStatusService implements IndexStatusServiceInterface
     public function __construct(
         private IndexStateTargetResolverInterface $targetResolver,
         private IndexStateServiceInterface $indexStateService,
-        private ClassDefinitionReindexServiceInterface $classDefinitionReindexService,
         private SearchIndexServiceInterface $searchIndexService,
         private IndexCountRepositoryInterface $countRepository,
         private IndexRebuildStateServiceInterface $rebuildStateService,
@@ -133,7 +133,7 @@ final readonly class IndexStatusService implements IndexStatusServiceInterface
         ]) : 0;
         $elementCount = $this->countRepository->countElements($target);
         $pendingEntries = $this->countRepository->countQueueEntries($elementIndexName);
-        $rebuildQueuedAt = $this->rebuildStateService->getQueuedAt($target);
+        $marker = $this->rebuildStateService->getMarker($target);
 
         return new IndexStatus(
             indexName: $aliasName,
@@ -145,19 +145,25 @@ final readonly class IndexStatusService implements IndexStatusServiceInterface
                 $documentsWithoutChecksum,
                 $elementCount,
                 $pendingEntries,
-                $rebuildQueuedAt
+                $marker
             ),
             documentCount: $documentCount,
             elementCount: $elementCount,
             pendingEntries: $pendingEntries,
             documentsWithoutChecksum: $documentsWithoutChecksum,
             copyRunning: $copyRunning,
-            mappingCurrent: $exists ? $this->isMappingCurrent($target) : null,
+            mappingCurrent: $exists ? $this->indexStateService->isMappingCurrent($target) : null,
             settingsCurrent: $exists ? $this->isSettingsCurrent($target) : null,
-            rebuildQueuedAt: $rebuildQueuedAt,
+            rebuildQueuedAt: $marker?->getQueuedAt(),
+            rebuildEnqueuing: $marker !== null && !$marker->isEnqueued(),
         );
     }
 
+    /**
+     * A rebuild is in progress while its elements are being queued or entries of it wait in the queue. A marker
+     * with an empty queue is a rebuild that was processed but not reported (a worker died in between): the counts
+     * decide, so that missing documents show as incomplete and ask for a rebuild.
+     */
     private function deriveState(
         bool $exists,
         bool $copyRunning,
@@ -165,36 +171,16 @@ final readonly class IndexStatusService implements IndexStatusServiceInterface
         int $documentsWithoutChecksum,
         int $elementCount,
         int $pendingEntries,
-        ?int $rebuildQueuedAt
+        ?IndexRebuildMarker $marker
     ): IndexStatusState {
         return match (true) {
             !$exists => IndexStatusState::MISSING,
             $copyRunning => IndexStatusState::COPYING,
             $documentsWithoutChecksum > 0 => IndexStatusState::DEGRADED,
-            $rebuildQueuedAt !== null && ($pendingEntries > 0 || $documentCount < $elementCount)
-                => IndexStatusState::REBUILDING,
+            $marker !== null && (!$marker->isEnqueued() || $pendingEntries > 0) => IndexStatusState::REBUILDING,
             $documentCount < $elementCount && $pendingEntries === 0 => IndexStatusState::INCOMPLETE,
             default => IndexStatusState::COMPLETE,
         };
-    }
-
-    /**
-     * Classes compare through the class definition reindex, which also accepts a checksum stored by an older
-     * version; the other indices have a stored mapping state only after the extended deployment reindex ran.
-     */
-    private function isMappingCurrent(IndexStateTarget $target): ?bool
-    {
-        $classDefinition = $target->getClassDefinition();
-        if ($classDefinition !== null) {
-            return !$this->classDefinitionReindexService->isMappingChanged($classDefinition);
-        }
-
-        $stored = $this->indexStateService->getStoredState($target)->getMappingChecksum();
-        if ($stored === null) {
-            return null;
-        }
-
-        return $stored === $this->indexStateService->getCurrentState($target)->getMappingChecksum();
     }
 
     private function isSettingsCurrent(IndexStateTarget $target): ?bool
@@ -214,13 +200,23 @@ final readonly class IndexStatusService implements IndexStatusServiceInterface
 
     /**
      * @return string[]
+     *
+     * @throws IndexStatusException when the running tasks cannot be read: an unknown copy state must not pass as
+     *                              "no copy running"
      */
     private function copyTargets(): array
     {
-        return array_map(
-            static fn (array $task): string => $task['target'],
-            $this->searchIndexService->getReindexTasks()
-        );
+        try {
+            $tasks = $this->searchIndexService->getReindexTasks();
+        } catch (ReindexFailedException $e) {
+            throw new IndexStatusException(
+                'The running reindex tasks could not be read: ' . $e->getMessage(),
+                0,
+                $e
+            );
+        }
+
+        return array_map(static fn (array $task): string => $task['target'], $tasks);
     }
 
     /**

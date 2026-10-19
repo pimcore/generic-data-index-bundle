@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Status\IndexRebuildMarker;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 
@@ -30,24 +31,33 @@ final readonly class IndexRebuildStateService implements IndexRebuildStateServic
     ) {
     }
 
-    public function markQueued(IndexStateTarget $target): void
+    public function markEnqueuing(IndexStateTarget $target): IndexRebuildMarker
     {
-        $this->settingsStoreService->storeIndexState(
+        $marker = new IndexRebuildMarker($this->timeService->getCurrentMillisecondTimestamp(), false);
+        $this->settingsStoreService->storeIndexState($this->key($target), $marker->toStoredValue());
+
+        return $marker;
+    }
+
+    public function markEnqueued(IndexStateTarget $target, IndexRebuildMarker $marker): bool
+    {
+        return $this->settingsStoreService->replaceIndexState(
             $this->key($target),
-            (string) $this->timeService->getCurrentMillisecondTimestamp()
+            $marker->toStoredValue(),
+            $marker->withEnqueued()->toStoredValue()
         );
     }
 
-    public function getQueuedAt(IndexStateTarget $target): ?int
+    public function getMarker(IndexStateTarget $target): ?IndexRebuildMarker
     {
         $value = $this->settingsStoreService->getIndexState($this->key($target));
 
-        return $value === null || $value === '' ? null : (int) $value;
+        return $value === null ? null : IndexRebuildMarker::fromStoredValue($value);
     }
 
-    public function clear(IndexStateTarget $target): void
+    public function claim(IndexStateTarget $target, IndexRebuildMarker $marker): bool
     {
-        $this->settingsStoreService->removeIndexState($this->key($target));
+        return $this->settingsStoreService->removeIndexStateIfEquals($this->key($target), $marker->toStoredValue());
     }
 
     private function key(IndexStateTarget $target): string

@@ -14,9 +14,12 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 
 /**
- * Dispatches IndexCompleteEvent when the last queue entries of a queued full rebuild have been processed.
+ * Dispatches IndexCompleteEvent once, when the last queue entries of a queued full rebuild have been processed.
+ * A failed check is logged and never fails the caller; the rebuild marker then stays, and the next batch of the
+ * index checks again.
  *
  * @internal
  */
@@ -28,4 +31,10 @@ interface IndexCompletionNotifierInterface
      * @param IndexQueue[] $entries
      */
     public function afterBatch(array $entries): void;
+
+    /**
+     * Called once every element of a full rebuild is in the queue: the workers may have processed them all
+     * while they were still being queued, or the index has no elements.
+     */
+    public function afterEnqueue(IndexStateTarget $target): void;
 }

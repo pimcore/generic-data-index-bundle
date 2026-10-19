@@ -52,6 +52,16 @@ final class IndexStatusTest extends Unit
         $this->assertSame(100.0, $this->makeStatus(IndexStatusState::DEGRADED, 0, 0)->getPercentage());
     }
 
+    public function testARebuildStillBeingQueuedIsAtZeroPercent(): void
+    {
+        $status = $this->makeStatus(IndexStatusState::REBUILDING, 100, 100, pending: 10, queuedAt: 1, enqueuing: true);
+
+        $this->assertSame(0.0, $status->getPercentage());
+        $this->assertTrue($status->isRebuildEnqueuing());
+        $this->assertTrue($status->toArray()['rebuildEnqueuing']);
+        $this->assertFalse($this->makeStatus(IndexStatusState::REBUILDING, 0, 0)->isRebuildEnqueuing());
+    }
+
     public function testPercentageStaysWithinBounds(): void
     {
         // more pending entries than elements (new objects queued during the rebuild)
@@ -100,7 +110,8 @@ final class IndexStatusTest extends Unit
         int $elements,
         int $pending = 0,
         int $withoutChecksum = 0,
-        ?int $queuedAt = null
+        ?int $queuedAt = null,
+        bool $enqueuing = false
     ): IndexStatus {
         return new IndexStatus(
             indexName: 'pimcore_asset',
@@ -114,6 +125,7 @@ final class IndexStatusTest extends Unit
             mappingCurrent: null,
             settingsCurrent: null,
             rebuildQueuedAt: $queuedAt,
+            rebuildEnqueuing: $enqueuing,
         );
     }
 }

@@ -21,11 +21,14 @@ use Pimcore\Model\DataObject\ClassDefinition;
 
 /**
  * Reads how complete the search indices are, so that tasks depending on the index (reports, exports, imports) can
- * check it or wait for it. Every call reads the live state; nothing is cached.
+ * check it or wait for it. Every call reads the live state; nothing is cached. When the state cannot be read
+ * (search engine or database unavailable) the methods throw instead of guessing, so a caller never takes an
+ * unknown state for a complete index.
  */
 interface IndexStatusServiceInterface
 {
     /**
+     * @throws IndexStatusException when the running reindex tasks cannot be read
      * @throws Exception
      */
     public function getAll(): IndexStatusReport;
@@ -53,16 +56,22 @@ interface IndexStatusServiceInterface
     /**
      * @param string $indexName the alias name (e.g. "pimcore_asset", "pimcore_data-object_car") or a class name
      *
-     * @throws IndexStatusException when no index of that name is known
+     * @throws IndexStatusException when no index of that name is known, or the running reindex tasks cannot be read
      * @throws Exception
      */
     public function getStatusByIndexName(string $indexName): IndexStatus;
 
     /**
-     * Polls the status until the index is complete.
+     * Polls the status until the index is complete. A failed read ends the wait, so that an unknown state never
+     * passes as complete.
      *
-     * @throws IndexStatusException when the index is still incomplete after $timeoutSeconds, or is unknown
+     * @throws IndexStatusException when the index is still incomplete after $timeoutSeconds, is unknown, or its
+     *                              state cannot be read
      * @throws Exception
      */
-    public function waitUntilComplete(string $indexName, int $timeoutSeconds, int $pollIntervalSeconds = 5): IndexStatus;
+    public function waitUntilComplete(
+        string $indexName,
+        int $timeoutSeconds,
+        int $pollIntervalSeconds = 5
+    ): IndexStatus;
 }

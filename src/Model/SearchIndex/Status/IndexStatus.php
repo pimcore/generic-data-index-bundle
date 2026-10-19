@@ -34,6 +34,8 @@ final readonly class IndexStatus
      *                                  null when no mapping state is stored (see deployment:reindex)
      * @param bool|null $settingsCurrent the index settings match the configured index_settings; null when unknown
      * @param int|null $rebuildQueuedAt when the last full rebuild was queued (milliseconds), null when none is pending
+     * @param bool $rebuildEnqueuing the elements of the pending rebuild are still being queued; the pending entries
+     *                               are not its full size yet
      *
      * @throws InvalidArgumentException
      */
@@ -49,6 +51,7 @@ final readonly class IndexStatus
         private ?bool $mappingCurrent,
         private ?bool $settingsCurrent,
         private ?int $rebuildQueuedAt = null,
+        private bool $rebuildEnqueuing = false,
     ) {
         if ($indexName === '') {
             throw new InvalidArgumentException('An index status needs an index name.');
@@ -79,14 +82,13 @@ final readonly class IndexStatus
     }
 
     /**
-     * Progress of the running rebuild in percent (0 to 100), null when no rebuild runs.
+     * Progress of the running rebuild in percent (0 to 100), null when no rebuild runs. 0 while the elements of a
+     * rebuild are still being queued.
      */
     public function getPercentage(): ?float
     {
         return match ($this->state) {
-            IndexStatusState::REBUILDING => $this->elementCount === 0
-                ? 100.0
-                : $this->clamp(100 * ($this->elementCount - $this->pendingEntries) / $this->elementCount),
+            IndexStatusState::REBUILDING => $this->rebuildProgress(),
             IndexStatusState::DEGRADED => $this->documentCount === 0
                 ? 100.0
                 : $this->clamp(100 * ($this->documentCount - $this->documentsWithoutChecksum) / $this->documentCount),
@@ -134,6 +136,11 @@ final readonly class IndexStatus
         return $this->rebuildQueuedAt;
     }
 
+    public function isRebuildEnqueuing(): bool
+    {
+        return $this->rebuildEnqueuing;
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -153,7 +160,20 @@ final readonly class IndexStatus
             'mappingCurrent' => $this->mappingCurrent,
             'settingsCurrent' => $this->settingsCurrent,
             'rebuildQueuedAt' => $this->rebuildQueuedAt,
+            'rebuildEnqueuing' => $this->rebuildEnqueuing,
         ];
+    }
+
+    private function rebuildProgress(): float
+    {
+        if ($this->rebuildEnqueuing) {
+            return 0.0;
+        }
+        if ($this->elementCount === 0) {
+            return 100.0;
+        }
+
+        return $this->clamp(100 * ($this->elementCount - $this->pendingEntries) / $this->elementCount);
     }
 
     private function clamp(float $percentage): float

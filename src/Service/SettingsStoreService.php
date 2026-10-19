@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service;
 
+use Doctrine\DBAL\Connection;
 use Exception;
 use Pimcore\Bundle\StaticResolverBundle\Models\Tool\SettingsStoreResolverInterface;
 use Pimcore\Model\Tool\SettingsStore;
@@ -28,8 +29,11 @@ final class SettingsStoreService implements SettingsStoreServiceInterface
 
     private const SETTINGS_STORE_SCOPE = 'generic_data_index';
 
+    private const SETTINGS_STORE_TABLE = 'settings_store';
+
     public function __construct(
-        private readonly SettingsStoreResolverInterface $settingsStoreResolver
+        private readonly SettingsStoreResolverInterface $settingsStoreResolver,
+        private readonly Connection $connection,
     ) {
     }
 
@@ -96,5 +100,36 @@ final class SettingsStoreService implements SettingsStoreServiceInterface
             self::INDEX_STATE_PREFIX . $key,
             self::SETTINGS_STORE_SCOPE
         );
+    }
+
+    public function replaceIndexState(string $key, string $expected, string $value): bool
+    {
+        // The settings store has no compare-and-set; one UPDATE with the expected value in its condition is one.
+        $affected = $this->connection->executeStatement(
+            'UPDATE ' . self::SETTINGS_STORE_TABLE
+            . ' SET data = :value WHERE id = :id AND scope = :scope AND data = :expected',
+            [
+                'value' => $value,
+                'id' => self::INDEX_STATE_PREFIX . $key,
+                'scope' => self::SETTINGS_STORE_SCOPE,
+                'expected' => $expected,
+            ]
+        );
+
+        return (int) $affected > 0;
+    }
+
+    public function removeIndexStateIfEquals(string $key, string $expected): bool
+    {
+        $affected = $this->connection->executeStatement(
+            'DELETE FROM ' . self::SETTINGS_STORE_TABLE . ' WHERE id = :id AND scope = :scope AND data = :expected',
+            [
+                'id' => self::INDEX_STATE_PREFIX . $key,
+                'scope' => self::SETTINGS_STORE_SCOPE,
+                'expected' => $expected,
+            ]
+        );
+
+        return (int) $affected > 0;
     }
 }

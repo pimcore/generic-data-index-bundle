@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue;
 
 use Doctrine\DBAL\Exception;
+use Doctrine\DBAL\Query\QueryBuilder;
 use Exception as ThrowableException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
@@ -24,6 +25,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStat
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\RequiredByElementListServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexCompletionNotifierInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexRebuildStateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -42,6 +44,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
         private AdapterServiceInterface $typeAdapterService,
         private RequiredByElementListServiceInterface $requiredByElementListService,
         private IndexRebuildStateServiceInterface $rebuildStateService,
+        private IndexCompletionNotifierInterface $completionNotifier,
     ) {
     }
 
@@ -109,10 +112,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
             ],
             'oo_id'
         );
-        $this->indexQueueRepository->enqueueBySelectQuery(
-            $selectQuery
-        );
-        $this->rebuildStateService->markQueued(IndexStateTarget::forClassDefinition($classDefinition));
+        $this->enqueueRebuild(IndexStateTarget::forClassDefinition($classDefinition), $selectQuery);
 
         return $this;
     }
@@ -130,8 +130,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                     '0',
                 ],
             )->where('type = "folder"');
-            $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
-            $this->rebuildStateService->markQueued(IndexStateTarget::forScope(DeploymentReindexScope::FOLDERS));
+            $this->enqueueRebuild(IndexStateTarget::forScope(DeploymentReindexScope::FOLDERS), $selectQuery);
         } catch (Exception $e) {
             throw new EnqueueElementsException(
                 $e->getMessage()
@@ -157,8 +156,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                     '0',
                 ]
             );
-            $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
-            $this->rebuildStateService->markQueued(IndexStateTarget::forScope(DeploymentReindexScope::ASSETS));
+            $this->enqueueRebuild(IndexStateTarget::forScope(DeploymentReindexScope::ASSETS), $selectQuery);
         } catch (Exception $e) {
             throw new EnqueueElementsException(
                 $e->getMessage()
@@ -184,8 +182,7 @@ final readonly class EnqueueService implements EnqueueServiceInterface
                     '0',
                 ]
             );
-            $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
-            $this->rebuildStateService->markQueued(IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS));
+            $this->enqueueRebuild(IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS), $selectQuery);
         } catch (Exception $e) {
             throw new EnqueueElementsException(
                 $e->getMessage()
@@ -237,5 +234,30 @@ final readonly class EnqueueService implements EnqueueServiceInterface
     public function dispatchQueueMessages(bool $synchronously = false): void
     {
         $this->queueMessagesDispatcher->dispatchQueueMessages($synchronously);
+    }
+
+    /**
+     * Queues every element of an index and keeps the rebuild marker in step with it: set before the first entry
+     * (workers draining the queue between two chunks must not report the rebuild complete), advanced once every
+     * element is queued, removed again when the enqueue fails.
+     *
+     * @throws Exception
+     */
+    private function enqueueRebuild(IndexStateTarget $target, QueryBuilder $selectQuery): void
+    {
+        $marker = $this->rebuildStateService->markEnqueuing($target);
+
+        try {
+            $this->indexQueueRepository->enqueueBySelectQuery($selectQuery);
+        } catch (Exception $e) {
+            $this->rebuildStateService->claim($target, $marker);
+
+            throw $e;
+        }
+
+        if ($this->rebuildStateService->markEnqueued($target, $marker)) {
+            // The workers may have processed every entry already, or the index has no elements.
+            $this->completionNotifier->afterEnqueue($target);
+        }
     }
 }

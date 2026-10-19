@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
@@ -84,9 +85,12 @@ interface SearchIndexServiceInterface
     public function countDocuments(string $indexName, array $query = []): int;
 
     /**
-     * Reindex tasks running in the search engine; empty when the client has no tasks API or listing fails.
+     * Reindex tasks running in the search engine. Empty when the client has no tasks API, as no asynchronous copy
+     * can be started without it.
      *
      * @return list<array{id: string, source: string, target: string, created: int, total: int}>
+     *
+     * @throws ReindexFailedException when the tasks cannot be listed; the copy state is unknown then
      */
     public function getReindexTasks(): array;
 

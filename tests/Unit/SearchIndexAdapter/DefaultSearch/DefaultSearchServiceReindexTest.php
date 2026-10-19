@@ -701,11 +701,31 @@ final class DefaultSearchServiceReindexTest extends Unit
         );
     }
 
+    /**
+     * Without the tasks API no asynchronous copy can be started, so none runs: a known, empty list.
+     */
     public function testRunningReindexTasksAreEmptyWithoutATasksApi(): void
     {
         $service = $this->createService(client: $this->makeEmpty(SearchClientInterface::class));
 
         $this->assertSame([], $service->getReindexTasks());
+    }
+
+    /**
+     * A failing tasks API leaves the copy state unknown; that must not read as "no copy running".
+     */
+    public function testAFailingTaskListingThrowsInsteadOfReportingNoTasks(): void
+    {
+        $tasksStub = new ReindexTestTasksStub([]);
+        $tasksStub->listException = new \RuntimeException('tasks API down');
+        $client = new ReindexTestSearchClientStub(
+            originalClient: new ReindexTestOriginalClientStub($tasksStub),
+            taskId: 'node:1',
+        );
+
+        $this->expectException(ReindexFailedException::class);
+        $this->expectExceptionMessage('tasks API down');
+        $this->createService(client: $client)->getReindexTasks();
     }
 
     public function testDocumentsAreCountedWithAnOptionalQuery(): void

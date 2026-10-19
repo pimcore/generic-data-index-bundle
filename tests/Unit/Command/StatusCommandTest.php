@@ -29,6 +29,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexStatsServiceIn
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexStatusServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 
@@ -128,6 +129,61 @@ final class StatusCommandTest extends Unit
         $this->assertSame('complete', $json['indices'][0]['state']);
     }
 
+    /**
+     * Scripts parse stdout; the failure of --check and the error of a read go to stderr.
+     */
+    public function testJsonStaysParsableWhenTheCheckFails(): void
+    {
+        $report = new IndexStatusReport([$this->makeStatus('pimcore_asset', IndexStatusState::INCOMPLETE)], 0, null);
+        $commandTester = new CommandTester($this->createCommand(new IndexStats(0, []), $report));
+
+        $commandTester->execute(['--json' => true, '--check' => true], ['capture_stderr_separately' => true]);
+
+        $this->assertSame(Command::FAILURE, $commandTester->getStatusCode());
+        $json = json_decode($commandTester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertFalse($json['complete']);
+        $this->assertStringContainsString('Not complete: assets (incomplete)', $commandTester->getErrorOutput());
+
+        $commandTester = new CommandTester($this->createCommand(new IndexStats(0, []), $report));
+        $commandTester->execute(['--json' => true, '--index' => 'nope'], ['capture_stderr_separately' => true]);
+
+        $this->assertSame(Command::FAILURE, $commandTester->getStatusCode());
+        $this->assertSame('', $commandTester->getDisplay());
+        $this->assertStringContainsString('No index "nope"', $commandTester->getErrorOutput());
+    }
+
+    public function testJsonStaysParsableWhileWaitingVerbosely(): void
+    {
+        $incomplete = new IndexStatusReport([
+            $this->makeStatus('pimcore_asset', IndexStatusState::REBUILDING, pending: 25),
+        ], 25, null);
+        $complete = new IndexStatusReport([$this->makeStatus('pimcore_asset', IndexStatusState::COMPLETE)], 0, null);
+        $commandTester = new CommandTester(
+            $this->createCommand(new IndexStats(0, []), $incomplete, reports: [$incomplete, $complete])
+        );
+
+        $commandTester->execute(
+            ['--json' => true, '--wait' => true],
+            ['capture_stderr_separately' => true, 'verbosity' => OutputInterface::VERBOSITY_VERBOSE]
+        );
+
+        $this->assertSame(Command::SUCCESS, $commandTester->getStatusCode());
+        $json = json_decode($commandTester->getDisplay(), true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($json['complete']);
+        $this->assertStringContainsString('waiting for assets: rebuilding 75.0%', $commandTester->getErrorOutput());
+    }
+
+    public function testWaitingFailsWhenTheTimeoutIsReached(): void
+    {
+        $report = new IndexStatusReport([$this->makeStatus('pimcore_asset', IndexStatusState::INCOMPLETE)], 0, null);
+        $commandTester = new CommandTester($this->createCommand(new IndexStats(0, []), $report));
+
+        $commandTester->execute(['--wait' => true, '--timeout' => '0']);
+
+        $this->assertSame(Command::FAILURE, $commandTester->getStatusCode());
+        $this->assertStringContainsString('Still not complete after 0 seconds: assets (incomplete)', $commandTester->getDisplay());
+    }
+
     public function testASingleIndexIsReadByName(): void
     {
         $commandTester = new CommandTester($this->createCommand(
@@ -181,12 +237,20 @@ final class StatusCommandTest extends Unit
 
     /**
      * @param array<string, IndexStatus> $byName
+     * @param IndexStatusReport[] $reports what getAll() returns on consecutive reads; the last one repeats
      */
-    private function createCommand(IndexStats $stats, IndexStatusReport $report, array $byName = []): StatusCommand
-    {
+    private function createCommand(
+        IndexStats $stats,
+        IndexStatusReport $report,
+        array $byName = [],
+        array $reports = []
+    ): StatusCommand {
+        $reports = $reports === [] ? [$report] : $reports;
         $statsService = $this->makeEmpty(IndexStatsServiceInterface::class, ['getStats' => $stats]);
         $statusService = $this->makeEmpty(IndexStatusServiceInterface::class, [
-            'getAll' => $report,
+            'getAll' => static function () use (&$reports): IndexStatusReport {
+                return count($reports) > 1 ? array_shift($reports) : $reports[0];
+            },
             'getStatusByIndexName' => static function (string $name) use ($byName): IndexStatus {
                 return $byName[$name] ?? throw new IndexStatusException(sprintf('No index "%s" is known.', $name));
             },
@@ -196,7 +260,8 @@ final class StatusCommandTest extends Unit
             $statsService,
             $this->getEmptyQueueRepository(),
             $statusService,
-            $this->makeEmpty(IndexCountRepositoryInterface::class, ['countQueueEntries' => 0])
+            $this->makeEmpty(IndexCountRepositoryInterface::class, ['countQueueEntries' => 0]),
+            pollIntervalSeconds: 0
         );
     }
 
