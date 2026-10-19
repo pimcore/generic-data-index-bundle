@@ -175,10 +175,12 @@ abort a running reindex. If reindexing fails for a different reason — the clus
 error or times out server-side — the command fails instead of modifying the live index, and the reindex is retried on
 the next run.
 
-After a field type change, the copy keeps the changed fields whose old values still fit (for example a number copied
-into a text field) and leaves out the others, so the index is not recreated and the documents stay searchable; the
-left-out fields are empty until the rebuild from the database. The index is only recreated, as a last resort, when the
-copy fails and no further field can be left out. If fields were left out of the copy, the index had to be created empty,
+After a field type change, the outcome depends on `mapping_change_strategy`. With the default `recreate`, the
+documents are copied as they are; if their old values don't fit the new mapping, the index is recreated empty and
+search finds nothing for it until the rebuild from the database. With `copy`, the copy keeps the changed fields whose
+old values still fit (for example a number copied into a text field) and leaves out the others, so the documents stay
+searchable; the left-out fields are empty until the rebuild, and the index is only recreated, as a last resort, when
+the copy fails and no further field can be left out. If fields were left out of the copy, the index had to be created empty,
 or a custom index handler applied the mapping, the command queues all elements of that index for a rebuild from the
 database and prints a notice per index. Run the messenger workers to fill these indices. See the
 [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).

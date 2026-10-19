@@ -31,6 +31,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\Eleme
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DocumentIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Psr\Log\NullLogger;
@@ -86,6 +87,33 @@ final class ReindexServiceTest extends Unit
         $this->assertSame([[$scope, false, true, false]], $refreshed);
     }
 
+    /**
+     * A failed enqueue after a stripping copy leaves the obligation: the retry's copy strips nothing, the elements
+     * are queued anyway and the obligation is settled.
+     *
+     * @dataProvider scopeProvider
+     */
+    public function testAnOwedRebuildIsQueuedAlthoughTheCopyStripsNothing(
+        DeploymentReindexScope $scope,
+        string $enqueueMethod
+    ): void {
+        $refreshed = [];
+        $service = $this->createService(
+            new IndexCopyResult(ReindexResult::SUCCESS),
+            [$enqueueMethod => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class))],
+            $refreshed,
+            $this->makeEmpty(IndexRebuildObligationServiceInterface::class, [
+                'isOwed' => true,
+                'owe' => Expected::once(),
+                'settle' => Expected::once(),
+            ])
+        );
+
+        $scope === DeploymentReindexScope::ASSETS ? $service->reindexAssets(false) : $service->reindexDocuments(false);
+
+        $this->assertSame([[$scope, true, true, true]], $refreshed);
+    }
+
     public static function scopeProvider(): array
     {
         return [
@@ -101,7 +129,8 @@ final class ReindexServiceTest extends Unit
     private function createService(
         IndexCopyResult $copyResult,
         array $enqueueExpectations,
-        array &$refreshed
+        array &$refreshed,
+        ?IndexRebuildObligationServiceInterface $obligations = null
     ): ReindexService {
         $search = $this->makeEmpty(SearchIndexServiceInterface::class, [
             'existsAlias' => true,
@@ -161,7 +190,8 @@ final class ReindexServiceTest extends Unit
             $documentHandler,
             $this->makeEmpty(EnqueueServiceInterface::class, $enqueueExpectations),
             $this->makeEmpty(ClassDefinitionReindexServiceInterface::class),
-            $stateService
+            $stateService,
+            $obligations ?? $this->makeEmpty(IndexRebuildObligationServiceInterface::class)
         );
     }
 }

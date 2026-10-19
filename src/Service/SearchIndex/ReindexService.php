@@ -24,6 +24,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexSt
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DocumentIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\ClassDefinition\Listing;
 
@@ -42,6 +44,7 @@ final readonly class ReindexService implements ReindexServiceInterface
         private EnqueueServiceInterface $enqueueService,
         private ClassDefinitionReindexServiceInterface $classDefinitionReindexService,
         private IndexStateServiceInterface $indexStateService,
+        private IndexRebuildObligationServiceInterface $rebuildObligationService,
     ) {
 
     }
@@ -170,23 +173,12 @@ final readonly class ReindexService implements ReindexServiceInterface
      */
     private function applyAssets(bool $enqueueElements): MappingUpdateResult
     {
-        $result = $this->assetIndexHandler->reindexMappingWithResult();
-        $rebuilt = $enqueueElements || $result->requiresRebuild();
-        if ($rebuilt) {
-            $this
-                ->enqueueService
-                ->enqueueAssets();
-        }
-
-        // Without the rebuild, fields added to the mapping stay empty, so the mapping is not current yet.
-        $this->indexStateService->refresh(
+        return $this->applyIndex(
             IndexStateTarget::forScope(DeploymentReindexScope::ASSETS),
-            $rebuilt,
-            true,
-            $rebuilt
+            $this->assetIndexHandler,
+            $enqueueElements,
+            fn () => $this->enqueueService->enqueueAssets()
         );
-
-        return $result;
     }
 
     /**
@@ -194,21 +186,42 @@ final readonly class ReindexService implements ReindexServiceInterface
      */
     private function applyDocuments(bool $enqueueElements): MappingUpdateResult
     {
-        $result = $this->documentIndexHandler->reindexMappingWithResult();
-        $rebuilt = $enqueueElements || $result->requiresRebuild();
-        if ($rebuilt) {
-            $this
-                ->enqueueService
-                ->enqueueDocuments();
+        return $this->applyIndex(
+            IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS),
+            $this->documentIndexHandler,
+            $enqueueElements,
+            fn () => $this->enqueueService->enqueueDocuments()
+        );
+    }
+
+    /**
+     * @param callable(): mixed $enqueue queues every element of the index
+     *
+     * @throws Exception
+     */
+    private function applyIndex(
+        IndexStateTarget $target,
+        IndexHandlerInterface $handler,
+        bool $enqueueElements,
+        callable $enqueue
+    ): MappingUpdateResult {
+        // An earlier run that changed the index and failed before queuing its rebuild left the obligation; this
+        // run's copy then changes nothing that would queue it again.
+        $rebuildOwed = $this->rebuildObligationService->isOwed($target);
+        $this->rebuildObligationService->owe($target);
+        $result = $handler->reindexMappingWithResult();
+        if ($rebuildOwed) {
+            $result = $result->withRebuildOwed();
         }
 
+        $rebuilt = $enqueueElements || $result->requiresRebuild();
+        if ($rebuilt) {
+            $enqueue();
+        }
+        $this->rebuildObligationService->settle($target);
+
         // Without the rebuild, fields added to the mapping stay empty, so the mapping is not current yet.
-        $this->indexStateService->refresh(
-            IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS),
-            $rebuilt,
-            true,
-            $rebuilt
-        );
+        $this->indexStateService->refresh($target, $rebuilt, true, $rebuilt);
 
         return $result;
     }

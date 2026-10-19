@@ -13,14 +13,17 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment;
 
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexPlan;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexState;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 
 /**
@@ -40,6 +43,7 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
         private IndexHandlerInterface $assetIndexHandler,
         private IndexHandlerInterface $documentIndexHandler,
         private IndexHandlerInterface $dataObjectIndexHandler,
+        private IndexRebuildObligationServiceInterface $rebuildObligationService,
         string $mappingChangeStrategy = MappingChangeStrategy::RECREATE->value,
     ) {
         $this->mappingChangeStrategy = MappingChangeStrategy::from($mappingChangeStrategy);
@@ -133,7 +137,7 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
         if ($classDefinition !== null) {
             // Runs for unchanged classes too, like the run without options (icon update).
             $enqueued = $this->executeForClassDefinition($plan, $classDefinition);
-        } elseif ($plan->isSkipped()) {
+        } elseif ($plan->isSkipped() && !$this->rebuildObligationService->isOwed($target)) {
             return false;
         } else {
             $enqueued = $this->executeForIndex($plan);
@@ -144,6 +148,11 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
         }
 
         return $enqueued;
+    }
+
+    public function getMappingChangeStrategy(): MappingChangeStrategy
+    {
+        return $this->mappingChangeStrategy;
     }
 
     private function executeForClassDefinition(IndexPlan $plan, ClassDefinition $classDefinition): bool
@@ -159,14 +168,19 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
             return true;
         }
 
-        if ($plan->isSettingsChanged()
-            && $this->dataObjectIndexHandler->reindexMappingWithResult($classDefinition)->requiresRebuild()
-        ) {
-            // The mapping was current, but fields could still be left out of the copy (e.g. values
-            // written under an older mapping); only the rebuild restores them.
-            $this->enqueueService->enqueueByClassDefinition($classDefinition);
+        if ($plan->isSettingsChanged()) {
+            $copyRequiresRebuild = $this->reindexMappingOwingRebuild($plan->getTarget(), $classDefinition)
+                ->requiresRebuild();
+            if ($copyRequiresRebuild) {
+                // The mapping was current, but fields could still be left out of the copy (e.g. values
+                // written under an older mapping); only the rebuild restores them.
+                $this->enqueueService->enqueueByClassDefinition($classDefinition);
+            }
+            $this->rebuildObligationService->settle($plan->getTarget());
 
-            return true;
+            if ($copyRequiresRebuild) {
+                return true;
+            }
         }
 
         if ($plan->isDataVersionChanged()) {
@@ -180,27 +194,48 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
 
     private function executeForIndex(IndexPlan $plan): bool
     {
-        $handler = $this->getHandler($plan->getTarget());
+        $target = $plan->getTarget();
+        $handler = $this->getHandler($target);
 
-        $copyRequiresRebuild = false;
+        $copyRequiresRebuild = $this->rebuildObligationService->isOwed($target);
         if ($plan->isIndexMissing()) {
             $handler->updateMapping();
         } elseif ($plan->needsNativeReindex()) {
-            $copyRequiresRebuild = $handler->reindexMappingWithResult()->requiresRebuild();
+            $copyRequiresRebuild = $this->reindexMappingOwingRebuild($target)->requiresRebuild();
         }
 
         if (!$plan->needsRebuild() && !$copyRequiresRebuild) {
+            $this->rebuildObligationService->settle($target);
+
             return false;
         }
 
-        match ($plan->getTarget()->getScope()) {
+        match ($target->getScope()) {
             DeploymentReindexScope::ASSETS => $this->enqueueService->enqueueAssets(),
             DeploymentReindexScope::DOCUMENTS => $this->enqueueService->enqueueDocuments(),
             DeploymentReindexScope::FOLDERS => $this->enqueueService->enqueueDataObjectFolders(),
             DeploymentReindexScope::CLASSES => throw new \LogicException('Class indices are handled separately'),
         };
+        $this->rebuildObligationService->settle($target);
 
         return true;
+    }
+
+    /**
+     * Applies the mapping with an obligation recorded before the live index changes: a run that fails between
+     * the copy and the enqueue leaves it, and the next run queues the rebuild although its copy changes nothing.
+     *
+     * @throws Exception
+     */
+    private function reindexMappingOwingRebuild(
+        IndexStateTarget $target,
+        ?ClassDefinition $classDefinition = null
+    ): MappingUpdateResult {
+        $rebuildOwed = $this->rebuildObligationService->isOwed($target);
+        $this->rebuildObligationService->owe($target);
+        $result = $this->getHandler($target)->reindexMappingWithResult($classDefinition);
+
+        return $rebuildOwed ? $result->withRebuildOwed() : $result;
     }
 
     /**

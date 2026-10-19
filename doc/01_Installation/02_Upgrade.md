@@ -22,6 +22,10 @@ Following steps are necessary during updating to newer versions.
   copy left out fields, the index had to be created empty, or a custom index handler applied the mapping, and prints a
   notice per index. Before, it never filled the index queue. Operators who relied on that need messenger workers running
   after the command.
+- [Indexing] A mapping update that changed an index but failed before its rebuild was queued (for example the
+  database became unavailable after the copy) leaves a mark in the settings store; the next class save,
+  `deployment:reindex` or `generic-data-index:reindex` of that index queues the rebuild, although its own copy
+  changes nothing.
 - [Commands] `generic-data-index:deployment:reindex` and its `--dry-run` list per index the changed fields: with
   `copy` the fields stripped, the fields kept and the fields outside class and custom fields that are copied as they
   are; with `recreate` the changed fields copied as they are, and which of them `copy` would leave out.

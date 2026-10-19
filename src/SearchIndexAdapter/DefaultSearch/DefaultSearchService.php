@@ -220,21 +220,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             throw $e;
         }
 
-        // A cancelled task reports completed without an error and without failures; only response.canceled says so.
-        // It was stopped from outside: by an operator, or by a second reindex of the same index, which then owns the
-        // new index and is writing into it. Neither switch the alias to the incomplete index nor delete it.
-        $cancelReason = $taskStatus['response']['canceled'] ?? null;
-        if (is_string($cancelReason) && $cancelReason !== '') {
-            $this->logger->warning(sprintf(
-                'Reindex task %s into "%s" was cancelled (%s); the alias stays on "%s"',
-                $taskId,
-                $newIndexName,
-                $cancelReason,
-                $oldIndexName
-            ));
-
-            throw new ReindexFailedException(sprintf('Reindex task %s was cancelled: %s', $taskId, $cancelReason));
-        }
+        $this->assertTaskNotCancelled($taskId, $taskStatus, $oldIndexName, $newIndexName);
 
         // The task is completed at this point, so the new index can be deleted safely.
         $failures = $taskStatus['response']['failures'] ?? [];
@@ -361,6 +347,37 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 $this->reindexMaxPolls * $this->reindexPollIntervalSeconds
             )
         );
+    }
+
+    /**
+     * A cancelled task reports completed without an error and without failures; only response.canceled says so.
+     * It was stopped from outside: by an operator, or by a second reindex of the same index, which then owns the
+     * new index and is writing into it. Neither switch the alias to the incomplete index nor delete it.
+     *
+     * @param array<string, mixed> $taskStatus a completed task
+     *
+     * @throws ReindexFailedException when the task was cancelled
+     */
+    private function assertTaskNotCancelled(
+        string $taskId,
+        array $taskStatus,
+        string $oldIndexName,
+        string $newIndexName
+    ): void {
+        $cancelReason = $taskStatus['response']['canceled'] ?? null;
+        if (!is_string($cancelReason) || $cancelReason === '') {
+            return;
+        }
+
+        $this->logger->warning(sprintf(
+            'Reindex task %s into "%s" was cancelled (%s); the alias stays on "%s"',
+            $taskId,
+            $newIndexName,
+            $cancelReason,
+            $oldIndexName
+        ));
+
+        throw new ReindexFailedException(sprintf('Reindex task %s was cancelled: %s', $taskId, $cancelReason));
     }
 
     /**

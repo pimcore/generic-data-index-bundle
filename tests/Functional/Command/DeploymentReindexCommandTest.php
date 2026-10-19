@@ -17,6 +17,7 @@ use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Command\DeploymentReindexCommand;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexPlan;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexState;
@@ -179,26 +180,42 @@ class DeploymentReindexCommandTest extends Unit
             $indexMissing ? ['index missing', 'mapping changed'] : ['mapping changed', 'fields kept in the copy: a']
         );
         $note = 'Fields whose old values fail only during the copy are stripped as well';
+        $recreateNote = 'With mapping_change_strategy "recreate" the documents are copied as they are';
 
         $targets = [IndexStateTarget::forScope(DeploymentReindexScope::ASSETS)];
 
         $output = $this->dryRunOutput($targets, static fn (IndexStateTarget $t): IndexPlan => $plan($t, false));
         $this->assertStringContainsString($note, $output, 'A copy of an existing index is planned');
+        $this->assertStringNotContainsString($recreateNote, $output);
 
         $output = $this->dryRunOutput($targets, static fn (IndexStateTarget $t): IndexPlan => $plan($t, true));
         $this->assertStringNotContainsString($note, $output, 'A missing index is created, nothing is copied');
+
+        // The default strategy never strips: the dry run must not promise it.
+        $output = $this->dryRunOutput(
+            $targets,
+            static fn (IndexStateTarget $t): IndexPlan => $plan($t, false),
+            MappingChangeStrategy::RECREATE
+        );
+        $this->assertStringContainsString($recreateNote, $output);
+        $this->assertStringContainsString('the index is recreated empty and rebuilt from the database', $output);
+        $this->assertStringNotContainsString($note, $output);
     }
 
     /**
      * @param IndexStateTarget[] $targets
      * @param callable(IndexStateTarget): IndexPlan $plan
      */
-    private function dryRunOutput(array $targets, callable $plan): string
-    {
+    private function dryRunOutput(
+        array $targets,
+        callable $plan,
+        MappingChangeStrategy $strategy = MappingChangeStrategy::COPY
+    ): string {
         $deploymentReindexService = $this->makeEmpty(DeploymentReindexServiceInterface::class, [
             'getTargets' => $targets,
             'plan' => $plan,
             'execute' => Expected::never(),
+            'getMappingChangeStrategy' => $strategy,
         ]);
         $commandTester = new CommandTester(new DeploymentReindexCommand(
             $this->makeEmpty(EnqueueServiceInterface::class, ['dispatchQueueMessages' => Expected::never()]),
@@ -226,6 +243,7 @@ class DeploymentReindexCommandTest extends Unit
                 ['mapping changed']
             ),
             'execute' => Expected::never(),
+            'getMappingChangeStrategy' => MappingChangeStrategy::RECREATE,
         ]);
 
         $commandTester = new CommandTester(new DeploymentReindexCommand(

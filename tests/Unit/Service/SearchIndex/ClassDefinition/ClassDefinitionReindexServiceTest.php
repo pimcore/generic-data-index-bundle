@@ -17,12 +17,16 @@ use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Psr\Log\LoggerInterface;
 
@@ -275,11 +279,108 @@ final class ClassDefinitionReindexServiceTest extends Unit
             ->reindexClassDefinitionMapping($this->createClassDefinition(), true, false);
     }
 
+    /**
+     * A failing enqueue after a copy that stripped fields: the retry sees the current mapping and a copy that strips
+     * nothing, but still queues the rebuild, because the first run left the obligation.
+     */
+    public function testARebuildOwedByAFailedEnqueueIsQueuedByTheRetry(): void
+    {
+        $store = [];
+        $obligations = $this->createObligationService($store);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, ['getClassMappingCheckSum' => 999]);
+        $firstRun = $this->createService(
+            $this->makeEmpty(IndexHandlerInterface::class, [
+                'getMappingProperties' => self::MAPPING_PROPERTIES,
+                'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+                'reindexMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
+            ]),
+            $settingsStore,
+            $this->makeEmpty(EnqueueServiceInterface::class, [
+                'enqueueByClassDefinition' => static fn () => throw new Exception('Connection lost'),
+            ]),
+            obligations: $obligations
+        );
+
+        try {
+            $firstRun->reindexClassDefinitionMapping($this->createClassDefinition(), false, false);
+            $this->fail('Expected the enqueue failure');
+        } catch (ClassDefinitionIndexUpdateFailedException) {
+        }
+        $this->assertTrue($obligations->isOwed(IndexStateTarget::forClassDefinition($this->createClassDefinition())));
+
+        $retry = $this->createService(
+            $this->makeEmpty(IndexHandlerInterface::class, [
+                'getMappingProperties' => self::MAPPING_PROPERTIES,
+                'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+                'reindexMappingWithResult' => new MappingUpdateResult(),
+            ]),
+            $settingsStore,
+            $this->makeEmpty(EnqueueServiceInterface::class, [
+                'enqueueByClassDefinition' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),
+            ]),
+            obligations: $obligations
+        );
+        $result = $retry->reindexClassDefinitionMapping($this->createClassDefinition(), false, false);
+
+        $this->assertTrue($result?->isRebuildOwed());
+        $this->assertSame([], $store, 'Settled once the rebuild is queued');
+    }
+
+    /**
+     * The checksum was stored before the enqueue failed (e.g. by an older version): the class is skipped as
+     * unchanged, but the owed rebuild is still queued.
+     */
+    public function testAnOwedRebuildIsQueuedForAnUnchangedClassToo(): void
+    {
+        $store = [];
+        $obligations = $this->createObligationService($store);
+        $obligations->owe(IndexStateTarget::forClassDefinition($this->createClassDefinition()));
+        $service = $this->createService(
+            $this->makeEmpty(IndexHandlerInterface::class, [
+                'getMappingProperties' => self::MAPPING_PROPERTIES,
+                'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+                'reindexMappingWithResult' => Expected::never(),
+            ]),
+            $this->makeEmpty(SettingsStoreServiceInterface::class, [
+                'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            ]),
+            $this->makeEmpty(EnqueueServiceInterface::class, [
+                'enqueueByClassDefinition' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),
+            ]),
+            obligations: $obligations
+        );
+
+        $this->assertTrue($service->reindexClassDefinition($this->createClassDefinition(), true, false));
+        $this->assertSame([], $store);
+    }
+
+    /**
+     * @param array<string, string> $store
+     */
+    private function createObligationService(array &$store): IndexRebuildObligationService
+    {
+        return new IndexRebuildObligationService(
+            $this->makeEmpty(SettingsStoreServiceInterface::class, [
+                'getIndexState' => static function (string $key) use (&$store): ?string {
+                    return $store[$key] ?? null;
+                },
+                'storeIndexState' => static function (string $key, string $value) use (&$store): void {
+                    $store[$key] = $value;
+                },
+                'removeIndexState' => static function (string $key) use (&$store): void {
+                    unset($store[$key]);
+                },
+            ]),
+            $this->makeEmpty(TimeServiceInterface::class, ['getCurrentMillisecondTimestamp' => 1])
+        );
+    }
+
     private function createService(
         IndexHandlerInterface $handler,
         SettingsStoreServiceInterface $settingsStore,
         ?EnqueueServiceInterface $enqueueService = null,
         ?IndexIconUpdateServiceInterface $iconService = null,
+        ?IndexRebuildObligationServiceInterface $obligations = null,
     ): ClassDefinitionReindexService {
         return new ClassDefinitionReindexService(
             $handler,
@@ -287,6 +388,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
             $settingsStore,
             $iconService ?? $this->makeEmpty(IndexIconUpdateServiceInterface::class, ['updateIcon' => null]),
             $this->makeEmpty(LoggerInterface::class),
+            $obligations ?? $this->makeEmpty(IndexRebuildObligationServiceInterface::class),
         );
     }
 

@@ -95,6 +95,7 @@ final class ReindexItemsCommand extends AbstractCommand
         return match (true) {
             $result->isRecreated() => 'the index had to be created empty',
             $result->isOutcomeUnknown() => 'the mapping was applied by a custom index handler',
+            $result->isRebuildOwed() => 'an earlier run changed the index but did not get to queue its rebuild',
             default => 'fields left out of the copy: ' . implode(', ', $result->getStrippedPaths()),
         };
     }

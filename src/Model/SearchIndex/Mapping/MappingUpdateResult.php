@@ -25,13 +25,25 @@ final readonly class MappingUpdateResult
      * @param string[] $keptPaths changed fields whose old values were kept in the copy (dotted paths)
      * @param bool $recreated the index was created empty (missing index, or the copy was impossible)
      * @param bool $outcomeUnknown a custom handler applied the mapping without reporting what it did
+     * @param bool $rebuildOwed an earlier mapping update of the index failed before its rebuild was queued
      */
     public function __construct(
         private array $strippedPaths = [],
         private array $keptPaths = [],
         private bool $recreated = false,
         private bool $outcomeUnknown = false,
+        private bool $rebuildOwed = false,
     ) {
+    }
+
+    public function withRebuildOwed(): self
+    {
+        return new self($this->strippedPaths, $this->keptPaths, $this->recreated, $this->outcomeUnknown, true);
+    }
+
+    public function isRebuildOwed(): bool
+    {
+        return $this->rebuildOwed;
     }
 
     /**
@@ -66,6 +78,6 @@ final readonly class MappingUpdateResult
      */
     public function requiresRebuild(): bool
     {
-        return $this->recreated || $this->outcomeUnknown || $this->strippedPaths !== [];
+        return $this->recreated || $this->outcomeUnknown || $this->rebuildOwed || $this->strippedPaths !== [];
     }
 }

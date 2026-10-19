@@ -22,7 +22,7 @@ the general term "reindex". `<id>` stands for a class definition ID.
 | Change | Reindex needed? | Automatic? | Command if manual |
 | --- | --- | --- | --- |
 | Field added, removed or renamed in a class (admin UI or Studio) | Yes: mapping | Yes | None |
-| Field type changed to one with a different index type (e.g. input to numeric) | Yes: mapping; the index is copied, not recreated (recreation only as a last resort), the changed field is empty (or keeps its old value) until the rebuild | Yes | None |
+| Field type changed to one with a different index type (e.g. input to numeric) | Yes: mapping. With the default `mapping_change_strategy: recreate`, the index is recreated empty if the old values don't fit and filled by the rebuild; with `copy`, it is copied instead (recreation only as a last resort) and the changed field is empty (or keeps its old value) until the rebuild | Yes | None |
 | Field type changed within the same index type (e.g. input to textarea) | No | Not needed | None |
 | Allowed field collection or object brick types changed in a class field | Yes: mapping | Yes | None |
 | Table column config, structured table rows/columns, or advanced many-to-many columns changed | Yes: mapping | Yes | None |
@@ -59,14 +59,22 @@ step alone leaves the old values in place. Only settings-only changes and `gener
 stripped fields stop after the mapping step; the table under [Which Trigger Does What](#which-trigger-does-what)
 shows the chain per trigger.
 
+What the odd/even copy does with documents written under the old mapping depends on
+`index_service.reindex_settings.mapping_change_strategy` (see
+[Reindex Options](../02_Configuration/03_Index_Management.md#reindex-options)). With the default `recreate`, the
+documents are copied as they are; when their old values don't fit the new mapping, the copy fails and the index is
+recreated empty right away, without stripping fields or retrying. With `copy`, the bundle keeps the changed fields
+whose old values still fit and strips the others, and recreates the index only as a last resort. Keeping, stripping
+and the retries described below apply to `copy`.
+
 | Mechanism | What happens in the search engine | Data source | Search during the run |
 | --- | --- | --- | --- |
 | In-place mapping update | `PUT _mapping` on the live index. Adds new fields only: removed fields stay mapped, a type change is rejected and triggers an odd/even copy instead. Index settings are not applied. | Existing documents, unchanged | Unaffected |
-| Odd/even copy | The engine copies all documents into the other `-odd`/`-even` index, created with the current mapping and the current `index_settings` (`_reindex`), then the alias is switched and the old index deleted. Fields whose old values don't fit the new type are left out of the copy; the other changed fields are kept. The documents are never emptied. [Index Management](../02_Configuration/03_Index_Management.md#why--odd-and--even-suffixes) and the `generic-data-index:reindex` command call this *native reindexing*. | Existing documents, copied | Unaffected: reads go to the old index until the switch |
-| Index recreation | The live index is deleted and created again empty with the new mapping. The last resort: runs automatically only when the odd/even copy still fails after the retries; `update:index -r` always recreates. | None: the index is empty until the rebuild has filled it | Empty or incomplete until the rebuild has finished |
+| Odd/even copy | The engine copies all documents into the other `-odd`/`-even` index, created with the current mapping and the current `index_settings` (`_reindex`), then the alias is switched and the old index deleted. With `copy`, fields whose old values don't fit the new type are left out of the copy and the other changed fields are kept, so the documents are never emptied; with `recreate`, the documents are copied as they are. [Index Management](../02_Configuration/03_Index_Management.md#why--odd-and--even-suffixes) and the `generic-data-index:reindex` command call this *native reindexing*. | Existing documents, copied | Unaffected: reads go to the old index until the switch |
+| Index recreation | The live index is deleted and created again empty with the new mapping. With `recreate`, runs whenever the odd/even copy fails on old values that don't fit; with `copy`, only as the last resort when the copy still fails after the retries. `update:index -r` always recreates. | None: the index is empty until the rebuild has filled it | Empty or incomplete until the rebuild has finished |
 | Rebuild from the database | The affected elements are added to the index queue; messenger workers load each one from the database and replace its document. | Database | Values update as the index queue is processed |
 
-Before the copy, the bundle compares the live mapping with the new mapping and sorts every changed field:
+With `copy`, the bundle compares the live mapping with the new mapping before the copy and sorts every changed field:
 
 - **Kept** if the old values still fit: any scalar type to text or keyword, numeric widening (integer to long or
   double, long to double, float to double), and object to nested or back. The field keeps its old value, for example
@@ -84,7 +92,7 @@ the copy fails and the index is recreated as a last resort. The same applies to 
 fields, such as dynamically mapped root fields. `--dry-run` lists such fields as "fields outside class and custom fields
 copied as they are".
 
-If the engine still reports a parsing failure for a field, the bundle adds that field to the stripped fields and
+With `copy`, if the engine still reports a parsing failure for a field, the bundle adds that field to the stripped fields and
 retries the copy, up to 3 attempts. Only if the copy still fails after that is the index recreated. Every attempt is
 a full copy of the index, and the engine names one failing field per document of the first failing batch, so a large
 index can spend several copy durations before the alias switches. Run type changes on large classes in a quiet period
@@ -98,19 +106,21 @@ copy this means:
 - Numbers copied into a `keyword` field and numeric strings copied into a number field are accepted.
 - Decimals copied into an integer field are accepted but truncated, unless the field is a changed field: a double to
   long change strips the field instead.
-- Text copied into a number, date or boolean field doesn't fit: a class or custom field is stripped instead of the index
-  being recreated.
+- Text copied into a number, date or boolean field doesn't fit: with `copy`, a class or custom field is stripped;
+  with `recreate`, the copy fails and the index is recreated.
 - Fields that are no longer in the mapping are re-mapped dynamically and stay in the mapping until the index is
   recreated with `update:index -r`. If their values don't fit the re-mapped type (for example "2026-01-01" in one
   document and "abc" in the next), all removed class and custom fields are left out of the copy.
 
 Whenever fields were stripped, or the index had to be created empty, the bundle adds all elements of that index to the
-index queue, even if the trigger doesn't rebuild otherwise. Search keeps working during this; only the stripped fields
-are empty until the messenger workers have processed the queue.
+index queue, even if the trigger doesn't rebuild otherwise. After a copy that stripped fields, search keeps working during this and
+only the stripped fields are empty; a recreated index finds nothing until the messenger workers have processed the queue.
 
 ### Flow of a Mapping Change
 
-The chart shows what happens after a trigger detects a mapping change, for example a class save or
+The chart shows the `copy` strategy. With the default `recreate`, the fields are not classified and nothing is
+retried: a copy that fails on old values goes straight to the index recreation. The chart shows what happens after
+a trigger detects a mapping change, for example a class save or
 `deployment:reindex`, and where the index recreation comes in: as the last resort when the copy still fails after
 the retries, or explicitly through `update:index -r`. The odd/even copy produces a complete index in the new
 structure, with the old values except in the stripped fields; the rebuild from the database afterwards refreshes the
@@ -122,7 +132,7 @@ flowchart TB
     C{Mapping checksum changed?}
     D0[Nothing to do]
     subgraph COPY["Odd/even copy"]
-        K["Classify the changed fields: keep or strip"]
+        K["Classify the changed fields: keep or strip (copy strategy)"]
         N["Create the other -odd/-even index with the new mapping and index settings"]
         R["Copy all documents into it (_reindex), without the stripped fields"]
         F{Copy succeeded?}
@@ -150,7 +160,7 @@ flowchart TB
     F -->|yes| S
     F -->|"no, attempts left (max 3)"| P
     P --> N
-    F -->|"no, after the retries"| E1
+    F -->|"no, after the retries (recreate: at once)"| E1
     E1 --> E2
     X --> E2
     S --> Q
@@ -170,7 +180,10 @@ flowchart TB
 | `deployment:reindex --all` (or an index option) | — | Indices with a changed mapping or changed settings | Last resort | Indices with a changed mapping or data version | Yes |
 | `update:index` (`-c`, `-a`) | Always | If `PUT _mapping` is rejected | Last resort | Everything in scope | No |
 | `update:index -r` | — | — | Always | Everything in scope | Yes |
-| `generic-data-index:reindex` | — | Every class, asset and document index, forced | Last resort | Only for indices with stripped fields or a recreated index | Yes, without downtime |
+| `generic-data-index:reindex` | — | Every class, asset and document index, forced | Last resort (`copy`) | Only for indices with stripped fields or a recreated index | Yes, without downtime |
+
+"Last resort" in the table is the `copy` strategy; with the default `recreate`, an odd/even copy that fails on
+old values recreates the index right away.
 
 :::warning
 
@@ -193,9 +206,10 @@ messenger workers to fill them. Other indices are not queued.
 ## Class Definition Changes
 
 Saving a class definition reindexes only when the class's **mapping checksum** changes. The bundle then runs an odd/even
-copy of the class index, followed by a rebuild from the database of all its objects. A field type change doesn't
-recreate the index: fields whose old values still fit are kept, all other changed fields are stripped from the copy, and
-the index is only recreated as a last resort (see [How Reindexing Works](#how-reindexing-works)).
+copy of the class index, followed by a rebuild from the database of all its objects. With `mapping_change_strategy: copy`, a field type
+change doesn't recreate the index: fields whose old values still fit are kept, all other changed fields are stripped from
+the copy, and the index is only recreated as a last resort; with the default `recreate`, the index is recreated empty
+when the old values don't fit (see [How Reindexing Works](#how-reindexing-works)).
 
 Changes that alter the mapping (automatic reindex on save):
 
