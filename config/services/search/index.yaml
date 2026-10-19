@@ -103,3 +103,17 @@ services:
             $assetIndexHandler: '@Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler'
             $documentIndexHandler: '@Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DocumentIndexHandler'
             $dataObjectIndexHandler: '@Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler'
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexStateTargetResolverInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexStateTargetResolver
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexRebuildStateServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexRebuildStateService
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexStatusServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexStatusService
+        arguments:
+            $failedTransport: '@?messenger.transport.pimcore_generic_data_index_failed'
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexCompletionNotifierInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexCompletionNotifier
