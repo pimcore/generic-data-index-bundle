@@ -6,6 +6,9 @@ description: Version-specific upgrade instructions and breaking changes for the 
 # Upgrade Information
 
 ## Upgrade to 2026.3.3
+- [Commands] `generic-data-index:deployment:reindex` without options no longer stops at the first class whose index
+  update fails: it continues with the remaining classes, reports every failed class and exits with a non-zero status,
+  like a run with index options.
 - [Commands] `generic-data-index:deployment:reindex` has new opt-in options (`--all`, `--assets`, `--dry-run`, …) that
   also cover the folder, asset and document indices and `index_settings`. Without options nothing changes. See
   [Deployment and Index Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).
