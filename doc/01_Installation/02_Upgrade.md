@@ -33,9 +33,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
   is not updated in the index (logged as `mapper_parsing_exception`). Elements not saved yet are not found by
   filters on these fields.
 - [Indexing] The old path `<container path>.localizedfields.<field>.<language>` (for example
-  `bricks.SaleInformation.localizedfields.title.en`) is no longer indexed. Update PQL queries, saved filters and
-  `UpdateIndexDataEvent` / `ExtractMappingEvent` listeners that use it. `generic-data-index:status` shows the affected
-  indices as mapping not current until the re-index.
+  `bricks.SaleInformation.localizedfields.title.en`) is no longer indexed. The documents of these elements change
+  when they are re-indexed or saved again: the `localizedfields` level disappears and the values move next to the
+  container's other fields. Update PQL queries, saved filters and `UpdateIndexDataEvent` / `ExtractMappingEvent`
+  listeners that use the old path. `generic-data-index:status` shows the affected indices as mapping not current
+  until the re-index. The index format of class-level localized fields is unchanged.
 - [Indexing] Snapshots exported before the update are refused for these classes, and `--force` skips them: export
   them again after the re-index.
 
