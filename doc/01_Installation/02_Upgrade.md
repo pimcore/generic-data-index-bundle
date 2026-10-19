@@ -5,12 +5,7 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 # Upgrade Information
 
-## Upgrade to 2026.3.3
-- [Commands] `generic-data-index:deployment:reindex` has new opt-in options (`--all`, `--assets`, `--dry-run`, …) that
-  also cover the folder, asset and document indices and `index_settings`. Without options nothing changes. See
-  [Deployment and Index Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).
-- [Indexing] A native reindex now fails if the new index cannot be created (e.g. invalid `index_settings`) instead of
-  switching to an index with dynamic mapping.
+## Upgrade to 2026.4.0
 
 ### Re-indexing required
 
@@ -39,6 +34,13 @@ description: Version-specific upgrade instructions and breaking changes for the 
   filters on these fields.
 - [Indexing] Snapshots exported before the update are refused for these classes, and `--force` skips them: export
   them again after the re-index.
+
+## Upgrade to 2026.3.3
+- [Commands] `generic-data-index:deployment:reindex` has new opt-in options (`--all`, `--assets`, `--dry-run`, …) that
+  also cover the folder, asset and document indices and `index_settings`. Without options nothing changes. See
+  [Deployment and Index Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).
+- [Indexing] A native reindex now fails if the new index cannot be created (e.g. invalid `index_settings`) instead of
+  switching to an index with dynamic mapping.
 
 ## Upgrade to 2026.3.2
 - [Permissions] Searches that check a permission other than `list` (for example `byId()`, which checks `view`) no
