@@ -188,6 +188,8 @@ final class ContainerLocalizedFieldsTest extends Unit
 
     /**
      * A block inside a field collection: its localized fields are flattened as well.
+     * The block is resolved here through the given definition; core resolves a block inside a brick or field
+     * collection only through the class definition, so this tests the flattening, not that nesting end to end.
      */
     public function testLocalizedFieldsOfANestedBlockAreFlattened(): void
     {
@@ -223,7 +225,8 @@ final class ContainerLocalizedFieldsTest extends Unit
     }
 
     /**
-     * A block inside a block: the inner block's localized fields are flattened; the adapter instance is shared.
+     * A block inside a block: the inner block's localized fields are flattened.
+     * Same limit as above: a fixture structure, not proven against core's resolution.
      */
     public function testLocalizedFieldsOfABlockInsideABlockAreFlattened(): void
     {
@@ -242,7 +245,7 @@ final class ContainerLocalizedFieldsTest extends Unit
             ]]),
         ]];
 
-        // the shared instance, fetched before each call as FieldDefinitionService and DataObjectNormalizer do
+        // the adapter is fetched before each call, as FieldDefinitionService and DataObjectNormalizer do
         $mapping = $this->fieldDefinitionService->getFieldDefinitionAdapter($outer)->getIndexMapping();
         $normalized = $this->fieldDefinitionService->normalizeValue($outer, $blockData);
         $document = $this->fieldDefinitionService->getFieldDefinitionAdapter($outer)
@@ -347,7 +350,7 @@ final class ContainerLocalizedFieldsTest extends Unit
         $typeAdapter = fn () => $this->createTypeAdapter($searchIndexConfigService, $this->fieldDefinitionService);
         $this->fieldDefinitionService = new FieldDefinitionService(new ServiceLocator([
             'localizedfields' => fn () => $this->localizedFieldsAdapter,
-            // one shared instance, as in the container
+            // one cached instance (a test double; the real adapters are shared: false)
             'block' => fn () => $this->blockAdapter ??= new BlockAdapter(
                 $searchIndexConfigService,
                 $this->fieldDefinitionService

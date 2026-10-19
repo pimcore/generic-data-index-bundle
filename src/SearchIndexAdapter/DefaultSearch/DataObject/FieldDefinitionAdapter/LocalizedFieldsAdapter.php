@@ -62,7 +62,7 @@ final class LocalizedFieldsAdapter extends AbstractAdapter
             }
 
             $mappingKey = $fieldDefinitionAdapter->getIndexAttributeName();
-            // once: the adapter instance is shared, a nested container switches its field definition
+            // once: the mapping of the child does not depend on the language
             $childMapping = $fieldDefinitionAdapter->getIndexMapping();
             $languageProperties = [];
             foreach ($languages as $language) {

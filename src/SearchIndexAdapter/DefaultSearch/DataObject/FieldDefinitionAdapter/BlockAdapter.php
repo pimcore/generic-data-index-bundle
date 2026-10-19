@@ -79,7 +79,7 @@ final class BlockAdapter extends AbstractAdapter implements ContainerAdapterInte
             return $normalizedValue;
         }
 
-        // read once: a nested block uses the same adapter instance and changes its field definition
+        // read once, before the children are normalized
         $fieldDefinitions = $fieldDefinition->getFieldDefinitions();
         foreach ($normalizedValue as $index => $item) {
             if (is_array($item)) {

@@ -32,6 +32,10 @@ description: Version-specific upgrade instructions and breaking changes for the 
   indexed as a whole number, and a text in a field first indexed with a date-like value is rejected, so the element
   is not updated in the index (logged as `mapper_parsing_exception`). Elements not saved yet are not found by
   filters on these fields.
+- [Indexing] The old path `<container path>.localizedfields.<field>.<language>` (for example
+  `bricks.SaleInformation.localizedfields.title.en`) is no longer indexed. Update PQL queries, saved filters and
+  `UpdateIndexDataEvent` / `ExtractMappingEvent` listeners that use it. `generic-data-index:status` shows the affected
+  indices as mapping not current until the re-index.
 - [Indexing] Snapshots exported before the update are refused for these classes, and `--force` skips them: export
   them again after the re-index.
 
