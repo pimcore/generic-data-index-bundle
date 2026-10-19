@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 use Exception;
 use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\DocumentCountFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
@@ -386,7 +387,23 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             $params['body'] = ['query' => $query];
         }
 
-        return (int) ($this->client->count($params)['count'] ?? 0);
+        $response = $this->client->count($params);
+        // HTTP 200 with failed shards is a partial count; the status must not take it for the whole index.
+        $failedShards = (int) ($response['_shards']['failed'] ?? 0);
+        if ($failedShards > 0) {
+            throw new DocumentCountFailedException(sprintf(
+                'Counting the documents of "%s" failed: %d shard(s) failed, the count is partial',
+                $indexName,
+                $failedShards
+            ));
+        }
+        if (!isset($response['count'])) {
+            throw new DocumentCountFailedException(
+                sprintf('Counting the documents of "%s" returned no count', $indexName)
+            );
+        }
+
+        return (int) $response['count'];
     }
 
     public function getReindexTasks(): array
@@ -448,8 +465,18 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         } catch (\Throwable $e) {
             throw new ReindexFailedException($e->getMessage(), 0, $e);
         }
+        $tasks = \is_array($tasks) ? $tasks : [];
 
-        return \is_array($tasks) ? $tasks : [];
+        // HTTP 200 with node or task failures lists only part of the cluster; a copy on an unreported node would
+        // go unnoticed, so the list is no answer.
+        if (!empty($tasks['node_failures']) || !empty($tasks['task_failures'])) {
+            throw new ReindexFailedException('The task list is partial: ' . json_encode(
+                ['node_failures' => $tasks['node_failures'] ?? [], 'task_failures' => $tasks['task_failures'] ?? []],
+                JSON_PARTIAL_OUTPUT_ON_ERROR
+            ));
+        }
+
+        return $tasks;
     }
 
     /**

@@ -94,15 +94,43 @@ final class StatusCommandTest extends Unit
         $this->assertStringNotContainsString("\n  pimcore_asset\n", $display, 'A running copy is not a leftover');
     }
 
-    public function testWarnsWhenNoIndicesExist(): void
+    /**
+     * Without physical indices the status still lists every index the configuration expects, as missing.
+     */
+    public function testWarnsWhenNoIndicesExistAndStillListsTheMissingOnes(): void
     {
-        $commandTester = new CommandTester(
-            $this->createCommand(new IndexStats(0, []), new IndexStatusReport([], 0, null))
-        );
+        $report = new IndexStatusReport([$this->makeStatus('pimcore_asset', IndexStatusState::MISSING)], 0, null);
+        $commandTester = new CommandTester($this->createCommand(new IndexStats(0, []), $report));
         $commandTester->execute([]);
 
+        $display = $commandTester->getDisplay();
         $this->assertSame(Command::SUCCESS, $commandTester->getStatusCode());
-        $this->assertStringContainsString('No indices found', $commandTester->getDisplay());
+        $this->assertStringContainsString('No indices found', $display);
+        $this->assertStringContainsString('missing', $display);
+        $this->assertStringContainsString('pimcore_asset', $display);
+    }
+
+    /**
+     * A rebuild whose elements are still being queued is told apart from one whose queue is being processed; the
+     * time it was queued shows whether the queueing process is still alive or was terminated.
+     */
+    public function testARebuildStillBeingQueuedShowsSinceWhen(): void
+    {
+        $report = new IndexStatusReport([
+            $this->makeStatus('pimcore_asset', IndexStatusState::REBUILDING, pending: 3, enqueuing: true),
+        ], 3, null);
+        $commandTester = new CommandTester($this->createCommand(new IndexStats(0, []), $report));
+
+        $commandTester->execute(['--check' => true]);
+
+        $since = date('Y-m-d H:i:s', 1);
+        $this->assertSame(Command::FAILURE, $commandTester->getStatusCode());
+        $this->assertStringContainsString('rebuilding, queueing since ' . $since, $commandTester->getDisplay());
+        $this->assertStringContainsString('0.0 %', $commandTester->getDisplay());
+        $this->assertStringContainsString(
+            'Not complete: assets (rebuilding, queueing since ' . $since . ')',
+            $commandTester->getDisplay()
+        );
     }
 
     public function testCheckFailsWhileAnIndexIsNotComplete(): void
@@ -218,7 +246,8 @@ final class StatusCommandTest extends Unit
         IndexStatusState $state,
         int $pending = 0,
         int $withoutChecksum = 0,
-        bool $copyRunning = false
+        bool $copyRunning = false,
+        bool $enqueuing = false
     ): IndexStatus {
         return new IndexStatus(
             indexName: $indexName,
@@ -231,7 +260,8 @@ final class StatusCommandTest extends Unit
             copyRunning: $copyRunning,
             mappingCurrent: true,
             settingsCurrent: true,
-            rebuildQueuedAt: $pending > 0 ? 1 : null,
+            rebuildQueuedAt: $pending > 0 ? 1000 : null,
+            rebuildEnqueuing: $enqueuing,
         );
     }
 

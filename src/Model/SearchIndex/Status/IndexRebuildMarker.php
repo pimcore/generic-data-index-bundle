@@ -27,15 +27,20 @@ final readonly class IndexRebuildMarker
     /**
      * @param int $queuedAt milliseconds timestamp of the rebuild
      * @param bool $enqueued every element of the rebuild is in the index queue
+     * @param string $token tells two rebuilds of the same index queued in the same millisecond apart
      *
      * @throws InvalidArgumentException
      */
     public function __construct(
         private int $queuedAt,
         private bool $enqueued,
+        private string $token,
     ) {
         if ($queuedAt < 0) {
             throw new InvalidArgumentException('A rebuild marker needs a timestamp.');
+        }
+        if ($token === '') {
+            throw new InvalidArgumentException('A rebuild marker needs a token.');
         }
     }
 
@@ -49,21 +54,34 @@ final readonly class IndexRebuildMarker
         } catch (JsonException) {
             return null;
         }
-        if (!is_array($data) || !is_int($data['queuedAt'] ?? null) || !is_bool($data['enqueued'] ?? null)) {
+        if (!is_array($data)
+            || !is_int($data['queuedAt'] ?? null)
+            || !is_bool($data['enqueued'] ?? null)
+            || !is_string($data['token'] ?? null)
+            || $data['token'] === ''
+        ) {
             return null;
         }
 
-        return new self($data['queuedAt'], $data['enqueued']);
+        return new self($data['queuedAt'], $data['enqueued'], $data['token']);
     }
 
     public function toStoredValue(): string
     {
-        return json_encode(['queuedAt' => $this->queuedAt, 'enqueued' => $this->enqueued], JSON_THROW_ON_ERROR);
+        return json_encode(
+            ['queuedAt' => $this->queuedAt, 'enqueued' => $this->enqueued, 'token' => $this->token],
+            JSON_THROW_ON_ERROR
+        );
     }
 
     public function withEnqueued(): self
     {
-        return new self($this->queuedAt, true);
+        return new self($this->queuedAt, true, $this->token);
+    }
+
+    public function getToken(): string
+    {
+        return $this->token;
     }
 
     public function getQueuedAt(): int

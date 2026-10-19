@@ -187,7 +187,7 @@ final class StatusCommand extends AbstractCommand
         return sprintf(
             '  waiting for %s: %s%s',
             $status->getLabel(),
-            $status->getState()->value,
+            $this->describeState($status),
             $percentage === null ? '' : sprintf(' %.1f%%', $percentage)
         );
     }
@@ -214,6 +214,7 @@ final class StatusCommand extends AbstractCommand
 
         if ($indices === []) {
             $io->warning('No indices found. Has the index been built?');
+            $this->renderStatusTable($io, $report);
 
             return;
         }
@@ -259,7 +260,7 @@ final class StatusCommand extends AbstractCommand
             $rows[] = [
                 $status->getLabel(),
                 $status->getIndexName(),
-                $status->getState()->value,
+                $this->describeState($status),
                 $status->getPercentage() === null ? '-' : sprintf('%.1f %%', $status->getPercentage()),
                 $status->getDocumentCount(),
                 $status->getElementCount(),
@@ -282,10 +283,28 @@ final class StatusCommand extends AbstractCommand
     {
         $descriptions = [];
         foreach ($report->getIncompleteIndices() as $status) {
-            $descriptions[] = $status->getLabel() . ' (' . $status->getState()->value . ')';
+            $descriptions[] = $status->getLabel() . ' (' . $this->describeState($status) . ')';
         }
 
         return implode(', ', $descriptions);
+    }
+
+    /**
+     * A rebuild whose elements are still being queued names the time it was queued: when that process was
+     * terminated, the mark stays until the full enqueue is run again, and the time tells the two apart.
+     */
+    private function describeState(IndexStatus $status): string
+    {
+        $queuedAt = $status->getRebuildQueuedAt();
+        if (!$status->isRebuildEnqueuing() || $queuedAt === null) {
+            return $status->getState()->value;
+        }
+
+        return sprintf(
+            '%s, queueing since %s',
+            $status->getState()->value,
+            date('Y-m-d H:i:s', intdiv($queuedAt, 1000))
+        );
     }
 
     private function yesNoUnknown(?bool $value): string

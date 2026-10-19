@@ -217,9 +217,12 @@ A rebuild counts as queued from a full enqueue of the index (class save with a m
 draining the queue between two chunks of a large enqueue don't end the rebuild) and removed by exactly one process,
 the messenger worker that processes the last batch, or the enqueue itself when the workers were faster or the index
 has no elements. A mark left behind by a worker that died after its last batch doesn't hide missing documents: with
-an empty queue the counts decide, so such an index shows `incomplete` and asks for a rebuild. A rebuild queued by a
-version before this feature isn't marked, so the index shows `complete` with waiting entries, or `incomplete` once
-the queue is empty.
+an empty queue the counts decide, so such an index shows `incomplete` and asks for a rebuild. If the process
+queuing the elements was terminated between two chunks, the mark keeps its queueing phase: the index shows
+`rebuilding` at 0 % with `rebuildEnqueuing` and the time it was queued (the command prints
+`rebuilding, queueing since …`); run the full enqueue again (`update:index`, `deployment:reindex`), which replaces
+the mark. A rebuild queued by a version before this feature isn't marked, so the index shows `complete` with
+waiting entries, or `incomplete` once the queue is empty.
 
 ### Command Line
 
@@ -234,8 +237,8 @@ bin/console generic-data-index:status --wait --timeout=7200 --index=Car   # bloc
 `--wait` and `--check` are meant for deployment pipelines: run the step that needs the index only after
 `generic-data-index:status --wait` has returned. `--json` leaves stdout to the report; errors, the failure of
 `--check` and the progress of `--wait -v` go to stderr. When the status cannot be read (search engine or database
-unavailable, the tasks API failing) the command exits with 1 instead of guessing, so an unknown state never passes
-as complete.
+unavailable, the tasks API failing, a count or task list the engine answered only partially because of failed
+shards or nodes) the command exits with 1 instead of guessing, so an unknown state never passes as complete.
 
 ### PHP
 
