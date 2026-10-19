@@ -24,6 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\Cl
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AbstractIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
@@ -164,6 +165,7 @@ final class AbstractIndexHandlerBcTest extends Unit
             $this->makeEmpty(SettingsStoreServiceInterface::class, ['getClassMappingCheckSum' => 999]),
             $this->makeEmpty(IndexIconUpdateServiceInterface::class, ['updateIcon' => null]),
             $this->makeEmpty(LoggerInterface::class),
+            $this->makeEmpty(IndexRebuildObligationServiceInterface::class),
         );
         $classDefinition = new ClassDefinition();
         $classDefinition->setId('TEST');

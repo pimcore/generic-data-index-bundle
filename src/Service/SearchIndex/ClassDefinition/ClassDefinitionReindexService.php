@@ -16,10 +16,12 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinit
 use Exception;
 use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Psr\Log\LoggerInterface;
@@ -35,6 +37,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         private SettingsStoreServiceInterface $settingsStoreService,
         private IndexIconUpdateServiceInterface $indexIconUpdateService,
         private LoggerInterface $pimcoreGenericDataIndexLogger,
+        private IndexRebuildObligationServiceInterface $rebuildObligationService,
     ) {
     }
 
@@ -52,7 +55,14 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         bool $enqueueItems = false,
     ): ?MappingUpdateResult {
         try {
+            $target = IndexStateTarget::forClassDefinition($classDefinition);
+            $rebuildOwed = $this->rebuildObligationService->isOwed($target);
             $result = $this->reindexMapping($classDefinition, $skipIfClassNotChanged);
+            if ($rebuildOwed) {
+                // An earlier run changed the index and failed before queuing its rebuild. The mapping is
+                // current now, so this run's copy (if any) reports nothing that would queue it again.
+                $result = ($result ?? new MappingUpdateResult())->withRebuildOwed();
+            }
             if ($result !== null) {
                 // Fields left out of the copy (or an index created empty) are only restored by the
                 // rebuild from the database, so the objects are queued even if the caller did not ask.
@@ -61,6 +71,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
                 if ($enqueueItems || $result->requiresRebuild()) {
                     $this->enqueueService->enqueueByClassDefinition($classDefinition);
                 }
+                $this->rebuildObligationService->settle($target);
                 $this->storeMappingCheckSum($classDefinition);
             }
             $this->changeIcon($classDefinition);
@@ -152,6 +163,9 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
             'storedChecksum' => $storedCheckSum,
             'currentChecksum' => $currentCheckSum,
         ]);
+
+        // Recorded before the live index changes; settled once the rebuild the update may need is queued.
+        $this->rebuildObligationService->owe(IndexStateTarget::forClassDefinition($classDefinition));
 
         return $this->dataObjectIndexHandler
             ->reindexMappingWithResult(

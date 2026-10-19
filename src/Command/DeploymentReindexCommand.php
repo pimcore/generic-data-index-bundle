@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Command;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexPlan;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
@@ -274,8 +275,12 @@ final class DeploymentReindexCommand extends AbstractCommand
     {
         if ($this->plansACopyWithChangedMapping($plans)) {
             $output->writeln(
-                '<comment>Fields whose old values fail only during the copy are stripped as well; '
-                . 'the log names them.</comment>'
+                $this->deploymentReindexService->getMappingChangeStrategy() === MappingChangeStrategy::COPY
+                    ? '<comment>Fields whose old values fail only during the copy are stripped as well; '
+                        . 'the log names them.</comment>'
+                    : '<comment>With mapping_change_strategy "recreate" the documents are copied as they are: '
+                        . 'if their old values do not fit the new mapping, the index is recreated empty and '
+                        . 'rebuilt from the database.</comment>'
             );
         }
         $output->writeln('<info>Dry run - nothing changed</info>');

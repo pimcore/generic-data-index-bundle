@@ -29,6 +29,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\Deploym
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexStateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 
 /**
@@ -409,6 +410,39 @@ final class DeploymentReindexServiceTest extends Unit
         );
     }
 
+    /**
+     * Nothing changed since the last run, but that run failed before queuing the rebuild its copy needed.
+     */
+    public function testAnUnchangedIndexWithAnOwedRebuildIsRebuilt(): void
+    {
+        $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
+            'enqueueAssets' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),
+        ]);
+        $service = $this->createService(
+            $this->createStateService(self::CURRENT, true),
+            enqueueService: $enqueueService,
+            obligations: $this->makeEmpty(IndexRebuildObligationServiceInterface::class, [
+                'isOwed' => true,
+                'settle' => Expected::once(),
+            ])
+        );
+        $plan = $service->plan(IndexStateTarget::forScope(DeploymentReindexScope::ASSETS));
+
+        $this->assertTrue($plan->isSkipped());
+        $this->assertTrue($service->execute($plan));
+    }
+
+    public function testExposesTheConfiguredStrategy(): void
+    {
+        $this->assertSame(
+            MappingChangeStrategy::RECREATE,
+            $this->createService(
+                $this->createStateService(self::CURRENT, true),
+                mappingChangeStrategy: MappingChangeStrategy::RECREATE
+            )->getMappingChangeStrategy()
+        );
+    }
+
     public function testGetTargetsKeepsTheIndexOrderAndSkipsUnselectedScopes(): void
     {
         $targets = $this->createService($this->createStateService(self::CURRENT, true))->getTargets([
@@ -441,7 +475,8 @@ final class DeploymentReindexServiceTest extends Unit
         ?ClassDefinitionReindexServiceInterface $classDefinitionReindexService = null,
         ?EnqueueServiceInterface $enqueueService = null,
         ?IndexHandlerInterface $handler = null,
-        MappingChangeStrategy $mappingChangeStrategy = MappingChangeStrategy::COPY
+        MappingChangeStrategy $mappingChangeStrategy = MappingChangeStrategy::COPY,
+        ?IndexRebuildObligationServiceInterface $obligations = null
     ): DeploymentReindexService {
         $handler ??= $this->makeEmpty(IndexHandlerInterface::class, ['getMappingDiff' => new MappingDiff([])]);
 
@@ -452,6 +487,7 @@ final class DeploymentReindexServiceTest extends Unit
             $handler,
             $handler,
             $handler,
+            $obligations ?? $this->makeEmpty(IndexRebuildObligationServiceInterface::class),
             $mappingChangeStrategy->value,
         );
     }
