@@ -247,45 +247,20 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 $taskStatus = $this->fetchTaskStatus($taskId);
                 $consecutivePollFailures = 0;
             } catch (ReindexFailedException $e) {
-                if (++$consecutivePollFailures >= self::MAX_CONSECUTIVE_POLL_FAILURES) {
-                    throw $e;
-                }
-
-                $this->logger->warning(sprintf(
-                    'Failed to fetch status of reindex task %s (attempt %d of %d): %s',
-                    $taskId,
-                    $consecutivePollFailures,
-                    self::MAX_CONSECUTIVE_POLL_FAILURES,
-                    $e->getMessage()
-                ));
+                $this->logPollFailure($taskId, ++$consecutivePollFailures, $e);
                 sleep($this->reindexPollIntervalSeconds);
 
                 continue;
             }
 
-            if (empty($taskStatus['completed'])) {
-                if ($poll > 0 && $poll % self::PROGRESS_LOG_EVERY_POLLS === 0) {
-                    $this->logProgress($taskId, $taskStatus, $poll);
-                }
-                sleep($this->reindexPollIntervalSeconds);
-
-                continue;
+            if (!empty($taskStatus['completed'])) {
+                return $this->assertTaskSucceeded($taskId, $taskStatus);
             }
 
-            // Top-level task error (auth failure, node loss, etc.)
-            if (!empty($taskStatus['error'])) {
-                throw new ReindexFailedException(
-                    'Reindex task failed: ' . json_encode($taskStatus['error'], JSON_PARTIAL_OUTPUT_ON_ERROR)
-                );
+            if ($poll > 0 && $poll % self::PROGRESS_LOG_EVERY_POLLS === 0) {
+                $this->logProgress($taskId, $taskStatus, $poll);
             }
-
-            if (!empty($taskStatus['response']['timed_out'])) {
-                throw new ReindexFailedException(
-                    "Reindex task timed out server-side for task $taskId"
-                );
-            }
-
-            return $taskStatus;
+            sleep($this->reindexPollIntervalSeconds);
         }
 
         throw new ReindexFailedException(
@@ -295,6 +270,49 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 $this->reindexMaxPolls * $this->reindexPollIntervalSeconds
             )
         );
+    }
+
+    /**
+     * @throws ReindexFailedException the poll failure itself, once too many failed in a row
+     */
+    private function logPollFailure(string $taskId, int $consecutivePollFailures, ReindexFailedException $e): void
+    {
+        if ($consecutivePollFailures >= self::MAX_CONSECUTIVE_POLL_FAILURES) {
+            throw $e;
+        }
+
+        $this->logger->warning(sprintf(
+            'Failed to fetch status of reindex task %s (attempt %d of %d): %s',
+            $taskId,
+            $consecutivePollFailures,
+            self::MAX_CONSECUTIVE_POLL_FAILURES,
+            $e->getMessage()
+        ));
+    }
+
+    /**
+     * @param array<string, mixed> $taskStatus a completed task
+     *
+     * @return array<string, mixed> the same status
+     *
+     * @throws ReindexFailedException when the task reports an error or a server-side timeout
+     */
+    private function assertTaskSucceeded(string $taskId, array $taskStatus): array
+    {
+        // Top-level task error (auth failure, node loss, etc.)
+        if (!empty($taskStatus['error'])) {
+            throw new ReindexFailedException(
+                'Reindex task failed: ' . json_encode($taskStatus['error'], JSON_PARTIAL_OUTPUT_ON_ERROR)
+            );
+        }
+
+        if (!empty($taskStatus['response']['timed_out'])) {
+            throw new ReindexFailedException(
+                "Reindex task timed out server-side for task $taskId"
+            );
+        }
+
+        return $taskStatus;
     }
 
     /**
@@ -373,13 +391,13 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
     public function getReindexTasks(): array
     {
-        try {
-            $tasks = $this->listReindexTasks();
-        } catch (ReindexFailedException $e) {
-            $this->logger->warning('Could not list the running reindex tasks: ' . $e->getMessage());
-
+        if (!\is_callable([$this->client, 'getOriginalClient'])) {
+            // Without the tasks API no asynchronous copy can be started (see ensureNoActiveReindexTask), so none
+            // is running. A failing tasks API, on the other hand, leaves the copy state unknown and throws.
             return [];
         }
+
+        $tasks = $this->listReindexTasks();
 
         $result = [];
         foreach ($tasks['nodes'] ?? [] as $node) {

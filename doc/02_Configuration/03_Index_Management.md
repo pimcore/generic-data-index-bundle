@@ -201,7 +201,7 @@ PHP code, on the command line and as an event.
 | State | Meaning | Progress |
 | --- | --- | --- |
 | `complete` | All elements are indexed. Queue entries still waiting are the normal lag of asynchronous indexing and are reported separately. | - |
-| `rebuilding` | A full rebuild from the database was queued (after a class change, `update:index`, a recreated index) and its entries are not all processed yet. | elements already processed / elements |
+| `rebuilding` | A full rebuild from the database was queued (after a class change, `update:index`, a recreated index) and its entries are not all processed yet. | elements already processed / elements; 0 while the elements are still being queued |
 | `degraded` | Documents still carry the state of a copy that left out fields; the rebuild rewrites them. Only occurs after a copy that left out fields. | documents rewritten / documents |
 | `copying` | An odd/even copy of the index is running in the search engine; search shows the old index until the alias switches. | - |
 | `incomplete` | Documents are missing and nothing is queued: run `update:index` for the index. | - |
@@ -213,9 +213,13 @@ current (`null` when no state is stored yet, see [Deployment and Index Managemen
 The measures are read live; nothing is cached.
 
 A rebuild counts as queued from a full enqueue of the index (class save with a mapping change, `update:index`,
-`deployment:reindex` with a change, a recreated index) until the messenger worker that processes its last batch
-finds the queue of that index empty. A rebuild queued by a version before this feature isn't marked, so the index
-shows `complete` with waiting entries, or `incomplete` once the queue is empty.
+`deployment:reindex` with a change, a recreated index): the mark is set before the first element is queued (workers
+draining the queue between two chunks of a large enqueue don't end the rebuild) and removed by exactly one process,
+the messenger worker that processes the last batch, or the enqueue itself when the workers were faster or the index
+has no elements. A mark left behind by a worker that died after its last batch doesn't hide missing documents: with
+an empty queue the counts decide, so such an index shows `incomplete` and asks for a rebuild. A rebuild queued by a
+version before this feature isn't marked, so the index shows `complete` with waiting entries, or `incomplete` once
+the queue is empty.
 
 ### Command Line
 
@@ -228,7 +232,10 @@ bin/console generic-data-index:status --wait --timeout=7200 --index=Car   # bloc
 ```
 
 `--wait` and `--check` are meant for deployment pipelines: run the step that needs the index only after
-`generic-data-index:status --wait` has returned.
+`generic-data-index:status --wait` has returned. `--json` leaves stdout to the report; errors, the failure of
+`--check` and the progress of `--wait -v` go to stderr. When the status cannot be read (search engine or database
+unavailable, the tasks API failing) the command exits with 1 instead of guessing, so an unknown state never passes
+as complete.
 
 ### PHP
 
@@ -259,7 +266,10 @@ indices; `getAll()` returns a report with every index plus the total queue depth
 
 `Pimcore\Bundle\GenericDataIndexBundle\Event\IndexStatus\IndexCompleteEvent` fires once when the last queue
 entries of a queued full rebuild have been processed and the index is complete again. It is dispatched by the
-messenger worker that processes that batch, so listeners run in the worker:
+messenger worker that processes that batch, so listeners run in the worker; when the workers were faster than the
+enqueue, or the index has no elements, the process that queued the rebuild dispatches it. Two workers finishing
+their last batches at once dispatch one event, not two. If the search engine can't be reached right after the last
+batch, the check is repeated with the next batch of that index.
 
 ```php
 use Pimcore\Bundle\GenericDataIndexBundle\Event\IndexStatus\IndexCompleteEvent;

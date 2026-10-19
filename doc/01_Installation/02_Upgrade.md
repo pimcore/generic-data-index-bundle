@@ -26,8 +26,8 @@ description: Version-specific upgrade instructions and breaking changes for the 
 - [Database] A new migration adds an index on `generic_data_index_queue.elementIndexName` (the status counts the
   entries per index). Please make sure to execute migrations.
 - [Indexing] New methods on `@internal` interfaces, relevant only for custom implementations of them:
-  `SearchIndexServiceInterface::countDocuments()` and `getReindexTasks()`,
-  `SettingsStoreServiceInterface::removeIndexState()`.
+  `SearchIndexServiceInterface::countDocuments()` and `getReindexTasks()`, `SettingsStoreServiceInterface::removeIndexState()`,
+  `replaceIndexState()` and `removeIndexStateIfEquals()`, `IndexStateServiceInterface::isMappingCurrent()`.
 
 ## Upgrade to 2026.3.2
 - [Permissions] Searches that check a permission other than `list` (for example `byId()`, which checks `view`) no

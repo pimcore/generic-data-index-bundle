@@ -22,8 +22,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexStatusServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
+use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Tests\Support\Util\TestHelper;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
@@ -119,6 +123,62 @@ final class IndexStatusTest extends Unit
         $this->assertSame(IndexStatusState::DEGRADED, $degraded->getState());
         $this->assertSame($degraded->getDocumentCount(), $degraded->getDocumentsWithoutChecksum());
         $this->assertSame(0.0, $degraded->getPercentage());
+    }
+
+    /**
+     * No worker will ever process a batch of a class without objects: the enqueue itself reports the rebuild.
+     */
+    public function testARebuildOfAnIndexWithoutElementsIsCompleteAtOnce(): void
+    {
+        $classDefinition = ClassDefinition::getByName('mappingTest');
+        $this->assertNotNull($classDefinition);
+        $this->assertSame(0, $this->statusService->getStatusForClassDefinition($classDefinition)->getElementCount());
+
+        $events = [];
+        $this->tester->grabService(EventDispatcherInterface::class)->addListener(
+            IndexCompleteEvent::class,
+            static function (IndexCompleteEvent $event) use (&$events): void {
+                $events[] = $event;
+            }
+        );
+        $this->tester->grabService(EnqueueServiceInterface::class)->enqueueByClassDefinition($classDefinition);
+
+        $status = $this->statusService->getStatusForClassDefinition($classDefinition);
+        $this->assertSame(IndexStatusState::COMPLETE, $status->getState());
+        $this->assertNull($status->getRebuildQueuedAt(), 'No marker is left behind for the next unrelated batch');
+        $this->assertCount(1, $events);
+        $this->assertSame($status->getIndexName(), $events[0]->getIndexName());
+    }
+
+    /**
+     * A class checksum stored by an older bundle version (depending on the key order) still counts as current.
+     */
+    public function testTheClassMappingIsCurrentWithTheStoredOrTheLegacyChecksum(): void
+    {
+        $classDefinition = ClassDefinition::getByName('unittest');
+        $this->assertNotNull($classDefinition);
+        /** @var SettingsStoreServiceInterface $settingsStore */
+        $settingsStore = $this->tester->grabService(SettingsStoreServiceInterface::class);
+        /** @var IndexHandlerInterface $handler */
+        $handler = $this->tester->grabService(DataObjectIndexHandler::class);
+        $mappingProperties = $handler->getMappingProperties($classDefinition);
+        $current = $settingsStore->getClassMappingCheckSum($classDefinition->getId());
+        $this->assertSame($handler->getClassMappingCheckSum($mappingProperties), $current);
+
+        try {
+            $this->assertTrue($this->statusService->getStatusForClassDefinition($classDefinition)->isMappingCurrent());
+
+            $settingsStore->storeClassMapping($classDefinition->getId(), crc32(json_encode($mappingProperties)));
+            $this->assertTrue(
+                $this->statusService->getStatusForClassDefinition($classDefinition)->isMappingCurrent(),
+                'The legacy checksum of an unchanged mapping is current'
+            );
+
+            $settingsStore->storeClassMapping($classDefinition->getId(), 123);
+            $this->assertFalse($this->statusService->getStatusForClassDefinition($classDefinition)->isMappingCurrent());
+        } finally {
+            $settingsStore->storeClassMapping($classDefinition->getId(), (int) $current);
+        }
     }
 
     public function testAnUnknownIndexNameIsRejected(): void

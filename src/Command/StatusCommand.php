@@ -53,6 +53,7 @@ final class StatusCommand extends AbstractCommand
         private readonly IndexStatusServiceInterface $indexStatusService,
         private readonly IndexCountRepositoryInterface $countRepository,
         ?string $name = null,
+        private readonly int $pollIntervalSeconds = self::POLL_INTERVAL_SECONDS,
     ) {
         parent::__construct($name);
     }
@@ -71,7 +72,12 @@ final class StatusCommand extends AbstractCommand
                 InputOption::VALUE_REQUIRED,
                 'Show only this index: its alias name, a class name, "asset", "document" or "data-object-folder"'
             )
-            ->addOption(self::OPTION_JSON, null, InputOption::VALUE_NONE, 'Print the index status as JSON')
+            ->addOption(
+                self::OPTION_JSON,
+                null,
+                InputOption::VALUE_NONE,
+                'Print the index status as JSON on stdout; errors and progress go to stderr'
+            )
             ->addOption(
                 self::OPTION_WAIT,
                 null,
@@ -96,15 +102,17 @@ final class StatusCommand extends AbstractCommand
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
+        // Errors and progress go to stderr, so that --json leaves stdout to the report alone.
+        $errorIo = $io->getErrorStyle();
         $indexName = $input->getOption(self::OPTION_INDEX);
         $indexName = is_string($indexName) && $indexName !== '' ? $indexName : null;
 
         try {
             $report = $input->getOption(self::OPTION_WAIT)
-                ? $this->waitForCompletion($indexName, (int) $input->getOption(self::OPTION_TIMEOUT), $io)
+                ? $this->waitForCompletion($indexName, (int) $input->getOption(self::OPTION_TIMEOUT), $errorIo)
                 : $this->readReport($indexName);
         } catch (IndexStatusException $e) {
-            $io->error($e->getMessage());
+            $errorIo->error($e->getMessage());
 
             return self::FAILURE;
         }
@@ -118,7 +126,7 @@ final class StatusCommand extends AbstractCommand
         }
 
         if ($input->getOption(self::OPTION_CHECK) && !$report->isComplete()) {
-            $io->error(sprintf('Not complete: %s', $this->describeIncomplete($report)));
+            $errorIo->error('Not complete: ' . $this->describeIncomplete($report));
 
             return self::FAILURE;
         }
@@ -143,10 +151,15 @@ final class StatusCommand extends AbstractCommand
     }
 
     /**
+     * A failed read ends the wait (the exception propagates): an unknown state must never pass as complete.
+     *
      * @throws Exception
      */
-    private function waitForCompletion(?string $indexName, int $timeoutSeconds, SymfonyStyle $io): IndexStatusReport
-    {
+    private function waitForCompletion(
+        ?string $indexName,
+        int $timeoutSeconds,
+        SymfonyStyle $errorIo
+    ): IndexStatusReport {
         $deadline = microtime(true) + $timeoutSeconds;
         while (true) {
             $report = $this->readReport($indexName);
@@ -161,15 +174,22 @@ final class StatusCommand extends AbstractCommand
                 ));
             }
             foreach ($report->getIncompleteIndices() as $status) {
-                $io->writeln(sprintf(
-                    '  waiting for %s: %s%s',
-                    $status->getLabel(),
-                    $status->getState()->value,
-                    $status->getPercentage() === null ? '' : sprintf(' %.1f%%', $status->getPercentage())
-                ), OutputInterface::VERBOSITY_VERBOSE);
+                $errorIo->writeln($this->describeWaiting($status), OutputInterface::VERBOSITY_VERBOSE);
             }
-            sleep(self::POLL_INTERVAL_SECONDS);
+            sleep($this->pollIntervalSeconds);
         }
+    }
+
+    private function describeWaiting(IndexStatus $status): string
+    {
+        $percentage = $status->getPercentage();
+
+        return sprintf(
+            '  waiting for %s: %s%s',
+            $status->getLabel(),
+            $status->getState()->value,
+            $percentage === null ? '' : sprintf(' %.1f%%', $percentage)
+        );
     }
 
     /**
@@ -260,10 +280,12 @@ final class StatusCommand extends AbstractCommand
 
     private function describeIncomplete(IndexStatusReport $report): string
     {
-        return implode(', ', array_map(
-            static fn (IndexStatus $status): string => $status->getLabel() . ' (' . $status->getState()->value . ')',
-            $report->getIncompleteIndices()
-        ));
+        $descriptions = [];
+        foreach ($report->getIncompleteIndices() as $status) {
+            $descriptions[] = $status->getLabel() . ' (' . $status->getState()->value . ')';
+        }
+
+        return implode(', ', $descriptions);
     }
 
     private function yesNoUnknown(?bool $value): string

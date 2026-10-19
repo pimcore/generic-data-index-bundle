@@ -42,6 +42,15 @@ interface IndexStateServiceInterface
     public function indexExists(IndexStateTarget $target): bool;
 
     /**
+     * Whether the stored mapping checksum matches the current mapping; null when none is stored. For
+     * a class index a checksum stored by an older bundle version (depending on the key order) counts
+     * as current, as the class definition reindex treats it.
+     *
+     * @throws Exception
+     */
+    public function isMappingCurrent(IndexStateTarget $target): ?bool;
+
+    /**
      * Stores all values of $state that are not null. The mapping checksum of a class index is
      * left to the class definition reindex.
      *
