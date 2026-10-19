@@ -26,6 +26,7 @@ final readonly class MappingUpdateResult
      * @param bool $recreated the index was created empty (missing index, or the copy was impossible)
      * @param bool $outcomeUnknown a custom handler applied the mapping without reporting what it did
      * @param bool $rebuildOwed an earlier mapping update of the index failed before its rebuild was queued
+     * @param bool $mappingApplied this update applied a mapping; false when it only queued an owed rebuild
      */
     public function __construct(
         private array $strippedPaths = [],
@@ -33,12 +34,33 @@ final readonly class MappingUpdateResult
         private bool $recreated = false,
         private bool $outcomeUnknown = false,
         private bool $rebuildOwed = false,
+        private bool $mappingApplied = true,
     ) {
+    }
+
+    /**
+     * Nothing to apply, only the rebuild an earlier run owes: the caller still has to apply pending index settings.
+     */
+    public static function forOwedRebuildOnly(): self
+    {
+        return new self(rebuildOwed: true, mappingApplied: false);
     }
 
     public function withRebuildOwed(): self
     {
-        return new self($this->strippedPaths, $this->keptPaths, $this->recreated, $this->outcomeUnknown, true);
+        return new self(
+            $this->strippedPaths,
+            $this->keptPaths,
+            $this->recreated,
+            $this->outcomeUnknown,
+            true,
+            $this->mappingApplied
+        );
+    }
+
+    public function isMappingApplied(): bool
+    {
+        return $this->mappingApplied;
     }
 
     public function isRebuildOwed(): bool
