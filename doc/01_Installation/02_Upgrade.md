@@ -7,7 +7,7 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 ## Upgrade to 2026.4.0
 
-### Re-indexing required
+### Re-indexing recommended
 
 - [Indexing] Fixed: localized fields inside object bricks, field collections and blocks were normalized with the
   class-level localized field definitions instead of the container's. Their values were indexed unconverted
@@ -23,15 +23,18 @@ description: Version-specific upgrade instructions and breaking changes for the 
   calculated live. Before, one with the same name as a class-level localized calculated value got the class-level
   value.
 - [Indexing] The mapping of classes with localized fields inside object bricks, field collections or blocks changes.
-  Run `generic-data-index:deployment:reindex` after the update; it re-indexes only the classes whose mapping
-  changed. Saving such a class in the class editor has the same effect. `generic-data-index:update:index -c <class id>
-  -r` builds the index from scratch; `deployment:reindex` copies the existing documents into the new index first, so
-  the old `localizedfields` fields stay in its mapping (with values only until the elements are re-indexed).
-- [Indexing] Until the re-index, elements saved with the new version are indexed at the new paths, but these are
-  mapped dynamically: the first value decides the type. A decimal in a field first indexed with a whole number is
-  indexed as a whole number, and a text in a field first indexed with a date-like value is rejected, so the element
-  is not updated in the index (logged as `mapper_parsing_exception`). Elements not saved yet are not found by
-  filters on these fields.
+  Re-indexing is recommended, not required: nothing that worked before breaks without it. Without it, the Studio grid
+  opens and its filters and sorting keep working, but localized object brick fields stay as they were: elements not
+  saved since the update are not found by filters on them, and sorting by them fails until the first element is saved
+  with the new version. Run `generic-data-index:deployment:reindex` after the update to fix this; it re-indexes only
+  the classes whose mapping changed. Saving such a class in the class editor has the same effect.
+  `generic-data-index:update:index -c <class id> -r` builds the index from scratch; `deployment:reindex` copies the
+  existing documents into the new index first, so the old `localizedfields` fields stay in its mapping (with values
+  only until the elements are re-indexed).
+- [Indexing] Without the re-index, elements saved with the new version are indexed at the new paths and are found and
+  sorted, but these paths are mapped dynamically: the first value decides the type. A decimal in a field first
+  indexed with a whole number is indexed as a whole number, and a text in a field first indexed with a date-like
+  value is rejected, so the element is not updated in the index (logged as `mapper_parsing_exception`).
 - [Indexing] The old path `<container path>.localizedfields.<field>.<language>` (for example
   `bricks.SaleInformation.localizedfields.title.en`) is no longer indexed. The documents of these elements change
   when they are re-indexed or saved again: the `localizedfields` level disappears and the values move next to the
