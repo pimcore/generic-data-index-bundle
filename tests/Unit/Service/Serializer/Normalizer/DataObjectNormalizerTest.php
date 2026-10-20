@@ -19,6 +19,8 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\CalculatedFieldsIndexMode;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectNormalizerException;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\ContainerAdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolverInterface;
@@ -27,8 +29,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\DataObje
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition;
+use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\CalculatedValue;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Objectbricks;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Localizedfield;
 
@@ -154,6 +158,42 @@ final class DataObjectNormalizerTest extends Unit
 
         $normalizer = $this->createNormalizer(fieldDefinitionService: $fieldDefinitionService);
         $normalizer->normalize($dataObject);
+    }
+
+    /**
+     * Object bricks, field collections and blocks keep their localized fields below "localizedfields" in
+     * normalizeValue(); the index document gets them flattened by the container adapter.
+     */
+    public function testContainerValuesAreFlattenedForTheIndex(): void
+    {
+        $containerAdapter = $this->createMockForIntersectionOfInterfaces(
+            [AdapterInterface::class, ContainerAdapterInterface::class]
+        );
+        $containerAdapter->method('flattenLocalizedFields')->willReturnCallback(
+            static fn (mixed $value) => ['flattened' => $value]
+        );
+        $fieldDefinitionService = $this->makeEmpty(FieldDefinitionServiceInterface::class, [
+            'normalizeValue' => static fn (Data $fieldDefinition) => $fieldDefinition->getName() === 'bricks'
+                ? ['B1' => ['localizedfields' => ['title' => ['en' => 'Hello']]]]
+                : 'input value',
+            'getFieldDefinitionAdapter' => static fn (Data $fieldDefinition) => $fieldDefinition->getName() === 'bricks'
+                ? $containerAdapter
+                : null,
+        ]);
+        $classDefinition = $this->createClassDefinition([
+            'someInput' => (new Input())->setName('someInput'),
+            'bricks' => (new Objectbricks())->setName('bricks'),
+        ]);
+
+        $result = $this->createNormalizer(fieldDefinitionService: $fieldDefinitionService)
+            ->normalize($this->createConcreteObjectMock($classDefinition));
+
+        $standardFields = $result[FieldCategory::STANDARD_FIELDS->value];
+        $this->assertSame(
+            ['flattened' => ['B1' => ['localizedfields' => ['title' => ['en' => 'Hello']]]]],
+            $standardFields['bricks']
+        );
+        $this->assertSame('input value', $standardFields['someInput']);
     }
 
     private function createClassDefinition(array $fieldDefinitions = []): ClassDefinition

@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\Standar
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectNormalizerException;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\ContainerAdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolverInterface;
@@ -190,6 +191,12 @@ final class DataObjectNormalizer implements NormalizerInterface
                     $fieldDefinition,
                     $value
                 );
+                // localized fields inside object bricks, field collections and blocks are indexed next to the
+                // container's other fields, like the class-level ones below
+                $adapter = $this->fieldDefinitionService->getFieldDefinitionAdapter($fieldDefinition);
+                if ($adapter instanceof ContainerAdapterInterface) {
+                    $normalizedValue = $adapter->flattenLocalizedFields($normalizedValue);
+                }
                 $result[$key] = $normalizedValue;
             }
 

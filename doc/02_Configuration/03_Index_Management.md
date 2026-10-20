@@ -448,8 +448,8 @@ Notes:
   definition's `columnLength` (default 190). The fields stay searchable, filterable and sortable.
 - Changed calculator logic is only reflected after an element is saved again (see
   [Refreshing calculated values after a calculator change](#refreshing-calculated-values-after-a-calculator-change) below).
-- Calculated fields inside field collections and object bricks are not read from the query store
-  and keep live behavior.
+- Calculated fields inside field collections, object bricks and blocks are not read from the query
+  store and keep live behavior.
 - Switching the mode does not change the index mapping, so it does not trigger an automatic
   reindex: values converge as elements are saved or reprocessed by the index queue.
 
