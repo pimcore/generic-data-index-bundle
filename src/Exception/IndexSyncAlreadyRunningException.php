@@ -18,6 +18,7 @@ use RuntimeException;
 /**
  * Thrown when an index synchronization is requested while another one is still being started.
  */
-final class IndexSyncAlreadyRunningException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
+final class IndexSyncAlreadyRunningException extends RuntimeException implements
+    GenericDataIndexBundleExceptionInterface
 {
 }
