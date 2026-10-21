@@ -15,6 +15,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexSyncAlreadyRunningException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
+use Symfony\Component\Lock\Exception\LockConflictedException;
+use Symfony\Component\Lock\Exception\LockExpiredException;
 use Symfony\Component\Lock\LockFactory;
 
 /**
@@ -24,7 +26,11 @@ final readonly class IndexSyncService implements IndexSyncServiceInterface
 {
     private const LOCK_RESOURCE = 'generic-data-index:sync';
 
-    private const LOCK_TTL_SECONDS = 3600.0;
+    /**
+     * The lock is renewed right before and after every single index, so the lease only has to outlast the longest
+     * single index operation (a native reindex waits up to an hour by default), not the whole synchronization.
+     */
+    private const LOCK_TTL_SECONDS = 7200.0;
 
     public function __construct(
         private IndexUpdateServiceInterface $indexUpdateService,
@@ -44,13 +50,24 @@ final readonly class IndexSyncService implements IndexSyncServiceInterface
         try {
             $this->indexUpdateService
                 ->setReCreateIndex(false)
+                ->setIndexUpdateListener(static function () use ($lock): void {
+                    $lock->refresh();
+                })
                 ->updateAll();
 
             $this->enqueueService->dispatchQueueMessages(false);
 
+            $lock->refresh();
             $this->globalIndexAliasService->updateDataObjectAlias();
             $this->globalIndexAliasService->updateElementSearchAlias();
+        } catch (LockConflictedException|LockExpiredException $exception) {
+            throw new IndexSyncAlreadyRunningException(
+                'The synchronization lock was lost, another index synchronization may be running.',
+                0,
+                $exception
+            );
         } finally {
+            $this->indexUpdateService->setIndexUpdateListener(null);
             $lock->release();
         }
     }
