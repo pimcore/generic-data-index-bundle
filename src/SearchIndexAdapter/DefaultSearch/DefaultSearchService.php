@@ -25,8 +25,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInter
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\FieldExpansionFallback;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchRequestExecutorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -70,6 +70,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         private readonly SearchClientInterface $client,
         private readonly int $reindexMaxPolls,
         private readonly int $reindexPollIntervalSeconds,
+        private readonly SearchRequestExecutorInterface $searchRequestExecutor,
     ) {
     }
 
@@ -764,7 +765,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             )
         );
 
-        $result = FieldExpansionFallback::execute(
+        $result = $this->searchRequestExecutor->execute(
             $this->client->count(...),
             [
                 'index' => $indexName,

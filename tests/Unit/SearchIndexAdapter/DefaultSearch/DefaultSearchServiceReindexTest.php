@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\DocumentCountF
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchRequestExecutorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\SearchClient\SearchClientInterface;
@@ -964,6 +965,7 @@ final class DefaultSearchServiceReindexTest extends Unit
             $client ?? $this->makeEmpty(SearchClientInterface::class),
             $reindexMaxPolls,
             $reindexPollIntervalSeconds,
+            $this->makeEmpty(SearchRequestExecutorInterface::class),
         );
         $service->setLogger(new NullLogger());
 

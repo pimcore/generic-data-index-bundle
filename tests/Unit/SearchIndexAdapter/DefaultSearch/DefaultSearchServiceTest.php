@@ -20,9 +20,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchI
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\FieldExpansionFallback;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchRequestExecutor;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\SearchClient\SearchClientInterface;
+use Psr\Log\NullLogger;
 
 /**
  * @internal
@@ -149,6 +151,10 @@ final class DefaultSearchServiceTest extends Unit
             $client ?? $this->makeEmpty(SearchClientInterface::class),
             $reindexMaxPolls,
             $reindexPollIntervalSeconds,
+            new SearchRequestExecutor(
+                $this->makeEmpty(SearchIndexConfigServiceInterface::class, ['getSearchSettings' => []]),
+                new NullLogger(),
+            ),
         );
     }
 }
