@@ -92,6 +92,16 @@ class Configuration implements ConfigurationInterface
                                 ->scalarNode('list_max_filter_options')
                                     ->defaultValue(500)
                                 ->end()
+                                ->arrayNode('full_text_search_fields')
+                                    ->info(
+                                        'Fields a full-text search is run against when it does not name fields '
+                                        . 'itself. Empty (default): the search engine expands it over all fields '
+                                        . 'of the index. A short list keeps searches on large indices fast and '
+                                        . 'below the field expansion limit.'
+                                    )
+                                    ->scalarPrototype()->end()
+                                    ->defaultValue([])
+                                ->end()
                                 ->arrayNode('search_analyzer_attributes')
                                     ->useAttributeAsKey('type')
                                         ->prototype('scalar')

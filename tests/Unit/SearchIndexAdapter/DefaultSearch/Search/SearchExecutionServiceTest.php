@@ -21,8 +21,11 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Searc
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorPipeline;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionService;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchRequestExecutor;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer;
 use Pimcore\SearchClient\SearchClientInterface;
+use Psr\Log\NullLogger;
 
 /**
  * @internal
@@ -237,6 +240,10 @@ final class SearchExecutionServiceTest extends Unit
                 ],
             ]),
             $debugMode,
+            new SearchRequestExecutor(
+                $this->makeEmpty(SearchIndexConfigServiceInterface::class, ['getSearchSettings' => []]),
+                new NullLogger(),
+            ),
             new SearchBodyProcessorPipeline($searchBodyProcessors),
         );
     }

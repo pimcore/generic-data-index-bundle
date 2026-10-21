@@ -338,6 +338,39 @@ bin/console generic-data-index:update:index -r
 
 :::
 
+### Full-text search fields
+
+A full-text search (for example the global search, or the search field of a listing) that does not name any fields
+is expanded by the search engine over all fields of the index. On classes with many fields (object bricks, localized
+fields, many languages) this makes every search slow, especially across all data object indices at once, and can
+exceed the field expansion limit of the search engine (`field expansion matches too many fields`).
+
+To search a fixed set of fields instead, configure them. The list is applied to every full-text search that does not
+name fields itself; searches that name fields are not changed. Wildcards are allowed, but every wildcard is
+expanded again per index, so a short list of explicit fields is the fastest. Fields that do not exist in an index are
+ignored. Use text or keyword fields only: the search term is matched as text.
+
+```yaml
+pimcore_generic_data_index:
+    index_service:
+        search_settings:
+            full_text_search_fields:
+                - 'system_fields.key'
+                - 'system_fields.key.analyzed'
+                - 'system_fields.key.analyzed_ngram'
+                # fields of your own classes, check the index mapping for their exact names
+                - 'standard_fields.sku'
+                # localized fields are mapped per language: standard_fields.<field>.<language>
+                - 'standard_fields.name.en.analyzed'
+```
+
+Without this setting (default) nothing changes: the search runs over all fields, and only if the field expansion limit
+is exceeded it is repeated once with the key and the analyzed text fields.
+
+A search that fails on some shards (for example on one class index of a search across all indices) still returns the
+results of the other shards. This is logged as a warning with the failure reasons on the `pimcore_generic_data_index`
+log channel.
+
 ## Deployment and Index Management
 
 ### Class Definition Changes
