@@ -142,7 +142,8 @@ final class FieldExpansionFallback
                 continue;
             }
 
-            if ($key === 'simple_query_string' && empty($value['fields'])) {
+            // the required string `query` tells the clause apart from e.g. an aggregation of the same name
+            if ($key === 'simple_query_string' && is_string($value['query'] ?? null) && empty($value['fields'])) {
                 $value['fields'] = $fields;
                 $changed = true;
             }
