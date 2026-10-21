@@ -39,6 +39,9 @@ services:
         arguments:
             $client: "@generic-data-index.search-client"
 
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\LockedElementsCacheInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\LockedElementsCache
+
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Pagination\PaginationInfoService
 
