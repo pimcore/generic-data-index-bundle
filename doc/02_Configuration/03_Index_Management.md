@@ -371,6 +371,27 @@ A search that fails on some shards (for example on one class index of a search a
 results of the other shards. This is logged as a warning with the failure reasons on the `pimcore_generic_data_index`
 log channel.
 
+### Search clusters without `_update_by_query`
+
+Moving or renaming an element with children, unlocking an element with propagation and changing the icon of a class
+update many documents at once through the `_update_by_query` API. Some hosted search services refuse that API on
+smaller plans, Bonsai for example below its Business plans (HTTP 403, `Update by query is for business+ only`).
+
+When the cluster refuses `_update_by_query` with HTTP 403, the bundle logs a warning on the `pimcore_generic_data_index`
+log channel and emulates the request instead, for the rest of the process: it reads the matching documents in pages of
+500 (`search_after`) and writes the changed documents back with bulk requests. Like the native API it uses optimistic
+concurrency control, so a document changed in between is not overwritten. To skip the native attempt on such a cluster,
+enable the emulation:
+
+```yaml
+pimcore_generic_data_index:
+    index_service:
+        search_settings:
+            emulate_update_by_query: true
+```
+
+The emulation sends more requests than the native API, but none of them is long-running.
+
 ## Deployment and Index Management
 
 ### Class Definition Changes

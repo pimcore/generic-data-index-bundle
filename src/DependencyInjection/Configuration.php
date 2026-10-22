@@ -102,6 +102,17 @@ class Configuration implements ConfigurationInterface
                                     ->scalarPrototype()->end()
                                     ->defaultValue([])
                                 ->end()
+                                ->booleanNode('emulate_update_by_query')
+                                    ->defaultFalse()
+                                    ->info(
+                                        'Emulate _update_by_query (used to rewrite child paths on move/rename, '
+                                        . 'to unlock elements and to update class icons) with search and bulk '
+                                        . 'requests. Without it the emulation starts on its own, for the rest of '
+                                        . 'the process, once the search cluster refuses _update_by_query with HTTP '
+                                        . '403, as some hosted plans do (e.g. Bonsai below "Business"). Enable it '
+                                        . 'for such a cluster to skip that first native attempt.'
+                                    )
+                                ->end()
                                 ->arrayNode('search_analyzer_attributes')
                                     ->useAttributeAsKey('type')
                                         ->prototype('scalar')

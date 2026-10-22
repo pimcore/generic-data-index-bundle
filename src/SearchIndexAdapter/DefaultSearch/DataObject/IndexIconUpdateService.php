@@ -13,16 +13,17 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
-use Pimcore\SearchClient\SearchClientInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\UpdateByQueryServiceInterface;
 
 /**
  * @internal
  */
 final readonly class IndexIconUpdateService implements IndexIconUpdateServiceInterface
 {
-    public function __construct(private SearchClientInterface $client)
+    public function __construct(private UpdateByQueryServiceInterface $updateByQueryService)
     {
     }
 
@@ -44,7 +45,15 @@ final readonly class IndexIconUpdateService implements IndexIconUpdateServiceInt
                 'query' => $query,
             ],
         ];
-        $this->client->updateByQuery($params);
+
+        $this->updateByQueryService->updateByQuery(
+            $params,
+            static function (array $source) use ($icon): array {
+                $source[FieldCategory::SYSTEM_FIELDS->value][SystemField::CLASS_DEFINITION_ICON->value] = $icon;
+
+                return $source;
+            }
+        );
     }
 
     private function getQueryForNullIcon(): array
