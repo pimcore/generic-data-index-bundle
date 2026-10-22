@@ -38,6 +38,8 @@ interface SearchIndexConfigServiceInterface
 
     public function getSearchSettings(): array;
 
+    public function emulateUpdateByQuery(): bool;
+
     public function getSearchAnalyzerAttributes(): array;
 
     public function getSystemFieldsSettings(string $elementType): array;

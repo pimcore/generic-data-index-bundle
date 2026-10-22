@@ -17,6 +17,7 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\UpdateByQueryServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Element\ElementInterface;
@@ -32,6 +33,7 @@ final class PathService implements PathServiceInterface
     public function __construct(
         private readonly SearchClientInterface $client,
         private readonly AdapterServiceInterface $typeAdapterService,
+        private readonly UpdateByQueryServiceInterface $updateByQueryService,
     ) {
     }
 
@@ -126,7 +128,76 @@ final class PathService implements PathServiceInterface
             ],
         ];
 
-        $this->client->updateByQuery($query);
+        $scriptParams = $query['body']['script']['params'];
+
+        $this->updateByQueryService->updateByQuery(
+            $query,
+            fn (array $source): array => $this->rewritePathInSource($source, $scriptParams)
+        );
+    }
+
+    /**
+     * PHP version of {@see getScriptSource()}, for when _update_by_query is emulated. Keep the two in sync.
+     *
+     * @param array{currentPath: string, newPath: string, currentPathEncoded: string, newPathEncoded: string, now: string} $params
+     *        the script params
+     */
+    private function rewritePathInSource(array $source, array $params): array
+    {
+        $currentPath = $params['currentPath'];
+        $newPath = $params['newPath'];
+        $systemFields = $source[FieldCategory::SYSTEM_FIELDS->value] ?? [];
+        $path = (string) ($systemFields[SystemField::PATH->value] ?? '');
+
+        if (str_starts_with($path, $currentPath)) {
+            $systemFields[SystemField::PATH->value] = $newPath . substr($path, strlen($currentPath));
+
+            $fullPath = (string) ($systemFields[SystemField::FULL_PATH->value] ?? '');
+            $systemFields[SystemField::FULL_PATH->value] = $newPath . substr($fullPath, strlen($currentPath));
+
+            $thumbnail = $systemFields['thumbnail'] ?? null;
+            if (is_string($thumbnail) && str_starts_with($thumbnail, $currentPath)) {
+                $systemFields['thumbnail'] = $newPath . substr($thumbnail, strlen($currentPath));
+            }
+
+            $thumb = $source['custom_fields']['PortalEngineBundle']['system_fields']['thumbnail'] ?? null;
+            if (is_string($thumb)) {
+                $prefix = '';
+                $pathStart = 0;
+
+                if (str_starts_with($thumb, '/cache-buster-')) {
+                    $slashPos = strpos($thumb, '/', 1);
+                    if ($slashPos !== false) {
+                        $prefix = substr($thumb, 0, $slashPos);
+                        $pathStart = $slashPos;
+                    }
+                }
+
+                $thumbPath = substr($thumb, $pathStart);
+                $matchedEncoded = str_starts_with($thumbPath, $params['currentPathEncoded']);
+
+                if ($matchedEncoded || str_starts_with($thumbPath, $currentPath)) {
+                    $matchedPath = $matchedEncoded ? $params['currentPathEncoded'] : $currentPath;
+                    $replacementPath = $matchedEncoded ? $params['newPathEncoded'] : $newPath;
+                    $source['custom_fields']['PortalEngineBundle']['system_fields']['thumbnail'] =
+                        $prefix . $replacementPath . substr($thumbPath, strlen($matchedPath));
+                }
+            }
+
+            $pathLevels = [];
+            foreach (explode('/', $systemFields[SystemField::PATH->value]) as $name) {
+                if ($name !== '') {
+                    $pathLevels[] = ['level' => count($pathLevels) + 1, 'name' => $name];
+                }
+            }
+            $systemFields[SystemField::PATH_LEVELS->value] = $pathLevels;
+        }
+
+        $systemFields[SystemField::MODIFICATION_DATE->value] = $params['now'];
+        $systemFields[SystemField::CHECKSUM->value] = 0;
+        $source[FieldCategory::SYSTEM_FIELDS->value] = $systemFields;
+
+        return $source;
     }
 
     private function getScriptSource(): string

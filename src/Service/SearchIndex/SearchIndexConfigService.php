@@ -103,6 +103,11 @@ final class SearchIndexConfigService implements SearchIndexConfigServiceInterfac
         return $this->searchSettings;
     }
 
+    public function emulateUpdateByQuery(): bool
+    {
+        return (bool) ($this->searchSettings['emulate_update_by_query'] ?? false);
+    }
+
     public function getSearchAnalyzerAttributes(): array
     {
         return $this->searchSettings['search_analyzer_attributes'] ?? [];
