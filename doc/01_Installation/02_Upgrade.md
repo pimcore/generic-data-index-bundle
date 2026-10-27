@@ -48,12 +48,16 @@ description: Version-specific upgrade instructions and breaking changes for the 
   language nodes were therefore only mapped dynamically. The mapping now declares one node per entry of the same
   language set the documents use — `default` plus every valid language — with the same key set under each.
 - [Indexing] The classification store's nested root is now declared with `dynamic: false`. This is not cosmetic: the
-  root ran on the engine default `dynamic: true`, so a key an editor fills in was auto-mapped with a guessed type.
-  The next class save declares that key's real type, `put_mapping` rejects the conflicting update, the bundle falls
-  back to a native reindex, and if documents then fail to parse it deletes and rebuilds the index. With
-  `dynamic: false` a group, language or key that is not declared is kept in `_source`, is not indexed, and does not
-  fail the bulk request, so that escalation cannot be triggered by indexed data any more once the index carries only
-  the declared mapping.
+  root ran on the engine default `dynamic: true`, so a key an editor filled in was auto-mapped from its first indexed
+  value, and that guess has the wrong shape. A text key (input, textarea, wysiwyg, select, multiselect, country, …) is
+  declared as `text` with a `keyword` sub-field that accepts values up to 1024 characters and a `sort` sub-field;
+  dynamic mapping gives it `text` with a `keyword` sub-field capped at 256 characters and no `sort` at all. Sorting by
+  such a key therefore does not work, and a value longer than 256 characters is silently missing from filters on it.
+  With `dynamic: false` a group, language or key that is not declared is kept in `_source`, is not indexed, and does
+  not fail the bulk request, so once the index carries only the declared mapping, every indexed path has the shape its
+  key definition asks for. Declaring the key levels is about that shape, not about avoiding an index recreation: for a
+  text key the declared mapping is applied over a guessed one in place, and where it is not — see the last note of
+  this section — the fallback is a native copy, not a recreation.
 - [Indexing] `dynamic: false` only keeps undeclared nodes from being **added** to the mapping; it does not remove what
   dynamic mapping put there before. An in-place mapping update (`PUT _mapping`, what `update:index` tries first) merges
   the new declaration into the existing mapping and leaves those group, language and key nodes in place, so on an
@@ -62,10 +66,15 @@ description: Version-specific upgrade instructions and breaking changes for the 
   mapping had already created therefore keeps matching filters until that rebuild, and the declared field count of the
   merged mapping is the sum of both.
 - [Indexing] The user-visible consequence: a newly configured classification store key is **not filterable until the
-  next mapping update**. When that update happens, every object of the class is re-queued automatically (the class
-  definition re-index enqueues the items, and the enqueue selects the whole `object_<classId>` table), so values
-  entered in the meantime become filterable without a manual re-index — nothing is lost, it only becomes visible to
-  filters later.
+  next mapping update**. Four paths rebuild the mapping *and* re-queue every object of the class, so values entered in
+  the meantime become filterable without a manual re-index and nothing is lost: saving the class definition in the
+  class editor, `generic-data-index:deployment:reindex`, `generic-data-index:update:index`, and a change of the valid
+  languages. They all end up enqueuing the whole `object_<classId>` table.
+- [Indexing] `generic-data-index:reindex` is the exception: it rebuilds the mapping of every class but queues nothing,
+  so values entered before the new key was declared stay unfiltered afterwards. If its native copy falls back to
+  recreating an index, that index is left empty and nothing refills it — see
+  [Known Limitations](../03_Reindexing/README.md#known-limitations). Run `generic-data-index:update:index` instead of
+  it, or after it, to rebuild the mapping and enqueue the objects in one step.
 - [Indexing] Only the groups allowed by the class field are mapped (unchanged), so under `dynamic: false` the values
   of a group that is active on an object but not among the field's allowed groups are not filterable — on an index
   that already mapped that group dynamically, from the first mapping built from scratch (see above), not from the
@@ -79,11 +88,14 @@ description: Version-specific upgrade instructions and breaking changes for the 
   when the valid languages change, because the languages are part of its mapping. `deployment:reindex` picks such a
   class up by itself, where it used to skip it and the class had to be raised in `index_versions.classes` or
   reindexed with `update:index -c <id>`. A language change can therefore reindex more classes than before.
-- [Indexing] Existing indices already contain language nodes that dynamic mapping created with a guessed type.
-  Declaring the real types can make the mapping update incompatible on upgrade, which the bundle escalates to a
-  native reindex and, when documents fail to parse, to recreating the index from the index queue. Apply the new
-  mapping with `bin/console generic-data-index:update:index`; add `-r` to build the affected indices from scratch
-  instead, which is also what removes the nodes dynamic mapping created.
+- [Indexing] Existing indices already contain language and key nodes that dynamic mapping created with a guessed type,
+  and the update declares the real types over them. For a text key this is accepted in place: the type stays `text`,
+  the declared sub-fields are added to the guessed one, and `ignore_above` is updatable. A numeric key can conflict: a
+  key whose first indexed value happened to be a whole number was guessed as `long`, while a non-integer numeric key
+  is declared as `double`, and that change is rejected in place. The bundle then copies the index natively into its
+  odd/even twin and swaps the alias — expensive on a large index, but not destructive, because the existing values
+  parse into the declared types. Apply the new mapping with `bin/console generic-data-index:update:index`; add `-r` to
+  build the affected indices from scratch instead, which is also what removes the nodes dynamic mapping created.
 
 ## Upgrade to 2026.3.4
 - [Searching] New optional setting `search_settings.full_text_search_fields`: the fields a full-text search runs
