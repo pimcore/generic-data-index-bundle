@@ -106,7 +106,8 @@ class ClassificationStoreMappingTest extends Unit
         );
         $groupMapping = $fieldMapping[self::PROPERTIES][self::GROUP_NAME][self::PROPERTIES];
 
-        $this->assertSame($expectedLanguages, array_keys($groupMapping));
+        // The engine does not promise an order for the properties of a mapping response.
+        $this->assertEqualsCanonicalizing($expectedLanguages, array_keys($groupMapping));
 
         foreach ($groupMapping as $language => $languageMapping) {
             $this->assertArrayHasKey(self::KEY_NAME, $languageMapping[self::PROPERTIES], $language);

@@ -52,19 +52,28 @@ description: Version-specific upgrade instructions and breaking changes for the 
   The next class save declares that key's real type, `put_mapping` rejects the conflicting update, the bundle falls
   back to a native reindex, and if documents then fail to parse it deletes and rebuilds the index. With
   `dynamic: false` a group, language or key that is not declared is kept in `_source`, is not indexed, and does not
-  fail the bulk request, so that escalation cannot be triggered by indexed data any more.
+  fail the bulk request, so that escalation cannot be triggered by indexed data any more once the index carries only
+  the declared mapping.
+- [Indexing] `dynamic: false` only keeps undeclared nodes from being **added** to the mapping; it does not remove what
+  dynamic mapping put there before. An in-place mapping update (`PUT _mapping`, what `update:index` tries first) merges
+  the new declaration into the existing mapping and leaves those group, language and key nodes in place, so on an
+  index that is upgraded in place they keep being indexed and stay filterable. Only a mapping built from scratch drops
+  them: a native reindex into the other odd/even index, or `update:index -r`. A group, language or key that dynamic
+  mapping had already created therefore keeps matching filters until that rebuild, and the declared field count of the
+  merged mapping is the sum of both.
 - [Indexing] The user-visible consequence: a newly configured classification store key is **not filterable until the
   next mapping update**. When that update happens, every object of the class is re-queued automatically (the class
   definition re-index enqueues the items, and the enqueue selects the whole `object_<classId>` table), so values
   entered in the meantime become filterable without a manual re-index — nothing is lost, it only becomes visible to
   filters later.
 - [Indexing] Only the groups allowed by the class field are mapped (unchanged), so under `dynamic: false` the values
-  of a group that is active on an object but not among the field's allowed groups are no longer filterable. They are
-  still written to the document and stay readable in `_source`; only filters, PQL and grid columns on them stop
-  matching. Add the group to the field's allowed groups and re-index to restore filtering.
+  of a group that is active on an object but not among the field's allowed groups are not filterable — on an index
+  that already mapped that group dynamically, from the first mapping built from scratch (see above), not from the
+  in-place update. They are still written to the document and stay readable in `_source`; only filters, PQL and grid
+  columns on them stop matching. Add the group to the field's allowed groups and re-index to restore filtering.
 - [Indexing] The declared field count of a localized classification store now multiplies by the number of valid
-  languages. A large store can therefore hit `index.mapping.total_fields.limit` when the index is created, instead
-  of later at write time. Restrict the allowed groups of the field, or raise the limit — see
+  languages. A large store can therefore hit `index.mapping.total_fields.limit` when the index is created or the
+  mapping is updated, instead of later at write time. Restrict the allowed groups of the field, or raise the limit — see
   [Total Fields Limit](../02_Configuration/03_Index_Management.md#total-fields-limit).
 - [Indexing] A class whose only language-dependent data is a localized classification store now changes its checksum
   when the valid languages change, because the languages are part of its mapping. `deployment:reindex` picks such a
@@ -74,7 +83,7 @@ description: Version-specific upgrade instructions and breaking changes for the 
   Declaring the real types can make the mapping update incompatible on upgrade, which the bundle escalates to a
   native reindex and, when documents fail to parse, to recreating the index from the index queue. Apply the new
   mapping with `bin/console generic-data-index:update:index`; add `-r` to build the affected indices from scratch
-  instead.
+  instead, which is also what removes the nodes dynamic mapping created.
 
 ## Upgrade to 2026.3.4
 - [Searching] New optional setting `search_settings.full_text_search_fields`: the fields a full-text search runs

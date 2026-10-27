@@ -529,7 +529,9 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * The property has no default and stays uninitialized for definitions that never set it.
      *
      * The document is not filtered: a group that is active on the object but not allowed by the field
-     * stays in _source, where it is still readable, and "dynamic: false" keeps it out of the index.
+     * stays in _source, where it is still readable, and "dynamic: false" keeps it out of the index - out
+     * of this mapping, that is: an in-place update merges into the existing one and leaves a node that
+     * dynamic mapping created there until the index is built from scratch.
      *
      * @param GroupConfig[] $groups
      *
