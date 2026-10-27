@@ -43,6 +43,63 @@ description: Version-specific upgrade instructions and breaking changes for the 
   until the re-index. The index format of class-level localized fields is unchanged.
 - [Indexing] Snapshots exported before the update are refused for these classes, and `--force` skips them: export
   them again after the re-index.
+- [Indexing] Fixed: the mapping of a localized classification store declared only the `default` node under each
+  group, while the documents are written as `<field>.<group>.<language>.<key>` for every valid language. The
+  language nodes were therefore only mapped dynamically. The mapping now declares one node per entry of the same
+  language set the documents use — `default` plus every valid language — with the same key set under each.
+- [Indexing] The classification store's nested root is now declared with `dynamic: false`. This is not cosmetic: the
+  root ran on the engine default `dynamic: true`, so a key an editor filled in was auto-mapped from its first indexed
+  value, and that guess has the wrong shape. A text key (input, textarea, wysiwyg, select, multiselect, country, …) is
+  declared as `text` with a `keyword` sub-field that accepts values up to 1024 characters and a `sort` sub-field;
+  dynamic mapping gives it `text` with a `keyword` sub-field capped at 256 characters and no `sort` at all. Sorting by
+  such a key therefore does not work, and a value longer than 256 characters is silently missing from filters on it.
+  With `dynamic: false` a group, language or key that is not declared is kept in `_source`, is not indexed, and does
+  not fail the bulk request, so once the index carries only the declared mapping, every indexed path has the shape its
+  key definition asks for. Declaring the key levels is about that shape, not about avoiding an index recreation: for a
+  text key the declared mapping is applied over a guessed one in place, and where it is not — see the last note of
+  this section — the fallback is a native copy, not a recreation.
+- [Indexing] `dynamic: false` only keeps undeclared nodes from being **added** to the mapping; it does not remove what
+  dynamic mapping put there before. An in-place mapping update (`PUT _mapping`, what `update:index` tries first) merges
+  the new declaration into the existing mapping and leaves those group, language and key nodes in place, so on an
+  index that is upgraded in place they keep being indexed and stay filterable. Only a mapping built from scratch drops
+  them: a native reindex into the other odd/even index, or `update:index -r`. A group, language or key that dynamic
+  mapping had already created therefore keeps matching filters until that rebuild, and the declared field count of the
+  merged mapping is the sum of both.
+- [Indexing] The user-visible consequence: a newly configured classification store key is **not filterable until the
+  next mapping update**. Four paths rebuild the mapping *and* re-queue every object of the class, so values entered in
+  the meantime become filterable without a manual re-index and nothing is lost: saving the class definition in the
+  class editor, `generic-data-index:deployment:reindex`, `generic-data-index:update:index`, and a change of the valid
+  languages. They all end up enqueuing the whole `object_<classId>` table.
+- [Indexing] `generic-data-index:reindex` is the exception to the re-queue, not to the filtering: it forces a native
+  copy of every index and queues nothing. The copy is created with the new mapping and the documents are copied into
+  it, so a value that sat unindexed in `_source` under the old mapping is indexed through the new one and becomes
+  filterable — no database rebuild is needed for it. What the copy cannot bring in is what is *not* in `_source`: an
+  element that was never indexed, a change saved in the database since the last index write, or a document the engine
+  rejected. Those need a rebuild from the database, so run `generic-data-index:update:index` instead of it, or after
+  it, to rebuild the mapping and enqueue the objects in one step. And if the copy falls back to recreating an index —
+  the existing values don't fit the new mapping — that index is left empty and nothing refills it, because the command
+  queues nothing; see [Known Limitations](../03_Reindexing/README.md#known-limitations).
+- [Indexing] Only the groups allowed by the class field are mapped (unchanged), so under `dynamic: false` the values
+  of a group that is active on an object but not among the field's allowed groups are not filterable — on an index
+  that already mapped that group dynamically, from the first mapping built from scratch (see above), not from the
+  in-place update. They are still written to the document and stay readable in `_source`; only filters, PQL and grid
+  columns on them stop matching. Add the group to the field's allowed groups and re-index to restore filtering.
+- [Indexing] The declared field count of a localized classification store now multiplies by the number of valid
+  languages. A large store can therefore hit `index.mapping.total_fields.limit` when the index is created or the
+  mapping is updated, instead of later at write time. Restrict the allowed groups of the field, or raise the limit — see
+  [Total Fields Limit](../02_Configuration/03_Index_Management.md#total-fields-limit).
+- [Indexing] A class whose only language-dependent data is a localized classification store now changes its checksum
+  when the valid languages change, because the languages are part of its mapping. `deployment:reindex` picks such a
+  class up by itself, where it used to skip it and the class had to be raised in `index_versions.classes` or
+  reindexed with `update:index -c <id>`. A language change can therefore reindex more classes than before.
+- [Indexing] Existing indices already contain language and key nodes that dynamic mapping created with a guessed type,
+  and the update declares the real types over them. For a text key this is accepted in place: the type stays `text`,
+  the declared sub-fields are added to the guessed one, and `ignore_above` is updatable. A numeric key can conflict: a
+  key whose first indexed value happened to be a whole number was guessed as `long`, while a non-integer numeric key
+  is declared as `double`, and that change is rejected in place. The bundle then copies the index natively into its
+  odd/even twin and swaps the alias — expensive on a large index, but not destructive, because the existing values
+  parse into the declared types. Apply the new mapping with `bin/console generic-data-index:update:index`; add `-r` to
+  build the affected indices from scratch instead, which is also what removes the nodes dynamic mapping created.
 
 ## Upgrade to 2026.3.4
 - [Searching] New optional setting `search_settings.full_text_search_fields`: the fields a full-text search runs
