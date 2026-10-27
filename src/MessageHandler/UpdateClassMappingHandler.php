@@ -18,6 +18,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateClassMappingMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassDefinitionResolverInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -31,6 +32,7 @@ final class UpdateClassMappingHandler
     public function __construct(
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly ClassDefinitionReindexServiceInterface $classDefinitionReindexService,
+        private readonly ClassDefinitionResolverInterface $classDefinitionResolver,
     ) {
     }
 
@@ -39,7 +41,16 @@ final class UpdateClassMappingHandler
      */
     public function __invoke(UpdateClassMappingMessage $message): void
     {
-        $classDefinition = $message->getClassDefinition();
+        // The message carries a serialized class definition, which is incomplete
+        // (e.g. Localizedfields drops referenced fields on __sleep()), so reload it.
+        $classDefinition = $this->classDefinitionResolver->getById(
+            $message->getClassDefinition()->getId(),
+            true
+        );
+        if ($classDefinition === null) {
+            return;
+        }
+
         $dispatch = $message->isDispatchQueueMessages();
 
         $changed = $this->classDefinitionReindexService->reindexClassDefinition(
