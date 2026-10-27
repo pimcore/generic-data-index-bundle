@@ -72,14 +72,16 @@ the mapping step; the table under [Which Trigger Does What](#which-trigger-does-
 | Index recreation | The live index is deleted and created again empty with the new mapping. Runs automatically when the odd/even copy fails because the existing documents don't fit the new mapping; `update:index -r` always recreates. | None: the index is empty until the rebuild has filled it | Empty or incomplete until the rebuild has finished |
 | Rebuild from the database | The affected elements are added to the index queue; messenger workers load each one from the database and replace its document. | Database | Values update as the index queue is processed |
 
-The bundle creates indices with the engine defaults for `dynamic`, `coerce` and `ignore_malformed`. During an odd/even
-copy this means:
+The bundle creates indices with the engine defaults for `dynamic`, `coerce` and `ignore_malformed`, except for the
+nested root of a classification store field, which is declared with `dynamic: false` since 2026.4.0: a group, language
+or key that is not declared stays in `_source` and is not indexed. During an odd/even copy this means:
 
 - Numbers copied into a `keyword` field and numeric strings copied into a number field are accepted.
 - Decimals copied into an integer field are accepted but truncated.
 - Text copied into a number, date or boolean field doesn't fit: the index is recreated.
 - Fields that are no longer in the mapping are re-mapped dynamically and stay in the mapping until the index is
-  recreated with `update:index -r`.
+  recreated with `update:index -r` — except below a classification store's nested root, where `dynamic: false` keeps
+  them out of the mapping and out of the index altogether.
 
 ### Flow of a Mapping Change
 
@@ -289,9 +291,10 @@ and predefined asset metadata is mapped per language as well.
 
 :::info
 
-A class whose only language-dependent data is a **localized classification store** keeps its checksum, because the
-store's localized values are mapped dynamically. `deployment:reindex` therefore skips it. Raise its entry in
-`index_versions.classes` before the deployment, or run `update:index -c <id>`.
+A class whose only language-dependent data is a **localized classification store** is detected too: since 2026.4.0
+the store declares one node per valid language, so the class mapping and its checksum change with the language list.
+Before that release those values were mapped dynamically, the checksum stayed the same and `deployment:reindex`
+skipped the class, so it had to be raised in `index_versions.classes` or reindexed with `update:index -c <id>`.
 
 :::
 
@@ -480,7 +483,6 @@ The import doesn't add anything to the index queue. See [Index Snapshots](../02_
 | Reverse object relations | Saving the referenced object doesn't update objects that point to it | Re-save them, or `update:index -c <id>` |
 | Deletes during an odd/even copy | Deleted elements stay in the index | Reindex in a quiet period; `update:index -r` removes them |
 | `generic-data-index:reindex` with values that don't fit the mapping | The index is recreated empty and nothing refills it | `update:index -c <id>`, `-a` or `-d` |
-| Languages changed in config files, class with only a localized classification store | Not detected by `deployment:reindex` | `index_versions.classes.<id>` or `update:index -c <id>` |
 | Removed fields and removed languages | Stay in the mapping after an odd/even copy or an in-place update | `update:index -r` |
 | Calculator code changes | Cannot be detected | `index_versions`, see above |
 | `update_by_query` unsupported on some managed OpenSearch services | Icon updates, child path rewrites and lock flags fail | `update:index` for the affected index |

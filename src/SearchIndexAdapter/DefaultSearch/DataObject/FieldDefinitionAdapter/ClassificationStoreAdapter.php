@@ -60,6 +60,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     public function getIndexMapping(): array
     {
         $classificationStore = $this->getClassificationStoreDefinition();
+        $validLanguages = $this->getValidLanguages($classificationStore);
         $mapping = [];
 
         $groups = $this->filterAllowedGroups(
@@ -75,12 +76,23 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             }
 
             $keys = $this->getClassificationStoreKeysFromGroup($group);
-            $mapping[$groupName]['properties'] = $this->getMappingForGroupConfig($keys);
+            $mapping[$groupName]['properties'] = $this->getMappingForGroupConfig($keys, $validLanguages);
         }
 
+        return $this->getNestedRootMapping($mapping);
+    }
+
+    /**
+     * The declared languages are the ones normalize() writes, so every indexed path is declared.
+     * "dynamic: false" keeps an undeclared group, language or key in _source without indexing it and
+     * without failing the bulk request, instead of letting the engine guess its type.
+     */
+    private function getNestedRootMapping(array $groupMapping): array
+    {
         return [
             'type' => AttributeType::NESTED,
-            'properties' => $mapping,
+            'dynamic' => false,
+            'properties' => $groupMapping,
         ];
     }
 
@@ -437,10 +449,11 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
     /**
      * @param KeyGroupRelation[] $groupConfigs
+     * @param string[] $validLanguages
      */
-    private function getMappingForGroupConfig(array $groupConfigs): array
+    private function getMappingForGroupConfig(array $groupConfigs, array $validLanguages): array
     {
-        $groupMapping = [];
+        $keyMapping = [];
         foreach ($groupConfigs as $key) {
             $definition = $this->getFieldDefinitionForKey($key);
             if ($definition === null) {
@@ -455,12 +468,21 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 continue;
             }
 
-            $properties = $groupMapping['default']['properties'] ?? [];
-            if ($this->isTakenNameSegment($properties, $keyName, $key->getName(), 'key', $key->getKeyId(), true)) {
+            if ($this->isTakenNameSegment($keyMapping, $keyName, $key->getName(), 'key', $key->getKeyId(), true)) {
                 continue;
             }
 
-            $groupMapping['default']['properties'][$keyName] = $adapter->getIndexMapping();
+            // once: the mapping of the key does not depend on the language
+            $keyMapping[$keyName] = $adapter->getIndexMapping();
+        }
+
+        if ($keyMapping === []) {
+            return [];
+        }
+
+        $groupMapping = [];
+        foreach ($validLanguages as $validLanguage) {
+            $groupMapping[$validLanguage]['properties'] = $keyMapping;
         }
 
         return $groupMapping;
@@ -505,6 +527,9 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * class cannot get assigned can exceed the index total fields limit. When the field restricts the
      * allowed groups, only those are mapped; without a restriction, all groups of the store stay mapped.
      * The property has no default and stays uninitialized for definitions that never set it.
+     *
+     * The document is not filtered: a group that is active on the object but not allowed by the field
+     * stays in _source, where it is still readable, and "dynamic: false" keeps it out of the index.
      *
      * @param GroupConfig[] $groups
      *

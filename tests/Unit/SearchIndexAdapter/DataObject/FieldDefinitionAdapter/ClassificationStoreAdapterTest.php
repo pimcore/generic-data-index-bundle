@@ -16,12 +16,16 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\Da
 use Codeception\Test\Unit;
 use Exception;
 use InvalidArgumentException;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\ClassificationStoreAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
+use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
 use Psr\Log\AbstractLogger;
@@ -32,6 +36,16 @@ use ReflectionMethod;
  */
 final class ClassificationStoreAdapterTest extends Unit
 {
+    private const KEY_NAME = 'Size';
+
+    private const KEY_MAPPING = ['type' => 'keyword'];
+
+    private const PROPERTIES = 'properties';
+
+    private const LANGUAGE_NODE = [self::PROPERTIES => [self::KEY_NAME => self::KEY_MAPPING]];
+
+    private const DEFAULT_LANGUAGE = 'default';
+
     public function testExceptionIsThrownWhenWrongFieldDefinition()
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
@@ -216,6 +230,107 @@ final class ClassificationStoreAdapterTest extends Unit
     public function testAllGroupsAreMappedWhenAllowedGroupsWereNeverSet(): void
     {
         $this->assertSame([11, 12], $this->getMappedGroupIds(new Classificationstore(), [11, 12]));
+    }
+
+    /**
+     * The document writes <group>.<language>.<key> for every valid language, so the mapping has to
+     * declare the same language nodes - otherwise they are only mapped dynamically, or, under
+     * "dynamic: false", not at all.
+     */
+    public function testEveryValidLanguageIsDeclaredForALocalizedStore(): void
+    {
+        $fieldDefinition = new Classificationstore();
+        $fieldDefinition->setLocalized(true);
+
+        $mapping = $this->getGroupMapping($fieldDefinition, ['de', 'en']);
+
+        $this->assertSame([self::DEFAULT_LANGUAGE, 'de', 'en'], array_keys($mapping));
+        foreach ($mapping as $language => $languageNode) {
+            $this->assertSame(self::LANGUAGE_NODE, $languageNode, $language);
+        }
+    }
+
+    public function testOnlyTheDefaultNodeIsDeclaredForANonLocalizedStore(): void
+    {
+        $fieldDefinition = new Classificationstore();
+        $fieldDefinition->setLocalized(false);
+
+        $mapping = $this->getGroupMapping($fieldDefinition, ['de', 'en', 'fr']);
+
+        $this->assertSame([self::DEFAULT_LANGUAGE], array_keys($mapping));
+        $this->assertSame(self::LANGUAGE_NODE, $mapping[self::DEFAULT_LANGUAGE]);
+    }
+
+    /**
+     * A group, language or key that is not declared stays in _source without being indexed, instead of
+     * being auto-mapped with a guessed type that the next mapping update then contradicts.
+     */
+    public function testNestedRootDeclaresDynamicFalse(): void
+    {
+        $groupMapping = [
+            'Specifications' => [self::PROPERTIES => [self::DEFAULT_LANGUAGE => self::LANGUAGE_NODE]],
+        ];
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'getNestedRootMapping');
+
+        $this->assertSame(
+            [
+                'type' => AttributeType::NESTED,
+                'dynamic' => false,
+                self::PROPERTIES => $groupMapping,
+            ],
+            $method->invoke($this->createAdapter(), $groupMapping)
+        );
+    }
+
+    /**
+     * The key mapping is built once per group and replicated per language, so the diagnostics of a key
+     * name do not repeat for every language of the store.
+     */
+    public function testKeyDiagnosticsAreReportedOncePerKeyRegardlessOfLanguageCount(): void
+    {
+        $fieldDefinition = new Classificationstore();
+        $fieldDefinition->setLocalized(true);
+        $logger = $this->createCollectingLogger();
+
+        $mapping = $this->getGroupMapping($fieldDefinition, ['de', 'en', 'fr'], self::KEY_NAME . '.', $logger);
+
+        $this->assertSame([self::DEFAULT_LANGUAGE, 'de', 'en', 'fr'], array_keys($mapping));
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('info', $logger->records[0]['level']);
+    }
+
+    private function getGroupMapping(
+        Classificationstore $fieldDefinition,
+        array $validLanguages,
+        string $keyName = self::KEY_NAME,
+        ?AbstractLogger $logger = null
+    ): array {
+        $adapter = new ClassificationStoreAdapter(
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
+            $this->makeEmpty(FieldDefinitionServiceInterface::class, [
+                'getFieldDefinitionAdapter' => $this->makeEmpty(AdapterInterface::class, [
+                    'getIndexMapping' => self::KEY_MAPPING,
+                ]),
+            ])
+        );
+        $adapter->setClassificationService($this->makeEmpty(ServiceResolverInterface::class, [
+            'getFieldDefinitionFromKeyConfig' => new Input(),
+        ]));
+        $adapter->setLanguageService($this->makeEmpty(LanguageServiceInterface::class, [
+            'getValidLanguages' => $validLanguages,
+        ]));
+        $adapter->setLogger($logger ?? $this->createCollectingLogger());
+
+        $key = new KeyGroupRelation();
+        $key->setKeyId(42);
+        $key->setName($keyName);
+
+        $languages = (new ReflectionMethod(ClassificationStoreAdapter::class, 'getValidLanguages'))
+            ->invoke($adapter, $fieldDefinition);
+
+        return (new ReflectionMethod(ClassificationStoreAdapter::class, 'getMappingForGroupConfig'))
+            ->invoke($adapter, [$key], $languages);
     }
 
     private function getMappedGroupIds(Classificationstore $fieldDefinition, array $groupIds): array
