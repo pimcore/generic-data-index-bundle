@@ -70,11 +70,15 @@ description: Version-specific upgrade instructions and breaking changes for the 
   the meantime become filterable without a manual re-index and nothing is lost: saving the class definition in the
   class editor, `generic-data-index:deployment:reindex`, `generic-data-index:update:index`, and a change of the valid
   languages. They all end up enqueuing the whole `object_<classId>` table.
-- [Indexing] `generic-data-index:reindex` is the exception: it rebuilds the mapping of every class but queues nothing,
-  so values entered before the new key was declared stay unfiltered afterwards. If its native copy falls back to
-  recreating an index, that index is left empty and nothing refills it — see
-  [Known Limitations](../03_Reindexing/README.md#known-limitations). Run `generic-data-index:update:index` instead of
-  it, or after it, to rebuild the mapping and enqueue the objects in one step.
+- [Indexing] `generic-data-index:reindex` is the exception to the re-queue, not to the filtering: it forces a native
+  copy of every index and queues nothing. The copy is created with the new mapping and the documents are copied into
+  it, so a value that sat unindexed in `_source` under the old mapping is indexed through the new one and becomes
+  filterable — no database rebuild is needed for it. What the copy cannot bring in is what is *not* in `_source`: an
+  element that was never indexed, a change saved in the database since the last index write, or a document the engine
+  rejected. Those need a rebuild from the database, so run `generic-data-index:update:index` instead of it, or after
+  it, to rebuild the mapping and enqueue the objects in one step. And if the copy falls back to recreating an index —
+  the existing values don't fit the new mapping — that index is left empty and nothing refills it, because the command
+  queues nothing; see [Known Limitations](../03_Reindexing/README.md#known-limitations).
 - [Indexing] Only the groups allowed by the class field are mapped (unchanged), so under `dynamic: false` the values
   of a group that is active on an object but not among the field's allowed groups are not filterable — on an index
   that already mapped that group dynamically, from the first mapping built from scratch (see above), not from the
