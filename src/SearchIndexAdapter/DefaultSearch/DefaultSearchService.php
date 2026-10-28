@@ -28,6 +28,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexOutco
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexStripScript;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchRequestExecutorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -92,6 +93,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         private readonly SearchClientInterface $client,
         private readonly int $reindexMaxPolls,
         private readonly int $reindexPollIntervalSeconds,
+        private readonly SearchRequestExecutorInterface $searchRequestExecutor,
     ) {
     }
 
@@ -879,10 +881,13 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             )
         );
 
-        $result = $this->client->count([
-            'index' => $indexName,
-            'body' => $body,
-        ]);
+        $result = $this->searchRequestExecutor->execute(
+            $this->client->count(...),
+            [
+                'index' => $indexName,
+                'body' => $body,
+            ]
+        );
 
         return $result['count'] ?? 0;
     }

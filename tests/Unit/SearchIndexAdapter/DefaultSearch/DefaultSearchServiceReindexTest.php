@@ -22,6 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedE
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexStripScript;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchRequestExecutorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\SearchClient\SearchClientInterface;
@@ -1156,6 +1157,7 @@ final class DefaultSearchServiceReindexTest extends Unit
             $client ?? $this->makeEmpty(SearchClientInterface::class),
             $reindexMaxPolls,
             $reindexPollIntervalSeconds,
+            $this->makeEmpty(SearchRequestExecutorInterface::class),
         );
         $service->setLogger(new NullLogger());
 

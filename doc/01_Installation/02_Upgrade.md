@@ -2,6 +2,14 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 2.5.16
+- [Searching] New optional setting `search_settings.full_text_search_fields`: the fields a full-text search runs
+  against when it does not name fields itself. Use it on indices with many fields, where the expansion over all fields
+  makes searches slow or exceeds the field expansion limit. Without it nothing changes. See
+  [Full-text search fields](../02_Configuration/03_Index_Management.md#full-text-search-fields).
+- [Searching] Search and count requests where some shards failed are logged as a warning on the
+  `pimcore_generic_data_index` log channel. The response itself is unchanged.
+
 ## Upgrade to 2.5.15
 - [Indexing] New option `index_service.reindex_settings.mapping_change_strategy` (`recreate`, the default, or `copy`)
   decides what happens to the documents of an index when its mapping changes. The default keeps the behaviour of
