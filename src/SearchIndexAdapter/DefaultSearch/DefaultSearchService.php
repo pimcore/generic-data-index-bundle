@@ -35,7 +35,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceI
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\SearchClient\SearchClientInterface;
-use Psr\Log\LogLevel;
 use Psr\Log\NullLogger;
 
 /**
@@ -117,7 +116,11 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         }
 
         try {
-            $this->logger->log($silent ? LogLevel::DEBUG : LogLevel::INFO, "Deleting index $indexName");
+            if ($silent) {
+                $this->logger->debug("Deleting index $indexName");
+            } else {
+                $this->logger->info("Deleting index $indexName");
+            }
             $response = $this->client->deleteIndex(['index' => $indexName]);
             $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
         } catch (JsonException $e) {
