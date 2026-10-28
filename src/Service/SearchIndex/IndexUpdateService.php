@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
+use Closure;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
@@ -31,6 +32,8 @@ use Pimcore\Model\DataObject\ClassDefinition\Listing;
 final class IndexUpdateService implements IndexUpdateServiceInterface
 {
     private bool $reCreateIndex = false;
+
+    private ?Closure $indexUpdateListener = null;
 
     public function __construct(
         private readonly AssetIndexHandler $assetIndexHandler,
@@ -74,6 +77,8 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
      */
     public function updateClassDefinition(ClassDefinition $classDefinition): IndexUpdateService
     {
+        $this->notifyIndexUpdate();
+
         if ($this->reCreateIndex) {
             $this->dataObjectIndexHandler
                 ->deleteIndex($classDefinition);
@@ -100,6 +105,7 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
             ->enqueueByClassDefinition($classDefinition);
 
         $this->refreshIndexState(IndexStateTarget::forClassDefinition($classDefinition));
+        $this->notifyIndexUpdate();
 
         return $this;
     }
@@ -109,6 +115,8 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
      */
     public function updateDataObjectFolders(): IndexUpdateService
     {
+        $this->notifyIndexUpdate();
+
         if ($this->reCreateIndex) {
             $this->dataObjectIndexHandler
                 ->deleteIndex();
@@ -126,6 +134,7 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
             ->enqueueDataObjectFolders();
 
         $this->refreshIndexState(IndexStateTarget::forScope(DeploymentReindexScope::FOLDERS));
+        $this->notifyIndexUpdate();
 
         return $this;
     }
@@ -135,6 +144,7 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
      */
     public function updateAssets(): IndexUpdateService
     {
+        $this->notifyIndexUpdate();
 
         if ($this->reCreateIndex) {
             $this->assetIndexHandler
@@ -153,6 +163,7 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
             ->enqueueAssets();
 
         $this->refreshIndexState(IndexStateTarget::forScope(DeploymentReindexScope::ASSETS));
+        $this->notifyIndexUpdate();
 
         return $this;
     }
@@ -162,6 +173,7 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
      */
     public function updateDocuments(): IndexUpdateService
     {
+        $this->notifyIndexUpdate();
 
         if ($this->reCreateIndex) {
             $this->documentIndexHandler
@@ -180,6 +192,7 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
             ->enqueueDocuments();
 
         $this->refreshIndexState(IndexStateTarget::forScope(DeploymentReindexScope::DOCUMENTS));
+        $this->notifyIndexUpdate();
 
         return $this;
     }
@@ -189,6 +202,20 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
         $this->reCreateIndex = $reCreateIndex;
 
         return $this;
+    }
+
+    public function setIndexUpdateListener(?callable $listener): IndexUpdateService
+    {
+        $this->indexUpdateListener = $listener === null ? null : Closure::fromCallable($listener);
+
+        return $this;
+    }
+
+    private function notifyIndexUpdate(): void
+    {
+        if ($this->indexUpdateListener !== null) {
+            ($this->indexUpdateListener)();
+        }
     }
 
     /**
