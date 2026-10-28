@@ -470,11 +470,16 @@ runs each `_reindex` as a background task that the bundle polls according to `re
 
 ### `generic-data-index:status`
 
-Read-only. Shows the index queue depth, every index with its document count and size, and a warning for any index
-that exists as both `-even` and `-odd`. Both exist while an odd/even copy runs, which on a large index takes hours, and
-stay after a copy was interrupted. Check the search engine's tasks API before you treat them as leftovers (see
-[Monitoring a Running Copy](../02_Configuration/07_Operations_Guide.md#monitoring-a-running-copy)). Leftover indices
-are not used by the bundle; remove them with `generic-data-index:cleanup:unused-indices` (run `--dry-run` first).
+Read-only. Shows the index queue depth, the number of failed messages, every index with its document count and size,
+and the status of every index: `complete`, `rebuilding` with the progress in percent, `copying`, `degraded`,
+`incomplete` or `missing` (see [Index Status](../02_Configuration/03_Index_Management.md#index-status)). `--index`
+shows one index, `--json` prints the status for scripts (errors and progress go to stderr), `--check` exits with 1
+while an index is not complete, and `--wait` blocks until it is; both exit with 1 when the status cannot be read. An
+index that exists as both `-even` and `-odd` without a running copy is reported as a leftover of an interrupted
+odd/even copy; the status checks the search engine's tasks API for a running copy, which on a large index takes hours
+(see [Monitoring a Running Copy](../02_Configuration/07_Operations_Guide.md#monitoring-a-running-copy)). Leftover
+indices are not used by the bundle; remove them with `generic-data-index:cleanup:unused-indices` (run `--dry-run`
+first).
 
 ### Snapshots
 

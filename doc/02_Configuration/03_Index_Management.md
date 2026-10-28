@@ -19,6 +19,7 @@ For an overview of which changes require a reindex, which of them are handled au
 | `generic-data-index:reindex` | Native search engine reindex (reorganizes data within existing indices, no database read) |
 | `generic-data-index:deployment:reindex` | Update indices only for class definitions changed since the last deployment |
 | `generic-data-index:cleanup:unused-indices` | Delete managed indices not referenced by any alias (`-odd`/`-even` suffixes only) |
+| `generic-data-index:status` | Status of every index (complete, rebuilding with progress, copying, degraded, incomplete), queue depth and failed messages; `--wait` and `--check` for pipelines |
 
 ## Index Prefix
 
@@ -200,6 +201,107 @@ in the [Operations Guide](./07_Operations_Guide.md#when-a-copy-fails-times-out-o
 See the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html#saving-retrying-failed-messages)
 for additional commands.
 
+## Index Status
+
+An index doesn't show whether it is complete. After a mapping change the index is copied or recreated and then
+refilled from the database by the messenger workers; until they are done, filters, saved searches, exports and
+reports see incomplete data. The index status tells, per index, what state it is in and how far a rebuild has got, for
+PHP code, on the command line and as an event.
+
+### States
+
+| State | Meaning | Progress |
+| --- | --- | --- |
+| `complete` | All elements are indexed. Queue entries still waiting are the normal lag of asynchronous indexing and are reported separately. | - |
+| `rebuilding` | A full rebuild from the database was queued (after a class change, `update:index`, a recreated index) and its entries are not all processed yet. | elements already processed / elements; 0 while the elements are still being queued |
+| `degraded` | Documents still carry the state of a copy that left out fields; the rebuild rewrites them. Only occurs after a copy that left out fields. | documents rewritten / documents |
+| `copying` | An odd/even copy of the index is running in the search engine; search shows the old index until the alias switches. | - |
+| `incomplete` | Documents are missing and nothing is queued: run `update:index` for the index. | - |
+| `missing` | The index doesn't exist. | - |
+
+Each status also carries the counts it is derived from: documents in the index, elements in the database, waiting
+queue entries, documents without checksum, whether a copy runs, and whether the mapping and the index settings are
+current (`null` when no state is stored yet, see [Deployment and Index Management](#deployment-and-index-management)).
+The measures are read live; nothing is cached.
+
+A rebuild counts as queued from a full enqueue of the index (class save with a mapping change, `update:index`,
+`deployment:reindex` with a change, a recreated index): the mark is set before the first element is queued (workers
+draining the queue between two chunks of a large enqueue don't end the rebuild) and removed by exactly one process,
+the messenger worker that processes the last batch, or the enqueue itself when the workers were faster or the index
+has no elements. A mark left behind by a worker that died after its last batch doesn't hide missing documents: with
+an empty queue the counts decide, so such an index shows `incomplete` and asks for a rebuild. If the process
+queuing the elements was terminated or failed between two chunks, the mark keeps its queueing phase (the chunks
+are committed one by one, so part of the rebuild may be queued already): the index shows
+`rebuilding` at 0 % with `rebuildEnqueuing` and the time it was queued (the command prints
+`rebuilding, queueing since …`); run the full enqueue again (`update:index`, `deployment:reindex`), which replaces
+the mark. A rebuild queued by a version before this feature isn't marked, so the index shows `complete` with
+waiting entries, or `incomplete` once the queue is empty.
+
+### Command Line
+
+```bash
+bin/console generic-data-index:status                      # overview: queue, indices, status table
+bin/console generic-data-index:status --index=Car          # one index: alias name, class name, asset, document
+bin/console generic-data-index:status --json               # machine-readable
+bin/console generic-data-index:status --check              # exit code 1 while an index is not complete
+bin/console generic-data-index:status --wait --timeout=7200 --index=Car   # block until complete, exit code 1 on timeout
+```
+
+`--wait` and `--check` are meant for deployment pipelines: run the step that needs the index only after
+`generic-data-index:status --wait` has returned. `--json` leaves stdout to the report; errors, the failure of
+`--check` and the progress of `--wait -v` go to stderr. When the status cannot be read (search engine or database
+unavailable, the tasks API failing, a count or task list the engine answered only partially because of failed
+shards or nodes) the command exits with 1 instead of guessing, so an unknown state never passes as complete.
+
+### PHP
+
+```php
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Status\IndexStatusServiceInterface;
+
+public function __construct(private IndexStatusServiceInterface $indexStatusService)
+{
+}
+
+public function export(ClassDefinition $classDefinition): void
+{
+    $status = $this->indexStatusService->getStatusForClassDefinition($classDefinition);
+    if (!$status->isComplete()) {
+        // $status->getState(), $status->getPercentage(), $status->getPendingEntries()
+        throw new RuntimeException(sprintf('Index %s is %s', $status->getIndexName(), $status->getState()->value));
+    }
+    // ...
+}
+```
+
+`getAssetStatus()`, `getDocumentStatus()`, `getDataObjectFolderStatus()` and `getStatusByIndexName()` read the other
+indices; `getAll()` returns a report with every index plus the total queue depth and the number of failed messages;
+`waitUntilComplete($indexName, $timeoutSeconds)` polls until the index is complete and throws an
+`IndexStatusException` on timeout.
+
+### Event
+
+`Pimcore\Bundle\GenericDataIndexBundle\Event\IndexStatus\IndexCompleteEvent` fires once when the last queue
+entries of a queued full rebuild have been processed and the index is complete again. It is dispatched by the
+messenger worker that processes that batch, so listeners run in the worker; when the workers were faster than the
+enqueue, or the index has no elements, the process that queued the rebuild dispatches it. Two workers finishing
+their last batches at once dispatch one event, not two. If the search engine can't be reached right after the last
+batch, the check is repeated with the next batch of that index.
+
+```php
+use Pimcore\Bundle\GenericDataIndexBundle\Event\IndexStatus\IndexCompleteEvent;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+
+#[AsEventListener]
+final class StartExportWhenIndexComplete
+{
+    public function __invoke(IndexCompleteEvent $event): void
+    {
+        $event->getIndexName();           // e.g. "pimcore_data-object_car"
+        $event->getStatus()->getLabel();  // e.g. "class Car (CAR)"
+    }
+}
+```
+
 ## Index Options
 
 Configure search engine-specific index options. Check your engine's documentation
@@ -247,6 +349,39 @@ bin/console generic-data-index:update:index -r
 ```
 
 :::
+
+### Full-text search fields
+
+A full-text search (for example the global search, or the search field of a listing) that does not name any fields
+is expanded by the search engine over all fields of the index. On classes with many fields (object bricks, localized
+fields, many languages) this makes every search slow, especially across all data object indices at once, and can
+exceed the field expansion limit of the search engine (`field expansion matches too many fields`).
+
+To search a fixed set of fields instead, configure them. The list is applied to every full-text search that does not
+name fields itself; searches that name fields are not changed. Wildcards are allowed, but every wildcard is
+expanded again per index, so a short list of explicit fields is the fastest. Fields that do not exist in an index are
+ignored. Use text or keyword fields only: the search term is matched as text.
+
+```yaml
+pimcore_generic_data_index:
+    index_service:
+        search_settings:
+            full_text_search_fields:
+                - 'system_fields.key'
+                - 'system_fields.key.analyzed'
+                - 'system_fields.key.analyzed_ngram'
+                # fields of your own classes, check the index mapping for their exact names
+                - 'standard_fields.sku'
+                # localized fields are mapped per language: standard_fields.<field>.<language>
+                - 'standard_fields.name.en.analyzed'
+```
+
+Without this setting (default) nothing changes: the search runs over all fields, and only if the field expansion limit
+is exceeded it is repeated once with the key and the analyzed text fields.
+
+A search that fails on some shards (for example on one class index of a search across all indices) still returns the
+results of the other shards. This is logged as a warning with the failure reasons on the `pimcore_generic_data_index`
+log channel.
 
 ## Deployment and Index Management
 
