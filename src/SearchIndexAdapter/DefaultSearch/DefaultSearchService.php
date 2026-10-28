@@ -156,6 +156,39 @@ final class DefaultSearchService implements SearchIndexServiceInterface
      */
     private function copyIntoNewIndex(string $indexName, array $mapping, ?ReindexStripScript $script): ReindexOutcome
     {
+        $outcome = $this->tryCopyIntoNewIndex($indexName, $mapping, $script);
+        if ($outcome !== null) {
+            return $outcome;
+        }
+
+        // Another copy of the same index finished first and switched the alias to the index this one was writing
+        // into. Its result may carry another mapping, so this mapping is applied on top of it with a second copy.
+        $this->logger->notice(sprintf(
+            'Another reindex of "%s" finished first; copying again from its result',
+            $indexName
+        ));
+        $outcome = $this->tryCopyIntoNewIndex($indexName, $mapping, $script);
+        if ($outcome !== null) {
+            return $outcome;
+        }
+
+        throw new ReindexFailedException(sprintf(
+            'Another reindex of "%s" finished first, twice in a row; the alias is intact, retry once the index is idle',
+            $indexName
+        ));
+    }
+
+    /**
+     * One odd/even copy. Null means the copy lost a race: another copy of the same index switched the alias to the
+     * index this one was writing into. That index is live now and is never deleted; the caller copies again from it.
+     *
+     * @throws Exception
+     */
+    private function tryCopyIntoNewIndex(
+        string $indexName,
+        array $mapping,
+        ?ReindexStripScript $script
+    ): ?ReindexOutcome {
         $currentIndexVersion = $this->getCurrentIndexVersion($indexName);
         $newIndexVersion = $currentIndexVersion === self::INDEX_VERSION_EVEN
             ? self::INDEX_VERSION_ODD
@@ -165,6 +198,10 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $newIndexName = $indexName . '-' . $newIndexVersion;
 
         $this->ensureNoActiveReindexTask($newIndexName);
+        if ($this->aliasPointsTo($indexName, $newIndexName)) {
+            // The alias moved since the version was read; the target is the live index.
+            return null;
+        }
         $this->deleteIndex($newIndexName, true);
 
         try {
@@ -205,54 +242,94 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
             $taskStatus = $this->waitForTaskCompletion($taskId);
         } catch (\Throwable $e) {
-            if ($this->cancelTask($taskId)) {
-                $this->deleteIndex($newIndexName, true);
-            } else {
-                $this->logger->warning(sprintf(
-                    'Keeping index "%s": %s may still write into it. The index is cleaned up by the next reindex.',
-                    $newIndexName,
-                    $taskId
-                        ? sprintf('reindex task %s could not be confirmed as cancelled and', $taskId)
-                        : 'the reindex submission was not confirmed, so an unknown task'
-                ));
+            if ($this->abortCopy($indexName, $newIndexName, $taskId, $e)) {
+                return null;
             }
 
             throw $e;
         }
 
+        if ($this->aliasPointsTo($indexName, $newIndexName)) {
+            // Whatever the task reports (cancelled, failures, or a clean copy of a source that vanished
+            // meanwhile), the target is the live index now.
+            $this->logLostRace($indexName, $newIndexName, 'the reindex task ' . $taskId . ' completed');
+
+            return null;
+        }
+
         $this->assertTaskNotCancelled($taskId, $taskStatus, $oldIndexName, $newIndexName);
 
-        // The task is completed at this point, so the new index can be deleted safely.
         $failures = $taskStatus['response']['failures'] ?? [];
         if (!empty($failures)) {
-            $this->deleteIndex($newIndexName, true);
-
-            // Only failures that prove a structural mapping incompatibility (e.g.
-            // after a field type change) are an expected outcome the caller may
-            // answer with an index recreation. Everything else may be transient.
-            if ($this->areMappingIncompatibilityFailures($failures)) {
-                $this->logger->warning(sprintf(
-                    'Reindex from "%s" to "%s" is not possible with the existing documents: %s',
-                    $oldIndexName,
-                    $newIndexName,
-                    json_encode(array_slice($failures, 0, 5), JSON_PARTIAL_OUTPUT_ON_ERROR)
-                ));
-
-                return new ReindexOutcome(
-                    ReindexResult::MAPPING_INCOMPATIBLE,
-                    $this->extractFailingFieldPaths($failures)
-                );
-            }
-
-            throw new ReindexFailedException(
-                'Reindex task completed with failures: '
-                . json_encode(array_slice($failures, 0, 5), JSON_PARTIAL_OUTPUT_ON_ERROR)
-            );
+            return $this->abandonFailedCopy($oldIndexName, $newIndexName, $failures);
         }
 
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
 
         return new ReindexOutcome(ReindexResult::SUCCESS);
+    }
+
+    /**
+     * Cleans up after a copy that ended with an exception. Returns true when the target is the live index
+     * (another copy finished first): then it is kept, and the caller copies again instead of failing.
+     */
+    private function abortCopy(string $aliasName, string $newIndexName, ?string $taskId, \Throwable $e): bool
+    {
+        $cancelled = $this->cancelTask($taskId);
+        if ($this->aliasPointsTo($aliasName, $newIndexName)) {
+            $this->logLostRace($aliasName, $newIndexName, $e->getMessage());
+
+            return true;
+        }
+
+        if ($cancelled) {
+            $this->deleteIndex($newIndexName, true);
+
+            return false;
+        }
+
+        $this->logger->warning(sprintf(
+            'Keeping index "%s": %s may still write into it. The index is cleaned up by the next reindex.',
+            $newIndexName,
+            $taskId
+                ? sprintf('reindex task %s could not be confirmed as cancelled and', $taskId)
+                : 'the reindex submission was not confirmed, so an unknown task'
+        ));
+
+        return false;
+    }
+
+    /**
+     * The task is completed, so the new index can be deleted safely. Only failures that prove a structural
+     * mapping incompatibility (e.g. after a field type change) are an expected outcome the caller may answer
+     * with an index recreation. Everything else may be transient.
+     *
+     * @param array<int, array<string, mixed>> $failures
+     *
+     * @throws ReindexFailedException for failures that are not a mapping incompatibility
+     */
+    private function abandonFailedCopy(string $oldIndexName, string $newIndexName, array $failures): ReindexOutcome
+    {
+        $this->deleteIndex($newIndexName, true);
+
+        if ($this->areMappingIncompatibilityFailures($failures)) {
+            $this->logger->warning(sprintf(
+                'Reindex from "%s" to "%s" is not possible with the existing documents: %s',
+                $oldIndexName,
+                $newIndexName,
+                json_encode(array_slice($failures, 0, 5), JSON_PARTIAL_OUTPUT_ON_ERROR)
+            ));
+
+            return new ReindexOutcome(
+                ReindexResult::MAPPING_INCOMPATIBLE,
+                $this->extractFailingFieldPaths($failures)
+            );
+        }
+
+        throw new ReindexFailedException(
+            'Reindex task completed with failures: '
+            . json_encode(array_slice($failures, 0, 5), JSON_PARTIAL_OUTPUT_ON_ERROR)
+        );
     }
 
     /**
@@ -347,6 +424,24 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 $this->reindexMaxPolls * $this->reindexPollIntervalSeconds
             )
         );
+    }
+
+    /**
+     * Whether the alias points to the given index: then it is the live index, whatever a copy into it reports.
+     */
+    private function aliasPointsTo(string $aliasName, string $indexName): bool
+    {
+        return $this->existsAlias($aliasName, $indexName);
+    }
+
+    private function logLostRace(string $aliasName, string $newIndexName, string $outcome): void
+    {
+        $this->logger->warning(sprintf(
+            'Keeping index "%s": the alias "%s" points to it, another reindex finished first (%s)',
+            $newIndexName,
+            $aliasName,
+            $outcome
+        ));
     }
 
     /**
@@ -917,10 +1012,21 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         // Delete both suffixes to avoid orphaned indices — skip only the newly aliased index
         foreach (['-' . self::INDEX_VERSION_EVEN, '-' . self::INDEX_VERSION_ODD] as $suffix) {
             $candidate = $aliasName . $suffix;
-            if ($candidate !== $newIndexName) {
-                $this->deleteIndex($candidate, true);
+            if ($candidate === $newIndexName) {
+                continue;
             }
-        }
+            if ($this->aliasPointsTo($aliasName, $candidate)) {
+                // A copy that lost the race against this one has already copied again from the result and
+                // switched the alias on; the candidate is the live index now.
+                $this->logger->warning(sprintf(
+                    'Keeping index "%s": the alias "%s" moved on to it meanwhile',
+                    $candidate,
+                    $aliasName
+                ));
 
+                continue;
+            }
+            $this->deleteIndex($candidate, true);
+        }
     }
 }
