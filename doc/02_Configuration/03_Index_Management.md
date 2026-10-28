@@ -128,8 +128,10 @@ for a reindex from the Pimcore database.
 Index mapping is updated automatically e.g. when adding system languages or new fields to the class definition. 
 Sometimes it might be necessary to update the index structure manually.
 
-Do this with the reindex command. This command does native opensearch/elasticsearch re-indexing. So it does not 
-index data from the database but reindexes data within the search indices.
+Do this with the reindex command. This command does native opensearch/elasticsearch re-indexing within the search
+indices. It reads the database only for indices whose copy left out fields after a field type change, that had to be
+created empty, or whose mapping a custom index handler applied: their elements are queued for a rebuild (see
+[Field Type Changes](../03_Reindexing/README.md#field-type-changes)).
 
 ```
 # updates index mapping with native reindexing
@@ -144,9 +146,20 @@ the task has finished. Two options control how long the process waits:
 - **max_polls** (default 720): maximum number of polling attempts before the reindex is aborted
 - **poll_interval** (default 5): seconds to wait between two status polls
 
-With the defaults, a reindex may therefore run for up to one hour (720 × 5 seconds). If reindexing an index takes
-longer than this budget, the command aborts with an error and a non-zero exit code — increase `max_polls` for very
-large indices:
+With the defaults, a reindex may therefore run for up to one hour (720 × 5 seconds) per copy attempt; with the `copy`
+strategy (below), a copy that strips fields after a field type change can take up to 3 attempts. If reindexing an
+index takes longer than this budget, the command aborts with an error and a non-zero exit code — increase `max_polls`
+for very large indices.
+
+A third option decides what happens to documents written under the old mapping when the mapping changes:
+
+- **mapping_change_strategy** (default `recreate`): `recreate` copies the documents as they are and, when their old
+  values don't fit the new mapping (for example text in a field that became numeric), recreates the index empty with
+  the new mapping and queues a rebuild from the database; the index is empty until the messenger workers have
+  processed it. `copy` leaves the fields whose old values don't fit out of the copy, so every document stays in the
+  index while the rebuild refills the changed fields; the index is recreated only as a last resort. See
+  [Field Type Changes](../03_Reindexing/README.md#field-type-changes) for what each strategy means for searches
+  during the rebuild.
 
 ```yaml
 pimcore_generic_data_index:
@@ -154,13 +167,23 @@ pimcore_generic_data_index:
         reindex_settings:
             max_polls: 720
             poll_interval: 5
+            mapping_change_strategy: recreate
 ```
 
 Transient failures while polling (e.g. a temporarily unreachable or overloaded search cluster) are retried and do not
 abort a running reindex. If reindexing fails for a different reason — the cluster is unreachable, the task reports an
 error or times out server-side — the command fails instead of modifying the live index, and the reindex is retried on
-the next run. The index is only recreated (and repopulated via the index queue) when the already indexed documents are
-incompatible with the new mapping, for example after a field type change.
+the next run.
+
+After a field type change, the outcome depends on `mapping_change_strategy`. With the default `recreate`, the
+documents are copied as they are; if their old values don't fit the new mapping, the index is recreated empty and
+search finds nothing for it until the rebuild from the database. With `copy`, the copy keeps the changed fields whose
+old values still fit (for example a number copied into a text field) and leaves out the others, so the documents stay
+searchable; the left-out fields are empty until the rebuild, and the index is only recreated, as a last resort, when
+the copy fails and no further field can be left out. If fields were left out of the copy, the index had to be created empty,
+or a custom index handler applied the mapping, the command queues all elements of that index for a rebuild from the
+database and prints a notice per index. Run the messenger workers to fill these indices. See the
+[Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
 
 ### Handling Failed Messages
 
