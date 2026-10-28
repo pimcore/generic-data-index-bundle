@@ -84,8 +84,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
   (`strict_date_time_no_millis`). The text-based element types (`input`, `textarea`, `html` — including the
   default) keep the existing text/keyword mapping. This makes term filters, aggregations and the Studio grid
   filters work on typed calculated fields.
-- The mapping change is applied by `bin/console generic-data-index:update:index`, which recreates the
-  affected data object indices and queues all elements for re-indexing.
+- The mapping change is applied by `bin/console generic-data-index:update:index`: the search engine rejects the
+  in-place mapping update, so the command copies the affected data object indices (odd/even copy; see the
+  [Reindexing Guide](../03_Reindexing/README.md) for when an index is recreated instead) and queues all elements for
+  re-indexing. On large indices, see the
+  [Operations Guide](../02_Configuration/07_Operations_Guide.md#bundle-upgrades-that-change-mappings).
 
 ## Upgrade to 2026.2.8
 
@@ -95,8 +98,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
   Fields configured as integer are now mapped as `long`, all other ones (including `Slider`) as `double`. This prevents
   exact-match filters on large integers (for example customer or account IDs above 2^24) from returning
   neighbouring values that shared the same rounded `float` representation.
-- The mapping change is applied by `bin/console generic-data-index:update:index`, which recreates the
-  affected data object indices and queues all elements for re-indexing.
+- The mapping change is applied by `bin/console generic-data-index:update:index`: the search engine rejects the
+  in-place mapping update, so the command copies the affected data object indices (odd/even copy; see the
+  [Reindexing Guide](../03_Reindexing/README.md) for when an index is recreated instead) and queues all elements for
+  re-indexing. On large indices, see the
+  [Operations Guide](../02_Configuration/07_Operations_Guide.md#bundle-upgrades-that-change-mappings).
 
 ## Upgrade to 2026.1.0
 

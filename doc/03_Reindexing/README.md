@@ -7,7 +7,8 @@ description: Which changes require a reindex of the Generic Data Index, which ar
 
 This guide describes which changes to a Pimcore installation require a reindex of the Generic Data Index, which of
 them are handled automatically, and which command to run for the rest. For the configuration of indices, the index
-queue and the individual commands see [Index Management](../02_Configuration/03_Index_Management.md).
+queue and the individual commands see [Index Management](../02_Configuration/03_Index_Management.md). For large
+indices, deployments, monitoring and recovery see the [Operations Guide](../02_Configuration/07_Operations_Guide.md).
 
 A reindex is needed in two cases:
 
@@ -138,7 +139,7 @@ flowchart TB
 | `deployment:reindex --all` (or an index option) | — | Indices with a changed mapping or changed settings | If the values don't fit | Indices with a changed mapping or data version | Yes |
 | `update:index` (`-c`, `-a`) | Always | If `PUT _mapping` is rejected | If the values don't fit | Everything in scope | No |
 | `update:index -r` | — | — | Always | Everything in scope | Yes |
-| `generic-data-index:reindex` | — | Every class, asset and document index, forced | If the values don't fit | **Never** | Yes, without downtime |
+| `generic-data-index:reindex` | — | Every class, asset and document index, forced | If the values don't fit | **Never** | Yes; search keeps working, writes during the copy are lost (see below) |
 
 :::warning
 
@@ -200,6 +201,11 @@ The bundle reacts only to Pimcore's class definition add, update and delete even
 - Nothing fires if class files are deployed without running the rebuild, if a file was edited without changing its
   `modificationDate`, or if the database is already current and only the PHP class files are regenerated (for
   example on a second node).
+
+`classes-rebuild` hands the class copies to the messenger workers, while `deployment:reindex` copies in the console
+process. Stop the workers in the process manager before `classes-rebuild`, so that a worker doesn't copy a class
+while `deployment:reindex` copies it too, and start them again afterwards for the rebuild. See the
+[Deployment Procedure](../02_Configuration/07_Operations_Guide.md#deployment-procedure).
 
 Run `deployment:reindex` after every deployment as a safety net. It recalculates every class checksum and reindexes
 only classes that differ or have no stored checksum yet. See [Deployment and Index
@@ -277,7 +283,8 @@ asset metadata is mapped per language as well.
 - **Changed in the system settings (admin UI or Studio):** automatic. The bundle compares the old and new language
   lists and, if they differ, runs a forced odd/even copy of every class, asset and document index, then adds every
   element to the index queue. On large installations this is the most expensive change there is: plan it for a
-  quiet period and run enough messenger workers.
+  quiet period and run enough messenger workers. All copies run one after the other in a single messenger worker,
+  and a failure is only logged; see [What Runs Where](../02_Configuration/07_Operations_Guide.md#what-runs-where).
 - **Only the order changed in the system settings:** this also triggers the full reindex, because the comparison is
   order-sensitive.
 - **Changed in config files or by a deployment** (`pimcore.general.valid_languages`): not automatic. This is the
@@ -365,7 +372,7 @@ picks up the current settings; the in-place update of `update:index` does not.
 
 | Change | Reindex needed? | Command |
 | --- | --- | --- |
-| `index_settings` (`max_result_window`, `index.mapping.total_fields.limit`, analyzers, normalizers, tokenizers) | Yes: new index | `deployment:reindex --all` (odd/even copy, no downtime) or `update:index -r` |
+| `index_settings` (`max_result_window`, `index.mapping.total_fields.limit`, analyzers, normalizers, tokenizers) | Yes: new index | `deployment:reindex --all` (odd/even copy: search keeps working, but writes during the copy are lost, see [Which Trigger Does What](#which-trigger-does-what)) or `update:index -r` |
 | `search_settings.search_analyzer_attributes` | Yes: part of the mapping, changes every checksum | `deployment:reindex --all` |
 | `system_fields_settings` | Yes: mapping | `deployment:reindex --all` |
 | `calculated_fields_index_mode` | Values only | `update:index -c <id>` for the affected classes (optional) |
@@ -390,14 +397,17 @@ These are handled automatically on save, or don't affect the index at all:
 
 ## Commands
 
-The commands only fill the index queue; the documents are written by the messenger workers (see
+The commands run the mapping step (in-place update, odd/even copy or index recreation) in the console process, which
+waits until each copy has finished, and fill the index queue for the rebuild; the documents of the rebuild are written
+by the messenger workers (see
 [Keeping Indices Up to Date](../02_Configuration/03_Index_Management.md#keeping-indices-up-to-date)). Without a
-running worker, nothing is indexed. The automatic reindex after a class save or a language change also runs through
-the queue.
+running worker, nothing is rebuilt. The automatic reindex after a class save or a language change runs entirely in a
+messenger worker, including the copy. See [What Runs Where](../02_Configuration/07_Operations_Guide.md#what-runs-where).
 
 Each command holds a lock against a second run of itself only, and the lock is host-local unless a shared lock
 store is configured. Run the commands one after the other, on one node. All commands exit with a non-zero status
-code on failure.
+code on failure. The locks don't cover copies that messenger workers run after a class save; see the
+[Deployment Procedure](../02_Configuration/07_Operations_Guide.md#deployment-procedure).
 
 ### `generic-data-index:deployment:reindex`
 
@@ -418,7 +428,12 @@ of the selected indices:
 | Index missing | Create the index, then rebuild from the database |
 | No stored value yet | Store the current value as the baseline, no reindex |
 
-Run it with `--all` as part of every deployment, after `pimcore:deployment:classes-rebuild`. It costs nothing when
+Without options, the first class that fails stops the run. With an index option, the command continues with the
+other indices and reports "Finished with errors" at the end. A failed index is retried on the next run.
+
+Run it with `--all` as part of every deployment, after `pimcore:deployment:classes-rebuild`, with the messenger
+workers stopped since before the rebuild (see the
+[Deployment Procedure](../02_Configuration/07_Operations_Guide.md#deployment-procedure)). It costs nothing when
 nothing changed. The first run with an index option only stores the baseline; if that deployment also changes a
 mapping or `index_settings`, run `update:index` or `generic-data-index:reindex` once. `--dry-run` prints the
 detected changes and the planned action per index without changing anything. Details and the `index_versions`
@@ -460,9 +475,11 @@ and the status of every index: `complete`, `rebuilding` with the progress in per
 `incomplete` or `missing` (see [Index Status](../02_Configuration/03_Index_Management.md#index-status)). `--index`
 shows one index, `--json` prints the status for scripts (errors and progress go to stderr), `--check` exits with 1
 while an index is not complete, and `--wait` blocks until it is; both exit with 1 when the status cannot be read. An
-index that exists as both `-even` and `-odd` without a running copy is reported as
-a leftover of an interrupted odd/even copy; such indices are not used by the bundle; remove them with
-`generic-data-index:cleanup:unused-indices` (run `--dry-run` first).
+index that exists as both `-even` and `-odd` without a running copy is reported as a leftover of an interrupted
+odd/even copy; the status checks the search engine's tasks API for a running copy, which on a large index takes hours
+(see [Monitoring a Running Copy](../02_Configuration/07_Operations_Guide.md#monitoring-a-running-copy)). Leftover
+indices are not used by the bundle; remove them with `generic-data-index:cleanup:unused-indices` (run `--dry-run`
+first).
 
 ### Snapshots
 
