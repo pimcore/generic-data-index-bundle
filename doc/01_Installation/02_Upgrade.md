@@ -6,6 +6,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
 # Upgrade Information
 
 ## Upgrade to 2026.3.3
+- [Indexing] Two concurrent mapping updates of the same index (for example two class saves handled by two messenger
+  workers) could delete the live index: both copied into the same target, the first to finish switched the alias to
+  it, and the failing second one cleaned its target up. A copy now never deletes an index the alias points to. When
+  it finds the alias on its target, it logs that another copy finished first and applies its mapping with a second
+  copy from that index ([#641](https://github.com/pimcore/platform-version/issues/641)).
 - [Indexing] New option `index_service.reindex_settings.mapping_change_strategy` (`recreate`, the default, or `copy`)
   decides what happens to the documents of an index when its mapping changes. The default keeps the behaviour of
   previous versions: the documents are copied as they are, and the index is recreated empty when their old values

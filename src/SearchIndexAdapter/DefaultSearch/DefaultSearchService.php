@@ -162,6 +162,39 @@ final class DefaultSearchService implements SearchIndexServiceInterface
      */
     private function copyIntoNewIndex(string $indexName, array $mapping, ?ReindexStripScript $script): ReindexOutcome
     {
+        $outcome = $this->tryCopyIntoNewIndex($indexName, $mapping, $script);
+        if ($outcome !== null) {
+            return $outcome;
+        }
+
+        // Another copy of the same index finished first and switched the alias to the index this one was writing
+        // into. Its result may carry another mapping, so this mapping is applied on top of it with a second copy.
+        $this->logger->notice(sprintf(
+            'Another reindex of "%s" finished first; copying again from its result',
+            $indexName
+        ));
+        $outcome = $this->tryCopyIntoNewIndex($indexName, $mapping, $script);
+        if ($outcome !== null) {
+            return $outcome;
+        }
+
+        throw new ReindexFailedException(sprintf(
+            'Another reindex of "%s" finished first, twice in a row; the alias is intact, retry once the index is idle',
+            $indexName
+        ));
+    }
+
+    /**
+     * One odd/even copy. Null means the copy lost a race: another copy of the same index switched the alias to the
+     * index this one was writing into. That index is live now and is never deleted; the caller copies again from it.
+     *
+     * @throws Exception
+     */
+    private function tryCopyIntoNewIndex(
+        string $indexName,
+        array $mapping,
+        ?ReindexStripScript $script
+    ): ?ReindexOutcome {
         $currentIndexVersion = $this->getCurrentIndexVersion($indexName);
         $newIndexVersion = $currentIndexVersion === self::INDEX_VERSION_EVEN
             ? self::INDEX_VERSION_ODD
@@ -171,6 +204,10 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $newIndexName = $indexName . '-' . $newIndexVersion;
 
         $this->ensureNoActiveReindexTask($newIndexName);
+        if ($this->aliasPointsTo($indexName, $newIndexName)) {
+            // The alias moved since the version was read; the target is the live index.
+            return null;
+        }
         $this->deleteIndex($newIndexName, true);
 
         try {
@@ -211,7 +248,13 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
             $taskStatus = $this->waitForTaskCompletion($taskId);
         } catch (\Throwable $e) {
-            if ($this->cancelTask($taskId)) {
+            $cancelled = $this->cancelTask($taskId);
+            if ($this->aliasPointsTo($indexName, $newIndexName)) {
+                $this->logLostRace($indexName, $newIndexName, $e->getMessage());
+
+                return null;
+            }
+            if ($cancelled) {
                 $this->deleteIndex($newIndexName, true);
             } else {
                 $this->logger->warning(sprintf(
@@ -224,6 +267,14 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             }
 
             throw $e;
+        }
+
+        if ($this->aliasPointsTo($indexName, $newIndexName)) {
+            // Whatever the task reports (cancelled, failures, or a clean copy of a source that vanished
+            // meanwhile), the target is the live index now.
+            $this->logLostRace($indexName, $newIndexName, 'the reindex task ' . $taskId . ' completed');
+
+            return null;
         }
 
         $this->assertTaskNotCancelled($taskId, $taskStatus, $oldIndexName, $newIndexName);
@@ -353,6 +404,24 @@ final class DefaultSearchService implements SearchIndexServiceInterface
                 $this->reindexMaxPolls * $this->reindexPollIntervalSeconds
             )
         );
+    }
+
+    /**
+     * Whether the alias points to the given index: then it is the live index, whatever a copy into it reports.
+     */
+    private function aliasPointsTo(string $aliasName, string $indexName): bool
+    {
+        return $this->existsAlias($aliasName, $indexName);
+    }
+
+    private function logLostRace(string $aliasName, string $newIndexName, string $outcome): void
+    {
+        $this->logger->warning(sprintf(
+            'Keeping index "%s": the alias "%s" points to it, another reindex finished first (%s)',
+            $newIndexName,
+            $aliasName,
+            $outcome
+        ));
     }
 
     /**
