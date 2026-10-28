@@ -219,6 +219,10 @@ PaaS), but a bundle can be turned into a native snapshot once and restored nativ
 The bundle stays the portable, engine-independent format. The native snapshot is tied to one
 engine and version, which is what makes the restore fast.
 
+A snapshot is also the way back before a risky change on a large production index, because the
+bundle keeps no previous index after a copy; see
+[Backups and Rollback](./07_Operations_Guide.md#backups-and-rollback).
+
 ### The installation that imports the bundle
 
 It needs the same Pimcore and Generic Data Index versions, the same class definitions
