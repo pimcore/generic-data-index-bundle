@@ -113,4 +113,27 @@ final class ConfigurationTest extends Unit
             'index_service' => ['reindex_settings' => ['mapping_change_strategy' => 'keep']],
         ]]);
     }
+
+    public function testFullTextSearchFieldsDefaultToEmpty(): void
+    {
+        $config = (new Processor())->processConfiguration(new Configuration(), []);
+
+        $this->assertSame([], $config['index_service']['search_settings']['full_text_search_fields']);
+    }
+
+    public function testFullTextSearchFieldsOverride(): void
+    {
+        $config = (new Processor())->processConfiguration(new Configuration(), [[
+            'index_service' => [
+                'search_settings' => [
+                    'full_text_search_fields' => ['system_fields.key.analyzed', 'standard_fields.sku.keyword'],
+                ],
+            ],
+        ]]);
+
+        $this->assertSame(
+            ['system_fields.key.analyzed', 'standard_fields.sku.keyword'],
+            $config['index_service']['search_settings']['full_text_search_fields']
+        );
+    }
 }

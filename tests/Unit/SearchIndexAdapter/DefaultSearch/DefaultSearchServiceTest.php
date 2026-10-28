@@ -15,14 +15,18 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\De
 
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\FieldExpansionFallback;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Processor\SearchBodyProcessorPipeline;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchRequestExecutor;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\SearchClient\SearchClientInterface;
+use Psr\Log\NullLogger;
 use stdClass;
 
 /**
@@ -352,6 +356,34 @@ final class DefaultSearchServiceTest extends Unit
     /**
      * @param iterable<SearchBodyProcessorInterface> $searchBodyProcessors
      */
+    public function testGetCountIsRepeatedWithExplicitFieldsWhenFieldExpansionFails(): void
+    {
+        $bodies = [];
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                'count' => function (array $params) use (&$bodies) {
+                    $bodies[] = $params['body'];
+                    if (count($bodies) === 1) {
+                        throw new Exception('field expansion matches too many fields, limit: 4096, got: 82499');
+                    }
+
+                    return ['count' => 3];
+                },
+            ])
+        );
+
+        $search = $this->makeEmpty(AdapterSearchInterface::class, [
+            'toArray' => ['query' => ['bool' => ['filter' => ['simple_query_string' => ['query' => 'pro']]]]],
+        ]);
+
+        $this->assertSame(3, $service->getCount($search, 'test_index'));
+        $this->assertCount(2, $bodies);
+        $this->assertSame(
+            FieldExpansionFallback::FIELDS,
+            $bodies[1]['query']['bool']['filter']['simple_query_string']['fields']
+        );
+    }
+
     private function createService(
         ?SearchIndexConfigServiceInterface $configService = null,
         ?SearchExecutionServiceInterface $searchExecutionService = null,
@@ -368,6 +400,10 @@ final class DefaultSearchServiceTest extends Unit
             $client ?? $this->makeEmpty(SearchClientInterface::class),
             $reindexMaxPolls,
             $reindexPollIntervalSeconds,
+            new SearchRequestExecutor(
+                $this->makeEmpty(SearchIndexConfigServiceInterface::class, ['getSearchSettings' => []]),
+                new NullLogger(),
+            ),
             new SearchBodyProcessorPipeline($searchBodyProcessors),
         );
     }

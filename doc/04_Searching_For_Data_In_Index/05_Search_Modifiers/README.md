@@ -69,6 +69,7 @@ is the primary sort, the second is the secondary sort, and so on.
 | Modifier | Category | Description |
 |----------|----------|-------------|
 | [OrderByFullPath](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Sort/Tree/OrderByFullPath.php) | Tree | Sort by full path (including element key) |
+| [OrderByFoldersFirst](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Sort/Tree/OrderByFoldersFirst.php) | Tree | Sort folders before all other elements (like the asset tree does). Add it before other sort modifiers such as `OrderByFullPath`, which then sort within the folders and within the other elements. |
 | [OrderByField](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Sort/OrderByField.php) | Field | Sort by field name. With `$enablePqlFieldNameResolution` set to `true` (default), short field names resolve automatically via PQL logic. |
 | [OrderByPageNumber](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Sort/OrderByPageNumber.php) | Search | Inverted search for large result sets. Applied automatically when results exceed 1,000 and the current page is past the halfway point. Requires existing sorting. |
 | [OrderByIndexField](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Sort/Tree/OrderByIndexField.php) | Search | Sort by element tree index for custom tree ordering. Applies to data objects and documents only. |
