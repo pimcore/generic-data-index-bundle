@@ -248,22 +248,8 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
             $taskStatus = $this->waitForTaskCompletion($taskId);
         } catch (\Throwable $e) {
-            $cancelled = $this->cancelTask($taskId);
-            if ($this->aliasPointsTo($indexName, $newIndexName)) {
-                $this->logLostRace($indexName, $newIndexName, $e->getMessage());
-
+            if ($this->abortCopy($indexName, $newIndexName, $taskId, $e)) {
                 return null;
-            }
-            if ($cancelled) {
-                $this->deleteIndex($newIndexName, true);
-            } else {
-                $this->logger->warning(sprintf(
-                    'Keeping index "%s": %s may still write into it. The index is cleaned up by the next reindex.',
-                    $newIndexName,
-                    $taskId
-                        ? sprintf('reindex task %s could not be confirmed as cancelled and', $taskId)
-                        : 'the reindex submission was not confirmed, so an unknown task'
-                ));
             }
 
             throw $e;
@@ -279,37 +265,77 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
         $this->assertTaskNotCancelled($taskId, $taskStatus, $oldIndexName, $newIndexName);
 
-        // The task is completed at this point, so the new index can be deleted safely.
         $failures = $taskStatus['response']['failures'] ?? [];
         if (!empty($failures)) {
-            $this->deleteIndex($newIndexName, true);
-
-            // Only failures that prove a structural mapping incompatibility (e.g.
-            // after a field type change) are an expected outcome the caller may
-            // answer with an index recreation. Everything else may be transient.
-            if ($this->areMappingIncompatibilityFailures($failures)) {
-                $this->logger->warning(sprintf(
-                    'Reindex from "%s" to "%s" is not possible with the existing documents: %s',
-                    $oldIndexName,
-                    $newIndexName,
-                    json_encode(array_slice($failures, 0, 5), JSON_PARTIAL_OUTPUT_ON_ERROR)
-                ));
-
-                return new ReindexOutcome(
-                    ReindexResult::MAPPING_INCOMPATIBLE,
-                    $this->extractFailingFieldPaths($failures)
-                );
-            }
-
-            throw new ReindexFailedException(
-                'Reindex task completed with failures: '
-                . json_encode(array_slice($failures, 0, 5), JSON_PARTIAL_OUTPUT_ON_ERROR)
-            );
+            return $this->abandonFailedCopy($oldIndexName, $newIndexName, $failures);
         }
 
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
 
         return new ReindexOutcome(ReindexResult::SUCCESS);
+    }
+
+    /**
+     * Cleans up after a copy that ended with an exception. Returns true when the target is the live index
+     * (another copy finished first): then it is kept, and the caller copies again instead of failing.
+     */
+    private function abortCopy(string $aliasName, string $newIndexName, ?string $taskId, \Throwable $e): bool
+    {
+        $cancelled = $this->cancelTask($taskId);
+        if ($this->aliasPointsTo($aliasName, $newIndexName)) {
+            $this->logLostRace($aliasName, $newIndexName, $e->getMessage());
+
+            return true;
+        }
+
+        if ($cancelled) {
+            $this->deleteIndex($newIndexName, true);
+
+            return false;
+        }
+
+        $this->logger->warning(sprintf(
+            'Keeping index "%s": %s may still write into it. The index is cleaned up by the next reindex.',
+            $newIndexName,
+            $taskId
+                ? sprintf('reindex task %s could not be confirmed as cancelled and', $taskId)
+                : 'the reindex submission was not confirmed, so an unknown task'
+        ));
+
+        return false;
+    }
+
+    /**
+     * The task is completed, so the new index can be deleted safely. Only failures that prove a structural
+     * mapping incompatibility (e.g. after a field type change) are an expected outcome the caller may answer
+     * with an index recreation. Everything else may be transient.
+     *
+     * @param array<int, array<string, mixed>> $failures
+     *
+     * @throws ReindexFailedException for failures that are not a mapping incompatibility
+     */
+    private function abandonFailedCopy(string $oldIndexName, string $newIndexName, array $failures): ReindexOutcome
+    {
+        $this->deleteIndex($newIndexName, true);
+
+        if ($this->areMappingIncompatibilityFailures($failures)) {
+            $this->logger->warning(sprintf(
+                'Reindex from "%s" to "%s" is not possible with the existing documents: %s',
+                $oldIndexName,
+                $newIndexName,
+                json_encode(array_slice($failures, 0, 5), JSON_PARTIAL_OUTPUT_ON_ERROR)
+            ));
+
+            return new ReindexOutcome(
+                ReindexResult::MAPPING_INCOMPATIBLE,
+                $this->extractFailingFieldPaths($failures)
+            );
+        }
+
+        throw new ReindexFailedException(
+            'Reindex task completed with failures: '
+            . json_encode(array_slice($failures, 0, 5), JSON_PARTIAL_OUTPUT_ON_ERROR)
+        );
     }
 
     /**
@@ -1029,10 +1055,21 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         // Delete both suffixes to avoid orphaned indices — skip only the newly aliased index
         foreach (['-' . self::INDEX_VERSION_EVEN, '-' . self::INDEX_VERSION_ODD] as $suffix) {
             $candidate = $aliasName . $suffix;
-            if ($candidate !== $newIndexName) {
-                $this->deleteIndex($candidate, true);
+            if ($candidate === $newIndexName) {
+                continue;
             }
-        }
+            if ($this->aliasPointsTo($aliasName, $candidate)) {
+                // A copy that lost the race against this one has already copied again from the result and
+                // switched the alias on; the candidate is the live index now.
+                $this->logger->warning(sprintf(
+                    'Keeping index "%s": the alias "%s" moved on to it meanwhile',
+                    $candidate,
+                    $aliasName
+                ));
 
+                continue;
+            }
+            $this->deleteIndex($candidate, true);
+        }
     }
 }

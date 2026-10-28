@@ -1164,8 +1164,14 @@ final class DefaultSearchServiceReindexTest extends Unit
             }
         );
         $aliasService = $this->makeEmpty(IndexAliasServiceInterface::class, [
-            'existsAlias' => static function (string $aliasName, ?string $indexName = null) use (&$aliasedIndex): bool {
-                return $aliasedIndex !== null && ($indexName === null || $indexName === $aliasedIndex);
+            'existsAlias' => static function (
+                string $aliasName,
+                ?string $indexName = null
+            ) use (&$aliasedIndex, &$client): bool {
+                // The second copy of this service switches the alias on to test_index-odd.
+                $liveIndex = $client->aliasSwitchCalls > 0 ? 'test_index-odd' : $aliasedIndex;
+
+                return $liveIndex !== null && ($indexName === null || $indexName === $liveIndex);
             },
         ]);
 
@@ -1217,6 +1223,43 @@ final class DefaultSearchServiceReindexTest extends Unit
                 'response' => ['timed_out' => false, 'failures' => []],
             ]],
         ];
+    }
+
+    /**
+     * The copy that lost the race copies again from the winner's result and switches the alias on, possibly
+     * before the winner got to its cleanup. The winner's cleanup must then keep the index the alias moved on to.
+     */
+    public function testTheCleanupAfterTheAliasSwitchKeepsAnIndexTheAliasMovedOnTo(): void
+    {
+        $deletedIndices = [];
+        $client = null;
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [
+                ['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]],
+            ],
+            withAliasSwitchSupport: true,
+            onDeleteIndex: static function (array $params) use (&$deletedIndices): array {
+                $deletedIndices[] = $params['index'];
+
+                return [];
+            }
+        );
+        // Once this copy switched the alias to test_index-even, the other copy switches it on to test_index-odd.
+        $aliasService = $this->makeEmpty(IndexAliasServiceInterface::class, [
+            'existsAlias' => static function (string $aliasName, ?string $indexName = null) use (&$client): bool {
+                return $indexName === 'test_index-odd' && $client->aliasSwitchCalls > 0;
+            },
+        ]);
+
+        $result = $this->createService(client: $client, indexAliasService: $aliasService)->reindex('test_index', []);
+
+        $this->assertSame(ReindexResult::SUCCESS, $result);
+        $this->assertSame(
+            ['test_index-even'],
+            $deletedIndices,
+            'Only the delete-first creation of the target; the cleanup must keep the live test_index-odd'
+        );
     }
 
     public function testACopyNeverStartsOverTheLiveIndexAndGivesUpAfterTwoLostRaces(): void
