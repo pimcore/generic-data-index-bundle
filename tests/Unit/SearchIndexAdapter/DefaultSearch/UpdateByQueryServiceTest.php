@@ -15,9 +15,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\De
 
 use Codeception\Test\Unit;
 use Exception;
+use OpenSearch\Client;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\BulkOperationException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\UpdateByQueryService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\OpenSearchClientBundle\SearchClient\OpenSearchClientInterface;
 use Pimcore\SearchClient\Exception\ClientException;
 use Pimcore\SearchClient\SearchClientInterface;
 use Psr\Log\NullLogger;
@@ -42,6 +44,12 @@ final class UpdateByQueryServiceTest extends Unit
 
     /** @var array<int, array> */
     private array $refreshes = [];
+
+    /** @var array<int, array> */
+    private array $scrolls = [];
+
+    /** @var array<int, array> */
+    private array $clearedScrolls = [];
 
     public function testUsesTheNativeApiByDefault(): void
     {
@@ -193,6 +201,98 @@ final class UpdateByQueryServiceTest extends Unit
         $this->assertSame(1, $this->nativeCalls);
     }
 
+    public function testReadsAllPagesFromOneScrollAndClearsItAfterwards(): void
+    {
+        $service = $this->createService(
+            [[$this->hit(1), $this->hit(2)], [$this->hit(3)]],
+            emulationConfigured: true,
+            scrollClient: true
+        );
+
+        $service->updateByQuery($this->params(), $this->setKey(...));
+
+        $this->assertCount(1, $this->searches);
+        $this->assertSame('idx', $this->searches[0]['index']);
+        $this->assertSame('5m', $this->searches[0]['scroll']);
+        $this->assertSame(['_doc'], $this->searches[0]['body']['sort']);
+        $this->assertTrue($this->searches[0]['body']['seq_no_primary_term']);
+        $this->assertSame(['term' => ['system_fields.key' => 'old']], $this->searches[0]['body']['query']);
+
+        // the second page and the empty third one come from the same scroll
+        $this->assertSame(
+            [
+                ['body' => ['scroll_id' => 'scroll-1', 'scroll' => '5m']],
+                ['body' => ['scroll_id' => 'scroll-2', 'scroll' => '5m']],
+            ],
+            $this->scrolls
+        );
+        $this->assertCount(2, $this->bulks);
+        $this->assertSame('3', $this->bulks[1]['body'][0]['index']['_id']);
+        $this->assertSame([['body' => ['scroll_id' => 'scroll-3']]], $this->clearedScrolls);
+        $this->assertSame([['index' => 'idx']], $this->refreshes);
+    }
+
+    public function testClearsTheScrollWhenWritingAPageFails(): void
+    {
+        $service = $this->createService(
+            [[$this->hit(1)], [$this->hit(2)]],
+            emulationConfigured: true,
+            bulkResponse: $this->bulkResponse(['_id' => '1', 'status' => 400, 'error' => ['type' => 'mapper_parsing_exception']]),
+            scrollClient: true
+        );
+
+        try {
+            $service->updateByQuery($this->params(), $this->setKey(...));
+            $this->fail('The bulk failure was swallowed.');
+        } catch (BulkOperationException) {
+        }
+
+        $this->assertSame([], $this->scrolls);
+        $this->assertSame([['body' => ['scroll_id' => 'scroll-1']]], $this->clearedScrolls);
+    }
+
+    /**
+     * @return array<string, array{array, string, bool}>
+     */
+    public function partialResponses(): array
+    {
+        $timedOut = ['timed_out' => true];
+        $failedShards = ['_shards' => ['total' => 2, 'successful' => 1, 'failed' => 1]];
+
+        return [
+            'timed out, scroll' => [$timedOut, 'timed out', true],
+            'failed shards, scroll' => [$failedShards, '1 shard(s) failed', true],
+            'timed out, search_after' => [$timedOut, 'timed out', false],
+            'failed shards, search_after' => [$failedShards, '1 shard(s) failed', false],
+        ];
+    }
+
+    /**
+     * @dataProvider partialResponses
+     */
+    public function testRejectsAPartialPageBeforeWritingAnything(
+        array $partial,
+        string $message,
+        bool $scrollClient
+    ): void {
+        $service = $this->createService(
+            [[$this->hit(1), $this->hit(2)]],
+            emulationConfigured: true,
+            scrollClient: $scrollClient,
+            responseOverrides: $partial
+        );
+
+        try {
+            $service->updateByQuery($this->params(), $this->setKey(...));
+            $this->fail('The partial page was accepted.');
+        } catch (BulkOperationException $exception) {
+            $this->assertStringContainsString($message, $exception->getMessage());
+        }
+
+        $this->assertSame([], $this->bulks);
+        $this->assertSame([], $this->refreshes);
+    }
+
     private function setKey(array $source): array
     {
         $source['system_fields']['key'] = 'new';
@@ -242,15 +342,25 @@ final class UpdateByQueryServiceTest extends Unit
     }
 
     /**
-     * @param array<int, array> $pages the hits the successive searches return
+     * @param array<int, array> $pages the hits the successive pages return
+     * @param bool $scrollClient whether the client exposes the scroll API (as the bundled clients do)
+     * @param array $responseOverrides merged into every search and scroll response
      */
     private function createService(
         array $pages,
         bool $emulationConfigured = false,
         ?Exception $nativeFailure = null,
         array $bulkResponse = ['errors' => false, 'items' => []],
+        bool $scrollClient = false,
+        array $responseOverrides = [],
     ): UpdateByQueryService {
-        $client = $this->makeEmpty(SearchClientInterface::class, [
+        $page = fn (int $number): array => array_replace(
+            ['hits' => ['hits' => $pages[$number] ?? []]],
+            $scrollClient ? ['_scroll_id' => 'scroll-' . ($number + 1)] : [],
+            $responseOverrides
+        );
+
+        $methods = [
             'updateByQuery' => function () use ($nativeFailure): array {
                 $this->nativeCalls++;
 
@@ -260,10 +370,10 @@ final class UpdateByQueryServiceTest extends Unit
 
                 return [];
             },
-            'search' => function (array $params) use ($pages): array {
+            'search' => function (array $params) use ($page): array {
                 $this->searches[] = $params;
 
-                return ['hits' => ['hits' => $pages[count($this->searches) - 1] ?? []]];
+                return $page(count($this->searches) - 1);
             },
             'bulk' => function (array $params) use ($bulkResponse): array {
                 $this->bulks[] = $params;
@@ -275,7 +385,27 @@ final class UpdateByQueryServiceTest extends Unit
 
                 return [];
             },
-        ]);
+        ];
+
+        if ($scrollClient) {
+            $methods['getOriginalClient'] = $this->makeEmpty(Client::class, [
+                'scroll' => function (array $params = []) use ($page): array {
+                    $this->scrolls[] = $params;
+
+                    return $page(count($this->scrolls));
+                },
+                'clearScroll' => function (array $params = []): array {
+                    $this->clearedScrolls[] = $params;
+
+                    return ['succeeded' => true];
+                },
+            ]);
+        }
+
+        $client = $this->makeEmpty(
+            $scrollClient ? OpenSearchClientInterface::class : SearchClientInterface::class,
+            $methods
+        );
 
         $service = new UpdateByQueryService(
             $client,

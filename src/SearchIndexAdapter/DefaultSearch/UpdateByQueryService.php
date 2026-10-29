@@ -33,6 +33,12 @@ final class UpdateByQueryService implements UpdateByQueryServiceInterface
     /** Documents per search/bulk round trip of the emulation. */
     private const int BATCH_SIZE = 500;
 
+    /**
+     * How long the cluster keeps the scroll snapshot between two pages - the default of the native API, which
+     * pages with a scroll, too.
+     */
+    private const string SCROLL_KEEP_ALIVE = '5m';
+
     /** Bulk item failures quoted in the exception message. */
     private const int MAX_REPORTED_FAILURES = 5;
 
@@ -44,6 +50,7 @@ final class UpdateByQueryService implements UpdateByQueryServiceInterface
     public function __construct(
         private readonly SearchClientInterface $client,
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
+        private readonly int $batchSize = self::BATCH_SIZE,
     ) {
     }
 
@@ -87,26 +94,96 @@ final class UpdateByQueryService implements UpdateByQueryServiceInterface
     }
 
     /**
-     * Pages through the matching documents with search_after and writes the transformed sources back in bulk.
-     * Each request is short, so neither a proxy timeout nor a long-running task is involved. Sorting by the
-     * element id keeps the paging stable while documents change: an id is unique within an element type, so
-     * also across the indices behind an alias, and documents that stop matching the query once they are
-     * written are behind the cursor already.
+     * Reads the matching documents page by page and writes the transformed sources back in bulk. Each request
+     * is short, so neither a proxy timeout nor a long-running task is involved.
      *
      * @throws BulkOperationException
      */
     private function emulate(array $params, callable $transform): void
     {
         $index = $params['index'];
+        $query = $params['body']['query'] ?? ['match_all' => new stdClass()];
         $proceedOnConflicts = ($params['conflicts'] ?? null) === 'proceed';
+
+        $writePage = function (array $hits) use ($index, $transform, $proceedOnConflicts): void {
+            $operations = $this->buildWriteOperations($hits, $transform);
+
+            if ($operations !== []) {
+                $this->assertBulkSucceeded($index, $this->client->bulk(['body' => $operations]), $proceedOnConflicts);
+            }
+        };
+
+        $originalClient = $this->getScrollClient();
+
+        if ($originalClient !== null) {
+            $this->pageWithScroll($originalClient, $index, $query, $writePage);
+        } else {
+            $this->pageWithSearchAfter($index, $query, $writePage);
+        }
+
+        if ($params['refresh'] ?? false) {
+            $this->client->refreshIndex(['index' => $index]);
+        }
+    }
+
+    /**
+     * Reads all pages from one scroll, i.e. from the snapshot the cluster takes for the first page, as the
+     * native API does. A document changed after that still comes with the sequence number it had then, so
+     * writing it back is a version conflict instead of overwriting the change. The scroll is cleared however
+     * the run ends.
+     *
+     * @param callable(array): void $writePage
+     *
+     * @throws BulkOperationException
+     */
+    private function pageWithScroll(object $originalClient, string $index, array $query, callable $writePage): void
+    {
+        $response = $this->client->search([
+            'index' => $index,
+            'scroll' => self::SCROLL_KEEP_ALIVE,
+            'body' => [
+                'size' => $this->batchSize,
+                'seq_no_primary_term' => true,
+                'query' => $query,
+                'sort' => ['_doc'],
+            ],
+        ]);
+        $scrollId = $response['_scroll_id'] ?? null;
+
+        try {
+            while (($hits = $this->getCompleteHits($index, $response)) !== []) {
+                $writePage($hits);
+
+                $response = $this->toArray($index, $originalClient->scroll([
+                    'body' => ['scroll_id' => $scrollId, 'scroll' => self::SCROLL_KEEP_ALIVE],
+                ]));
+                $scrollId = $response['_scroll_id'] ?? $scrollId;
+            }
+        } finally {
+            $this->clearScroll($originalClient, $scrollId);
+        }
+    }
+
+    /**
+     * Fallback for a client that does not expose the scroll API. Pages with search_after, sorted by the element
+     * id: an id is unique within an element type, so also across the indices behind an alias, and documents
+     * that stop matching the query once they are written are behind the cursor already. There is no snapshot,
+     * though: a document changed before its page is read is read - and written - in its changed state.
+     *
+     * @param callable(array): void $writePage
+     *
+     * @throws BulkOperationException
+     */
+    private function pageWithSearchAfter(string $index, array $query, callable $writePage): void
+    {
         $searchAfter = null;
 
         do {
             $body = [
-                'size' => self::BATCH_SIZE,
+                'size' => $this->batchSize,
                 'track_total_hits' => false,
                 'seq_no_primary_term' => true,
-                'query' => $params['body']['query'] ?? ['match_all' => new stdClass()],
+                'query' => $query,
                 'sort' => [[SystemField::ID->getPath() => ['order' => 'asc']]],
             ];
 
@@ -114,35 +191,13 @@ final class UpdateByQueryService implements UpdateByQueryServiceInterface
                 $body['search_after'] = $searchAfter;
             }
 
-            $hits = $this->client->search(['index' => $index, 'body' => $body])['hits']['hits'] ?? [];
+            $hits = $this->getCompleteHits($index, $this->client->search(['index' => $index, 'body' => $body]));
 
             if ($hits === []) {
-                break;
+                return;
             }
 
-            $operations = [];
-            foreach ($hits as $hit) {
-                $source = $hit['_source'] ?? [];
-                $newSource = $transform($source);
-
-                if ($newSource === $source) {
-                    continue;
-                }
-
-                $operations[] = [
-                    'index' => [
-                        '_index' => $hit['_index'],
-                        '_id' => $hit['_id'],
-                        'if_seq_no' => $hit['_seq_no'],
-                        'if_primary_term' => $hit['_primary_term'],
-                    ],
-                ];
-                $operations[] = $newSource;
-            }
-
-            if ($operations !== []) {
-                $this->assertBulkSucceeded($index, $this->client->bulk(['body' => $operations]), $proceedOnConflicts);
-            }
+            $writePage($hits);
 
             $nextSearchAfter = $hits[array_key_last($hits)]['sort'] ?? null;
 
@@ -154,10 +209,122 @@ final class UpdateByQueryService implements UpdateByQueryServiceInterface
             }
 
             $searchAfter = $nextSearchAfter;
-        } while (count($hits) === self::BATCH_SIZE);
+        } while (count($hits) === $this->batchSize);
+    }
 
-        if ($params['refresh'] ?? false) {
-            $this->client->refreshIndex(['index' => $index]);
+    /**
+     * @param callable(array): array $transform
+     */
+    private function buildWriteOperations(array $hits, callable $transform): array
+    {
+        $operations = [];
+
+        foreach ($hits as $hit) {
+            $source = $hit['_source'] ?? [];
+            $newSource = $transform($source);
+
+            if ($newSource === $source) {
+                continue;
+            }
+
+            $operations[] = [
+                'index' => [
+                    '_index' => $hit['_index'],
+                    '_id' => $hit['_id'],
+                    'if_seq_no' => $hit['_seq_no'],
+                    'if_primary_term' => $hit['_primary_term'],
+                ],
+            ];
+            $operations[] = $newSource;
+        }
+
+        return $operations;
+    }
+
+    /**
+     * A page can come back with HTTP 200 and still be partial: timed out, or without the hits of failed
+     * shards. Writing it and moving on would leave the omitted documents unchanged without any error.
+     *
+     * @throws BulkOperationException
+     */
+    private function getCompleteHits(string $index, array $response): array
+    {
+        if (($response['timed_out'] ?? false) === true) {
+            throw new BulkOperationException(sprintf(
+                'Emulated update by query on "%s" aborted: the search timed out and returned a partial page.',
+                $index
+            ));
+        }
+
+        $failedShards = (int) ($response['_shards']['failed'] ?? 0);
+
+        if ($failedShards > 0) {
+            throw new BulkOperationException(sprintf(
+                'Emulated update by query on "%s" aborted: %d shard(s) failed, the page is partial.',
+                $index,
+                $failedShards
+            ));
+        }
+
+        return $response['hits']['hits'] ?? [];
+    }
+
+    /**
+     * The scroll API is not part of SearchClientInterface. The bundled OpenSearch and Elasticsearch clients
+     * expose the client they wrap, which has it.
+     */
+    private function getScrollClient(): ?object
+    {
+        if (!is_callable([$this->client, 'getOriginalClient'])) {
+            return null;
+        }
+
+        $originalClient = $this->client->getOriginalClient();
+
+        if (!is_object($originalClient)
+            || !method_exists($originalClient, 'scroll')
+            || !method_exists($originalClient, 'clearScroll')
+        ) {
+            return null;
+        }
+
+        return $originalClient;
+    }
+
+    /**
+     * The Elasticsearch client answers with a response object, the OpenSearch client with an array.
+     *
+     * @throws BulkOperationException
+     */
+    private function toArray(string $index, mixed $response): array
+    {
+        if (is_object($response) && method_exists($response, 'asArray')) {
+            $response = $response->asArray();
+        }
+
+        if (!is_array($response)) {
+            throw new BulkOperationException(sprintf(
+                'Emulated update by query on "%s" got an unexpected scroll response of type %s.',
+                $index,
+                get_debug_type($response)
+            ));
+        }
+
+        return $response;
+    }
+
+    private function clearScroll(object $originalClient, ?string $scrollId): void
+    {
+        if ($scrollId === null) {
+            return;
+        }
+
+        try {
+            $originalClient->clearScroll(['body' => ['scroll_id' => $scrollId]]);
+        } catch (Throwable $exception) {
+            // The cluster drops the scroll itself once its keep-alive expires.
+            $this->logger->warning('Could not clear the scroll of an emulated update by query: '
+                . $exception->getMessage());
         }
     }
 
@@ -210,7 +377,7 @@ final class UpdateByQueryService implements UpdateByQueryServiceInterface
     {
         for ($current = $exception; $current !== null; $current = $current->getPrevious()) {
             if ($current->getCode() === 403
-                || preg_match('/"status"\s*:\s*403\b|\b403 Forbidden\b/', $current->getMessage()) === 1
+                || preg_match('/"status"\s*:\s*403\b|\b403 Forbidden\b/u', $current->getMessage()) === 1
             ) {
                 return true;
             }

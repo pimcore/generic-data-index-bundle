@@ -31,14 +31,14 @@ interface UpdateByQueryServiceInterface
      * The emulation does not run the painless script of $params. It pages through the documents matching
      * $params['body']['query'] and writes back what $transform returns for each document's _source, so
      * $transform has to make the same change as the script. Documents it returns unchanged are not written.
-     * Like the native API it uses optimistic concurrency control: a document changed between reading and
-     * writing it is a version conflict, skipped with $params['conflicts'] = 'proceed' and a failure
-     * otherwise.
+     * Like the native API it reads from a scroll snapshot and uses optimistic concurrency control: a document
+     * changed after the snapshot was taken is a version conflict, skipped with $params['conflicts'] = 'proceed'
+     * and a failure otherwise. A partial search response (timed out, failed shards) fails the run.
      *
      * @param array $params the parameters SearchClientInterface::updateByQuery() takes
      * @param callable(array): array $transform
      *
-     * @throws BulkOperationException if the emulation fails to write documents
+     * @throws BulkOperationException if the emulation fails to read or write documents
      */
     public function updateByQuery(array $params, callable $transform): void;
 
