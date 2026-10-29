@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\De
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\ElementLockService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\LockedElementsCache;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\UpdateByQueryServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\PathService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AbstractElementTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
@@ -126,7 +127,6 @@ final class ElementLockServiceTest extends Unit
         $total = $totalLocks >= 0 ? $totalLocks : count($locks);
 
         $client = $this->makeEmpty(SearchClientInterface::class, [
-            'updateByQuery' => [],
             'search' => function (array $params) use ($hits, $total, $perElementCount): array {
                 $this->searches[] = $params;
 
@@ -151,6 +151,7 @@ final class ElementLockServiceTest extends Unit
                 'getIndexName' => static fn (string $name) => 'pimcore_' . $name,
             ]),
             $cache ?? new LockedElementsCache(),
+            $this->makeEmpty(UpdateByQueryServiceInterface::class),
         );
     }
 }

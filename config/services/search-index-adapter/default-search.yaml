@@ -38,6 +38,11 @@ services:
         arguments:
             $client: "@generic-data-index.search-client"
 
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\UpdateByQueryServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\UpdateByQueryService
+        arguments:
+            $client: "@generic-data-index.search-client"
+
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\PathService
         arguments:
@@ -92,5 +97,3 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\IndexIconUpdateService
-        arguments:
-            $client: "@generic-data-index.search-client"
