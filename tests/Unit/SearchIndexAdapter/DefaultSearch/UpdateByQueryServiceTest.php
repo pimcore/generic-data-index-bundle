@@ -251,6 +251,49 @@ final class UpdateByQueryServiceTest extends Unit
         $this->assertSame([['body' => ['scroll_id' => 'scroll-1']]], $this->clearedScrolls);
     }
 
+    public function testPagesWithSearchAfterOnceTheClusterRefusesToScroll(): void
+    {
+        $service = $this->createService(
+            [[$this->hit(1)], [$this->hit(1)]],
+            emulationConfigured: true,
+            scrollClient: true,
+            scrollFailure: new ClientException('Failed to search data: {"error":{"type":"security_exception"},"status":403}')
+        );
+
+        $service->updateByQuery($this->params(), $this->setKey(...));
+        $service->updateByQuery($this->params(), $this->setKey(...));
+
+        // one refused scroll, then search_after for both requests
+        $this->assertCount(3, $this->searches);
+        $this->assertSame('5m', $this->searches[0]['scroll']);
+        $this->assertArrayNotHasKey('scroll', $this->searches[1]);
+        $this->assertArrayNotHasKey('scroll', $this->searches[2]);
+        $this->assertSame([['system_fields.id' => ['order' => 'asc']]], $this->searches[2]['body']['sort']);
+        $this->assertCount(2, $this->bulks);
+        $this->assertSame([], $this->clearedScrolls);
+    }
+
+    public function testRethrowsOtherFailuresToOpenTheScroll(): void
+    {
+        $failure = new ClientException('Failed to search data: {"error":{"type":"search_phase_execution_exception"},"status":400}');
+        $service = $this->createService(
+            [[$this->hit(1)]],
+            emulationConfigured: true,
+            scrollClient: true,
+            scrollFailure: $failure
+        );
+
+        try {
+            $service->updateByQuery($this->params(), $this->setKey(...));
+            $this->fail('The scroll failure was swallowed.');
+        } catch (ClientException $exception) {
+            $this->assertSame($failure, $exception);
+        }
+
+        $this->assertCount(1, $this->searches);
+        $this->assertSame([], $this->bulks);
+    }
+
     /**
      * @return array<string, array{array, string, bool}>
      */
@@ -345,6 +388,7 @@ final class UpdateByQueryServiceTest extends Unit
      * @param array<int, array> $pages the hits the successive pages return
      * @param bool $scrollClient whether the client exposes the scroll API (as the bundled clients do)
      * @param array $responseOverrides merged into every search and scroll response
+     * @param ?Exception $scrollFailure thrown by a search that opens a scroll
      */
     private function createService(
         array $pages,
@@ -353,6 +397,7 @@ final class UpdateByQueryServiceTest extends Unit
         array $bulkResponse = ['errors' => false, 'items' => []],
         bool $scrollClient = false,
         array $responseOverrides = [],
+        ?Exception $scrollFailure = null,
     ): UpdateByQueryService {
         $page = fn (int $number): array => array_replace(
             ['hits' => ['hits' => $pages[$number] ?? []]],
@@ -370,10 +415,17 @@ final class UpdateByQueryServiceTest extends Unit
 
                 return [];
             },
-            'search' => function (array $params) use ($page): array {
+            'search' => function (array $params) use ($page, $scrollFailure): array {
                 $this->searches[] = $params;
 
-                return $page(count($this->searches) - 1);
+                if ($scrollFailure !== null && isset($params['scroll'])) {
+                    throw $scrollFailure;
+                }
+
+                // a search opening a scroll answers with the first page, search_after searches page on from there
+                $searchAfterSearches = array_filter($this->searches, fn (array $search): bool => !isset($search['scroll']));
+
+                return $page(isset($params['scroll']) ? 0 : count($searchAfterSearches) - 1);
             },
             'bulk' => function (array $params) use ($bulkResponse): array {
                 $this->bulks[] = $params;

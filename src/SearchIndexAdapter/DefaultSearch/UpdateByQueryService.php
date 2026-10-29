@@ -47,6 +47,9 @@ final class UpdateByQueryService implements UpdateByQueryServiceInterface
     /** Set once the cluster refused _update_by_query, so that each later request skips the native attempt. */
     private bool $nativeApiForbidden = false;
 
+    /** Set once the cluster refused to open a scroll, so that each later emulation pages with search_after. */
+    private bool $scrollForbidden = false;
+
     public function __construct(
         private readonly SearchClientInterface $client,
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
@@ -113,11 +116,9 @@ final class UpdateByQueryService implements UpdateByQueryServiceInterface
             }
         };
 
-        $originalClient = $this->getScrollClient();
+        $originalClient = $this->scrollForbidden ? null : $this->getScrollClient();
 
-        if ($originalClient !== null) {
-            $this->pageWithScroll($originalClient, $index, $query, $writePage);
-        } else {
+        if ($originalClient === null || !$this->pageWithScroll($originalClient, $index, $query, $writePage)) {
             $this->pageWithSearchAfter($index, $query, $writePage);
         }
 
@@ -134,20 +135,39 @@ final class UpdateByQueryService implements UpdateByQueryServiceInterface
      *
      * @param callable(array): void $writePage
      *
+     * @return bool false if the cluster refused to open the scroll with HTTP 403 - nothing is written then
+     *
      * @throws BulkOperationException
      */
-    private function pageWithScroll(object $originalClient, string $index, array $query, callable $writePage): void
+    private function pageWithScroll(object $originalClient, string $index, array $query, callable $writePage): bool
     {
-        $response = $this->client->search([
-            'index' => $index,
-            'scroll' => self::SCROLL_KEEP_ALIVE,
-            'body' => [
-                'size' => $this->batchSize,
-                'seq_no_primary_term' => true,
-                'query' => $query,
-                'sort' => ['_doc'],
-            ],
-        ]);
+        try {
+            $response = $this->client->search([
+                'index' => $index,
+                'scroll' => self::SCROLL_KEEP_ALIVE,
+                'body' => [
+                    'size' => $this->batchSize,
+                    'seq_no_primary_term' => true,
+                    'query' => $query,
+                    'sort' => ['_doc'],
+                ],
+            ]);
+        } catch (Exception $exception) {
+            if (!$this->isForbidden($exception)) {
+                throw $exception;
+            }
+
+            $this->scrollForbidden = true;
+            $this->logger->warning(sprintf(
+                'The search cluster refused a scroll on "%s" (%s). Emulated update by query pages with '
+                . 'search_after for the rest of this process, without a snapshot.',
+                $index,
+                $exception->getMessage()
+            ));
+
+            return false;
+        }
+
         $scrollId = $response['_scroll_id'] ?? null;
 
         try {
@@ -162,13 +182,16 @@ final class UpdateByQueryService implements UpdateByQueryServiceInterface
         } finally {
             $this->clearScroll($originalClient, $scrollId);
         }
+
+        return true;
     }
 
     /**
-     * Fallback for a client that does not expose the scroll API. Pages with search_after, sorted by the element
-     * id: an id is unique within an element type, so also across the indices behind an alias, and documents
-     * that stop matching the query once they are written are behind the cursor already. There is no snapshot,
-     * though: a document changed before its page is read is read - and written - in its changed state.
+     * Fallback for a client that does not expose the scroll API, or a cluster that refuses it. Pages with
+     * search_after, sorted by the element id: an id is unique within an element type, so also across the indices
+     * behind an alias, and documents that stop matching the query once they are written are behind the cursor
+     * already. There is no snapshot, though: a document changed before its page is read is read - and written -
+     * in its changed state.
      *
      * @param callable(array): void $writePage
      *

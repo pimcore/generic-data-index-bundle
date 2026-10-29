@@ -381,8 +381,9 @@ When the cluster refuses `_update_by_query` with HTTP 403, the bundle logs a war
 log channel and emulates the request instead, for the rest of the process: it reads the matching documents in pages of
 500 from a scroll and writes the changed documents back with bulk requests. Like the native API it reads from the
 snapshot the scroll takes and uses optimistic concurrency control, so a document changed after the snapshot is not
-overwritten, and a partial page (timed out, failed shards) fails the request. To skip the native attempt on such a
-cluster, enable the emulation:
+overwritten, and a partial page (timed out, failed shards) fails the request. A cluster that refuses the scroll with
+HTTP 403 as well is paged with `search_after` instead, without a snapshot. To skip the native attempt on such a cluster,
+enable the emulation:
 
 ```yaml
 pimcore_generic_data_index:
