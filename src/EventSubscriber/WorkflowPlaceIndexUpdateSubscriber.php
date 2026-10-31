@@ -22,6 +22,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMe
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Pimcore\Event\AssetEvents;
+use Pimcore\Event\DataObjectEvents;
+use Pimcore\Event\DocumentEvents;
+use Pimcore\Event\Model\ElementEventInterface;
 use Pimcore\Event\Workflow\GlobalActionEvent;
 use Pimcore\Event\WorkflowEvents as PimcoreWorkflowEvents;
 use Pimcore\Model\Element\ElementInterface;
@@ -68,6 +72,9 @@ final class WorkflowPlaceIndexUpdateSubscriber implements EventSubscriberInterfa
         return [
             WorkflowEvents::ENTERED => 'onEntered',
             PimcoreWorkflowEvents::POST_GLOBAL_ACTION => 'onPostGlobalAction',
+            AssetEvents::POST_DELETE => 'onElementDeleted',
+            DataObjectEvents::POST_DELETE => 'onElementDeleted',
+            DocumentEvents::POST_DELETE => 'onElementDeleted',
             KernelEvents::TERMINATE => 'dispatchQueueMessages',
             ConsoleEvents::TERMINATE => 'dispatchQueueMessages',
             WorkerMessageHandledEvent::class => 'dispatchQueueMessages',
@@ -88,6 +95,28 @@ final class WorkflowPlaceIndexUpdateSubscriber implements EventSubscriberInterfa
         }
 
         $this->enqueue($event->getSubject(), $event->getWorkflow());
+    }
+
+    /**
+     * The regular delete subscribers queue a DELETE for the element. Writing the collected update at terminate
+     * would overwrite that entry (one queue row per element) and leave the deleted element in the index.
+     */
+    public function onElementDeleted(ElementEventInterface $event): void
+    {
+        if ($this->pendingHits === []) {
+            return;
+        }
+
+        $element = $event->getElement();
+        try {
+            unset($this->pendingHits[$this->getHitKey($element)]);
+        } catch (Exception $e) {
+            $this->logger->error('Removing the deleted element from the collected workflow changes failed', [
+                'elementId' => $element->getId(),
+                'elementType' => $element->getType(),
+                'exception' => $e,
+            ]);
+        }
     }
 
     public function dispatchQueueMessages(): void
@@ -134,7 +163,7 @@ final class WorkflowPlaceIndexUpdateSubscriber implements EventSubscriberInterfa
                 $typeAdapter->getElementType(),
                 $typeAdapter->getIndexNameShortByElement($element)
             );
-            $this->pendingHits[$hit->getElementType() . '_' . $hit->getId()] = $hit;
+            $this->pendingHits[$this->getHitKey($element)] = $hit;
         } catch (Exception $e) {
             // A workflow change (or Pimcore Studio reading the initial place) must not fail because of the index.
             $this->logger->error('Collecting the element after a workflow place change failed', [
@@ -144,5 +173,10 @@ final class WorkflowPlaceIndexUpdateSubscriber implements EventSubscriberInterfa
                 'exception' => $e,
             ]);
         }
+    }
+
+    private function getHitKey(ElementInterface $element): string
+    {
+        return $this->adapterService->getTypeAdapter($element)->getElementType() . '_' . $element->getId();
     }
 }

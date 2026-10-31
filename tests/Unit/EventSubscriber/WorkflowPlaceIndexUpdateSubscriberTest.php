@@ -19,16 +19,23 @@ use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber\WorkflowPlaceIndexUpdateSubscriber;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AbstractElementTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
+use Pimcore\Event\AssetEvents;
+use Pimcore\Event\DataObjectEvents;
+use Pimcore\Event\DocumentEvents;
+use Pimcore\Event\Model\DataObjectEvent;
 use Pimcore\Event\Workflow\GlobalActionEvent;
 use Pimcore\Event\WorkflowEvents as PimcoreWorkflowEvents;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Workflow\ExpressionService;
 use Pimcore\Workflow\GlobalAction;
 use Pimcore\Workflow\MarkingStore\StateTableMarkingStore;
+use ReflectionProperty;
 use stdClass;
 use Symfony\Component\Console\ConsoleEvents;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
@@ -57,6 +64,13 @@ final class WorkflowPlaceIndexUpdateSubscriberTest extends Unit
         $this->assertSame('onEntered', $events[WorkflowEvents::ENTERED]);
         $this->assertSame('onPostGlobalAction', $events[PimcoreWorkflowEvents::POST_GLOBAL_ACTION]);
         foreach ([
+            AssetEvents::POST_DELETE,
+            DataObjectEvents::POST_DELETE,
+            DocumentEvents::POST_DELETE,
+        ] as $event) {
+            $this->assertSame('onElementDeleted', $events[$event]);
+        }
+        foreach ([
             KernelEvents::TERMINATE,
             ConsoleEvents::TERMINATE,
             WorkerMessageHandledEvent::class,
@@ -69,6 +83,28 @@ final class WorkflowPlaceIndexUpdateSubscriberTest extends Unit
     public function testNothingIsWrittenWithoutPlaceChange(): void
     {
         $this->createSubscriber()->dispatchQueueMessages();
+    }
+
+    public function testElementDeletedInTheSameRequestIsNotWrittenToTheQueue(): void
+    {
+        // A queued DELETE of the element must not be overwritten by the collected UPDATE at terminate.
+        $subscriber = $this->createSubscriber();
+        $this->collect($subscriber, '5', 'dataObject');
+
+        $subscriber->onElementDeleted($this->createDeleteEvent(5));
+        $subscriber->dispatchQueueMessages();
+
+        $this->assertSame([], $this->getPending($subscriber));
+    }
+
+    public function testDeletingAnotherElementKeepsTheCollectedOne(): void
+    {
+        $subscriber = $this->createSubscriber();
+        $this->collect($subscriber, '5', 'dataObject');
+
+        $subscriber->onElementDeleted($this->createDeleteEvent(6));
+
+        $this->assertSame(['dataObject_5'], array_keys($this->getPending($subscriber)));
     }
 
     public function testWorkflowWithOtherMarkingStoreIsIgnored(): void
@@ -105,6 +141,27 @@ final class WorkflowPlaceIndexUpdateSubscriberTest extends Unit
         $subscriber->dispatchQueueMessages();
     }
 
+    private function createDeleteEvent(int $id): DataObjectEvent
+    {
+        return new DataObjectEvent($this->makeEmpty(Concrete::class, ['getId' => $id]));
+    }
+
+    private function collect(WorkflowPlaceIndexUpdateSubscriber $subscriber, string $id, string $type): void
+    {
+        // Collecting needs Installer::isInstalled() (booted kernel), so the pending list is filled directly.
+        (new ReflectionProperty($subscriber, 'pendingHits'))->setValue($subscriber, [
+            $type . '_' . $id => new HitData($id, $type, 'data_object_folder'),
+        ]);
+    }
+
+    /**
+     * @return array<string, HitData>
+     */
+    private function getPending(WorkflowPlaceIndexUpdateSubscriber $subscriber): array
+    {
+        return (new ReflectionProperty($subscriber, 'pendingHits'))->getValue($subscriber);
+    }
+
     private function createEvent(object $subject, MarkingStoreInterface $markingStore): EnteredEvent
     {
         return new EnteredEvent(
@@ -134,7 +191,11 @@ final class WorkflowPlaceIndexUpdateSubscriberTest extends Unit
 
         return new WorkflowPlaceIndexUpdateSubscriber(
             new Installer($connection, $this->makeEmpty(BundleInterface::class)),
-            $this->makeEmpty(AdapterServiceInterface::class, ['getTypeAdapter' => Expected::never()]),
+            $this->makeEmpty(AdapterServiceInterface::class, [
+                'getTypeAdapter' => $this->makeEmpty(AbstractElementTypeAdapter::class, [
+                    'getElementType' => 'dataObject',
+                ]),
+            ]),
             $indexQueueRepository,
             $this->makeEmpty(TimeServiceInterface::class, ['getCurrentMillisecondTimestamp' => Expected::never()]),
             new QueueMessagesDispatcher(
