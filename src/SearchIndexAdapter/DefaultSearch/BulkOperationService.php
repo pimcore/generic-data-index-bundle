@@ -109,12 +109,53 @@ final class BulkOperationService implements BulkOperationServiceInterface
                 $responseEncoded = json_encode($response, JSON_THROW_ON_ERROR);
 
                 throw new BulkOperationException(
-                    'Bulk operation produced errors: '. $responseEncoded
+                    $this->getTotalFieldsLimitMessage($response) . 'Bulk operation produced errors: '. $responseEncoded
                 );
             }
         } catch (Exception $e) {
             throw new BulkOperationException($e->getMessage());
         }
+    }
+
+    /**
+     * An exceeded total fields limit fails every bulk request for the index, and the raw response alone
+     * does not tell how to resolve it.
+     */
+    private function getTotalFieldsLimitMessage(array $response): string
+    {
+        // a batch can span several indices, each with its own limit
+        $limits = [];
+        foreach ($response['items'] ?? [] as $item) {
+            foreach ($item as $result) {
+                if (isset($result['error']) && preg_match(
+                    '/Limit of total fields \[(\d+)\] has been exceeded/',
+                    json_encode($result['error'], JSON_THROW_ON_ERROR),
+                    $matches
+                ) === 1) {
+                    $limits[$result['_index'] ?? 'unknown'] = $matches[1];
+                }
+            }
+        }
+
+        if ($limits === []) {
+            return '';
+        }
+
+        $exceeded = [];
+        foreach ($limits as $indexName => $limit) {
+            $exceeded[] = sprintf('%s [%s]', $indexName, $limit);
+        }
+
+        return sprintf(
+            'Limit of total fields exceeded for index %s: the mapping has too many fields. Large ' .
+            'classification stores are mapped per group x key x language. Restrict the allowed groups of the ' .
+            'classification store field in the class definition, or raise ' .
+            '"pimcore_generic_data_index.index_service.index_settings.index.mapping.total_fields.limit" ' .
+            '(nested keys) and recreate only the affected index, e.g. "bin/console ' .
+            'generic-data-index:update:index --class-definition-id=<id> -r" for a data object class ' .
+            '(without --class-definition-id, -a or -d, -r deletes and recreates every index). ',
+            implode(', ', $exceeded)
+        );
     }
 
     private function prepareBulkParams(?string $refreshIndex): array

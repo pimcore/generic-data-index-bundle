@@ -92,6 +92,16 @@ class Configuration implements ConfigurationInterface
                                 ->scalarNode('list_max_filter_options')
                                     ->defaultValue(500)
                                 ->end()
+                                ->arrayNode('full_text_search_fields')
+                                    ->info(
+                                        'Fields a full-text search is run against when it does not name fields '
+                                        . 'itself. Empty (default): the search engine expands it over all fields '
+                                        . 'of the index. A short list keeps searches on large indices fast and '
+                                        . 'below the field expansion limit.'
+                                    )
+                                    ->scalarPrototype()->end()
+                                    ->defaultValue([])
+                                ->end()
                                 ->arrayNode('search_analyzer_attributes')
                                     ->useAttributeAsKey('type')
                                         ->prototype('scalar')
@@ -208,6 +218,26 @@ class Configuration implements ConfigurationInterface
                             )
                             ->defaultValue(16 * 1024 * 1024)
                             ->min(1)
+                        ->end()
+                    ->end()
+                ->end()
+                ->arrayNode('index_versions')
+                    ->info(
+                        'Raise a number when code changes the indexed values without changing the mapping '
+                        . '(calculators, UpdateIndexDataEvent subscribers, custom adapters). '
+                        . 'generic-data-index:deployment:reindex with --all or the matching index option then '
+                        . 'rebuilds that index from the database.',
+                    )
+                    ->addDefaultsIfNotSet()
+                    ->children()
+                        ->integerNode('assets')->defaultValue(0)->min(0)->end()
+                        ->integerNode('documents')->defaultValue(0)->min(0)->end()
+                        ->integerNode('folders')->defaultValue(0)->min(0)->end()
+                        ->arrayNode('classes')
+                            ->info('Class definition ID => version')
+                            ->normalizeKeys(false)
+                            ->useAttributeAsKey('id')
+                            ->integerPrototype()->min(0)->end()
                         ->end()
                     ->end()
                 ->end();

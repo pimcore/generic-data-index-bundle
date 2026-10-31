@@ -151,6 +151,18 @@ pimcore_generic_data_index:
       data_object:
         published:
           type: boolean
+        classId:
+          type: text
+          fields:
+            keyword:
+              type: keyword
+              ignore_above: 256
+        className:
+          type: text
+          fields:
+            keyword:
+              type: keyword
+              ignore_above: 256
         classname:
           type: keyword
           fields:

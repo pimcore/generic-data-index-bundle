@@ -15,8 +15,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 
 use Exception;
 use InvalidArgumentException;
+use function is_array;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\ContainerAdapterInterface;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\FieldCollection\DefinitionResolverInterface;
+use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Fieldcollections;
 use Pimcore\Model\DataObject\Fieldcollection;
 use Symfony\Contracts\Service\Attribute\Required;
@@ -24,8 +27,10 @@ use Symfony\Contracts\Service\Attribute\Required;
 /**
  * @internal
  */
-final class FieldCollectionAdapter extends AbstractAdapter
+final class FieldCollectionAdapter extends AbstractAdapter implements ContainerAdapterInterface
 {
+    use ContainerFieldsTrait;
+
     private DefinitionResolverInterface $fieldCollectionDefinition;
 
     /**
@@ -48,16 +53,11 @@ final class FieldCollectionAdapter extends AbstractAdapter
             }
             $mapping[$allowedType] = [
                 'type' => AttributeType::NESTED,
-                'properties' => [],
+                'properties' => $this->getContainerFieldsMapping(
+                    $fieldCollectionDefinition->getFieldDefinitions(),
+                    static fn (Data $fieldDefinition) => $fieldDefinition->getName()
+                ),
             ];
-            foreach ($fieldCollectionDefinition->getFieldDefinitions() as $fieldDefinition) {
-                $fieldDefinitionAdapter = $this->getFieldDefinitionService()
-                    ->getFieldDefinitionAdapter($fieldDefinition);
-                if ($fieldDefinitionAdapter) {
-                    $mapping[$allowedType]['properties'][$fieldDefinition->getName()] =
-                        $fieldDefinitionAdapter->getIndexMapping();
-                }
-            }
         }
 
         return [
@@ -85,18 +85,37 @@ final class FieldCollectionAdapter extends AbstractAdapter
 
             foreach ($fieldCollectionDefinition->getFieldDefinitions() as $fieldDefinition) {
                 $getter = 'get' . ucfirst($fieldDefinition->getName());
-                $value = $item->$getter();
-                $resultItem[$type][$fieldDefinition->getName()] =
-                    $this->fieldDefinitionService->normalizeValue(
-                        $fieldDefinition,
-                        $value
-                    );
+                $resultItem[$type][$fieldDefinition->getName()] = $this->normalizeContainerField(
+                    $fieldDefinition,
+                    $item->$getter()
+                );
             }
 
             $resultItems[] = $resultItem;
         }
 
         return $resultItems;
+    }
+
+    public function flattenLocalizedFields(mixed $normalizedValue): mixed
+    {
+        if (!is_array($normalizedValue)) {
+            return $normalizedValue;
+        }
+
+        foreach ($normalizedValue as $index => $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            foreach ($item as $type => $fields) {
+                $definition = $this->fieldCollectionDefinition->getByKey((string) $type);
+                if ($definition !== null && is_array($fields)) {
+                    $normalizedValue[$index][$type] = $this->flattenFields($fields, $definition->getFieldDefinitions());
+                }
+            }
+        }
+
+        return $normalizedValue;
     }
 
     #[Required]

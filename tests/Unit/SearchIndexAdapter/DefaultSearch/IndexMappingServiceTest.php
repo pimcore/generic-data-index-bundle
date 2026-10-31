@@ -318,29 +318,9 @@ final class IndexMappingServiceTest extends Unit
 
     private function getLocalizedFieldsMappingMock(): array
     {
+        // LocalizedFieldsAdapter maps <attribute>.<language>; the class level moves the attributes up
         return [
-            'properties' => [
-                'de' => [
-                    'properties' => [
-                        'input1' => [
-                            'type' => 'text',
-                        ],
-                        'input2' => [
-                            'type' => 'text',
-                        ],
-                    ],
-                ],
-                'en' => [
-                    'properties' => [
-                        'input1' => [
-                            'type' => 'text',
-                        ],
-                        'input2' => [
-                            'type' => 'text',
-                        ],
-                    ],
-                ],
-            ],
+            'properties' => $this->getTransformedLocalizedFieldsMapping()['properties'],
         ];
     }
 

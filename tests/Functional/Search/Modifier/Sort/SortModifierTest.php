@@ -16,7 +16,9 @@ use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\Search\SortDirection;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ResultWindowTooLargeException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\SearchFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Tree\ParentIdFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\OrderByField;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFoldersFirst;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByFullPath;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Sort\Tree\OrderByIndexField;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\Sort\TreeSortHandlers;
@@ -25,6 +27,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObjec
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
+use Pimcore\Model\Asset;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 final class SortModifierTest extends Unit
@@ -207,6 +210,27 @@ final class SortModifierTest extends Unit
 
         $this->assertEquals($fullPaths, $resultFullPaths);
 
+    }
+
+    public function testOrderByFoldersFirst(): void
+    {
+        $asset = TestHelper::createImageAsset('aaa');
+        $folder = Asset\Service::createFolderByPath('/zzz-folder');
+        $asset2 = TestHelper::createImageAsset('bbb');
+
+        $assetSearch = $this->searchProvider
+            ->createAssetSearch()
+            ->addModifier(new ParentIdFilter(1))
+            ->addModifier(new OrderByFoldersFirst())
+            ->addModifier(new OrderByFullPath())
+        ;
+        $searchResult = $this->assetSearchService->search($assetSearch);
+
+        $resultIds = array_map(static function ($asset) {
+            return $asset->getId();
+        }, $searchResult->getItems());
+
+        $this->assertEquals([$folder->getId(), $asset->getId(), $asset2->getId()], $resultIds);
     }
 
     public function testOrderByIndex(): void

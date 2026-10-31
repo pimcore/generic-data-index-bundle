@@ -41,8 +41,32 @@ interface SettingsStoreServiceInterface
      */
     public function getWorkflowPlacesMappingChecksum(string $indexName): ?int;
 
+    public function getIndexState(string $key): ?string;
+
     /**
      * @throws Exception
      */
     public function storeWorkflowPlacesMappingChecksum(string $indexName, int $data): void;
+
+    public function storeIndexState(string $key, string $value): void;
+
+    public function removeIndexState(string $key): void;
+
+    /**
+     * Replaces the stored value only while it still equals $expected, in one statement.
+     *
+     * @return bool whether the value was replaced
+     *
+     * @throws Exception
+     */
+    public function replaceIndexState(string $key, string $expected, string $value): bool;
+
+    /**
+     * Removes the stored value only while it still equals $expected, in one statement.
+     *
+     * @return bool whether the value was removed
+     *
+     * @throws Exception
+     */
+    public function removeIndexStateIfEquals(string $key, string $expected): bool;
 }

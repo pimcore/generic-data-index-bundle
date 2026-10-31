@@ -21,4 +21,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterfac
 interface SearchPqlFieldNameTransformationServiceInterface
 {
     public function transformFieldnameForSearch(SearchInterface $search, string $fieldName, bool $sort = false): string;
+
+    /**
+     * Whether the field is the "keyword" multi-field of a field in the index mapping (e.g. a resolved
+     * "standard_fields.color.keyword"), as opposed to a regular field or object property named "keyword".
+     */
+    public function isKeywordMultiField(SearchInterface $search, string $fieldName): bool;
 }

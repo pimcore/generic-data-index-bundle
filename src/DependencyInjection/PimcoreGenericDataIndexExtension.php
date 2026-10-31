@@ -18,6 +18,7 @@ use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\DispatchQueueMessagesHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexStateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkChunkWriter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkDispatcherFactory;
@@ -62,6 +63,9 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
 
         $this->registerIndexServiceParams($container, $config['index_service']);
         $this->registerSnapshotParams($container, $config['snapshot']);
+
+        $container->getDefinition(IndexStateServiceInterface::class)
+            ->setArgument('$indexVersions', $config['index_versions']);
     }
 
     /**

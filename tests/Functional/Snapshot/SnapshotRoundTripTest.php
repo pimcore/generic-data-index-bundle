@@ -20,10 +20,12 @@ use League\Flysystem\InMemory\InMemoryFilesystemAdapter;
 use League\Flysystem\Local\LocalFilesystemAdapter;
 use Monolog\Handler\TestHandler;
 use Monolog\Logger;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\InvalidSnapshotException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotIncompatibleException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ExportOptions;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportedIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ImportOptions;
@@ -31,6 +33,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\ManifestIndex;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\DeploymentReindexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexStateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter;
@@ -348,6 +352,51 @@ final class SnapshotRoundTripTest extends Unit
             $reindexService->reindexClassDefinition(ClassDefinition::getByName('simple'), true),
             'the per-class reindex must not skip a class whose index was emptied by a failed import',
         );
+    }
+
+    /**
+     * The asset, document and folder indices have no checksum gate on import, so the state
+     * checked by deployment:reindex --assets is invalidated before the recreation and only
+     * stored again once the replay succeeded.
+     */
+    public function testImportStoresTheAssetIndexStateOnlyAfterASuccessfulReplay(): void
+    {
+        TestHelper::createImageAsset('snapshot-state-');
+        $this->tester->flushIndex();
+        $this->exporter()->export($this->storage, 'asset-state', new ExportOptions());
+        $settingsStore = $this->tester->grabService(SettingsStoreServiceInterface::class);
+        $indexStateService = $this->tester->grabService(IndexStateServiceInterface::class);
+        $target = IndexStateTarget::forScope(DeploymentReindexScope::ASSETS);
+        $settingsStore->storeIndexState('asset_mapping', 'stale');
+        $settingsStore->storeIndexState('asset_settings', 'stale');
+
+        $result = $this->importer()->import($this->storage, 'asset-state', new ImportOptions());
+
+        $this->assertTrue($result->isSuccessful());
+        $current = $indexStateService->getCurrentState($target);
+        $this->assertSame($current->getMappingChecksum(), $settingsStore->getIndexState('asset_mapping'));
+        $this->assertSame($current->getSettingsHash(), $settingsStore->getIndexState('asset_settings'));
+
+        $badContent = gzencode("{\"standard_fields\":{}}\n");
+        $manifest = $this->storage->readManifest('asset-state');
+        $entry = $manifest->getIndex('asset');
+        $this->filesystem->write('asset-state/' . $entry->getFile(), $badContent);
+        $fixedEntry = new ManifestIndex(
+            $entry->getShortName(), $entry->getElementType(), $entry->getClassId(), $entry->getSourceIndex(),
+            $entry->getDocumentCount(), $entry->getFile(), strlen($badContent), hash('sha256', $badContent)
+        );
+        $this->storage->writeManifest('asset-state', $manifest->withIndices(
+            array_map(static fn (ManifestIndex $i) => $i->getShortName() === 'asset' ? $fixedEntry : $i, $manifest->getIndices())
+        ));
+
+        try {
+            $this->importer()->import($this->storage, 'asset-state', new ImportOptions());
+            $this->fail('expected SnapshotImportException');
+        } catch (SnapshotImportException) {
+        }
+        $this->assertSame(IndexStateServiceInterface::INVALIDATED, $settingsStore->getIndexState('asset_mapping'));
+        $plan = $this->tester->grabService(DeploymentReindexServiceInterface::class)->plan($target);
+        $this->assertSame('native reindex, rebuild from database', $plan->getActionLabel());
     }
 
     public function testIncompleteReplayDoesNotStampClassMappingChecksum(): void

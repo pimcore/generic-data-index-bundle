@@ -22,6 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
+use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
 use Psr\Log\AbstractLogger;
 use ReflectionMethod;
@@ -186,6 +187,48 @@ final class ClassificationStoreAdapterTest extends Unit
         $this->assertCount(1, $logger->records);
         $this->assertSame('warning', $logger->records[0]['level']);
         $this->assertStringContainsString('consists only of dots', $logger->records[0]['message']);
+    }
+
+    /**
+     * Regression test for pimcore/platform-version#504: every group of the store was mapped, times every
+     * key, so a large store exceeded the index total fields limit although the class field only allows a
+     * few of its groups. Allowed group ids are stored as strings when entered in the class editor.
+     */
+    public function testOnlyAllowedGroupsAreMapped(): void
+    {
+        $fieldDefinition = new Classificationstore();
+        $fieldDefinition->setAllowedGroupIds('12, 13');
+
+        $this->assertSame([12, 13], $this->getMappedGroupIds($fieldDefinition, [11, 12, 13, 14]));
+    }
+
+    public function testAllGroupsAreMappedWhenNoGroupsAreAllowedExplicitly(): void
+    {
+        $fieldDefinition = new Classificationstore();
+        $fieldDefinition->setAllowedGroupIds([]);
+
+        $this->assertSame([11, 12], $this->getMappedGroupIds($fieldDefinition, [11, 12]));
+    }
+
+    /**
+     * Class definitions that never set the allowed groups leave the typed property uninitialized.
+     */
+    public function testAllGroupsAreMappedWhenAllowedGroupsWereNeverSet(): void
+    {
+        $this->assertSame([11, 12], $this->getMappedGroupIds(new Classificationstore(), [11, 12]));
+    }
+
+    private function getMappedGroupIds(Classificationstore $fieldDefinition, array $groupIds): array
+    {
+        $groups = array_map(
+            static fn (int $groupId): GroupConfig => (new GroupConfig())->setId($groupId)->setName('g' . $groupId),
+            $groupIds
+        );
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'filterAllowedGroups');
+        $result = $method->invoke($this->createAdapter(), $groups, $fieldDefinition);
+
+        return array_values(array_map(static fn (GroupConfig $group): int => $group->getId(), $result));
     }
 
     private function createAdapter(): ClassificationStoreAdapter

@@ -7,13 +7,86 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 ## Upgrade to 2026.4.0
 
+### Re-indexing recommended
+
+- [Indexing] Fixed: localized fields inside object bricks, field collections and blocks were normalized with the
+  class-level localized field definitions instead of the container's. Their values were indexed unconverted
+  (relations as empty objects), or converted with the type of a class-level localized field of the same name. Their
+  mapping (`localizedfields.<language>.<field>`) did not match the documents (`localizedfields.<field>.<language>`),
+  so the values were only mapped dynamically, and filtering or sorting a localized object brick column in the
+  Studio grid found nothing or failed.
+- [Indexing] They are now mapped and indexed like the class-level localized fields, without the `localizedfields`
+  level: `<container path>.<field>.<language>`, for example `bricks.SaleInformation.title.en`. This is the key the
+  Studio grid filters and sorts object brick columns by. Values of data types without a Generic Data Index adapter
+  are no longer indexed there.
+- [Indexing] In `query_store` mode, calculated values inside object bricks, field collections and blocks are always
+  calculated live. Before, one with the same name as a class-level localized calculated value got the class-level
+  value.
+- [Indexing] The mapping of classes with localized fields inside object bricks, field collections or blocks changes.
+  Re-indexing is recommended, not required: nothing that worked before breaks without it. Without it, the Studio grid
+  opens and its filters and sorting keep working, but localized object brick fields stay as they were: elements not
+  saved since the update are not found by filters on them, and sorting by them fails until the first element is saved
+  with the new version. Run `generic-data-index:deployment:reindex` after the update to fix this; it re-indexes only
+  the classes whose mapping changed. Saving such a class in the class editor has the same effect.
+  `generic-data-index:update:index -c <class id> -r` builds the index from scratch; `deployment:reindex` copies the
+  existing documents into the new index first, so the old `localizedfields` fields stay in its mapping (with values
+  only until the elements are re-indexed).
+- [Indexing] Without the re-index, elements saved with the new version are indexed at the new paths and are found and
+  sorted, but these paths are mapped dynamically: the first value decides the type. A decimal in a field first
+  indexed with a whole number is indexed as a whole number, and a text in a field first indexed with a date-like
+  value is rejected, so the element is not updated in the index (logged as `mapper_parsing_exception`).
+- [Indexing] The old path `<container path>.localizedfields.<field>.<language>` (for example
+  `bricks.SaleInformation.localizedfields.title.en`) is no longer indexed. The documents of these elements change
+  when they are re-indexed or saved again: the `localizedfields` level disappears and the values move next to the
+  container's other fields. Update PQL queries, saved filters and `UpdateIndexDataEvent` / `ExtractMappingEvent`
+  listeners that use the old path. `generic-data-index:status` shows the affected indices as mapping not current
+  until the re-index. The index format of class-level localized fields is unchanged.
+- [Indexing] Snapshots exported before the update are refused for these classes, and `--force` skips them: export
+  them again after the re-index.
+
+### Workflow places: run `update:index` right after the deployment
+
 - [Indexing] Places of workflows using the `state_table` marking store are indexed in the new system field
   `workflowPlaces` (keyword per workflow name), see
   [Workflow Places](../04_Searching_For_Data_In_Index/README.md#workflow-places).
   Run `bin/console generic-data-index:update:index` to update the mapping and fill the field for existing elements.
+  Run it right after the deployment: elements indexed before the mapping is updated get a dynamic `text` mapping for
+  the new field, and the later update to `keyword` then needs a full re-index.
   The `workflowPlaces` mapping depends on the configured `state_table` workflows. It is not part of the class mapping
   checksum, so `generic-data-index:deployment:reindex` does not reindex every class because of it: run
   `generic-data-index:update:index` after adding or removing a `state_table` workflow.
+
+## Upgrade to 2026.3.4
+- [Searching] New optional setting `search_settings.full_text_search_fields`: the fields a full-text search runs
+  against when it does not name fields itself. Use it on indices with many fields, where the expansion over all fields
+  makes searches slow or exceeds the field expansion limit. Without it nothing changes. See
+  [Full-text search fields](../02_Configuration/03_Index_Management.md#full-text-search-fields).
+- [Searching] Search and count requests where some shards failed are logged as a warning on the
+  `pimcore_generic_data_index` log channel. The response itself is unchanged.
+
+## Upgrade to 2026.3.3
+- [Commands] `generic-data-index:deployment:reindex` has new opt-in options (`--all`, `--assets`, `--dry-run`, …) that
+  also cover the folder, asset and document indices and `index_settings`. Without options nothing changes. See
+  [Deployment and Index Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).
+- [Indexing] A native reindex now fails if the new index cannot be created (e.g. invalid `index_settings`) instead of
+  switching to an index with dynamic mapping.
+- [Indexing] New **index status**: `IndexStatusServiceInterface` reports per index whether it is complete, rebuilding
+  (with the progress in percent), copying, degraded, incomplete or missing, with the counts it is derived from;
+  `IndexCompleteEvent` fires in the messenger worker that processes the last batch of a queued full rebuild. See
+  [Index Status](../02_Configuration/03_Index_Management.md#index-status).
+- [Commands] `generic-data-index:status` shows the status of every index and the number of failed messages, and
+  has new options: `--index`, `--json`, `--check` (exit code 1 while an index is not complete) and `--wait` (block
+  until complete). Its leftover warning no longer lists an index whose odd/even copy is running. Without options the
+  output and the exit code are unchanged.
+- [Indexing] A full rebuild queued by `EnqueueServiceInterface` (class save with a mapping change, `update:index`,
+  `deployment:reindex`) is now marked in the settings store until its last batch is processed; the mark is what tells a
+  rebuild from the normal lag of asynchronous indexing.
+- [Indexing] The progress of a running odd/even copy is logged every minute (documents copied so far).
+- [Database] A new migration adds an index on `generic_data_index_queue.elementIndexName` (the status counts the
+  entries per index). Please make sure to execute migrations.
+- [Indexing] New methods on `@internal` interfaces, relevant only for custom implementations of them:
+  `SearchIndexServiceInterface::countDocuments()` and `getReindexTasks()`, `SettingsStoreServiceInterface::removeIndexState()`,
+  `replaceIndexState()` and `removeIndexStateIfEquals()`, `IndexStateServiceInterface::isMappingCurrent()`.
 
 ## Upgrade to 2026.3.2
 - [Permissions] Searches that check a permission other than `list` (for example `byId()`, which checks `view`) no

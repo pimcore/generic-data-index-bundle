@@ -120,7 +120,7 @@ final readonly class FieldTypeFilters
         MultiSelectFilter $multiSelectFilter,
         ?string $prefix = null,
         ?SearchInterface $search = null
-    ): TermsFilterQuery {
+    ): MultiBoolQuery|TermsFilterQuery {
         $fieldName = $multiSelectFilter->getField();
         if ($prefix) {
             $fieldName = $prefix . '.' . $fieldName;
@@ -129,10 +129,44 @@ final readonly class FieldTypeFilters
             $fieldName = $this->fieldNameTransformationService->transformFieldnameForSearch($search, $fieldName);
         }
 
+        // Opt-in: an empty string stands for "no value", so match a missing field (null) as well as ''.
+        // Only for top-level fields: inside a nested filter (classification store) a missing key cannot be
+        // told apart from an absent group, so the filter keeps its exact-match behaviour there.
+        if ($prefix === null
+            && $multiSelectFilter->isMatchMissingForEmptyValueEnabled()
+            && in_array('', $multiSelectFilter->getValues(), true)
+        ) {
+            return new MultiBoolQuery(
+                $fieldName,
+                $multiSelectFilter->getValues(),
+                $this->getPresenceFieldName($multiSelectFilter, $fieldName, $search)
+            );
+        }
+
         return new TermsFilterQuery(
             $fieldName,
             $multiSelectFilter->getValues(),
         );
+    }
+
+    /**
+     * Presence is checked on the field itself, not on its keyword multi-field: the keyword multi-field skips
+     * values above ignore_above. Only the index mapping tells a keyword multi-field apart from a regular field
+     * or object property named "keyword", so without field name resolution the field is used as it is.
+     */
+    private function getPresenceFieldName(
+        MultiSelectFilter $multiSelectFilter,
+        string $fieldName,
+        ?SearchInterface $search
+    ): string {
+        if ($search
+            && $multiSelectFilter->isPqlFieldNameResolutionEnabled()
+            && $this->fieldNameTransformationService->isKeywordMultiField($search, $fieldName)
+        ) {
+            return substr($fieldName, 0, -strlen('.keyword'));
+        }
+
+        return $fieldName;
     }
 
     #[AsSearchModifierHandler]

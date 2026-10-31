@@ -15,6 +15,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 
 use Exception;
 use InvalidArgumentException;
+use function is_array;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\ContainerAdapterInterface;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\Objectbrick\DefinitionResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Objectbricks;
@@ -26,8 +29,10 @@ use Symfony\Contracts\Service\Attribute\Required;
 /**
  * @internal
  */
-final class ObjectBrickAdapter extends AbstractAdapter
+final class ObjectBrickAdapter extends AbstractAdapter implements ContainerAdapterInterface
 {
+    use ContainerFieldsTrait;
+
     private DefinitionResolverInterface $objectBrickDefinition;
 
     #[Required]
@@ -77,15 +82,30 @@ final class ObjectBrickAdapter extends AbstractAdapter
 
             foreach ($definition->getFieldDefinitions() as $fieldDefinition) {
                 $getter = 'get' . ucfirst($fieldDefinition->getName());
-                $value = $item->$getter();
-                $resultItems[$type][$fieldDefinition->getName()] = $this->fieldDefinitionService->normalizeValue(
+                $resultItems[$type][$fieldDefinition->getName()] = $this->normalizeContainerField(
                     $fieldDefinition,
-                    $value
+                    $item->$getter()
                 );
             }
         }
 
         return $resultItems;
+    }
+
+    public function flattenLocalizedFields(mixed $normalizedValue): mixed
+    {
+        if (!is_array($normalizedValue)) {
+            return $normalizedValue;
+        }
+
+        foreach ($normalizedValue as $type => $fields) {
+            $definition = $this->objectBrickDefinition->getByKey((string) $type);
+            if ($definition !== null && is_array($fields)) {
+                $normalizedValue[$type] = $this->flattenFields($fields, $definition->getFieldDefinitions());
+            }
+        }
+
+        return $normalizedValue;
     }
 
     public function getInheritedData(
@@ -168,15 +188,11 @@ final class ObjectBrickAdapter extends AbstractAdapter
 
     private function getMappingForObjectBrick(string $objectBrickType): array
     {
-        $fieldDefinitions = $this->objectBrickDefinition->getByKey($objectBrickType)?->getFieldDefinitions();
-        $mapping = [];
-        foreach ($fieldDefinitions as $fieldDefinition) {
-            $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($fieldDefinition);
-            if ($adapter) {
-                $mapping[$adapter->getIndexAttributeName()] = $adapter->getIndexMapping();
-            }
-        }
+        $fieldDefinitions = $this->objectBrickDefinition->getByKey($objectBrickType)?->getFieldDefinitions() ?? [];
 
-        return $mapping;
+        return $this->getContainerFieldsMapping(
+            $fieldDefinitions,
+            static fn (Data $fieldDefinition, AdapterInterface $adapter) => $adapter->getIndexAttributeName()
+        );
     }
 }

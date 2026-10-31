@@ -29,4 +29,9 @@ interface ClassDefinitionReindexServiceInterface
         bool $skipIfClassNotChanged = false,
         bool $enqueueItems = false,
     ): bool;
+
+    /**
+     * Whether {@see reindexClassDefinition()} with $skipIfClassNotChanged would reindex the class.
+     */
+    public function isMappingChanged(ClassDefinition $classDefinition): bool;
 }

@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\Standar
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectNormalizerException;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\ContainerAdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolverInterface;
@@ -101,7 +102,12 @@ final class DataObjectNormalizer implements NormalizerInterface
     {
         return [
             FieldCategory::SYSTEM_FIELDS->value => $this->normalizeSystemFields($dataObject, $skipLazyLoadedFields),
-            FieldCategory::STANDARD_FIELDS->value => $this->normalizeStandardFields($dataObject),
+            // Search result items built with SKIP_LAZY_LOADED_FIELDS never use the standard fields (the
+            // denormalizer drops them and the item lazy-loads them from the index on demand), so reading
+            // and normalizing every field here would only load relations and run getters for nothing.
+            FieldCategory::STANDARD_FIELDS->value => $skipLazyLoadedFields
+                ? []
+                : $this->normalizeStandardFields($dataObject),
         ];
     }
 
@@ -197,6 +203,12 @@ final class DataObjectNormalizer implements NormalizerInterface
                     $fieldDefinition,
                     $value
                 );
+                // localized fields inside object bricks, field collections and blocks are indexed next to the
+                // container's other fields, like the class-level ones below
+                $adapter = $this->fieldDefinitionService->getFieldDefinitionAdapter($fieldDefinition);
+                if ($adapter instanceof ContainerAdapterInterface) {
+                    $normalizedValue = $adapter->flattenLocalizedFields($normalizedValue);
+                }
                 $result[$key] = $normalizedValue;
             }
 

@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service;
 
+use Doctrine\DBAL\Connection;
 use Exception;
 use Pimcore\Bundle\StaticResolverBundle\Models\Tool\SettingsStoreResolverInterface;
 use Pimcore\Model\Tool\SettingsStore;
@@ -26,10 +27,15 @@ final class SettingsStoreService implements SettingsStoreServiceInterface
 
     private const WORKFLOW_PLACES_MAPPING_PREFIX = 'workflow_places_mapping_';
 
+    private const INDEX_STATE_PREFIX = 'index_state_';
+
     private const SETTINGS_STORE_SCOPE = 'generic_data_index';
 
+    private const SETTINGS_STORE_TABLE = 'settings_store';
+
     public function __construct(
-        private readonly SettingsStoreResolverInterface $settingsStoreResolver
+        private readonly SettingsStoreResolverInterface $settingsStoreResolver,
+        private readonly Connection $connection,
     ) {
     }
 
@@ -75,6 +81,16 @@ final class SettingsStoreService implements SettingsStoreServiceInterface
         )?->getData();
     }
 
+    public function getIndexState(string $key): ?string
+    {
+        $data = $this->settingsStoreResolver->get(
+            self::INDEX_STATE_PREFIX . $key,
+            self::SETTINGS_STORE_SCOPE
+        )?->getData();
+
+        return $data === null ? null : (string) $data;
+    }
+
     /**
      * @throws Exception
      */
@@ -86,5 +102,57 @@ final class SettingsStoreService implements SettingsStoreServiceInterface
             SettingsStore::TYPE_INTEGER,
             self::SETTINGS_STORE_SCOPE
         );
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function storeIndexState(string $key, string $value): void
+    {
+        $this->settingsStoreResolver->set(
+            self::INDEX_STATE_PREFIX . $key,
+            $value,
+            SettingsStore::TYPE_STRING,
+            self::SETTINGS_STORE_SCOPE
+        );
+    }
+
+    public function removeIndexState(string $key): void
+    {
+        $this->settingsStoreResolver->delete(
+            self::INDEX_STATE_PREFIX . $key,
+            self::SETTINGS_STORE_SCOPE
+        );
+    }
+
+    public function replaceIndexState(string $key, string $expected, string $value): bool
+    {
+        // The settings store has no compare-and-set; one UPDATE with the expected value in its condition is one.
+        $affected = $this->connection->executeStatement(
+            'UPDATE ' . self::SETTINGS_STORE_TABLE
+            . ' SET data = :value WHERE id = :id AND scope = :scope AND data = :expected',
+            [
+                'value' => $value,
+                'id' => self::INDEX_STATE_PREFIX . $key,
+                'scope' => self::SETTINGS_STORE_SCOPE,
+                'expected' => $expected,
+            ]
+        );
+
+        return (int) $affected > 0;
+    }
+
+    public function removeIndexStateIfEquals(string $key, string $expected): bool
+    {
+        $affected = $this->connection->executeStatement(
+            'DELETE FROM ' . self::SETTINGS_STORE_TABLE . ' WHERE id = :id AND scope = :scope AND data = :expected',
+            [
+                'id' => self::INDEX_STATE_PREFIX . $key,
+                'scope' => self::SETTINGS_STORE_SCOPE,
+                'expected' => $expected,
+            ]
+        );
+
+        return (int) $affected > 0;
     }
 }

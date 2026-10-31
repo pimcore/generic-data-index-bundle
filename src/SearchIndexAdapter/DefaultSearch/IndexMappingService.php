@@ -166,17 +166,17 @@ readonly class IndexMappingService implements IndexMappingServiceInterface
         );
     }
 
+    /**
+     * The class-level localized fields are indexed at the top level (DataObjectNormalizer merges them up).
+     */
     private function transformLocalizedfields(array $data): array
     {
         if (isset($data['localizedfields'])) {
             $localizedFields = $data['localizedfields']['properties'];
             unset($data['localizedfields']);
 
-            foreach ($localizedFields as $locale => $attributes) {
-                foreach ($attributes['properties'] as $attributeName => $attributeData) {
-                    $data[$attributeName] = $data[$attributeName] ?? ['type' => 'object', 'properties' => []];
-                    $data[$attributeName]['properties'][$locale] = $attributeData;
-                }
+            foreach ($localizedFields as $attributeName => $attributeData) {
+                $data[$attributeName] = $attributeData;
             }
         }
 
