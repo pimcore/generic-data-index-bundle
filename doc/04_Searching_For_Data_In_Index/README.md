@@ -210,8 +210,9 @@ system_fields.workflowPlaces.product_workflow = "review"
 ```
 
 When a place changes without saving the element (transitions, global actions or the initial place), the element is added
-to the index queue. The queue messages are dispatched at the end of the request, the console command or the messenger
-message, so a long-running command that only applies transitions updates the index when it ends. This relies on the
+to the index queue. This happens at the end of the request, the console command or the messenger message, not when the
+place changes, so a place which is rolled back by a failing save is not indexed, and a long-running command that only
+applies transitions updates the index when it ends. This relies on the
 `workflow.entered` event, so keep it in `events_to_dispatch` if a workflow restricts the dispatched events.
 
 Transitions that only save a version (`changePublishedState: save_version`) do not save the element, so their place

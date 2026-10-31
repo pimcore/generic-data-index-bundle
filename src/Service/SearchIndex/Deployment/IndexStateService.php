@@ -13,11 +13,11 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment;
 
-use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexState;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\LegacyClassMappingCheckSum;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter;
@@ -168,19 +168,7 @@ final readonly class IndexStateService implements IndexStateServiceInterface
             return true;
         }
 
-        return $target->isClassIndex() && $stored === (string) $this->getLegacyClassMappingCheckSum($mappingProperties);
-    }
-
-    /**
-     * Checksum as the class definition reindex calculated it before the mapping properties were
-     * normalized (depending on the array key order); recognises entries stored by an older bundle
-     * version, see ClassDefinitionReindexService.
-     *
-     * @throws JsonException
-     */
-    private function getLegacyClassMappingCheckSum(array $mappingProperties): int
-    {
-        return crc32(json_encode($mappingProperties, JSON_THROW_ON_ERROR));
+        return $target->isClassIndex() && $stored === (string) LegacyClassMappingCheckSum::calculate($mappingProperties);
     }
 
     private function getHandler(IndexStateTarget $target): IndexHandlerInterface

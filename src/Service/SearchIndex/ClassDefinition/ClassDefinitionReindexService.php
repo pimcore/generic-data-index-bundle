@@ -15,8 +15,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinit
 
 use Exception;
 use JsonException;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
-use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
@@ -72,7 +70,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         return $storedCheckSum === null
             || (
                 $storedCheckSum !== $this->dataObjectIndexHandler->getClassMappingCheckSum($mappingProperties)
-                && $storedCheckSum !== $this->getLegacyClassMappingCheckSum($mappingProperties)
+                && $storedCheckSum !== LegacyClassMappingCheckSum::calculate($mappingProperties)
             );
     }
 
@@ -110,7 +108,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
                 return false;
             }
 
-            if ($storedCheckSum === $this->getLegacyClassMappingCheckSum($mappingProperties)) {
+            if ($storedCheckSum === LegacyClassMappingCheckSum::calculate($mappingProperties)) {
                 // The mapping is unchanged, only the checksum algorithm is: checksums
                 // stored before the key normalization was introduced depend on the key
                 // order. Re-stamp the entry instead of reindexing the class definition.
@@ -154,23 +152,5 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         );
 
         return true;
-    }
-
-    /**
-     * Checksum as it was calculated before the mapping properties were normalized,
-     * i.e. depending on the array key order. Only used to recognise entries stored
-     * by an older bundle version; can be dropped once upgrades from those versions
-     * are no longer supported.
-     *
-     * @throws JsonException
-     */
-    private function getLegacyClassMappingCheckSum(array $mappingProperties): int
-    {
-        // Like the current checksum, ignore workflowPlaces: it does not depend on the class definition.
-        unset(
-            $mappingProperties[FieldCategory::SYSTEM_FIELDS->value]['properties'][SystemField::WORKFLOW_PLACES->value]
-        );
-
-        return crc32(json_encode($mappingProperties, JSON_THROW_ON_ERROR));
     }
 }

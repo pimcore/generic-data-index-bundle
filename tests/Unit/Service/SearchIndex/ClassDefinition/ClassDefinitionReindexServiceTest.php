@@ -40,14 +40,6 @@ final class ClassDefinitionReindexServiceTest extends Unit
 
     private const CURRENT_CHECK_SUM = 4242;
 
-    /**
-     * Mapping properties are built in class definition field order, so checksums
-     * stored before the key normalization was introduced differ from the ones
-     * computed now. Without recognising them, upgrading to the normalized checksum
-     * would reindex every single class definition.
-     *
-     * @see https://github.com/pimcore/generic-data-index-bundle/pull/419
-     */
     public function testLegacyCheckSumIgnoresWorkflowPlaces(): void
     {
         // A checksum stored before workflowPlaces existed was calculated without it.
@@ -75,6 +67,14 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $this->assertFalse($updated);
     }
 
+    /**
+     * Mapping properties are built in class definition field order, so checksums
+     * stored before the key normalization was introduced differ from the ones
+     * computed now. Without recognising them, upgrading to the normalized checksum
+     * would reindex every single class definition.
+     *
+     * @see https://github.com/pimcore/generic-data-index-bundle/pull/419
+     */
     public function testLegacyCheckSumIsAcceptedAndReStampedWithoutReindexing(): void
     {
         $legacyCheckSum = crc32(json_encode(self::MAPPING_PROPERTIES, JSON_THROW_ON_ERROR));

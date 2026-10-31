@@ -95,8 +95,11 @@ class WorkflowPlacesIndexingTest extends Unit
             false
         );
 
-        $this->assertSame([[(string) $object->getId(), 'dataObject']], $this->getQueueEntries());
+        // Nothing is written to the queue before the request, command or message ends.
+        $this->assertSame([], $this->getQueueEntries());
         $this->assertSame($queueMessages, $this->countQueueMessages());
+        $this->endOfRequest();
+        $this->assertSame([[(string) $object->getId(), 'dataObject']], $this->getQueueEntries());
         $this->consumeQueue();
 
         $this->assertSame($modificationDate, Concrete::getById($object->getId(), ['force' => true])->getModificationDate());
@@ -145,7 +148,9 @@ class WorkflowPlacesIndexingTest extends Unit
             $eventDispatcher->removeListener(DataObjectEvents::PRE_UPDATE, $failingSave);
         }
 
-        // Dispatched when the command ends, so a worker does not index the place before it was rolled back.
+        // Written to the queue when the command ends, so neither the scheduler nor a worker can index the place
+        // before it was rolled back.
+        $this->assertSame([], $this->getQueueEntries());
         $this->assertSame($queueMessages, $this->countQueueMessages());
         $this->consumeQueue();
 
@@ -174,6 +179,8 @@ class WorkflowPlacesIndexingTest extends Unit
             [],
             false
         );
+
+        $this->endOfRequest();
 
         $this->assertSame([[(string) $asset->getId(), 'asset']], $this->getQueueEntries());
     }
@@ -389,12 +396,19 @@ class WorkflowPlacesIndexingTest extends Unit
     /**
      * @throws Exception
      */
-    private function consumeQueue(): void
+    /**
+     * The end of a request or command, which writes the workflow place changes to the queue and dispatches them.
+     */
+    private function endOfRequest(): void
     {
-        // Like the end of a request or command, which dispatches the queue messages of workflow place changes.
         /** @var WorkflowPlaceIndexUpdateSubscriber $subscriber */
         $subscriber = $this->tester->grabService(WorkflowPlaceIndexUpdateSubscriber::class);
         $subscriber->dispatchQueueMessages();
+    }
+
+    private function consumeQueue(): void
+    {
+        $this->endOfRequest();
 
         $this->tester->consume();
         $this->tester->flushIndex();

@@ -39,8 +39,9 @@ use Symfony\Component\Workflow\WorkflowInterface;
  * The state_table marking store persists places on its own: transitions, global actions and the initial
  * place written on first access do not necessarily save the element (and trigger the regular index update).
  *
- * Only the element is enqueued, never indexed synchronously. The queue messages are dispatched when the
- * request, command or message is done: until then a failing element save can still roll the place back.
+ * Only the element is enqueued, never indexed synchronously. The elements are collected in memory and written to the
+ * queue (and its messages dispatched) when the request, command or message is done: until then a failing element
+ * save can still roll the place back, and neither the scheduler nor another dispatch can pick the element up early.
  *
  * @internal
  */
@@ -48,7 +49,10 @@ final class WorkflowPlaceIndexUpdateSubscriber implements EventSubscriberInterfa
 {
     use LoggerAwareTrait;
 
-    private bool $dispatchPending = false;
+    /**
+     * @var array<string, HitData>
+     */
+    private array $pendingHits = [];
 
     public function __construct(
         private readonly Installer $installer,
@@ -88,17 +92,27 @@ final class WorkflowPlaceIndexUpdateSubscriber implements EventSubscriberInterfa
 
     public function dispatchQueueMessages(): void
     {
-        if (!$this->dispatchPending) {
+        if ($this->pendingHits === []) {
             return;
         }
 
-        $this->dispatchPending = false;
+        $hits = array_values($this->pendingHits);
+        $this->pendingHits = [];
 
         try {
+            $this->indexQueueRepository->enqueueByItemList(
+                $hits,
+                IndexQueueOperation::UPDATE,
+                $this->timeService->getCurrentMillisecondTimestamp()
+            );
             $this->queueMessagesDispatcher->dispatchQueueMessages();
         } catch (Exception $e) {
-            // The queue entries stay and are dispatched with the next queue messages.
-            $this->logger->error('Dispatching the index queue messages failed', ['exception' => $e]);
+            // A workflow change must not fail the request because of the index. The queue entries which were
+            // written stay and are dispatched with the next queue messages.
+            $this->logger->error('Enqueueing the elements after a workflow place change failed', [
+                'elementIds' => array_map(static fn (HitData $hit): string => $hit->getId(), $hits),
+                'exception' => $e,
+            ]);
         }
     }
 
@@ -115,21 +129,15 @@ final class WorkflowPlaceIndexUpdateSubscriber implements EventSubscriberInterfa
         try {
             // Workflow places are not inherited and not part of other elements, so no related element is enqueued.
             $typeAdapter = $this->adapterService->getTypeAdapter($element);
-            $this->indexQueueRepository->enqueueByItemList(
-                [
-                    new HitData(
-                        (string) $element->getId(),
-                        $typeAdapter->getElementType(),
-                        $typeAdapter->getIndexNameShortByElement($element)
-                    ),
-                ],
-                IndexQueueOperation::UPDATE,
-                $this->timeService->getCurrentMillisecondTimestamp()
+            $hit = new HitData(
+                (string) $element->getId(),
+                $typeAdapter->getElementType(),
+                $typeAdapter->getIndexNameShortByElement($element)
             );
-            $this->dispatchPending = true;
+            $this->pendingHits[$hit->getElementType() . '_' . $hit->getId()] = $hit;
         } catch (Exception $e) {
             // A workflow change (or Pimcore Studio reading the initial place) must not fail because of the index.
-            $this->logger->error('Enqueueing the element after a workflow place change failed', [
+            $this->logger->error('Collecting the element after a workflow place change failed', [
                 'elementId' => $element->getId(),
                 'elementType' => $element->getType(),
                 'workflow' => $workflow->getName(),

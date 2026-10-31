@@ -24,18 +24,24 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMe
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Pimcore\Event\Workflow\GlobalActionEvent;
+use Pimcore\Event\WorkflowEvents as PimcoreWorkflowEvents;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Workflow\ExpressionService;
 use Pimcore\Workflow\GlobalAction;
 use Pimcore\Workflow\MarkingStore\StateTableMarkingStore;
 use stdClass;
+use Symfony\Component\Console\ConsoleEvents;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
+use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
+use Symfony\Component\Messenger\Event\WorkerMessageHandledEvent;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Serializer\Normalizer\DenormalizerInterface;
 use Symfony\Component\Workflow\Event\EnteredEvent;
 use Symfony\Component\Workflow\Marking;
 use Symfony\Component\Workflow\MarkingStore\MarkingStoreInterface;
 use Symfony\Component\Workflow\MarkingStore\MethodMarkingStore;
+use Symfony\Component\Workflow\WorkflowEvents;
 use Symfony\Component\Workflow\WorkflowInterface;
 
 /**
@@ -43,6 +49,28 @@ use Symfony\Component\Workflow\WorkflowInterface;
  */
 final class WorkflowPlaceIndexUpdateSubscriberTest extends Unit
 {
+    public function testSubscribedEvents(): void
+    {
+        // The place changes are written to the queue and dispatched when the request, command or message ends.
+        $events = WorkflowPlaceIndexUpdateSubscriber::getSubscribedEvents();
+
+        $this->assertSame('onEntered', $events[WorkflowEvents::ENTERED]);
+        $this->assertSame('onPostGlobalAction', $events[PimcoreWorkflowEvents::POST_GLOBAL_ACTION]);
+        foreach ([
+            KernelEvents::TERMINATE,
+            ConsoleEvents::TERMINATE,
+            WorkerMessageHandledEvent::class,
+            WorkerMessageFailedEvent::class,
+        ] as $event) {
+            $this->assertSame('dispatchQueueMessages', $events[$event]);
+        }
+    }
+
+    public function testNothingIsWrittenWithoutPlaceChange(): void
+    {
+        $this->createSubscriber()->dispatchQueueMessages();
+    }
+
     public function testWorkflowWithOtherMarkingStoreIsIgnored(): void
     {
         // The place is part of the element: the regular index update after its save covers it.
