@@ -30,6 +30,7 @@ use Psr\Log\LoggerInterface;
  * Regression tests for pimcore/platform-version#742: a lazy load that finds nothing in the index
  * (element not indexed yet, index out of sync, no view permission) must log a warning and leave
  * the lazy-loaded getters with defined results instead of failing on uninitialized properties.
+ * The failed lookup is done (and logged) only once per item, not once per getter call.
  *
  * @internal
  */
@@ -39,12 +40,12 @@ final class LazyLoadingHandlerTest extends Unit
 
     public function testDataObjectItemNotFoundInIndexLogsWarningAndReturnsDefaults(): void
     {
-        $searchService = $this->createStub(DataObjectSearchServiceInterface::class);
-        $searchService->method('byId')->willReturn(null);
+        $searchService = $this->createMock(DataObjectSearchServiceInterface::class);
+        $searchService->expects($this->once())->method('byId')->willReturn(null);
 
         $handler = new DataObjectLazyLoadingHandler($searchService);
         $handler->setLogger(
-            $this->createWarningExpectingLogger('Data object not found in search index', 3)
+            $this->createWarningExpectingLogger('Data object not found in search index')
         );
 
         $item = $handler->apply((new DataObjectSearchResultItem())->setId(self::ELEMENT_ID), new User());
@@ -52,16 +53,17 @@ final class LazyLoadingHandlerTest extends Unit
         $this->assertSame([], $item->getSearchIndexData());
         $this->assertFalse($item->isHasChildren());
         $this->assertFalse($item->isHasWorkflowWithPermissions());
+        $this->assertSame([], $item->getSearchIndexData(), 'Repeated reads must not repeat the lookup.');
     }
 
     public function testDocumentItemNotFoundInIndexLogsWarningAndReturnsDefaults(): void
     {
-        $searchService = $this->createStub(DocumentSearchServiceInterface::class);
-        $searchService->method('byId')->willReturn(null);
+        $searchService = $this->createMock(DocumentSearchServiceInterface::class);
+        $searchService->expects($this->once())->method('byId')->willReturn(null);
 
         $handler = new DocumentLazyLoadingHandler($searchService);
         $handler->setLogger(
-            $this->createWarningExpectingLogger('Document not found in search index', 3)
+            $this->createWarningExpectingLogger('Document not found in search index')
         );
 
         $item = $handler->apply((new DocumentSearchResultItem())->setId(self::ELEMENT_ID), new User());
@@ -69,16 +71,17 @@ final class LazyLoadingHandlerTest extends Unit
         $this->assertSame([], $item->getSearchIndexData());
         $this->assertFalse($item->isHasChildren());
         $this->assertFalse($item->isHasWorkflowWithPermissions());
+        $this->assertSame([], $item->getSearchIndexData(), 'Repeated reads must not repeat the lookup.');
     }
 
     public function testAssetItemNotFoundInIndexLogsWarningAndReturnsDefaults(): void
     {
-        $searchService = $this->createStub(AssetSearchServiceInterface::class);
-        $searchService->method('byId')->willReturn(null);
+        $searchService = $this->createMock(AssetSearchServiceInterface::class);
+        $searchService->expects($this->once())->method('byId')->willReturn(null);
 
         $handler = new AssetLazyLoadingHandler($searchService);
         $handler->setLogger(
-            $this->createWarningExpectingLogger('Asset not found in search index', 4)
+            $this->createWarningExpectingLogger('Asset not found in search index')
         );
 
         $item = $handler->apply((new AssetSearchResultItem())->setId(self::ELEMENT_ID), new User());
@@ -89,10 +92,10 @@ final class LazyLoadingHandlerTest extends Unit
         $this->assertNull($item->getFileSize());
     }
 
-    private function createWarningExpectingLogger(string $message, int $times): LoggerInterface
+    private function createWarningExpectingLogger(string $message): LoggerInterface
     {
         $logger = $this->createMock(LoggerInterface::class);
-        $logger->expects($this->exactly($times))
+        $logger->expects($this->once())
             ->method('warning')
             ->with($message, ['id' => self::ELEMENT_ID]);
 

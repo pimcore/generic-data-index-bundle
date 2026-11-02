@@ -59,6 +59,8 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
 
     private AssetLazyLoadingHandlerInterface $lazyLoadingHandler;
 
+    private bool $lazyLoadAttempted = false;
+
     public function getElementType(): ElementType
     {
         return ElementType::ASSET;
@@ -304,14 +306,20 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
     {
         $clone = clone $this;
         $clone->lazyLoadingHandler = $lazyLoadingHandler;
+        $clone->lazyLoadAttempted = false;
 
         return $clone;
     }
 
     private function lazyLoad(): void
     {
-        if (isset($this->lazyLoadingHandler)) {
-            $this->lazyLoadingHandler->lazyLoad($this);
+        if ($this->lazyLoadAttempted || !isset($this->lazyLoadingHandler)) {
+            return;
         }
+
+        // Load at most once per item: if the element is not in the index, the lookup would
+        // otherwise be repeated (and logged) on every lazy getter call.
+        $this->lazyLoadAttempted = true;
+        $this->lazyLoadingHandler->lazyLoad($this);
     }
 }
