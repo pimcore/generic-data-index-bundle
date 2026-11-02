@@ -25,6 +25,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObjec
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface;
 use Pimcore\Model\User;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
 
 /**
  * Regression tests for pimcore/platform-version#742: a lazy load that finds nothing in the index
@@ -90,6 +91,35 @@ final class LazyLoadingHandlerTest extends Unit
         $this->assertFalse($item->isHasChildren());
         $this->assertFalse($item->isHasWorkflowWithPermissions());
         $this->assertNull($item->getFileSize());
+    }
+
+    public function testFailedLookupIsRetriedOnTheNextGetterCall(): void
+    {
+        $searchService = $this->createMock(DataObjectSearchServiceInterface::class);
+        $searchService->expects($this->exactly(2))
+            ->method('byId')
+            ->willReturnOnConsecutiveCalls(
+                $this->throwException(new RuntimeException('Search index not reachable')),
+                (new DataObjectSearchResultItem())
+                    ->setHasChildren(true)
+                    ->setSearchIndexData(['key' => 'value'])
+                    ->setHasWorkflowWithPermissions(true)
+            );
+
+        $handler = new DataObjectLazyLoadingHandler($searchService);
+        $handler->setLogger($this->createMock(LoggerInterface::class));
+
+        $item = $handler->apply((new DataObjectSearchResultItem())->setId(self::ELEMENT_ID), new User());
+
+        try {
+            $item->isHasChildren();
+            $this->fail('The lookup exception must not be swallowed.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Search index not reachable', $exception->getMessage());
+        }
+
+        $this->assertTrue($item->isHasChildren());
+        $this->assertSame(['key' => 'value'], $item->getSearchIndexData());
     }
 
     private function createWarningExpectingLogger(string $message): LoggerInterface

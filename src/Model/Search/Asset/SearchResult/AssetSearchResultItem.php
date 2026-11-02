@@ -317,9 +317,10 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
             return;
         }
 
-        // Load at most once per item: if the element is not in the index, the lookup would
-        // otherwise be repeated (and logged) on every lazy getter call.
-        $this->lazyLoadAttempted = true;
         $this->lazyLoadingHandler->lazyLoad($this);
+        // Load at most once per item: if the element is not in the index, the lookup would
+        // otherwise be repeated (and logged) on every lazy getter call. Set only after the
+        // handler returned, so a lookup that threw is retried on the next call.
+        $this->lazyLoadAttempted = true;
     }
 }
