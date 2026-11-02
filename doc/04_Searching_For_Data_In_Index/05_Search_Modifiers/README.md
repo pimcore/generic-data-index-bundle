@@ -83,6 +83,12 @@ is the primary sort, the second is the secondary sort, and so on.
 | [AssetMetaDataAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Aggregation/Asset/AssetMetaDataAggregation.php) | Asset | Aggregate filter options for supported metadata types (used in asset grid filters) |
 | [FileSizeSumAggregation](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Aggregation/Asset/FileSizeSumAggregation.php) | Asset | Sum file sizes across assets for a search. Use `FileSizeAggregationServiceInterface` for a simplified API. |
 
+### Source
+
+| Modifier | Description |
+|----------|-------------|
+| [SystemFieldsOnlySource](https://github.com/pimcore/generic-data-index-bundle/blob/2026.x/src/Model/Search/Modifier/Source/SystemFieldsOnlySource.php) | Fetch only the system fields of the found data objects from the search index. `getSearchIndexData()` of a result item loads the full index document on its first call, with the user of the search, so permission event listeners still get the full data. Use it when most result items' search index data is not read, e.g. for large pages whose field values come from the database. Has no effect on asset, document and element searches. |
+
 ## Implementation Details
 
 ### Wildcard Support
