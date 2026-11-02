@@ -49,6 +49,7 @@ final class DataObjectLazyLoadingHandler implements DataObjectLazyLoadingHandler
     public function apply(DataObjectSearchResultItem $item, ?User $user): DataObjectSearchResultItem
     {
         $handler = new DataObjectLazyLoadingHandler($this->dataObjectSearchService, $user);
+        $handler->setLogger($this->logger);
 
         return $item->withLazyLoadingHandler($handler);
     }
