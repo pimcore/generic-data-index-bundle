@@ -72,7 +72,8 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
                 items: $this->searchHelper->hydrateDataObjectSearchResultHits(
                     $searchResult,
                     $childrenCounts,
-                    $dataObjectSearch
+                    $dataObjectSearch,
+                    $permissionType
                 ),
                 pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
                     searchResult: $searchResult,

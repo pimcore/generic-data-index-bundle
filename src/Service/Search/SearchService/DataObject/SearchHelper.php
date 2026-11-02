@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\Permission\PermissionTypes;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
@@ -27,11 +28,13 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Modifier\Sea
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\PermissionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Permission\UserPermissionServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\DataObjectLazyLoadingHandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchResultItem\LazyLoading\FullSourceLazyLoadingHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\AbstractSearchHelper;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\Search\DataObjectSearchResultDenormalizer;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Model\User;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -42,14 +45,17 @@ final class SearchHelper extends AbstractSearchHelper
     public const OBJECT_SEARCH = 'data_object_search';
 
     public function __construct(
-        private readonly DataObjectSearchResultDenormalizer $denormalizer,
-        // Lazy, because the lazy-loading handler depends on the data object search service, which depends on this.
+        // Lazy, because the data object search service depends on this helper.
         #[Autowire(lazy: true)]
-        private readonly DataObjectLazyLoadingHandlerInterface $lazyLoadingHandler,
+        private readonly DataObjectSearchServiceInterface $dataObjectSearchService,
+        private readonly DataObjectSearchResultDenormalizer $denormalizer,
+        #[Autowire(service: 'monolog.logger.pimcore_generic_data_index')]
+        private readonly LoggerInterface $logger,
         private readonly PermissionServiceInterface $permissionService,
         private readonly RuntimeCacheResolverInterface $runtimeCacheResolver,
         private readonly SearchIndexServiceInterface $searchIndexService,
         private readonly SearchModifierServiceInterface $searchModifierService,
+        private readonly SearchProviderInterface $searchProvider,
         private readonly UserPermissionServiceInterface $userPermissionService,
     ) {
         parent::__construct(
@@ -61,22 +67,37 @@ final class SearchHelper extends AbstractSearchHelper
 
     /**
      * Hydrates the hits of a data object search. With the SystemFieldsOnlySource modifier, the result items
-     * carry the system fields of the hits and lazy-load their full search index data on first access.
+     * carry the system fields of the hits and lazy-load their full search index data on first access, with the
+     * user and the permission type of the search.
      *
      * @return DataObjectSearchResultItem[]
      */
     public function hydrateDataObjectSearchResultHits(
         SearchResult $searchResult,
         array $childrenCounts,
-        DataObjectSearchInterface $search
+        DataObjectSearchInterface $search,
+        PermissionTypes $permissionType
     ): array {
         if (!$this->hasSystemFieldsOnlySource($search)) {
             return $this->hydrateSearchResultHits($searchResult, $childrenCounts, $search->getUser());
         }
 
+        $lazyLoadingHandler = new FullSourceLazyLoadingHandler(
+            dataObjectSearchService: $this->dataObjectSearchService,
+            logger: $this->logger,
+            permissionType: $permissionType,
+            searchProvider: $this->searchProvider,
+            user: $search->getUser(),
+        );
+
         $results = [];
         foreach ($searchResult->getHits() as $hit) {
-            $results[] = $this->hydrateSystemFieldsOnlySearchResultHit($hit, $childrenCounts, $search->getUser());
+            $results[] = $this->hydrateSystemFieldsOnlySearchResultHit(
+                $hit,
+                $childrenCounts,
+                $lazyLoadingHandler,
+                $search->getUser()
+            );
         }
 
         return $results;
@@ -103,18 +124,15 @@ final class SearchHelper extends AbstractSearchHelper
     private function hydrateSystemFieldsOnlySearchResultHit(
         SearchResultHit $searchResultHit,
         array $childrenCounts,
+        FullSourceLazyLoadingHandler $lazyLoadingHandler,
         ?User $user
     ): DataObjectSearchResultItem {
-        // Not saved in the runtime cache: byId() would return the item without its search index data,
-        // also to its own lazy-loading handler.
-        $result = $this->lazyLoadingHandler->apply(
-            $this->denormalizeSearchResultHit(
-                $searchResultHit,
-                $childrenCounts,
-                SerializerContext::SKIP_SEARCH_INDEX_DATA->createContext()
-            ),
-            $user
-        );
+        // Not saved in the runtime cache: byId() would return the item without its search index data.
+        $result = $this->denormalizeSearchResultHit(
+            $searchResultHit,
+            $childrenCounts,
+            SerializerContext::SKIP_SEARCH_INDEX_DATA->createContext()
+        )->withLazyLoadingHandler($lazyLoadingHandler);
 
         $result->setPermissions(
             $this->permissionService->getDataObjectPermissions(
