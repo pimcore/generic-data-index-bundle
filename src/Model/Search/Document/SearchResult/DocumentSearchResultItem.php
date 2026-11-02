@@ -237,7 +237,7 @@ class DocumentSearchResultItem implements ElementSearchResultItemInterface
             $this->lazyLoad();
         }
 
-        return $this->workflowWithPermissions;
+        return $this->workflowWithPermissions ?? false;
     }
 
     public function setHasWorkflowWithPermissions(?bool $workflowWithPermissions): DocumentSearchResultItem
@@ -253,7 +253,7 @@ class DocumentSearchResultItem implements ElementSearchResultItemInterface
             $this->lazyLoad();
         }
 
-        return $this->hasChildren;
+        return $this->hasChildren ?? false;
     }
 
     public function setHasChildren(bool $hasChildren): DocumentSearchResultItem
@@ -269,7 +269,7 @@ class DocumentSearchResultItem implements ElementSearchResultItemInterface
             $this->lazyLoad();
         }
 
-        return $this->searchIndexData;
+        return $this->searchIndexData ?? [];
     }
 
     public function setSearchIndexData(array $searchIndexData): DocumentSearchResultItem

@@ -154,7 +154,7 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
             $this->lazyLoad();
         }
 
-        return $this->fileSize;
+        return $this->fileSize ?? null;
     }
 
     public function setFileSize(?int $fileSize): AssetSearchResultItem
@@ -246,7 +246,7 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
             $this->lazyLoad();
         }
 
-        return $this->workflowWithPermissions;
+        return $this->workflowWithPermissions ?? false;
     }
 
     public function setHasWorkflowWithPermissions(bool $workflowWithPermissions): AssetSearchResultItem
@@ -278,7 +278,7 @@ class AssetSearchResultItem implements ElementSearchResultItemInterface
             $this->lazyLoad();
         }
 
-        return $this->searchIndexData;
+        return $this->searchIndexData ?? [];
     }
 
     public function setSearchIndexData(array $searchIndexData): AssetSearchResultItem
