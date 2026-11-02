@@ -28,6 +28,9 @@ use Psr\Log\LoggerInterface;
  * the user may only list gets its data too. byId() is not used: it requires the VIEW permission and serves items
  * from the runtime cache.
  *
+ * If the data object was deleted or the user may no longer access it, a warning is logged and the search index
+ * data of the item is an empty array. Its system fields and flags stay as found by the originating search.
+ *
  * @internal
  */
 final readonly class FullSourceLazyLoadingHandler implements DataObjectLazyLoadingHandlerInterface
@@ -53,6 +56,7 @@ final readonly class FullSourceLazyLoadingHandler implements DataObjectLazyLoadi
         $indexItem = $this->dataObjectSearchService->search($search, $this->permissionType)->getItems()[0] ?? null;
         if (!$indexItem) {
             $this->logger->warning('Data object not found in search index', ['id' => $item->getId()]);
+            $item->setSearchIndexData([]);
 
             return;
         }

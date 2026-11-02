@@ -32,8 +32,8 @@ use Psr\Log\LoggerInterface;
 final class FullSourceLazyLoadingHandlerTest extends Unit
 {
     /**
-     * A data object that is no longer found is logged with the injected logger, without failing on an
-     * uninitialized logger.
+     * A data object that is deleted or no longer permitted before the first lazy read is logged with the
+     * injected logger, and its search index data is an empty array instead of an uninitialized property.
      */
     public function testMissingDataObjectIsLogged(): void
     {
@@ -51,8 +51,10 @@ final class FullSourceLazyLoadingHandlerTest extends Unit
             ['id' => 42]
         );
 
-        $handler = $this->handler($dataObjectSearchService, $logger, PermissionTypes::LIST);
-        $handler->lazyLoad((new DataObjectSearchResultItem())->setId(42));
+        $item = $this->handler($dataObjectSearchService, $logger, PermissionTypes::LIST)
+            ->apply((new DataObjectSearchResultItem())->setId(42), null);
+
+        $this->assertSame([], $item->getSearchIndexData());
     }
 
     /**
