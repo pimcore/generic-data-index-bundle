@@ -17,6 +17,7 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\PathServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\UpdateByQueryServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Element\ElementInterface;
@@ -32,6 +33,7 @@ final class PathService implements PathServiceInterface
     public function __construct(
         private readonly SearchClientInterface $client,
         private readonly AdapterServiceInterface $typeAdapterService,
+        private readonly UpdateByQueryServiceInterface $updateByQueryService,
     ) {
     }
 
@@ -126,7 +128,108 @@ final class PathService implements PathServiceInterface
             ],
         ];
 
-        $this->client->updateByQuery($query);
+        $scriptParams = $query['body']['script']['params'];
+
+        $this->updateByQueryService->updateByQuery(
+            $query,
+            fn (array $source): array => $this->rewritePathInSource($source, $scriptParams)
+        );
+    }
+
+    /**
+     * PHP version of {@see getScriptSource()}, for when _update_by_query is emulated. Keep the two in sync.
+     *
+     * @param array<string, string> $params the script params: currentPath, newPath, currentPathEncoded,
+     *        newPathEncoded and now
+     */
+    private function rewritePathInSource(array $source, array $params): array
+    {
+        $currentPath = $params['currentPath'];
+        $newPath = $params['newPath'];
+        $systemFields = $source[FieldCategory::SYSTEM_FIELDS->value] ?? [];
+        $path = (string) ($systemFields[SystemField::PATH->value] ?? '');
+
+        if (str_starts_with($path, $currentPath)) {
+            $systemFields[SystemField::PATH->value] = $this->replacePrefix($path, $currentPath, $newPath);
+
+            $fullPath = (string) ($systemFields[SystemField::FULL_PATH->value] ?? '');
+            $systemFields[SystemField::FULL_PATH->value] = $this->replacePrefix($fullPath, $currentPath, $newPath);
+
+            $thumbnail = $systemFields['thumbnail'] ?? null;
+            if (is_string($thumbnail) && str_starts_with($thumbnail, $currentPath)) {
+                $systemFields['thumbnail'] = $this->replacePrefix($thumbnail, $currentPath, $newPath);
+            }
+
+            $portalThumbnail = $source['custom_fields']['PortalEngineBundle']['system_fields']['thumbnail'] ?? null;
+            if (is_string($portalThumbnail)) {
+                $source['custom_fields']['PortalEngineBundle']['system_fields']['thumbnail'] =
+                    $this->rewritePortalThumbnail($portalThumbnail, $params);
+            }
+
+            $systemFields[SystemField::PATH_LEVELS->value] = $this->buildPathLevels(
+                $systemFields[SystemField::PATH->value]
+            );
+        }
+
+        $systemFields[SystemField::MODIFICATION_DATE->value] = $params['now'];
+        $systemFields[SystemField::CHECKSUM->value] = 0;
+        $source[FieldCategory::SYSTEM_FIELDS->value] = $systemFields;
+
+        return $source;
+    }
+
+    /**
+     * Same as the script: substring() on the length of $prefix, without checking that $value starts with it.
+     */
+    private function replacePrefix(string $value, string $prefix, string $replacement): string
+    {
+        return $replacement . substr($value, strlen($prefix));
+    }
+
+    /**
+     * Portal Engine thumbnails may carry a "/cache-buster-..." segment in front of the path, and the path in
+     * them may be percent-encoded per segment.
+     *
+     * @param array<string, string> $params the script params
+     */
+    private function rewritePortalThumbnail(string $thumbnail, array $params): string
+    {
+        $prefix = '';
+        $thumbPath = $thumbnail;
+
+        if (str_starts_with($thumbnail, '/cache-buster-')) {
+            $slashPos = strpos($thumbnail, '/', 1);
+            if ($slashPos !== false) {
+                $prefix = substr($thumbnail, 0, $slashPos);
+                $thumbPath = substr($thumbnail, $slashPos);
+            }
+        }
+
+        if (str_starts_with($thumbPath, $params['currentPathEncoded'])) {
+            return $prefix . $this->replacePrefix($thumbPath, $params['currentPathEncoded'], $params['newPathEncoded']);
+        }
+
+        if (str_starts_with($thumbPath, $params['currentPath'])) {
+            return $prefix . $this->replacePrefix($thumbPath, $params['currentPath'], $params['newPath']);
+        }
+
+        return $thumbnail;
+    }
+
+    /**
+     * @return list<array{level: int, name: string}>
+     */
+    private function buildPathLevels(string $path): array
+    {
+        $pathLevels = [];
+
+        foreach (explode('/', $path) as $name) {
+            if ($name !== '') {
+                $pathLevels[] = ['level' => count($pathLevels) + 1, 'name' => $name];
+            }
+        }
+
+        return $pathLevels;
     }
 
     private function getScriptSource(): string

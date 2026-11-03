@@ -19,6 +19,7 @@ use function is_string;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\ConditionType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\QueryType;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
@@ -27,6 +28,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Search;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\ElementLockServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\UpdateByQueryServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\PathServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -56,6 +58,7 @@ final class ElementLockService implements ElementLockServiceInterface
         private readonly PathServiceInterface $pathService,
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly LockedElementsCacheInterface $lockedElementsCache,
+        private readonly UpdateByQueryServiceInterface $updateByQueryService,
     ) {
     }
 
@@ -98,7 +101,17 @@ final class ElementLockService implements ElementLockServiceInterface
             ],
         ];
 
-        $this->client->updateByQuery($query);
+        $this->updateByQueryService->updateByQuery(
+            $query,
+            static function (array $source): array {
+                // most documents of a subtree are not locked - left unchanged, they are not written
+                if (($source[FieldCategory::SYSTEM_FIELDS->value][SystemField::LOCKED->value] ?? null) !== null) {
+                    $source[FieldCategory::SYSTEM_FIELDS->value][SystemField::LOCKED->value] = null;
+                }
+
+                return $source;
+            }
+        );
         $this->lockedElementsCache->reset();
     }
 

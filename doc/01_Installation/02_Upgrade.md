@@ -7,6 +7,12 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 ## Upgrade to 2026.4.0
 
+- [Indexing] Search clusters that refuse `_update_by_query` with HTTP 403 (for example Bonsai below its Business plans)
+  no longer leave the children of a moved or renamed element at their old paths in the index, and unlocking with
+  propagation and class icon changes work there, too: the request is emulated with search and bulk requests. New
+  optional setting `search_settings.emulate_update_by_query` to use the emulation right away. See
+  [Search clusters without `_update_by_query`](../02_Configuration/03_Index_Management.md#search-clusters-without-_update_by_query).
+
 ### Re-indexing recommended
 
 - [Indexing] Fixed: localized fields inside object bricks, field collections and blocks were normalized with the

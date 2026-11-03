@@ -37,10 +37,29 @@ class ElementLockServiceTest extends Unit
         $this->tester->flushIndex();
         $this->tester->cleanupIndex();
         $this->tester->flushIndex();
+        $this->tester->forceUpdateByQueryEmulation(false);
     }
 
-    public function testElementIsLocked(): void
+    /**
+     * Runs a test against the native _update_by_query API and against its search + bulk emulation.
+     *
+     * @return array<string, array{bool}>
+     */
+    public function updateByQueryModes(): array
     {
+        return [
+            'native update by query' => [false],
+            'emulated update by query' => [true],
+        ];
+    }
+
+    /**
+     * @dataProvider updateByQueryModes
+     */
+    public function testElementIsLocked(bool $emulateUpdateByQuery): void
+    {
+        $this->tester->forceUpdateByQueryEmulation($emulateUpdateByQuery);
+
         $asset1 = TestHelper::createImageAsset();
         $asset2 = TestHelper::createImageAsset();
         $folder1 = TestHelper::createAssetFolder();

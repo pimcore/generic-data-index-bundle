@@ -18,6 +18,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper;
 use Codeception\Lib\ModuleContainer;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\Sort\TreeSortHandlers;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\UpdateByQueryServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
@@ -122,6 +123,16 @@ class GenericDataIndex extends \Codeception\Module
     {
         $synchronousProcessing = $this->grabService(SynchronousProcessingRelatedIdsServiceInterface::class);
         $synchronousProcessing->disable();
+    }
+
+    /**
+     * Run _update_by_query requests through the search + bulk emulation (true) or the native API (false).
+     */
+    public function forceUpdateByQueryEmulation(bool $force): void
+    {
+        /** @var UpdateByQueryServiceInterface $updateByQueryService */
+        $updateByQueryService = $this->grabService(UpdateByQueryServiceInterface::class);
+        $updateByQueryService->forceEmulation($force);
     }
 
     public function getIndexSearchClient(): mixed
