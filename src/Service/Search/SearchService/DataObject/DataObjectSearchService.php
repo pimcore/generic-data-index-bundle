@@ -69,10 +69,11 @@ final readonly class DataObjectSearchService implements DataObjectSearchServiceI
 
         try {
             return new DataObjectSearchResult(
-                items: $this->searchHelper->hydrateSearchResultHits(
+                items: $this->searchHelper->hydrateDataObjectSearchResultHits(
                     $searchResult,
                     $childrenCounts,
-                    $dataObjectSearch->getUser()
+                    $dataObjectSearch,
+                    $permissionType
                 ),
                 pagination: $this->paginationInfoService->getPaginationInfoFromSearchResult(
                     searchResult: $searchResult,

@@ -19,6 +19,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex;
 enum SerializerContext
 {
     case SKIP_LAZY_LOADED_FIELDS;
+    case SKIP_SEARCH_INDEX_DATA;
 
     public function containedInContext(array $context): bool
     {
