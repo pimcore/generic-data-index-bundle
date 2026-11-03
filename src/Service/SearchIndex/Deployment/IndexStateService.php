@@ -168,7 +168,8 @@ final readonly class IndexStateService implements IndexStateServiceInterface
             return true;
         }
 
-        return $target->isClassIndex() && $stored === (string) LegacyClassMappingCheckSum::calculate($mappingProperties);
+        return $target->isClassIndex()
+            && $stored === (string) LegacyClassMappingCheckSum::calculate($mappingProperties);
     }
 
     private function getHandler(IndexStateTarget $target): IndexHandlerInterface
