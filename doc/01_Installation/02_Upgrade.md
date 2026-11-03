@@ -55,6 +55,9 @@ description: Version-specific upgrade instructions and breaking changes for the 
   The `workflowPlaces` mapping depends on the configured `state_table` workflows. It is not part of the class mapping
   checksum, so `generic-data-index:deployment:reindex` does not reindex every class because of it: run
   `generic-data-index:update:index` after adding or removing a `state_table` workflow.
+- [Indexing] Snapshots exported before the update are still accepted, but importing one writes its documents as they
+  were exported, without `workflowPlaces`. Export snapshots again after the update, or run
+  `generic-data-index:update:index` again after importing an older snapshot.
 
 ## Upgrade to 2026.3.4
 - [Searching] New optional setting `search_settings.full_text_search_fields`: the fields a full-text search runs

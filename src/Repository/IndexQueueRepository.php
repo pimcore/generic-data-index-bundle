@@ -251,11 +251,32 @@ final class IndexQueueRepository
      * @throws DBALException
      *
      * @param HitData[] $enqueueItemList
+     * @param bool $keepQueuedDelete a queued DELETE entry of an element is left untouched instead of overwritten
      */
-    public function enqueueByItemList(array $enqueueItemList, IndexQueueOperation $operation, int $operationTime): void
-    {
+    public function enqueueByItemList(
+        array $enqueueItemList,
+        IndexQueueOperation $operation,
+        int $operationTime,
+        bool $keepQueuedDelete = false
+    ): void {
         if (empty($enqueueItemList)) {
             return;
+        }
+
+        $update = <<<SQL
+                    operation = VALUES(operation),
+                    operationTime = VALUES(operationTime),
+                    dispatched = VALUES(dispatched)
+        SQL;
+        if ($keepQueuedDelete) {
+            // MySQL applies the assignments left to right: operation must be assigned last, the other columns
+            // compare against its original value.
+            $delete = $this->connection->quote(IndexQueueOperation::DELETE->value);
+            $update = <<<SQL
+                    operationTime = IF(operation = $delete, operationTime, VALUES(operationTime)),
+                    dispatched = IF(operation = $delete, dispatched, VALUES(dispatched)),
+                    operation = IF(operation = $delete, operation, VALUES(operation))
+        SQL;
         }
 
         $sql = <<<SQL
@@ -264,9 +285,7 @@ final class IndexQueueRepository
                 VALUES %s
                 ON DUPLICATE KEY
                 UPDATE
-                    operation = VALUES(operation),
-                    operationTime = VALUES(operationTime),
-                    dispatched = VALUES(dispatched)
+        $update
         SQL;
 
         $chunks = array_chunk($enqueueItemList, self::BATCH_SIZE);

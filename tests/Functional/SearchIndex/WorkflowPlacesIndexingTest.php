@@ -40,6 +40,8 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Workflow\WorkflowInterface;
 
 /**
+ * @internal
+ *
  * Covers the gdi_test_state_table workflow from .github/ci/files/config/packages/test/config.yaml.
  * It only supports elements whose key starts with "gdi-wf-", so other tests are not affected.
  */

@@ -132,7 +132,9 @@ final class WorkflowPlaceIndexUpdateSubscriber implements EventSubscriberInterfa
             $this->indexQueueRepository->enqueueByItemList(
                 $hits,
                 IndexQueueOperation::UPDATE,
-                $this->timeService->getCurrentMillisecondTimestamp()
+                $this->timeService->getCurrentMillisecondTimestamp(),
+                // another request may have queued a DELETE of the element meanwhile
+                true
             );
             $this->queueMessagesDispatcher->dispatchQueueMessages();
         } catch (Exception $e) {
