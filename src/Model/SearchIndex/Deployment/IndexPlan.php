@@ -22,6 +22,7 @@ final readonly class IndexPlan
 {
     /**
      * @param string[] $reasons
+     * @param bool $rebuildOwed an earlier run changed the index and failed before queuing its rebuild
      */
     public function __construct(
         private IndexStateTarget $target,
@@ -32,7 +33,13 @@ final readonly class IndexPlan
         private bool $dataVersionChanged,
         private bool $baselineMissing,
         private array $reasons,
+        private bool $rebuildOwed = false,
     ) {
+    }
+
+    public function isRebuildOwed(): bool
+    {
+        return $this->rebuildOwed;
     }
 
     public function getTarget(): IndexStateTarget
@@ -89,7 +96,7 @@ final readonly class IndexPlan
 
     public function needsRebuild(): bool
     {
-        return $this->indexMissing || $this->mappingChanged || $this->dataVersionChanged;
+        return $this->indexMissing || $this->mappingChanged || $this->dataVersionChanged || $this->rebuildOwed;
     }
 
     public function isBaselineOnly(): bool

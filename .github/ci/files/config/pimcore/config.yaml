@@ -3,6 +3,9 @@ imports:
 
 pimcore_generic_data_index:
   index_service:
+    # The functional tests of field type changes exercise the copy strategy; the default is "recreate".
+    reindex_settings:
+      mapping_change_strategy: copy
     search_settings:
       list_page_size: 60
       list_max_filter_options: 500
