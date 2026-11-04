@@ -39,7 +39,11 @@ bin/console pimcore:bundle:install PimcoreGenericDataIndexBundle
 See [OpenSearch Client Setup](../02_Configuration/04_Opensearch.md) or [Elasticsearch Client Setup](../02_Configuration/05_Elasticsearch.md) for more information.
 
 5) Setup one or multiple Symfony messenger workers for the indexing queue processing. It is recommended to use a tool like Supervisor to manage the workers.
-   For more information, see the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html). 
+   The process manager has to restart them: saving a class definition or the system settings stops all messenger
+   workers.
+   For more information, see the [Symfony Messenger documentation](https://symfony.com/doc/current/messenger.html),
+   and the [Operations Guide](../02_Configuration/07_Operations_Guide.md#messenger-workers) for the worker setup with
+   large indices.
 
 ```bash
 ./bin/console messenger:consume pimcore_generic_data_index_queue scheduler_generic_data_index
@@ -65,3 +69,7 @@ It is needed to run following command after installation (at least) once to crea
 ```bash
 ./bin/console generic-data-index:update:index -r
 ```
+
+On an existing database with many elements, the messenger workers need hours to fill the indices; see
+[Capacity Planning](../02_Configuration/07_Operations_Guide.md#capacity-planning), or import an
+[index snapshot](../02_Configuration/06_Index_Snapshots.md) instead.
