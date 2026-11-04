@@ -13,7 +13,6 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler;
 
-use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField\Asset\DocumentSystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\AssetSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem;
@@ -27,9 +26,6 @@ class DocumentSerializationHandler extends AbstractHandler
 {
     use LoggerAwareTrait;
 
-    /**
-     * @throws Exception
-     */
     public function getAdditionalSystemFields(Asset $asset): array
     {
         if (!$asset instanceof Document) {
@@ -38,8 +34,8 @@ class DocumentSerializationHandler extends AbstractHandler
 
         return [
             DocumentSystemField::IMAGE_THUMBNAIL->value => $this->getImageThumbnail($asset),
-            DocumentSystemField::PAGE_COUNT->value => $asset->getPageCount(),
-            DocumentSystemField::TEXT->value => $asset->getText(),
+            DocumentSystemField::PAGE_COUNT->value => $this->getPageCount($asset),
+            DocumentSystemField::TEXT->value => $this->getDocumentText($asset),
         ];
     }
 
@@ -56,6 +52,36 @@ class DocumentSerializationHandler extends AbstractHandler
             return $document->getImageThumbnail(Image\Thumbnail\Config::getPreviewConfig())->getPath();
         } catch (Throwable $e) {
             $this->logger->error('Thumbnail generation failed for document asset: ' .
+                $document->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getPageCount(Document $document): ?int
+    {
+        try {
+            return $document->getPageCount();
+        } catch (Throwable $e) {
+            $this->logger->error('Page count extraction failed for document asset: ' .
+                $document->getId() .
+                ' error ' .
+                $e->getMessage()
+            );
+        }
+
+        return null;
+    }
+
+    private function getDocumentText(Document $document): ?string
+    {
+        try {
+            return $document->getText();
+        } catch (Throwable $e) {
+            $this->logger->error('Text extraction failed for document asset: ' .
                 $document->getId() .
                 ' error ' .
                 $e->getMessage()
