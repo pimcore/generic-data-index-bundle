@@ -16,7 +16,7 @@ For an overview of which changes require a reindex, which of them are handled au
 |---------|-------------|
 | `generic-data-index:update:index` | Update index mappings and queue all elements for reindex from the database |
 | `generic-data-index:update:index -r` | Delete and recreate indices, then queue all elements |
-| `generic-data-index:reindex` | Native search engine reindex (reorganizes data within existing indices, no database read) |
+| `generic-data-index:reindex` | Native search engine reindex (odd/even copy of every index; queues a rebuild from the database only for indices whose copy left out fields, that had to be created empty, or whose mapping a custom index handler applied) |
 | `generic-data-index:deployment:reindex` | Update indices only for class definitions changed since the last deployment |
 | `generic-data-index:cleanup:unused-indices` | Delete managed indices not referenced by any alias (`-odd`/`-even` suffixes only) |
 | `generic-data-index:status` | Status of every index (complete, rebuilding with progress, copying, degraded, incomplete), queue depth and failed messages; `--wait` and `--check` for pipelines |
@@ -143,9 +143,11 @@ Without `-r`, the command only updates the index mapping and queues all items fo
 
 ### Updating Index Structure
 
-Index mappings update automatically when system languages or class definition fields change.
-For manual updates, run the reindex command. This performs a native OpenSearch/Elasticsearch
-reindex within the search indices (no database read):
+Index mappings update automatically when system languages or class definition fields change. For manual updates, run the
+reindex command. This performs a native OpenSearch/Elasticsearch reindex within the search indices. It reads the
+database only for indices whose copy left out fields after a field type change, that had to be created empty, or whose
+mapping a custom index handler applied: their elements are queued for a rebuild (see
+[Field Type Changes](../03_Reindexing/README.md#field-type-changes)).
 
 ```bash
 bin/console generic-data-index:reindex
@@ -159,9 +161,20 @@ the task has finished. Two options control how long the process waits:
 - **max_polls** (default 720): maximum number of polling attempts before the reindex is aborted
 - **poll_interval** (default 5): seconds to wait between two status polls
 
-With the defaults, a reindex may therefore run for up to one hour (720 × 5 seconds). If reindexing an index takes
-longer than this budget, the command aborts with an error and a non-zero exit code — increase `max_polls` for very
-large indices:
+With the defaults, a reindex may therefore run for up to one hour (720 × 5 seconds) per copy attempt; with the `copy`
+strategy (below), a copy that strips fields after a field type change can take up to 3 attempts. If reindexing an
+index takes longer than this budget, the command aborts with an error and a non-zero exit code — increase `max_polls`
+for very large indices.
+
+A third option decides what happens to documents written under the old mapping when the mapping changes:
+
+- **mapping_change_strategy** (default `recreate`): `recreate` copies the documents as they are and, when their old
+  values don't fit the new mapping (for example text in a field that became numeric), recreates the index empty with
+  the new mapping and queues a rebuild from the database; the index is empty until the messenger workers have
+  processed it. `copy` leaves the fields whose old values don't fit out of the copy, so every document stays in the
+  index while the rebuild refills the changed fields; the index is recreated only as a last resort. See
+  [Field Type Changes](../03_Reindexing/README.md#field-type-changes) for what each strategy means for searches
+  during the rebuild.
 
 ```yaml
 pimcore_generic_data_index:
@@ -169,13 +182,23 @@ pimcore_generic_data_index:
         reindex_settings:
             max_polls: 720
             poll_interval: 5
+            mapping_change_strategy: recreate
 ```
 
 Transient failures while polling (e.g. a temporarily unreachable or overloaded search cluster) are retried and do not
 abort a running reindex. If reindexing fails for a different reason — the cluster is unreachable, the task reports an
 error or times out server-side — the command fails instead of modifying the live index, and the reindex is retried on
-the next run. The index is only recreated (and repopulated via the index queue) when the already indexed documents are
-incompatible with the new mapping, for example after a field type change.
+the next run.
+
+After a field type change, the outcome depends on `mapping_change_strategy`. With the default `recreate`, the
+documents are copied as they are; if their old values don't fit the new mapping, the index is recreated empty and
+search finds nothing for it until the rebuild from the database. With `copy`, the copy keeps the changed fields whose
+old values still fit (for example a number copied into a text field) and leaves out the others, so the documents stay
+searchable; the left-out fields are empty until the rebuild, and the index is only recreated, as a last resort, when
+the copy fails and no further field can be left out. If fields were left out of the copy, the index had to be created empty,
+or a custom index handler applied the mapping, the command queues all elements of that index for a rebuild from the
+database and prints a notice per index. Run the messenger workers to fill these indices. See the
+[Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
 
 ### Handling Failed Messages
 
@@ -412,7 +435,11 @@ bin/console generic-data-index:cleanup:unused-indices --min-age=3600
 > **Warning:** Only lower `--min-age` or disable the guard entirely (`--min-age=0`) when you
 > are sure no reindex (e.g. `generic-data-index:reindex` or
 > `generic-data-index:deployment:reindex`) is currently running or expected to take longer
-> than the chosen threshold. Run a `--dry-run` first to review what would be deleted.
+> than the chosen threshold. A class save that changes a field type also runs an odd/even
+> copy, in a messenger worker. With the default `reindex_settings` each copy attempt can take up to
+> one hour; a copy that strips fields after parsing failures makes up to 3 attempts, and the messenger
+> retries of a worker can repeat a copy that timed out. Run a `--dry-run` first to review what would be
+> deleted.
 
 ### Other Index Changes
 
