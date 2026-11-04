@@ -42,6 +42,8 @@ interface IndexLockInterface
     /**
      * Extends the lifetime of the held lock before a further attempt of the update. Does nothing without a held
      * lock.
+     *
+     * @throws IndexLockException when another process took the lock over, or the lock store fails twice in a row
      */
     public function refresh(string $aliasName): void;
 }

@@ -354,7 +354,8 @@ during `classes-rebuild` and `deployment:reindex` (see [Deployment Procedure](#d
 message is redelivered after `redeliver_timeout`, or when a class is saved twice within the copy time and two
 workers handle the messages. The waiting process logs a notice and blocks until the lock is free; a lock whose
 process died expires after the longest copy wait (`reindex_settings.max_polls` × `poll_interval`, one hour by
-default) plus a minute. Versions before 2026.3.5 have no lock: there, the second copy cancels the first (it removes
+default) plus a quarter of it. An update whose lock was taken over meanwhile stops with an `IndexLockException`
+instead of going on. Versions before 2026.3.5 have no lock: there, the second copy cancels the first (it removes
 running copies of its target before it starts), and the class index can disappear completely.
 
 To stop a copy, first stop the process that waits for it (the worker or the console command), then cancel the task.

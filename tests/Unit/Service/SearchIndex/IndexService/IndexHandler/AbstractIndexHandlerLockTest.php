@@ -107,7 +107,7 @@ final class AbstractIndexHandlerLockTest extends Unit
 
         $this->assertSame(['test_alias-odd' => [self::RESOURCE]], $heldDuringRecreation);
         $this->assertSame(1, $store->getSaves(), 'the copy and the recreation share one lock');
-        $this->assertGreaterThan(1, $store->getRefreshes(), 'the lock is refreshed before the further attempt');
+        $this->assertSame(3, $store->getRefreshes(), 'refreshed on acquire, before the copy and before the recreation');
         $this->assertSame([], $store->getHeldResources());
     }
 
@@ -133,6 +133,24 @@ final class AbstractIndexHandlerLockTest extends Unit
         $this->assertSame([self::RESOURCE], $heldDuringCopy);
         $this->assertSame(1, $store->getSaves(), 'the override runs inside the lock of reindexMappingWithResult()');
         $this->assertTrue($result->isOutcomeUnknown());
+        $this->assertSame([], $store->getHeldResources());
+    }
+
+    public function testDeleteIndexRunsUnderTheLockOfTheIndex(): void
+    {
+        $store = new RecordingLockStore();
+        $heldDuringDelete = null;
+        $search = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'getCurrentIndexVersion' => 'even',
+            'deleteIndex' => static function () use ($store, &$heldDuringDelete): void {
+                $heldDuringDelete = $store->getHeldResources();
+            },
+        ]);
+        $handler = $this->createHandler($search, $store);
+
+        $handler->deleteIndex();
+
+        $this->assertSame([self::RESOURCE], $heldDuringDelete);
         $this->assertSame([], $store->getHeldResources());
     }
 

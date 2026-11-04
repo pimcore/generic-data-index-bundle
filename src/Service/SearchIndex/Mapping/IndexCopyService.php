@@ -22,6 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexCopyRes
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingFieldChange;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -43,6 +44,7 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
         private MappingDiffServiceInterface $mappingDiffService,
         private LoggerInterface $pimcoreGenericDataIndexLogger,
         string $mappingChangeStrategy = MappingChangeStrategy::RECREATE->value,
+        private ?IndexLockInterface $indexLock = null,
     ) {
         $this->mappingChangeStrategy = MappingChangeStrategy::from($mappingChangeStrategy);
     }
@@ -93,6 +95,10 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
         }
 
         for ($attempt = 1; $attempt <= self::MAX_ATTEMPTS; $attempt++) {
+            if ($attempt > 1) {
+                // Every attempt can take as long as a full copy; the lock of the index must outlive all of them.
+                $this->indexLock?->refresh($aliasName);
+            }
             $outcome = $this->searchIndexService->reindexWithoutFields(
                 $aliasName,
                 $mappingProperties,

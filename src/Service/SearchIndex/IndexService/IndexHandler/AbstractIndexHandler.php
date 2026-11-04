@@ -236,6 +236,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                     'Recreating index for alias "%s": the new mapping is incompatible with the indexed documents',
                     $alias
                 ));
+                $this->refreshIndexLock($alias);
                 $this->doUpdateMappingFull($context, true, $mappingProperties, $depth);
                 $result = new MappingUpdateResult($copy->getStrippedPaths(), $copy->getKeptPaths(), true);
             }
@@ -263,8 +264,9 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
 
     public function deleteIndex(mixed $context = null): void
     {
-        $this->searchIndexService->deleteIndex(
-            $this->getCurrentFullIndexName($context)
+        $this->underIndexLock(
+            $this->getAliasIndexName($context),
+            fn () => $this->searchIndexService->deleteIndex($this->getCurrentFullIndexName($context))
         );
     }
 
@@ -348,9 +350,10 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         }
         if ($this->defaultIndexCopyService === null) {
             $this->defaultIndexCopyService = new IndexCopyService(
-                $this->searchIndexService,
-                new MappingDiffService(),
-                $this->logger ?? new NullLogger()
+                searchIndexService: $this->searchIndexService,
+                mappingDiffService: new MappingDiffService(),
+                pimcoreGenericDataIndexLogger: $this->logger ?? new NullLogger(),
+                indexLock: $this->indexLock
             );
         }
 
