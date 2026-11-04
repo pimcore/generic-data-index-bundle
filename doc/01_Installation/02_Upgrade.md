@@ -3,6 +3,9 @@
 Following steps are necessary during updating to newer versions.
 
 ## Upgrade to 2.5.18
+- [Commands] `generic-data-index:deployment:reindex` without options no longer stops at the first class whose index
+  update fails: it continues with the remaining classes, reports every failed class and exits with a non-zero status,
+  like a run with index options.
 - [Indexing] Two concurrent mapping updates of the same index (for example two class saves handled by two messenger
   workers) could delete the live index: both copied into the same target, the first to finish switched the alias to
   it, and the failing second one cleaned its target up. A copy now never deletes an index the alias points to. When
