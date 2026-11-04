@@ -25,8 +25,16 @@ the general term "reindex". `<id>` stands for a class definition ID.
 
 ## At a Glance
 
+The rows marked "Yes: mapping" run an odd/even copy of the index. What that copy does with the existing documents is
+set by `index_service.reindex_settings.mapping_change_strategy`: `recreate` (the default) copies them as they are and
+recreates the index empty when old values don't fit the new mapping; `copy` keeps the changed fields whose values
+still fit and leaves the others out until the rebuild from the database. See
+[Field Type Changes](#field-type-changes) and
+[Reindex Options](../02_Configuration/03_Index_Management.md#reindex-options).
+
 | Change | Reindex needed? | Automatic? | Command if manual |
 | --- | --- | --- | --- |
+| `mapping_change_strategy` switched between `recreate` and `copy` | No: it applies to the next mapping change | Not needed | None |
 | Field added, removed or renamed in a class (admin UI or Studio) | Yes: mapping | Yes | None |
 | Field type changed to one with a different index type (e.g. input to numeric) | Yes: mapping. With the default `mapping_change_strategy: recreate`, the index is recreated empty if the old values don't fit and filled by the rebuild; with `copy`, it is copied instead (recreation only as a last resort) and the changed field is empty (or keeps its old value) until the rebuild | Yes | None |
 | Field type changed within the same index type (e.g. input to textarea) | No | Not needed | None |
