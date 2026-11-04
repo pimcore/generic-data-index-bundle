@@ -6,6 +6,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
 # Upgrade Information
 
 ## Upgrade to 2026.3.5
+- [Indexing] Fixed: deleting a class definition no longer leaves the delete queue entries of its objects behind.
+  They were dispatched again every 24 hours and failed each time with `index_not_found_exception`, blocking the
+  other elements of their batch. The entries are now removed together with the class index, and a bulk deletion
+  from an index that no longer exists counts as done instead of failing the batch. Messages that already failed
+  for this reason succeed on `messenger:failed:retry`.
 - [Commands] `generic-data-index:deployment:reindex` without options no longer stops at the first class whose index
   update fails: it continues with the remaining classes, reports every failed class and exits with a non-zero status,
   like a run with index options.
