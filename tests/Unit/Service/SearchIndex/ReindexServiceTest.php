@@ -30,12 +30,15 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\Eleme
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DocumentIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLock;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Psr\Log\NullLogger;
 use ReflectionClass;
+use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Lock\Store\InMemoryStore;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -152,6 +155,7 @@ final class ReindexServiceTest extends Unit
         $documentAdapter = (new ReflectionClass(DocumentTypeAdapter::class))->newInstanceWithoutConstructor();
         $documentAdapter->setSearchIndexConfigService($config);
 
+        $lock = new IndexLock(new LockFactory(new InMemoryStore()), 1, 1);
         $assetHandler = new AssetIndexHandler(
             $search,
             $config,
@@ -160,7 +164,8 @@ final class ReindexServiceTest extends Unit
             $assetAdapter,
             $this->makeEmpty(MetadataProviderServiceInterface::class, ['getMappingProperties' => []]),
             $aliases,
-            $copy
+            $copy,
+            $lock
         );
         $documentHandler = new DocumentIndexHandler(
             $search,
@@ -169,7 +174,8 @@ final class ReindexServiceTest extends Unit
             $mapping,
             $documentAdapter,
             $aliases,
-            $copy
+            $copy,
+            $lock
         );
         $assetHandler->setLogger(new NullLogger());
         $documentHandler->setLogger(new NullLogger());

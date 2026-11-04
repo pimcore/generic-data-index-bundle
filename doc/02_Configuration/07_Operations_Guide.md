@@ -174,8 +174,9 @@ blocked for the whole copy.
 
 **Redelivery.** The Doctrine transport hands a message that is still being handled after `redeliver_timeout`
 (default 3600 seconds) to another worker. A class mapping message whose copy takes longer than an hour is then handled
-by two workers at the same time, which must not happen (see the warning under
-[When a Copy Fails, Times Out or Is Cancelled](#when-a-copy-fails-times-out-or-is-cancelled)). Size it for the whole
+by a second worker, which waits for the lock of the index (see the warning under
+[When a Copy Fails, Times Out or Is Cancelled](#when-a-copy-fails-times-out-or-is-cancelled)) and copies the index
+again once the first worker has finished, so the copy runs twice. Size `redeliver_timeout` for the whole
 message, not a single copy: the language message copies every class, asset and document index one after the other and
 queues their elements before it is acknowledged. 2.5 runs on Symfony 6.4 or 7, and what you can do depends on the
 version:
@@ -239,7 +240,8 @@ bin/console messenger:consume pimcore_generic_data_index_mapping
 During a deployment, class changes reach the index in two ways: `classes-rebuild` sends one message per changed class
 to the workers, and `deployment:reindex` copies the changed classes in the console process. Both compare the class
 mapping with the checksum that is stored only after a successful update. If the workers are running, a worker and the
-console can therefore copy the same class at the same time. Stop the workers first:
+console can therefore both copy the same class. The lock of the index keeps the copies apart (the second one waits
+and then copies again), but every class is still copied twice. Stop the workers first:
 
 1. **Prepare.** On a staging system with the new code and production-like data, run
    `deployment:reindex --all --dry-run` to see which indices will be copied or rebuilt, and estimate copy and rebuild
@@ -343,17 +345,21 @@ Messenger: `bin/console messenger:stats` shows the messages waiting per transpor
 
 :::warning
 
-Don't cancel a running copy task of the bundle by hand (`POST _tasks/<task_id>/_cancel`), and don't let two copies of
-the same index overlap. The engine reports a cancelled task as finished without errors, and versions without the fix
-for [#639](https://github.com/pimcore/platform-version/issues/639) take it as a complete copy: the alias switches to
-the incomplete index and the old index is deleted. When two copies of the same index overlap, the second one cancels
-the first (it removes running copies of its target before it starts), and the class index can disappear completely.
-With the fix, a cancelled copy fails and the alias stays on the complete index, but an overlapping copy still starts
-the first one over.
+Don't cancel a running copy task of the bundle by hand (`POST _tasks/<task_id>/_cancel`). The engine reports a
+cancelled task as finished without errors, and versions without the fix for
+[#639](https://github.com/pimcore/platform-version/issues/639) take it as a complete copy: the alias switches to
+the incomplete index and the old index is deleted. With the fix, a cancelled copy fails and the alias stays on the
+complete index.
 
-Copies of the same index overlap when workers run during `classes-rebuild` and `deployment:reindex` (see
-[Deployment Procedure](#deployment-procedure)), when a message is redelivered after `redeliver_timeout`, or when a
-class is saved twice within the copy time and two workers handle the messages.
+Two mapping updates of the same index never run at the same time. Each one holds a lock on the index alias, taken
+from the lock store of the application (Pimcore configures the database store, so all workers and nodes share it),
+and the second one waits until the first has finished, then copies the index again. This happens when workers run
+during `classes-rebuild` and `deployment:reindex` (see [Deployment Procedure](#deployment-procedure)), when a
+message is redelivered after `redeliver_timeout`, or when a class is saved twice within the copy time and two
+workers handle the messages. The waiting process logs a notice and blocks until the lock is free; a lock whose
+process died expires after the longest copy wait (`reindex_settings.max_polls` × `poll_interval`, one hour by
+default) plus a minute. Versions before 2.5.18 have no lock: there, the second copy cancels the first (it removes
+running copies of its target before it starts), and the class index can disappear completely.
 
 To stop a copy, first stop the process that waits for it (the worker or the console command), then cancel the task.
 The next copy of the index removes the incomplete index.

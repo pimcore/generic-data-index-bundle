@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Defau
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\DeploymentReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexStateServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkChunkWriter;
@@ -144,6 +145,10 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
                 $indexSettings['reindex_settings']['poll_interval'],
             );
         }
+
+        $definition = $container->getDefinition(IndexLockInterface::class);
+        $definition->setArgument('$reindexMaxPolls', $indexSettings['reindex_settings']['max_polls']);
+        $definition->setArgument('$reindexPollIntervalSeconds', $indexSettings['reindex_settings']['poll_interval']);
 
         $mappingChangeStrategy = $indexSettings['reindex_settings']['mapping_change_strategy'];
         $container->getDefinition(IndexCopyServiceInterface::class)
