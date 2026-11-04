@@ -18,6 +18,8 @@ use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\CalculatedFieldsIndexMode;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectNormalizerException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
@@ -136,6 +138,33 @@ final class DataObjectNormalizerTest extends Unit
         );
     }
 
+    public function testSkipLazyLoadedFieldsDoesNotReadOrNormalizeStandardFields(): void
+    {
+        $classDefinition = $this->createClassDefinition([
+            'relation' => new Input(),
+        ]);
+
+        $fieldDefinitionService = $this->makeEmpty(FieldDefinitionServiceInterface::class, [
+            'normalizeValue' => Expected::never(),
+        ]);
+
+        $dataObject = $this->createConcreteObjectMock($classDefinition, [
+            'get' => Expected::never(),
+        ]);
+
+        $normalizer = $this->createNormalizer(fieldDefinitionService: $fieldDefinitionService);
+        $result = $normalizer->normalize(
+            $dataObject,
+            null,
+            SerializerContext::SKIP_LAZY_LOADED_FIELDS->createContext()
+        );
+
+        $this->assertSame([], $result[FieldCategory::STANDARD_FIELDS->value]);
+        $this->assertSame(1, $result[FieldCategory::SYSTEM_FIELDS->value][SystemField::ID->value]);
+        $this->assertSame('/test', $result[FieldCategory::SYSTEM_FIELDS->value][SystemField::FULL_PATH->value]);
+        $this->assertSame(0, $result[FieldCategory::SYSTEM_FIELDS->value][SystemField::PARENT_ID->value]);
+    }
+
     public function testNormalizeThrowsDataObjectNormalizerException(): void
     {
         $this->expectException(DataObjectNormalizerException::class);
@@ -165,9 +194,11 @@ final class DataObjectNormalizerTest extends Unit
         return $classDefinition;
     }
 
-    private function createConcreteObjectMock(?ClassDefinition $classDefinition = null): Concrete
-    {
-        return $this->makeEmpty(Concrete::class, [
+    private function createConcreteObjectMock(
+        ?ClassDefinition $classDefinition = null,
+        array $overrides = []
+    ): Concrete {
+        return $this->makeEmpty(Concrete::class, $overrides + [
             'getClass' => $classDefinition ?? $this->createClassDefinition(),
             'getId' => 1,
             'getParentId' => 0,

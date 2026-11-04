@@ -19,7 +19,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPro
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Db;
+use Pimcore\Model\DataObject\ClassDefinition;
+use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
+use Pimcore\Model\DataObject\ClassDefinition\Layout;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\MappingTest;
 use Pimcore\Tests\Support\Util\TestHelper;
@@ -283,10 +286,15 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
 
         $input = new Input();
         $input->setName('settingsTest');
-        $class->addFieldDefinition('settingsTest', $input);
+        $originalChildren = $this->addFieldToLayout($class, $input);
         $class->save();
         $this->tester->runConsoleCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
         $this->assertNotEquals($checkSum, $settingsStoreService->getClassMappingCheckSum($classId));
+
+        $this->restoreLayout($class, $originalChildren);
+        $class->save();
+        $this->tester->runConsoleCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
+        $this->assertEquals($checkSum, $settingsStoreService->getClassMappingCheckSum($classId));
     }
 
     public function testClassDefinitionMapping(): void
@@ -294,11 +302,10 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $object = TestHelper::createEmptyObject('', true, true, MappingTest::class);
         $class = $object->getClass();
         $index = $this->dataObjectTypeAdapter->getAliasIndexName($class);
-        $originalFields = $class->getFieldDefinitions();
 
         $input = new Input();
         $input->setName('mappingTest');
-        $class->addFieldDefinition('mappingTest', $input);
+        $originalChildren = $this->addFieldToLayout($class, $input);
         $class->save();
         $this->tester->runConsoleCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
 
@@ -308,7 +315,7 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $standardFields = $mapping[$indexName]['mappings']['properties']['standard_fields']['properties'];
         $this->assertArrayHasKey('mappingTest', $standardFields);
 
-        $class->setFieldDefinitions($originalFields);
+        $this->restoreLayout($class, $originalChildren);
         $class->save();
         $this->tester->runConsoleCommand('messenger:consume', ['--limit'=>2], ['pimcore_generic_data_index_queue']);
 
@@ -316,6 +323,33 @@ class DataObjectBasicTest extends \Codeception\Test\Unit
         $mapping = $this->tester->getIndexMapping($index);
         $standardFields = $mapping[$indexName]['mappings']['properties']['standard_fields']['properties'];
         $this->assertArrayNotHasKey('mappingTest', $standardFields);
+    }
+
+    /**
+     * Adds the field to the persisted layout and returns the previous root children for restoreLayout().
+     * addFieldDefinition() only fills the in-memory field cache, which save() discards, so the definition
+     * file (the one the class mapping handler reloads) would not contain the field.
+     *
+     * @return Data[]|Layout[]
+     */
+    private function addFieldToLayout(ClassDefinition $class, Data $field): array
+    {
+        $layout = $class->getLayoutDefinitions();
+        $originalChildren = $layout->getChildren();
+        $layout->setChildren([...$originalChildren, $field]);
+        $class->setLayoutDefinitions($layout);
+
+        return $originalChildren;
+    }
+
+    /**
+     * @param Data[]|Layout[] $originalChildren
+     */
+    private function restoreLayout(ClassDefinition $class, array $originalChildren): void
+    {
+        $layout = $class->getLayoutDefinitions();
+        $layout->setChildren($originalChildren);
+        $class->setLayoutDefinitions($layout);
     }
 
     public function testClassDefinitionIconChange(): void
