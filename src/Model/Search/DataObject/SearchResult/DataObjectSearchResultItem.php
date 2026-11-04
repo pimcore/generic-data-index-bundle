@@ -69,6 +69,8 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
 
     private DataObjectLazyLoadingHandlerInterface $lazyLoadingHandler;
 
+    private bool $lazyLoadAttempted = false;
+
     public function getElementType(): ElementType
     {
         return ElementType::DATA_OBJECT;
@@ -296,7 +298,7 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
             $this->lazyLoad();
         }
 
-        return $this->workflowWithPermissions;
+        return $this->workflowWithPermissions ?? false;
     }
 
     public function setHasWorkflowWithPermissions(?bool $workflowWithPermissions): DataObjectSearchResultItem
@@ -312,7 +314,7 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
             $this->lazyLoad();
         }
 
-        return $this->hasChildren;
+        return $this->hasChildren ?? false;
     }
 
     public function setHasChildren(bool $hasChildren): DataObjectSearchResultItem
@@ -328,7 +330,7 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
             $this->lazyLoad();
         }
 
-        return $this->searchIndexData;
+        return $this->searchIndexData ?? [];
     }
 
     public function setSearchIndexData(array $searchIndexData): DataObjectSearchResultItem
@@ -373,14 +375,21 @@ class DataObjectSearchResultItem implements ElementSearchResultItemInterface
     ): DataObjectSearchResultItem {
         $clone = clone $this;
         $clone->lazyLoadingHandler = $lazyLoadingHandler;
+        $clone->lazyLoadAttempted = false;
 
         return $clone;
     }
 
     private function lazyLoad(): void
     {
-        if (isset($this->lazyLoadingHandler)) {
-            $this->lazyLoadingHandler->lazyLoad($this);
+        if ($this->lazyLoadAttempted || !isset($this->lazyLoadingHandler)) {
+            return;
         }
+
+        $this->lazyLoadingHandler->lazyLoad($this);
+        // Load at most once per item: if the element is not in the index, the lookup would
+        // otherwise be repeated (and logged) on every lazy getter call. Set only after the
+        // handler returned, so a lookup that threw is retried on the next call.
+        $this->lazyLoadAttempted = true;
     }
 }
