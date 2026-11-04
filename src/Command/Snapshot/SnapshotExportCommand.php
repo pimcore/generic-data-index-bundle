@@ -71,7 +71,7 @@ final class SnapshotExportCommand extends AbstractCommand
                 $name,
                 $options,
                 function (IndexTarget $target, int $count) use ($lock): void {
-                    $lock->refresh();
+                    SnapshotLock::refresh($lock);
                     $this->io->writeln(sprintf('  %s: %d documents', $target->getShortName(), $count));
                 },
             );

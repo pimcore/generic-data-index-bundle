@@ -5,6 +5,14 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 # Upgrade Information
 
+## Upgrade to 2026.3.4
+- [Searching] New optional setting `search_settings.full_text_search_fields`: the fields a full-text search runs
+  against when it does not name fields itself. Use it on indices with many fields, where the expansion over all fields
+  makes searches slow or exceeds the field expansion limit. Without it nothing changes. See
+  [Full-text search fields](../02_Configuration/03_Index_Management.md#full-text-search-fields).
+- [Searching] Search and count requests where some shards failed are logged as a warning on the
+  `pimcore_generic_data_index` log channel. The response itself is unchanged.
+
 ## Upgrade to 2026.3.3
 - [Indexing] Fixed: deleting a class definition no longer leaves the delete queue entries of its objects behind.
   They were dispatched again every 24 hours and failed each time with `index_not_found_exception`, blocking the

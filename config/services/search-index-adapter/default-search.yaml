@@ -28,6 +28,11 @@ services:
             $client: "@generic-data-index.search-client"
             $debugMode: "%kernel.debug%"
 
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchRequestExecutorInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchRequestExecutor
+        arguments:
+            $logger: "@monolog.logger.pimcore_generic_data_index"
+
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\BulkOperationServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\BulkOperationService
         arguments:
@@ -42,6 +47,9 @@ services:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\ElementLockService
         arguments:
             $client: "@generic-data-index.search-client"
+
+    Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\LockedElementsCacheInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\LockedElementsCache
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\Search\Pagination\PaginationInfoServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Pagination\PaginationInfoService
