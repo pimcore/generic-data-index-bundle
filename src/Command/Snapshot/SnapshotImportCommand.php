@@ -123,7 +123,7 @@ final class SnapshotImportCommand extends AbstractCommand
             $result = $this->snapshotImporter->import($storage, (string) $name, $options, function (
                 ImportedIndex $index,
             ) use ($lock): void {
-                $lock->refresh();
+                SnapshotLock::refresh($lock);
                 $this->io->writeln(
                     sprintf(
                         '  %s: %d/%d documents',
