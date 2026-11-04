@@ -5,7 +5,7 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 # Upgrade Information
 
-## Upgrade to 2026.3.3
+## Upgrade to 2026.3.5
 - [Indexing] Two concurrent mapping updates of the same index (for example two class saves handled by two messenger
   workers) could delete the live index: both copied into the same target, the first to finish switched the alias to
   it, and the failing second one cleaned its target up. A copy now never deletes an index the alias points to. When
@@ -51,6 +51,16 @@ description: Version-specific upgrade instructions and breaking changes for the 
   Project code that calls `reindexMapping()` directly gets the copy with stripped fields too, but nothing is queued:
   after a field type change, queue the elements of the index (for example with
   `generic-data-index:update:index -c <class id>`), or the stripped fields stay empty.
+
+## Upgrade to 2026.3.4
+- [Searching] New optional setting `search_settings.full_text_search_fields`: the fields a full-text search runs
+  against when it does not name fields itself. Use it on indices with many fields, where the expansion over all fields
+  makes searches slow or exceeds the field expansion limit. Without it nothing changes. See
+  [Full-text search fields](../02_Configuration/03_Index_Management.md#full-text-search-fields).
+- [Searching] Search and count requests where some shards failed are logged as a warning on the
+  `pimcore_generic_data_index` log channel. The response itself is unchanged.
+
+## Upgrade to 2026.3.3
 - [Commands] `generic-data-index:deployment:reindex` has new opt-in options (`--all`, `--assets`, `--dry-run`, …) that
   also cover the folder, asset and document indices and `index_settings`. Without options nothing changes. See
   [Deployment and Index Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).
