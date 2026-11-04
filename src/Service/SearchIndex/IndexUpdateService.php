@@ -74,13 +74,9 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
      */
     public function updateClassDefinition(ClassDefinition $classDefinition): IndexUpdateService
     {
-        if ($this->reCreateIndex) {
-            $this->dataObjectIndexHandler
-                ->deleteIndex($classDefinition);
-        }
-
         $mappingProperties = $this->dataObjectIndexHandler->getMappingProperties($classDefinition);
 
+        // With forceCreateIndex, the handler deletes and recreates the index under the lock of the index.
         $this
             ->dataObjectIndexHandler
             ->updateMapping(
@@ -109,11 +105,6 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
      */
     public function updateDataObjectFolders(): IndexUpdateService
     {
-        if ($this->reCreateIndex) {
-            $this->dataObjectIndexHandler
-                ->deleteIndex();
-        }
-
         $this
             ->dataObjectIndexHandler
             ->updateMapping(
@@ -136,11 +127,6 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
     public function updateAssets(): IndexUpdateService
     {
 
-        if ($this->reCreateIndex) {
-            $this->assetIndexHandler
-                ->deleteIndex();
-        }
-
         $this
             ->assetIndexHandler
             ->updateMapping(
@@ -162,11 +148,6 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
      */
     public function updateDocuments(): IndexUpdateService
     {
-
-        if ($this->reCreateIndex) {
-            $this->documentIndexHandler
-                ->deleteIndex();
-        }
 
         $this
             ->documentIndexHandler

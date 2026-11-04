@@ -31,6 +31,10 @@ final class RecordingLockStore implements PersistingStoreInterface
 
     private int $conflictingRefreshes = 0;
 
+    private int $failingRefreshes = 0;
+
+    private ?Throwable $refreshFailure = null;
+
     private ?Throwable $saveFailure = null;
 
     private bool $keepKeysAfterDelete = false;
@@ -61,6 +65,13 @@ final class RecordingLockStore implements PersistingStoreInterface
     public function conflictOnNextRefreshes(int $count): void
     {
         $this->conflictingRefreshes = $count;
+    }
+
+    /** The next refreshes fail with a store error. */
+    public function failNextRefreshesWith(Throwable $failure, int $count = 1): void
+    {
+        $this->refreshFailure = $failure;
+        $this->failingRefreshes = $count;
     }
 
     public function failSavesWith(Throwable $failure): void
@@ -109,6 +120,11 @@ final class RecordingLockStore implements PersistingStoreInterface
             --$this->conflictingRefreshes;
 
             throw new LockConflictedException('taken over by another process');
+        }
+        if ($this->failingRefreshes > 0 && $this->refreshFailure !== null) {
+            --$this->failingRefreshes;
+
+            throw $this->refreshFailure;
         }
         $this->inner->putOffExpiration($key, $ttl);
     }

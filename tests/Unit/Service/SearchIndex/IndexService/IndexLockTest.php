@@ -171,24 +171,60 @@ final class IndexLockTest extends Unit
         $this->assertSame(0, $store->getRefreshes());
     }
 
-    public function testAFailedRefreshIsLoggedAndTheUpdateGoesOn(): void
+    public function testALockTakenOverByAnotherProcessStopsTheUpdate(): void
     {
         $store = new RecordingLockStore();
         $lock = $this->createIndexLock($store);
-        $lock->setLogger($this->makeEmpty(LoggerInterface::class, [
-            'warning' => Expected::once(function (string $message): void {
-                $this->assertStringContainsString('could not be refreshed', $message);
-            }),
-        ]));
+
+        try {
+            $lock->run(self::ALIAS, static function () use ($lock, $store): void {
+                $store->conflictOnNextRefreshes(1);
+                $lock->refresh(self::ALIAS);
+            });
+            $this->fail('an update without its lock must stop');
+        } catch (IndexLockException $e) {
+            $this->assertStringContainsString('taken over by another mapping update', $e->getMessage());
+        }
+
+        $this->assertSame([], $store->getHeldResources());
+    }
+
+    public function testATransientRefreshFailureIsRetriedOnce(): void
+    {
+        $store = new RecordingLockStore();
+        $lock = $this->createIndexLock($store);
         $completed = false;
 
-        $lock->run(self::ALIAS, static function () use ($lock, $store, &$completed): void {
-            $store->conflictOnNextRefreshes(1);
+        $lock->run(self::ALIAS, function () use ($lock, $store, &$completed): void {
+            $store->failNextRefreshesWith(new RuntimeException('MySQL server has gone away'));
+            $refreshesBefore = $store->getRefreshes();
+
             $lock->refresh(self::ALIAS);
+
+            $this->assertSame($refreshesBefore + 2, $store->getRefreshes(), 'the failed refresh is repeated');
             $completed = true;
         });
 
         $this->assertTrue($completed);
+    }
+
+    public function testARefreshFailingTwiceStopsTheUpdate(): void
+    {
+        $store = new RecordingLockStore();
+        $lock = $this->createIndexLock($store);
+
+        try {
+            $lock->run(self::ALIAS, static function () use ($lock, $store): void {
+                $store->failNextRefreshesWith(new RuntimeException('MySQL server has gone away'), 2);
+                $lock->refresh(self::ALIAS);
+            });
+            $this->fail('a persistent store failure must not be swallowed');
+        } catch (IndexLockException $e) {
+            $this->assertStringContainsString('could not be refreshed', $e->getMessage());
+            $this->assertStringContainsString('MySQL server has gone away', $e->getMessage());
+        }
+
+        $this->assertSame([], $store->getHeldResources());
     }
 
     public function testTheLockOutlivesTheLongestWaitForACopyTask(): void
@@ -198,7 +234,17 @@ final class IndexLockTest extends Unit
 
         $lock->run(self::ALIAS, static fn () => null);
 
-        $this->assertSame(3660.0, $store->getLastTtl(), '720 polls of 5 seconds plus a margin of 60 seconds');
+        $this->assertSame(4500.0, $store->getLastTtl(), '720 polls of 5 seconds plus a quarter of that wait');
+    }
+
+    public function testTheLockOutlivesAShortCopyWaitByAtLeastAMinute(): void
+    {
+        $store = new RecordingLockStore();
+        $lock = new IndexLock(new LockFactory($store), 12, 5);
+
+        $lock->run(self::ALIAS, static fn () => null);
+
+        $this->assertSame(120.0, $store->getLastTtl(), '12 polls of 5 seconds plus the least margin of 60 seconds');
     }
 
     private function createIndexLock(RecordingLockStore $store): IndexLock

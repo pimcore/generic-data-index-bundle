@@ -17,6 +17,7 @@ use Closure;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\IndexLockException;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Psr\Log\NullLogger;
+use Symfony\Component\Lock\Exception\ExceptionInterface as LockExceptionInterface;
 use Symfony\Component\Lock\Exception\LockAcquiringException;
 use Symfony\Component\Lock\Exception\LockConflictedException;
 use Symfony\Component\Lock\Exception\LockReleasingException;
@@ -35,7 +36,7 @@ final class IndexLock implements IndexLockInterface
 
     private const RESOURCE_PREFIX = 'generic-data-index:mapping-update:';
 
-    /** Lifetime on top of the longest wait for one copy task, for the requests around the copy. */
+    /** The least lifetime on top of the longest wait for one copy task. */
     private const TTL_MARGIN_SECONDS = 60;
 
     /** @var array<string, LockInterface> the locks this process holds, by alias name */
@@ -77,15 +78,36 @@ final class IndexLock implements IndexLockInterface
 
         try {
             $lock->refresh();
-        } catch (LockConflictedException|LockAcquiringException $e) {
-            // The lock expired and another process took it over, or the store is unreachable. This update goes
-            // on: the search service keeps the live index safe when two copies overlap.
-            $this->logger->warning(sprintf(
-                'The lock of "%s" could not be refreshed, another mapping update of the index may start before '
-                . 'this one has finished: %s',
-                $aliasName,
-                $e->getMessage()
-            ));
+        } catch (LockConflictedException $e) {
+            // The lock expired and another process took it over; going on would overlap with its update.
+            throw new IndexLockException(
+                sprintf('The lock of "%s" was taken over by another mapping update; this one stops', $aliasName),
+                0,
+                $e
+            );
+        } catch (LockExceptionInterface $e) {
+            // A transient store failure, for example a dropped database connection: retried once.
+            $this->refreshAgain($aliasName, $lock);
+        }
+    }
+
+    /**
+     * @throws IndexLockException
+     */
+    private function refreshAgain(string $aliasName, LockInterface $lock): void
+    {
+        try {
+            $lock->refresh();
+        } catch (LockExceptionInterface $e) {
+            throw new IndexLockException(
+                sprintf(
+                    'The lock of "%s" could not be refreshed, the mapping update stops: %s',
+                    $aliasName,
+                    $e->getPrevious()?->getMessage() ?? $e->getMessage()
+                ),
+                0,
+                $e
+            );
         }
     }
 
@@ -129,12 +151,14 @@ final class IndexLock implements IndexLockInterface
     }
 
     /**
-     * The longest wait for one copy task plus a margin. The handler refreshes the lock before every further
-     * attempt, so a copy that waits for the engine never outlives its lock, while a lock whose process died
-     * expires.
+     * The longest wait for one copy task plus a quarter of it (at least a minute) for the requests around the copy
+     * and the latency of the status polls. The handler and the copy service refresh the lock before every further
+     * attempt, so an update never outlives its lock, while a lock whose process died expires.
      */
     private function ttl(): float
     {
-        return (float) ($this->reindexMaxPolls * $this->reindexPollIntervalSeconds + self::TTL_MARGIN_SECONDS);
+        $copyWait = $this->reindexMaxPolls * $this->reindexPollIntervalSeconds;
+
+        return (float) ($copyWait + max(self::TTL_MARGIN_SECONDS, intdiv($copyWait, 4)));
     }
 }
