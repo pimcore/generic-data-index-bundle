@@ -25,12 +25,9 @@ the general term "reindex". `<id>` stands for a class definition ID.
 
 ## At a Glance
 
-The rows marked "Yes: mapping" run an odd/even copy of the index. What that copy does with the existing documents is
-set by `index_service.reindex_settings.mapping_change_strategy`: `recreate` (the default) copies them as they are and
-recreates the index empty when old values don't fit the new mapping; `copy` keeps the changed fields whose values
-still fit and leaves the others out until the rebuild from the database. See
-[Field Type Changes](#field-type-changes) and
-[Reindex Options](../02_Configuration/03_Index_Management.md#reindex-options).
+The rows marked "Yes: mapping" run an odd/even copy of the index. Whether a retyped field empties the whole index or
+only that field until the rebuild depends on `index_service.reindex_settings.mapping_change_strategy`; see
+[Where the Strategy Makes a Difference](#where-the-strategy-makes-a-difference).
 
 | Change | Reindex needed? | Automatic? | Command if manual |
 | --- | --- | --- | --- |
@@ -331,6 +328,23 @@ fit, for example a time truncated from a datetime or relation metadata text in a
 such an object fails its whole queue batch: the batch lands in the failed transport, and its queue entries are
 dispatched again after 24 hours. If a changed field stays empty for some objects, check the failed messages (see
 [Handling Failed Messages](../02_Configuration/03_Index_Management.md#handling-failed-messages)) and fix the data.
+
+### Where the Strategy Makes a Difference
+
+The strategy only matters when an odd/even copy meets documents whose old values don't fit the new mapping. That
+happens when a field is retyped: in a class, a field collection, an object brick, a classification store key, a table
+or advanced many-to-many column, a calculated value, a predefined asset metadata definition, a custom
+`ExtractMappingEvent` subscriber, or a bundle upgrade that retypes fields. Added, removed, renamed or moved fields,
+language changes, `index_settings` changes and every values-only change behave the same with both strategies.
+
+| | `recreate` (default) | `copy` |
+| --- | --- | --- |
+| Old values don't fit the new type (text to number, boolean or date) | The index is recreated empty and every element is queued. Listings and searches find nothing until the workers have rebuilt the index | The index stays searchable. The field is stripped and empty until the rebuild has refilled each object; filters and sorting on it find nothing meanwhile, negative filters match everything |
+| Old values fit the new type (number to text, date to text) | Copied as they are, the old value stays in the new type until the rebuild | Kept, same as `recreate` |
+| Index affected | A class field: that class index. A field collection, brick or store key: every class index using it. Asset metadata: the asset index | The same indices, but none of them is emptied |
+| Rebuild from the database | Queued for the recreated index | Queued for the index with stripped or kept fields |
+| `deployment:reindex --dry-run` | Names the changed fields copied as they are, and which of them `copy` would leave out | Lists the stripped and the kept fields |
+| Index recreation | Right away, when the copy fails on old values | Last resort, after the retries described below |
 
 ### Expand and Contract for Fields That Must Stay Searchable
 
