@@ -87,6 +87,33 @@ final class ConfigurationTest extends Unit
         ]]);
     }
 
+    /**
+     * The behaviour before the copy strategy existed stays the default of a bugfix release.
+     */
+    public function testMappingChangeStrategyDefaultsToRecreate(): void
+    {
+        $config = (new Processor())->processConfiguration(new Configuration(), []);
+
+        $this->assertSame(
+            ['max_polls' => 720, 'poll_interval' => 5, 'mapping_change_strategy' => 'recreate'],
+            $config['index_service']['reindex_settings']
+        );
+
+        $config = (new Processor())->processConfiguration(new Configuration(), [[
+            'index_service' => ['reindex_settings' => ['mapping_change_strategy' => 'copy']],
+        ]]);
+        $this->assertSame('copy', $config['index_service']['reindex_settings']['mapping_change_strategy']);
+    }
+
+    public function testMappingChangeStrategyRejectsUnknownValues(): void
+    {
+        $this->expectException(InvalidConfigurationException::class);
+
+        (new Processor())->processConfiguration(new Configuration(), [[
+            'index_service' => ['reindex_settings' => ['mapping_change_strategy' => 'keep']],
+        ]]);
+    }
+
     public function testFullTextSearchFieldsDefaultToEmpty(): void
     {
         $config = (new Processor())->processConfiguration(new Configuration(), []);

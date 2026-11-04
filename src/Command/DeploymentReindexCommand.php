@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Command;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexPlan;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
@@ -223,9 +224,7 @@ final class DeploymentReindexCommand extends AbstractCommand
         $this->writePlans($plans, $output);
 
         if ($dryRun) {
-            $output->writeln('<info>Dry run - nothing changed</info>');
-
-            return $failed ? self::FAILURE : self::SUCCESS;
+            return $this->finishDryRun($plans, $failed, $output);
         }
 
         $enqueued = false;
@@ -267,6 +266,40 @@ final class DeploymentReindexCommand extends AbstractCommand
         $output->writeln('<info>Finished</info>');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * @param IndexPlan[] $plans
+     */
+    private function finishDryRun(array $plans, bool $failed, OutputInterface $output): int
+    {
+        if ($this->plansACopyWithChangedMapping($plans)) {
+            $output->writeln(
+                $this->deploymentReindexService->getMappingChangeStrategy() === MappingChangeStrategy::COPY
+                    ? '<comment>Fields whose old values fail only during the copy are stripped as well; '
+                        . 'the log names them.</comment>'
+                    : '<comment>With mapping_change_strategy "recreate" the documents are copied as they are: '
+                        . 'if their old values do not fit the new mapping, the index is recreated empty and '
+                        . 'rebuilt from the database.</comment>'
+            );
+        }
+        $output->writeln('<info>Dry run - nothing changed</info>');
+
+        return $failed ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * @param IndexPlan[] $plans
+     */
+    private function plansACopyWithChangedMapping(array $plans): bool
+    {
+        foreach ($plans as $plan) {
+            if ($plan->isMappingChanged() && !$plan->isIndexMissing()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
