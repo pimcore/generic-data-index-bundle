@@ -13,6 +13,9 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch;
 
+use function array_keys;
+use function in_array;
+use function is_string;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\ConditionType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\QueryType;
@@ -30,6 +33,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\Element\ElementInterface;
 use Pimcore\SearchClient\SearchClientInterface;
+use function str_starts_with;
 
 /**
  * @internal
@@ -38,11 +42,20 @@ final class ElementLockService implements ElementLockServiceInterface
 {
     use LoggerAwareTrait;
 
+    /**
+     * Above this number of locked elements in an index, lock checks query the index per element
+     * instead of keeping all locked elements in memory.
+     */
+    private const int MAX_CACHED_LOCKS = 1000;
+
+    private const string LOCK_PROPAGATE = 'propagate';
+
     public function __construct(
         private readonly SearchClientInterface $client,
         private readonly AdapterServiceInterface $typeAdapterService,
         private readonly PathServiceInterface $pathService,
         private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
+        private readonly LockedElementsCacheInterface $lockedElementsCache,
     ) {
     }
 
@@ -86,6 +99,7 @@ final class ElementLockService implements ElementLockServiceInterface
         ];
 
         $this->client->updateByQuery($query);
+        $this->lockedElementsCache->reset();
     }
 
     /**
@@ -108,6 +122,13 @@ final class ElementLockService implements ElementLockServiceInterface
     {
         $indexName = $this->getIndexNameByType($type);
 
+        // Lists such as grids and trees check every result row. Load the locked elements of the index
+        // once instead of running two queries per row; usually only a handful of elements are locked.
+        $locks = $this->getLockedElements($indexName);
+        if ($locks !== null) {
+            return $this->hasLockedChild($fullPath, $locks) || $this->hasPropagatingLockedParent($fullPath, $locks);
+        }
+
         if ($this->countLockedChildren($fullPath, $indexName) > 0) {
             return true;
         }
@@ -117,6 +138,109 @@ final class ElementLockService implements ElementLockServiceInterface
         }
 
         return false;
+    }
+
+    /**
+     * @return array<string, string>|null lock value by full path, null if there are too many locks
+     */
+    private function getLockedElements(string $indexName): ?array
+    {
+        if (!$this->lockedElementsCache->isLoaded($indexName)) {
+            $this->lockedElementsCache->setLocks($indexName, $this->loadLockedElements($indexName));
+        }
+
+        return $this->lockedElementsCache->getLocks($indexName);
+    }
+
+    /**
+     * @return array<string, string>|null
+     */
+    private function loadLockedElements(string $indexName): ?array
+    {
+        $search = new Search(
+            size: self::MAX_CACHED_LOCKS,
+            source: [SystemField::FULL_PATH->getPath(), SystemField::LOCKED->getPath()]
+        );
+        $search->addQuery($this->createLockedQuery());
+
+        $result = $this->client->search([
+            'index' => $indexName,
+            'body' => $search->toArray(),
+        ]);
+
+        if ($result['hits']['total']['value'] > self::MAX_CACHED_LOCKS) {
+            return null;
+        }
+
+        $locks = [];
+        foreach ($result['hits']['hits'] as $hit) {
+            $source = $hit['_source'] ?? [];
+            $path = SystemField::FULL_PATH->getData($source);
+            $locked = SystemField::LOCKED->getData($source);
+            if (!is_string($path) || !is_string($locked) || $locked === '') {
+                continue;
+            }
+
+            // Indices combining several element types can hold one path more than once. Keep
+            // "propagate" when it is one of them, as the per-element ancestor query matches any hit.
+            if (($locks[$path] ?? null) !== self::LOCK_PROPAGATE) {
+                $locks[$path] = $locked;
+            }
+        }
+
+        return $locks;
+    }
+
+    /**
+     * Same rule as addLockedChildrenQuery(): any descendant with a lock.
+     *
+     * @param array<string, string> $locks
+     */
+    private function hasLockedChild(string $fullPath, array $locks): bool
+    {
+        $prefix = $fullPath . '/';
+        foreach (array_keys($locks) as $lockedPath) {
+            if (str_starts_with($lockedPath, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Same rule as addLockedPropagateParentsQuery(): an ancestor locked with "propagate".
+     *
+     * @param array<string, string> $locks
+     */
+    private function hasPropagatingLockedParent(string $fullPath, array $locks): bool
+    {
+        foreach ($this->pathService->getAllParentPaths([$fullPath]) as $parentPath) {
+            if (($locks[$parentPath] ?? null) === self::LOCK_PROPAGATE) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function createLockedQuery(): BoolQuery
+    {
+        return new BoolQuery([
+            ConditionType::MUST->value => [
+                [
+                    ConditionType::EXISTS->value => [
+                        'field' => SystemField::LOCKED->getPath(AttributeType::KEYWORD->value),
+                    ],
+                ],
+            ],
+            ConditionType::MUST_NOT->value => [
+                new TermFilter(
+                    SystemField::LOCKED->getPath(AttributeType::KEYWORD->value),
+                    ''
+                ),
+            ],
+        ]);
     }
 
     private function countLockedChildren(string $fullPath, string $indexName): int
@@ -181,7 +305,7 @@ final class ElementLockService implements ElementLockServiceInterface
         ));
         $search->addQuery(new TermFilter(
             SystemField::LOCKED->getPath('keyword'),
-            'propagate'
+            self::LOCK_PROPAGATE
         ));
     }
 
