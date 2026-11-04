@@ -5,6 +5,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 # Upgrade Information
 
+## Upgrade to 2026.3.5
+- [Commands] `generic-data-index:deployment:reindex` without options no longer stops at the first class whose index
+  update fails: it continues with the remaining classes, reports every failed class and exits with a non-zero status,
+  like a run with index options.
+
 ## Upgrade to 2026.3.4
 - [Searching] New optional setting `search_settings.full_text_search_fields`: the fields a full-text search runs
   against when it does not name fields itself. Use it on indices with many fields, where the expansion over all fields
@@ -14,9 +19,6 @@ description: Version-specific upgrade instructions and breaking changes for the 
   `pimcore_generic_data_index` log channel. The response itself is unchanged.
 
 ## Upgrade to 2026.3.3
-- [Commands] `generic-data-index:deployment:reindex` without options no longer stops at the first class whose index
-  update fails: it continues with the remaining classes, reports every failed class and exits with a non-zero status,
-  like a run with index options.
 - [Commands] `generic-data-index:deployment:reindex` has new opt-in options (`--all`, `--assets`, `--dry-run`, …) that
   also cover the folder, asset and document indices and `index_settings`. Without options nothing changes. See
   [Deployment and Index Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).
