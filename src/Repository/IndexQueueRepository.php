@@ -265,7 +265,7 @@ final class IndexQueueRepository
         }
 
         // flush remaining
-        if (!empty($chunk) && $firstRow !== null) {
+        if (!empty($chunk)) {
             $this->flushChunk($chunk, $firstRow);
         }
     }
