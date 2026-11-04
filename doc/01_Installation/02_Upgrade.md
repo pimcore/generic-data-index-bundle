@@ -8,6 +8,9 @@ Following steps are necessary during updating to newer versions.
   other elements of their batch. The entries are now removed together with the class index, and a bulk deletion
   from an index that no longer exists counts as done instead of failing the batch. Messages that already failed
   for this reason succeed on `messenger:failed:retry`.
+- [Commands] `generic-data-index:deployment:reindex` without options no longer stops at the first class whose index
+  update fails: it continues with the remaining classes, reports every failed class and exits with a non-zero status,
+  like a run with index options.
 - [Indexing] Two concurrent mapping updates of the same index (for example two class saves handled by two messenger
   workers) could delete the live index: both copied into the same target, the first to finish switched the alias to
   it, and the failing second one cleaned its target up. A copy now never deletes an index the alias points to. When
