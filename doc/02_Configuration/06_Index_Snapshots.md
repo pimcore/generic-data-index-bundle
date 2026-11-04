@@ -129,6 +129,11 @@ small as possible, and treat the manifest's `queue_entries_before` and `queue_en
 as the indicator of how clean the resulting baseline is: the closer both are to zero, the less
 concurrent activity the export could have raced.
 
+Don't export while a rebuild after a field type change is pending. The odd/even copy leaves the changed fields out
+of the documents until the index queue has refilled them, but the manifest already carries the new mapping checksum,
+so the import accepts the snapshot, replays the documents without those fields and queues nothing. Wait until
+`generic-data-index:status` shows an empty queue.
+
 ## Import
 
 ```bash
