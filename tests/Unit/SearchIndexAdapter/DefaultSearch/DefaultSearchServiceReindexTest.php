@@ -1128,6 +1128,170 @@ final class DefaultSearchServiceReindexTest extends Unit
         $this->createService(client: $client)->reindexWithoutFields('test_index', [], []);
     }
 
+    // -------------------------------------------------------------------------
+    // Lost race: another copy of the same index finished first (#641)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Two copies of the same index can write into the same target (two class saves, two workers). The first to
+     * finish switches the alias to the target and deletes the source; the task of the second then fails (source
+     * gone), completes with a stale result, or was cancelled. The target is the live index now: it is never
+     * deleted, and the second mapping is applied on top of it with a copy in the other direction.
+     *
+     * @dataProvider lostRaceTaskStatusProvider
+     */
+    public function testACopyWhoseTargetBecameTheLiveIndexKeepsItAndCopiesAgainFromIt(array $taskStatus): void
+    {
+        $deletions = [];
+        $aliasedIndex = null;
+        $client = null;
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [
+                // First poll: the other copy finished meanwhile, the alias points to test_index-even.
+                static function () use (&$aliasedIndex, &$client, $taskStatus): array {
+                    $aliasedIndex = 'test_index-even';
+                    $client->aliasedIndex = 'test_index-even';
+
+                    return $taskStatus;
+                },
+                ['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]],
+            ],
+            withAliasSwitchSupport: true,
+            onDeleteIndex: static function (array $params) use (&$deletions, &$client): array {
+                $deletions[] = $params['index'] . ' after ' . $client->aliasSwitchCalls . ' alias switch(es)';
+
+                return [];
+            }
+        );
+        $aliasService = $this->makeEmpty(IndexAliasServiceInterface::class, [
+            'existsAlias' => static function (
+                string $aliasName,
+                ?string $indexName = null
+            ) use (&$aliasedIndex, &$client): bool {
+                // The second copy of this service switches the alias on to test_index-odd.
+                $liveIndex = $client->aliasSwitchCalls > 0 ? 'test_index-odd' : $aliasedIndex;
+
+                return $liveIndex !== null && ($indexName === null || $indexName === $liveIndex);
+            },
+        ]);
+
+        $result = $this->createService(client: $client, indexAliasService: $aliasService)->reindex('test_index', []);
+
+        $this->assertSame(ReindexResult::SUCCESS, $result);
+        $this->assertSame(2, $client->reIndexCalls);
+        $this->assertSame('test_index-even', $client->reIndexParams[0]['body']['dest']['index']);
+        $this->assertSame('test_index-even', $client->reIndexParams[1]['body']['source']['index']);
+        $this->assertSame('test_index-odd', $client->reIndexParams[1]['body']['dest']['index']);
+        $this->assertSame(
+            [
+                'test_index-even after 0 alias switch(es)', // the delete-first creation of the first target
+                'test_index-odd after 0 alias switch(es)', // the delete-first creation of the second target
+                'test_index-even after 1 alias switch(es)', // the cleanup once the alias moved on to test_index-odd
+            ],
+            $deletions,
+            'The live index must not be deleted after the lost race'
+        );
+    }
+
+    /**
+     * @return array<string, array{array<string, mixed>}>
+     */
+    public function lostRaceTaskStatusProvider(): array
+    {
+        return [
+            'source vanished: task error' => [[
+                'completed' => true,
+                'error' => ['type' => 'index_not_found_exception', 'reason' => 'no such index [test_index-]'],
+            ]],
+            'source vanished: document failures' => [[
+                'completed' => true,
+                'response' => [
+                    'timed_out' => false,
+                    'failures' => [[
+                        'index' => 'test_index-',
+                        'cause' => ['type' => 'index_not_found_exception', 'reason' => 'no such index'],
+                        'status' => 404,
+                    ]],
+                ],
+            ]],
+            'cancelled by the other copy' => [[
+                'completed' => true,
+                'response' => ['timed_out' => false, 'canceled' => 'by user request', 'failures' => []],
+            ]],
+            'clean completion with a stale result' => [[
+                'completed' => true,
+                'response' => ['timed_out' => false, 'failures' => []],
+            ]],
+        ];
+    }
+
+    /**
+     * The copy that lost the race copies again from the winner's result and switches the alias on, possibly
+     * before the winner got to its cleanup. The winner's cleanup must then keep the index the alias moved on to.
+     */
+    public function testTheCleanupAfterTheAliasSwitchKeepsAnIndexTheAliasMovedOnTo(): void
+    {
+        $deletedIndices = [];
+        $client = null;
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [
+                ['completed' => true, 'response' => ['timed_out' => false, 'failures' => []]],
+            ],
+            withAliasSwitchSupport: true,
+            onDeleteIndex: static function (array $params) use (&$deletedIndices): array {
+                $deletedIndices[] = $params['index'];
+
+                return [];
+            }
+        );
+        // Once this copy switched the alias to test_index-even, the other copy switches it on to test_index-odd.
+        $aliasService = $this->makeEmpty(IndexAliasServiceInterface::class, [
+            'existsAlias' => static function (string $aliasName, ?string $indexName = null) use (&$client): bool {
+                return $indexName === 'test_index-odd' && $client->aliasSwitchCalls > 0;
+            },
+        ]);
+
+        $result = $this->createService(client: $client, indexAliasService: $aliasService)->reindex('test_index', []);
+
+        $this->assertSame(ReindexResult::SUCCESS, $result);
+        $this->assertSame(
+            ['test_index-even'],
+            $deletedIndices,
+            'Only the delete-first creation of the target; the cleanup must keep the live test_index-odd'
+        );
+    }
+
+    public function testACopyNeverStartsOverTheLiveIndexAndGivesUpAfterTwoLostRaces(): void
+    {
+        $deletedIndices = [];
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [],
+            onDeleteIndex: static function (array $params) use (&$deletedIndices): array {
+                $deletedIndices[] = $params['index'];
+
+                return [];
+            }
+        );
+        // The alias is read as absent, but points to the target by the time the target would be deleted.
+        $aliasService = $this->makeEmpty(IndexAliasServiceInterface::class, [
+            'existsAlias' => static fn (string $aliasName, ?string $indexName = null): bool => $indexName !== null,
+        ]);
+
+        try {
+            $this->createService(client: $client, indexAliasService: $aliasService)->reindex('test_index', []);
+            $this->fail('A copy that loses the race twice must fail');
+        } catch (ReindexFailedException $e) {
+            $this->assertStringContainsString('finished first, twice in a row', $e->getMessage());
+        }
+
+        $this->assertSame([], $deletedIndices, 'The live index must never be deleted');
+        $this->assertSame(0, $client->createIndexCalls);
+        $this->assertSame(0, $client->reIndexCalls);
+    }
+
     private function buildClientWithTaskResponses(
         string $taskId,
         array $taskResponses,
@@ -1323,9 +1487,12 @@ final class ReindexTestSearchClientStub implements SearchClientInterface
         return false;
     }
 
+    /** The index the alias points to, as getIndexAlias() reports it */
+    public ?string $aliasedIndex = null;
+
     public function getIndexAlias(array $_params): array
     {
-        return [];
+        return $this->aliasedIndex === null ? [] : [$this->aliasedIndex => ['aliases' => []]];
     }
 
     public function deleteIndexAlias(array $_params): array
@@ -1397,9 +1564,13 @@ final class ReindexTestTasksStub
 
     public function get(array $params): mixed
     {
-        $response = $this->responses[$this->callCount] ?? end($this->responses);
+        // The last response repeats once the list is exhausted (end() cannot take a readonly property by reference).
+        $response = $this->responses[$this->callCount] ?? $this->responses[array_key_last($this->responses)];
         $this->callCount++;
 
+        if ($response instanceof \Closure) {
+            $response = $response();
+        }
         if ($response instanceof \Throwable) {
             throw $response;
         }
