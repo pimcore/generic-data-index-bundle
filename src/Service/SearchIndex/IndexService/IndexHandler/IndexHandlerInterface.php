@@ -14,7 +14,10 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
 use Exception;
+use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Model\DataObject\ClassDefinition;
 
 /**
@@ -33,12 +36,33 @@ interface IndexHandlerInterface
 
     /**
      * @throws Exception
-     * @throws ReindexFailedException
      */
     public function reindexMapping(
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): void;
+
+    /**
+     * Applies the mapping through a copy into the other -odd/-even index. Fields whose old values
+     * do not fit the new mapping are left out of the copy; the result says which, and whether the
+     * index had to be created empty instead, so callers can queue the rebuild from the database.
+     * A handler that overrides reindexMapping() reports an unknown outcome, which requires the rebuild too.
+     *
+     * @throws Exception
+     * @throws ReindexFailedException
+     */
+    public function reindexMappingWithResult(
+        ?ClassDefinition $context = null,
+        ?array $mappingProperties = null
+    ): MappingUpdateResult;
+
+    /**
+     * Fields of the live index whose mapping differs from the current mapping, classified into
+     * kept and stripped as the next copy would handle them. Empty when the index does not exist.
+     *
+     * @throws JsonException
+     */
+    public function getMappingDiff(?ClassDefinition $context = null): MappingDiff;
 
     public function deleteIndex(mixed $context): void;
 
