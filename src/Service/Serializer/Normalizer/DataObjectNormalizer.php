@@ -99,7 +99,12 @@ final class DataObjectNormalizer implements NormalizerInterface
     {
         return [
             FieldCategory::SYSTEM_FIELDS->value => $this->normalizeSystemFields($dataObject, $skipLazyLoadedFields),
-            FieldCategory::STANDARD_FIELDS->value => $this->normalizeStandardFields($dataObject),
+            // Search result items built with SKIP_LAZY_LOADED_FIELDS never use the standard fields (the
+            // denormalizer drops them and the item lazy-loads them from the index on demand), so reading
+            // and normalizing every field here would only load relations and run getters for nothing.
+            FieldCategory::STANDARD_FIELDS->value => $skipLazyLoadedFields
+                ? []
+                : $this->normalizeStandardFields($dataObject),
         ];
     }
 

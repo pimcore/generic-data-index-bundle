@@ -288,6 +288,53 @@ class Index extends Model
         return $class;
     }
 
+    /**
+     * Set up a class with a top-level and a localized calculated value, both stored in the query tables
+     * on save (object_query_* / object_localized_query_*).
+     *
+     * @throws \Exception
+     */
+    public function setupPimcoreClass_QueryStore(
+        string $name = 'queryStore',
+        string $filename = 'query-store-import.json'
+    ): ?ClassDefinition {
+        /** @var ClassManager $cm */
+        $cm = $this->getModule('\\' . ClassManager::class);
+
+        if (!$class = $cm->getClass($name)) {
+            $root = new ClassDefinition\Layout\Panel('root');
+            $panel = (new ClassDefinition\Layout\Panel())->setName('MyLayout');
+            $rootPanel = (new ClassDefinition\Layout\Tabpanel())->setName('Layout');
+            $rootPanel->addChild($panel);
+
+            $panel->addChild($this->createDataChild('input', 'name'));
+
+            /** @var ClassDefinition\Data\CalculatedValue $calculatedTop */
+            $calculatedTop = $this->createDataChild('calculatedValue', 'calculatedTop');
+            $calculatedTop->setCalculatorType(ClassDefinition\Data\CalculatedValue::CALCULATOR_TYPE_EXPRESSION);
+            $calculatedTop->setCalculatorExpression("'top-' ~ object.getName()");
+            $panel->addChild($calculatedTop);
+
+            $lFields = new ClassDefinition\Data\Localizedfields();
+            $lFields->setName('localizedfields');
+            $lFields->addChild($this->createDataChild('input', 'locName'));
+
+            /** @var ClassDefinition\Data\CalculatedValue $calculatedLocalized */
+            $calculatedLocalized = $this->createDataChild('calculatedValue', 'calculatedLocalized');
+            $calculatedLocalized->setCalculatorType(
+                ClassDefinition\Data\CalculatedValue::CALCULATOR_TYPE_EXPRESSION
+            );
+            $calculatedLocalized->setCalculatorExpression("'loc-' ~ object.getLocName(data.getPosition())");
+            $lFields->addChild($calculatedLocalized);
+
+            $panel->addChild($lFields);
+            $root->addChild($rootPanel);
+            $class = $this->createClass($name, $root, $filename, false, $name);
+        }
+
+        return $class;
+    }
+
     public function createFullyFledgedObjectSimple($keyPrefix = '', $save = true, $publish = true, $seed = 1)
     {
         $testDataHelper = $this->getModule('\\' . TestDataHelper::class);
