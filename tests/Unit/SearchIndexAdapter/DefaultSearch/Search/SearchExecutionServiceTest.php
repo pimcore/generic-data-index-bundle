@@ -17,9 +17,13 @@ use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\FieldExpansionFallback;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionService;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchRequestExecutor;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Denormalizer\SearchIndexAdapter\SearchResultDenormalizer;
 use Pimcore\SearchClient\SearchClientInterface;
+use Psr\Log\NullLogger;
 
 /**
  * @internal
@@ -113,6 +117,34 @@ final class SearchExecutionServiceTest extends Unit
         $this->assertSame([], $service->getExecutedSearches());
     }
 
+    public function testSearchIsRepeatedWithExplicitFieldsWhenFieldExpansionFails(): void
+    {
+        $bodies = [];
+        $client = $this->makeEmpty(SearchClientInterface::class, [
+            'search' => function (array $params) use (&$bodies) {
+                $bodies[] = $params['body'];
+                if (count($bodies) === 1) {
+                    throw new Exception('field expansion matches too many fields, limit: 4096, got: 82499');
+                }
+
+                return ['hits' => ['hits' => [], 'total' => ['value' => 0], 'max_score' => null]];
+            },
+        ]);
+        $search = $this->makeEmpty(AdapterSearchInterface::class, [
+            'toArray' => ['query' => ['bool' => ['filter' => ['simple_query_string' => ['query' => 'pro']]]]],
+            'isReverseItemOrder' => false,
+        ]);
+
+        $this->createService(debugMode: false, client: $client)->executeSearch($search, 'test_index');
+
+        $this->assertCount(2, $bodies);
+        $this->assertArrayNotHasKey('fields', $bodies[0]['query']['bool']['filter']['simple_query_string']);
+        $this->assertSame(
+            FieldExpansionFallback::FIELDS,
+            $bodies[1]['query']['bool']['filter']['simple_query_string']['fields']
+        );
+    }
+
     private function createService(
         bool $debugMode,
         ?SearchClientInterface $client = null,
@@ -129,6 +161,10 @@ final class SearchExecutionServiceTest extends Unit
                 ],
             ]),
             $debugMode,
+            new SearchRequestExecutor(
+                $this->makeEmpty(SearchIndexConfigServiceInterface::class, ['getSearchSettings' => []]),
+                new NullLogger(),
+            ),
         );
     }
 

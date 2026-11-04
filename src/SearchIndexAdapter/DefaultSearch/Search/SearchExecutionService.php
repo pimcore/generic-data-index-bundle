@@ -39,6 +39,7 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
         private readonly SearchResultDenormalizer $searchResultDenormalizer,
         private readonly SearchClientInterface $client,
         private readonly bool $debugMode,
+        private readonly SearchRequestExecutorInterface $searchRequestExecutor,
     ) {
     }
 
@@ -63,9 +64,10 @@ final class SearchExecutionService implements SearchExecutionServiceInterface
                 $searchParams['body']['track_total_hits'] = $trackTotalHits;
             }
 
-            $defaultSearchResult = $this
-                ->client
-                ->search($searchParams);
+            $defaultSearchResult = $this->searchRequestExecutor->execute(
+                $this->client->search(...),
+                $searchParams
+            );
 
             $executionTime = $stopWatch->stop('search')->getDuration();
         } catch (Exception $e) {
