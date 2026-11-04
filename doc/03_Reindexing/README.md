@@ -191,7 +191,7 @@ flowchart TB
 | `deployment:reindex --all` (or an index option) | — | Indices with a changed mapping or changed settings | Last resort | Indices with a changed mapping or data version | Yes |
 | `update:index` (`-c`, `-a`) | Always | If `PUT _mapping` is rejected | Last resort | Everything in scope | No |
 | `update:index -r` | — | — | Always | Everything in scope | Yes |
-| `generic-data-index:reindex` | — | Every class, asset and document index, forced | Last resort (`copy`) | Only for indices with stripped fields or a recreated index | Yes; search keeps working, writes during the copy are lost (see below) |
+| `generic-data-index:reindex` | — | Every class, asset and document index, forced | Last resort (`copy`) | Only for indices with stripped fields or a recreated index | Yes; search keeps working, writes during the copy are lost (see [Other Index Changes](../02_Configuration/03_Index_Management.md#other-index-changes)) |
 
 "Last resort" in the table is the `copy` strategy; with the default `recreate`, an odd/even copy that fails on
 old values recreates the index right away.
