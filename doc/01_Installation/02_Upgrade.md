@@ -2,6 +2,13 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 2.5.18
+- [Indexing] Fixed: deleting a class definition no longer leaves the delete queue entries of its objects behind.
+  They were dispatched again every 24 hours and failed each time with `index_not_found_exception`, blocking the
+  other elements of their batch. The entries are now removed together with the class index, and a bulk deletion
+  from an index that no longer exists counts as done instead of failing the batch. Messages that already failed
+  for this reason succeed on `messenger:failed:retry`.
+
 ## Upgrade to 2.5.16
 - [Searching] New optional setting `search_settings.full_text_search_fields`: the fields a full-text search runs
   against when it does not name fields itself. Use it on indices with many fields, where the expansion over all fields
@@ -11,11 +18,6 @@ Following steps are necessary during updating to newer versions.
   `pimcore_generic_data_index` log channel. The response itself is unchanged.
 
 ## Upgrade to 2.5.15
-- [Indexing] Fixed: deleting a class definition no longer leaves the delete queue entries of its objects behind.
-  They were dispatched again every 24 hours and failed each time with `index_not_found_exception`, blocking the
-  other elements of their batch. The entries are now removed together with the class index, and a bulk deletion
-  from an index that no longer exists counts as done instead of failing the batch. Messages that already failed
-  for this reason succeed on `messenger:failed:retry`.
 - [Indexing] New **index status**: `IndexStatusServiceInterface` reports per index whether it is complete, rebuilding
   (with the progress in percent), copying, degraded, incomplete or missing, with the counts it is derived from;
   `IndexCompleteEvent` fires in the messenger worker that processes the last batch of a queued full rebuild. See
