@@ -2,6 +2,11 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 2.5.18
+- [Commands] `generic-data-index:deployment:reindex` without options no longer stops at the first class whose index
+  update fails: it continues with the remaining classes, reports every failed class and exits with a non-zero status,
+  like a run with index options.
+
 ## Upgrade to 2.5.16
 - [Searching] New optional setting `search_settings.full_text_search_fields`: the fields a full-text search runs
   against when it does not name fields itself. Use it on indices with many fields, where the expansion over all fields
@@ -11,9 +16,6 @@ Following steps are necessary during updating to newer versions.
   `pimcore_generic_data_index` log channel. The response itself is unchanged.
 
 ## Upgrade to 2.5.15
-- [Commands] `generic-data-index:deployment:reindex` without options no longer stops at the first class whose index
-  update fails: it continues with the remaining classes, reports every failed class and exits with a non-zero status,
-  like a run with index options.
 - [Indexing] New **index status**: `IndexStatusServiceInterface` reports per index whether it is complete, rebuilding
   (with the progress in percent), copying, degraded, incomplete or missing, with the counts it is derived from;
   `IndexCompleteEvent` fires in the messenger worker that processes the last batch of a queued full rebuild. See
