@@ -22,3 +22,4 @@ Configuration covers:
 - [OpenSearch Setup](./04_Opensearch.md)
 - [Elasticsearch Setup](./05_Elasticsearch.md)
 - [Index Snapshots](./06_Index_Snapshots.md)
+- [Operations Guide](./07_Operations_Guide.md) - large indices, deployments, monitoring and recovery

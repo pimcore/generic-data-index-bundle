@@ -45,6 +45,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
   them again after the re-index.
 
 ## Upgrade to 2026.3.5
+- [Indexing] Fixed: deleting a class definition no longer leaves the delete queue entries of its objects behind.
+  They were dispatched again every 24 hours and failed each time with `index_not_found_exception`, blocking the
+  other elements of their batch. The entries are now removed together with the class index, and a bulk deletion
+  from an index that no longer exists counts as done instead of failing the batch. Messages that already failed
+  for this reason succeed on `messenger:failed:retry`.
 - [Commands] `generic-data-index:deployment:reindex` without options no longer stops at the first class whose index
   update fails: it continues with the remaining classes, reports every failed class and exits with a non-zero status,
   like a run with index options.
@@ -173,8 +178,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
   (`strict_date_time_no_millis`). The text-based element types (`input`, `textarea`, `html` — including the
   default) keep the existing text/keyword mapping. This makes term filters, aggregations and the Studio grid
   filters work on typed calculated fields.
-- The mapping change is applied by `bin/console generic-data-index:update:index`, which recreates the
-  affected data object indices and queues all elements for re-indexing.
+- The mapping change is applied by `bin/console generic-data-index:update:index`: the search engine rejects the
+  in-place mapping update, so the command copies the affected data object indices (odd/even copy; see the
+  [Reindexing Guide](../03_Reindexing/README.md) for when an index is recreated instead) and queues all elements for
+  re-indexing. On large indices, see the
+  [Operations Guide](../02_Configuration/07_Operations_Guide.md#bundle-upgrades-that-change-mappings).
 
 ## Upgrade to 2026.2.8
 
@@ -184,8 +192,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
   Fields configured as integer are now mapped as `long`, all other ones (including `Slider`) as `double`. This prevents
   exact-match filters on large integers (for example customer or account IDs above 2^24) from returning
   neighbouring values that shared the same rounded `float` representation.
-- The mapping change is applied by `bin/console generic-data-index:update:index`, which recreates the
-  affected data object indices and queues all elements for re-indexing.
+- The mapping change is applied by `bin/console generic-data-index:update:index`: the search engine rejects the
+  in-place mapping update, so the command copies the affected data object indices (odd/even copy; see the
+  [Reindexing Guide](../03_Reindexing/README.md) for when an index is recreated instead) and queues all elements for
+  re-indexing. On large indices, see the
+  [Operations Guide](../02_Configuration/07_Operations_Guide.md#bundle-upgrades-that-change-mappings).
 
 ## Upgrade to 2026.1.0
 

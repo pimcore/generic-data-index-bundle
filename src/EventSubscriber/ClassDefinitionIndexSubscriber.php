@@ -14,8 +14,10 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateClassMappingMessage;
+use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -39,6 +41,7 @@ final class ClassDefinitionIndexSubscriber implements EventSubscriberInterface
         private readonly DataObjectIndexHandler $dataObjectMappingHandler,
         private readonly MessageBusInterface $messageBus,
         private readonly SettingsStoreServiceInterface $settingsStoreService,
+        private readonly IndexQueueRepository $indexQueueRepository,
     ) {
     }
 
@@ -84,6 +87,18 @@ final class ClassDefinitionIndexSubscriber implements EventSubscriberInterface
                 classDefinitionId: $classDefinition->getId()
             );
 
+            // Deleting the class deleted its objects, which queued a delete entry each. Their index is gone
+            // now, so the entries have nothing left to do; left behind, they would fail on every dispatch.
+            $removedEntries = $this->indexQueueRepository->deleteQueueEntriesByIndexName(
+                ElementType::DATA_OBJECT,
+                $classDefinition->getName()
+            );
+            if ($removedEntries > 0) {
+                $this->logger->info('Removed the index queue entries of the deleted class.', [
+                    'className' => $classDefinition->getName(),
+                    'entries' => $removedEntries,
+                ]);
+            }
         } catch (Exception $e) {
             $this->logger->error($e->getMessage());
         }
