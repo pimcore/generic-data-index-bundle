@@ -219,6 +219,42 @@ class IndexQueueTest extends Unit
     }
 
     /**
+     * PEES-1991: a new relation to an asset reindexes the asset (its isReferenced flag), but must not enqueue the
+     * elements that already depend on it. Before the fix every new relation enqueued all existing dependents.
+     *
+     * @throws Exception
+     */
+    public function testNewRelationToAnAssetDoesNotEnqueueItsExistingDependents(): void
+    {
+        $asset = TestHelper::createImageAsset();
+        $existingDependent = TestHelper::createEmptyObject();
+        $existingDependent->setImage($asset);
+        $existingDependent->save();
+        $this->tester->consume();
+        $this->tester->flushIndex();
+        $this->tester->checkIndexEntry(
+            $existingDependent->getId(),
+            $this->searchIndexConfigService->getIndexName($existingDependent->getClassName(), true)
+        );
+
+        $this->tester->clearQueue();
+        $newDependent = TestHelper::createEmptyObject();
+        $newDependent->setImage($asset);
+        $newDependent->save();
+
+        $this->checkQueueEntry((string) $asset->getId(), ElementType::ASSET->value);
+        $this->checkQueueEntry((string) $newDependent->getId(), ElementType::DATA_OBJECT->value);
+        $this->assertSame(
+            0,
+            (int) Db::get()->fetchOne(
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType = ?',
+                [$existingDependent->getId(), ElementType::DATA_OBJECT->value]
+            ),
+            'The existing dependent of the asset must not be enqueued'
+        );
+    }
+
+    /**
      * Regression test: when a queue entry exists with a full ES index name (e.g. stored by enqueueByItemList
      * from HitData), a subsequent enqueue for the same element must overwrite elementIndexName so the
      * DELETE handler receives the short class name and not the already-prefixed full index name.
