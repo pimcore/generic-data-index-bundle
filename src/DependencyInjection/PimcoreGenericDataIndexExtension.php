@@ -26,7 +26,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkChunk
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkDispatcherFactory;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexStatusServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusServiceInterface;
 use Pimcore\SearchClient\SearchClientInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -130,7 +130,7 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
 
         $this->registerSearchClient($container, $indexSettings['client_params']);
 
-        $container->getDefinition(IndexStatusServiceInterface::class)
+        $container->getDefinition(IndexQueueStatusServiceInterface::class)
             ->setArgument('$clientName', $indexSettings['client_params']['client_name']);
 
         $container->setParameter(

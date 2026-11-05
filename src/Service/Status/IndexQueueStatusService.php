@@ -24,7 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 /**
  * @internal
  */
-final readonly class IndexStatusService implements IndexStatusServiceInterface
+final readonly class IndexQueueStatusService implements IndexQueueStatusServiceInterface
 {
     public function __construct(
         private Connection $connection,
@@ -36,12 +36,14 @@ final readonly class IndexStatusService implements IndexStatusServiceInterface
     public function getQueueStatus(): QueueStatus
     {
         try {
+            $dispatched = $this->connection->quoteIdentifier('dispatched');
             $row = $this->connection->fetchAssociative(
                 'SELECT
-                    SUM(CASE WHEN dispatched = 0 THEN 1 ELSE 0 END) AS pending,
-                    SUM(CASE WHEN dispatched = 0 THEN 0 ELSE 1 END) AS dispatched,
-                    MIN(CASE WHEN dispatched = 0 THEN operationTime END) AS oldestPending
-                FROM ' . IndexQueue::TABLE
+                    SUM(CASE WHEN ' . $dispatched . ' = 0 THEN 1 ELSE 0 END) AS pending,
+                    SUM(CASE WHEN ' . $dispatched . ' = 0 THEN 0 ELSE 1 END) AS dispatched,
+                    MIN(CASE WHEN ' . $dispatched . ' = 0 THEN '
+                        . $this->connection->quoteIdentifier('operationTime') . ' END) AS oldestPending
+                FROM ' . $this->connection->quoteIdentifier(IndexQueue::TABLE)
             );
         } catch (DBALException $e) {
             throw new IndexStatusException('The index queue could not be read.', 0, $e);

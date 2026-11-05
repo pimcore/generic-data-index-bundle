@@ -23,7 +23,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Status\QueueStatus;
  * Public API: covered by the backward compatibility promise. Nothing here changes data, connects to the
  * search engine or exposes hosts, credentials or file paths.
  */
-interface IndexStatusServiceInterface
+interface IndexQueueStatusServiceInterface
 {
     /**
      * Counts of the index queue table, read with one aggregate query.

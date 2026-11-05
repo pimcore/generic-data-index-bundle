@@ -19,12 +19,12 @@ use Doctrine\DBAL\DriverManager;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexStatusException;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexStatusService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusService;
 
 /**
  * @internal
  */
-final class IndexStatusServiceTest extends Unit
+final class IndexQueueStatusServiceTest extends Unit
 {
     private Connection $connection;
 
@@ -120,13 +120,13 @@ final class IndexStatusServiceTest extends Unit
         string $clientType = 'openSearch',
         string $indexPrefix = 'pimcore_',
         string $clientName = 'default'
-    ): IndexStatusService {
+    ): IndexQueueStatusService {
         $configService = $this->makeEmpty(SearchIndexConfigServiceInterface::class, [
             'getClientType' => $clientType,
             'getIndexPrefix' => $indexPrefix,
         ]);
 
-        return new IndexStatusService(
+        return new IndexQueueStatusService(
             connection: $this->connection,
             searchIndexConfigService: $configService,
             clientName: $clientName,

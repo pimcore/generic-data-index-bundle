@@ -5,5 +5,5 @@ services:
         public: false
 
     # Public API: read-only status of the index queue and the search client configuration.
-    Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexStatusServiceInterface:
-        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexStatusService
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusService

@@ -17,7 +17,7 @@ use InvalidArgumentException;
 
 /**
  * Counts of the index queue at one point in time. Public API: part of the read-only status API
- * (see IndexStatusServiceInterface). It holds counts and a timestamp only, no element ids or index data.
+ * (see IndexQueueStatusServiceInterface). It holds counts and a timestamp only, no element ids or index data.
  */
 final readonly class QueueStatus
 {

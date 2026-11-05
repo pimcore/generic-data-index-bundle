@@ -9,7 +9,7 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 ### Index Status API
 
-- [Status] New public API `Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexStatusServiceInterface`, covered
+- [Status] New public API `Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusServiceInterface`, covered
   by the backward compatibility promise: read-only access to the index queue counts (total, pending, dispatched,
   oldest pending operation time) and the configured search client (type, name) and index prefix, for monitoring and
   diagnostics. It never exposes hosts, credentials or paths. Existing behaviour is unchanged. See

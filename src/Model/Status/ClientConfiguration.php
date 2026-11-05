@@ -15,7 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Status;
 
 /**
  * The search client the bundle is configured to use. Public API: part of the read-only status API
- * (see IndexStatusServiceInterface). It holds names only; hosts, credentials and paths of the client
+ * (see IndexQueueStatusServiceInterface). It holds names only; hosts, credentials and paths of the client
  * connection are never part of it. The values are reported as configured, also when they are empty, so a
  * misconfiguration can be diagnosed instead of failing the status call.
  */
