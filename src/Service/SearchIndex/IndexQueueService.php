@@ -62,7 +62,8 @@ final class IndexQueueService implements IndexQueueServiceInterface
         string $operation,
         bool $processSynchronously = false,
         bool $enqueueRelatedItems = true,
-        bool $enqueueRelatedItemsAsync = false
+        bool $enqueueRelatedItemsAsync = false,
+        bool $enqueueDependentItems = true
     ): IndexQueueService {
         try {
             $this->checkOperationValid($operation);
@@ -91,7 +92,12 @@ final class IndexQueueService implements IndexQueueServiceInterface
                 if ($enqueueRelatedItemsAsync) {
                     $this->dispatchEnqueueRelatedIdsMessage($element, $operation, !$processSynchronously);
                 } else {
-                    $this->handleQueueByOperation($element, $operation, $processSynchronously);
+                    $this->handleQueueByOperation(
+                        $element,
+                        $operation,
+                        $processSynchronously,
+                        $enqueueDependentItems
+                    );
                 }
             }
 
@@ -215,13 +221,18 @@ final class IndexQueueService implements IndexQueueServiceInterface
     private function handleQueueByOperation(
         ElementInterface $element,
         string $operation,
-        bool $processSynchronously
+        bool $processSynchronously,
+        bool $enqueueDependentItems
     ): void {
         $this->enqueueService->enqueueRelatedItems(
             element: $element,
             includeElement: !$processSynchronously,
             operation: $operation
         );
+
+        if ($enqueueDependentItems === false) {
+            return;
+        }
 
         if (($operation === IndexQueueOperation::UPDATE->value) && $element instanceof Asset) {
             $this->enqueueService->enqueueDependentItems(
