@@ -92,6 +92,9 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DocumentIndexHandler: ~
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLock
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasService
 

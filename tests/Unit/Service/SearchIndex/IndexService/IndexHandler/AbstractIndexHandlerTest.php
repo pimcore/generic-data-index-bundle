@@ -22,10 +22,13 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexOutco
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AbstractIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLock;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Psr\Log\NullLogger;
+use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Lock\Store\InMemoryStore;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -281,13 +284,16 @@ final class AbstractIndexHandlerTest extends Unit
         $events = $this->makeEmpty(EventDispatcherInterface::class);
         $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
 
-        return new class($search, $config, $events, $mapping, $copy, $properties) extends AbstractIndexHandler {
+        $lock = new IndexLock(new LockFactory(new InMemoryStore()), 1, 1);
+
+        return new class($search, $config, $events, $mapping, $copy, $lock, $properties) extends AbstractIndexHandler {
             public function __construct(
                 SearchIndexServiceInterface $searchIndexService,
                 SearchIndexConfigServiceInterface $searchIndexConfigService,
                 EventDispatcherInterface $eventDispatcher,
                 IndexMappingServiceInterface $indexMappingService,
                 IndexCopyService $indexCopyService,
+                IndexLock $indexLock,
                 private readonly array $mappingProperties
             ) {
                 parent::__construct(
@@ -295,7 +301,8 @@ final class AbstractIndexHandlerTest extends Unit
                     $searchIndexConfigService,
                     $eventDispatcher,
                     $indexMappingService,
-                    $indexCopyService
+                    $indexCopyService,
+                    $indexLock
                 );
             }
 

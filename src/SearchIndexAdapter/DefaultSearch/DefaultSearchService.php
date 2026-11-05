@@ -570,7 +570,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
         // Cancellation is cooperative: the task stops between batches. Report the
         // target as safe to delete only once the task is observed gone or completed.
-        for ($attempt = 0; $attempt < self::MAX_CONSECUTIVE_POLL_FAILURES; $attempt++) {
+        for ($attempt = 0; $attempt < self::REINDEX_CANCEL_POLLS; $attempt++) {
             try {
                 $taskStatus = $this->fetchTaskStatus($taskId);
             } catch (ReindexFailedException $e) {

@@ -18,7 +18,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\Snapshot\SnapshotImportExcep
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexState;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Snapshot\IndexTarget;
-use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexStateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AssetIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
@@ -41,7 +40,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 final class IndexProvisioner implements IndexProvisionerInterface
 {
     public function __construct(
-        private readonly SearchIndexServiceInterface $searchIndexService,
         private readonly DataObjectIndexHandler $dataObjectIndexHandler,
         private readonly AssetIndexHandler $assetIndexHandler,
         private readonly DocumentIndexHandler $documentIndexHandler,
@@ -59,9 +57,7 @@ final class IndexProvisioner implements IndexProvisionerInterface
         } else {
             $this->indexStateService->invalidateMapping($this->getIndexStateTarget($target));
         }
-        if ($this->searchIndexService->existsAlias($target->getAliasName())) {
-            $handler->deleteIndex($context);
-        }
+        // With forceCreateIndex, the handler deletes and recreates the index under the lock of the index.
         $mappingProperties = $handler->getMappingProperties($context);
         $handler->updateMapping(context: $context, forceCreateIndex: true, mappingProperties: $mappingProperties);
     }
