@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingService
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -39,13 +40,15 @@ final class DocumentIndexHandler extends AbstractIndexHandler
         private readonly DocumentTypeAdapter $documentAdapter,
         private readonly GlobalIndexAliasServiceInterface $globalIndexAliasService,
         IndexCopyServiceInterface $indexCopyService,
+        ?IndexLockInterface $indexLock = null,
     ) {
         parent::__construct(
             $searchIndexService,
             $searchIndexConfigService,
             $eventDispatcher,
             $indexMappingService,
-            $indexCopyService
+            $indexCopyService,
+            $indexLock
         );
     }
 

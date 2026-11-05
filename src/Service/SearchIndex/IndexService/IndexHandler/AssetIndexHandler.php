@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceI
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataProviderServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
@@ -39,13 +40,15 @@ final class AssetIndexHandler extends AbstractIndexHandler
         private readonly MetadataProviderServiceInterface $metadataProviderService,
         private readonly GlobalIndexAliasServiceInterface $globalIndexAliasService,
         IndexCopyServiceInterface $indexCopyService,
+        ?IndexLockInterface $indexLock = null,
     ) {
         parent::__construct(
             $searchIndexService,
             $searchIndexConfigService,
             $eventDispatcher,
             $indexMappingService,
-            $indexCopyService
+            $indexCopyService,
+            $indexLock
         );
     }
 
