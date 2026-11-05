@@ -38,6 +38,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 {
     use LoggerAwareTrait;
 
+    private const METADATA_INDEXED = 'indexed';
+
     private ServiceResolverInterface $classificationService;
 
     private LanguageServiceInterface $languageService;
@@ -118,29 +120,37 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 continue;
             }
 
-            $resultItems[$groupName] = $this->normalizeGroupValues($value, $groupId, $groupConfig, $validLanguages);
+            $resultItems[$groupName] = $this->normalizeGroupValues(
+                $value,
+                $groupId,
+                $this->getClassificationStoreKeysFromGroup($groupConfig),
+                $validLanguages
+            );
         }
 
         return $resultItems;
     }
 
     /**
-     * @param GroupConfig $groupConfig
+     * @param KeyGroupRelation[] $keys
      * @param string[] $validLanguages
      */
     private function normalizeGroupValues(
         ClassificationstoreModel $value,
         int $groupId,
-        GroupConfig $groupConfig,
+        array $keys,
         array $validLanguages
     ): array {
         $normalizedGroup = [];
-        $keys = $this->getClassificationStoreKeysFromGroup($groupConfig);
 
         foreach ($validLanguages as $validLanguage) {
             $usedKeyNames = [];
 
             foreach ($keys as $key) {
+                if (!$this->isIndexedKey($key)) {
+                    continue;
+                }
+
                 $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId());
                 if ($keyName === null
                     || $this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId())
@@ -351,6 +361,18 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         return true;
     }
 
+    /**
+     * An assignment marked as not indexed is dropped from the mapping, the document and the inheritance
+     * paths alike, and before its name is normalized, so it does not reserve a segment another key of the
+     * same normalized name could use. The flag is read from the assignment, not from the key, so the same
+     * key stays indexed in a group whose assignment does not carry it. An assignment without metadata and
+     * metadata without the flag both mean indexed: nothing is excluded unless the flag says so.
+     */
+    private function isIndexedKey(KeyGroupRelation $key): bool
+    {
+        return ($key->getMetadata()[self::METADATA_INDEXED] ?? true) !== false;
+    }
+
     private function getInheritancePath(string $key, string $groupName, string $groupKeyName, string $lang): string
     {
         $path = $key . '.' . $groupName . '.' . $groupKeyName;
@@ -390,7 +412,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             $usedGroupNames[$groupName] = true;
             $mapping[$group->getId()] = [
                 'name' => $groupName,
-                'keys' => $this->getKeyMappingForInheritance($group),
+                'keys' => $this->getKeyMappingForInheritance($this->getClassificationStoreKeysFromGroup($group)),
             ];
         }
 
@@ -398,14 +420,20 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
+     * @param KeyGroupRelation[] $keys
+     *
      * @return array<int, array{name: string, definition: Data}>
      */
-    private function getKeyMappingForInheritance(GroupConfig $group): array
+    private function getKeyMappingForInheritance(array $keys): array
     {
         $keyMapping = [];
         $usedKeyNames = [];
 
-        foreach ($this->getClassificationStoreKeysFromGroup($group) as $groupKey) {
+        foreach ($keys as $groupKey) {
+            if (!$this->isIndexedKey($groupKey)) {
+                continue;
+            }
+
             $definition = $this->getFieldDefinitionForKey($groupKey);
             if ($definition === null) {
                 continue;
@@ -455,6 +483,10 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     {
         $keyMapping = [];
         foreach ($groupConfigs as $key) {
+            if (!$this->isIndexedKey($key)) {
+                continue;
+            }
+
             $definition = $this->getFieldDefinitionForKey($key);
             if ($definition === null) {
                 continue;
@@ -528,10 +560,11 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * allowed groups, only those are mapped; without a restriction, all groups of the store stay mapped.
      * The property has no default and stays uninitialized for definitions that never set it.
      *
-     * The document is not filtered: a group that is active on the object but not allowed by the field
-     * stays in _source, where it is still readable, and "dynamic: false" keeps it out of the index - out
-     * of this mapping, that is: an in-place update merges into the existing one and leaves a node that
-     * dynamic mapping created there until the index is built from scratch.
+     * This filter does not reach the document: a group that is active on the object but not allowed by the
+     * field stays in _source, where it is still readable, and "dynamic: false" keeps it out of the index -
+     * out of this mapping, that is: an in-place update merges into the existing one and leaves a node that
+     * dynamic mapping created there until the index is built from scratch. A key marked as not indexed on
+     * its assignment is the exclusion that does reach the document, see {@see self::isIndexedKey()}.
      *
      * @param GroupConfig[] $groups
      *

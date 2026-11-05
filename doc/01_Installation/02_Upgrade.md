@@ -84,6 +84,12 @@ description: Version-specific upgrade instructions and breaking changes for the 
   that already mapped that group dynamically, from the first mapping built from scratch (see above), not from the
   in-place update. They are still written to the document and stay readable in `_source`; only filters, PQL and grid
   columns on them stop matching. Add the group to the field's allowed groups and re-index to restore filtering.
+- [Indexing] New: a classification store key marked as not indexed on its assignment to a group is no longer
+  mapped and no longer written to the document, so it is not filterable, sortable or searchable and is no longer
+  present in `_source`. Nothing is excluded unless the flag is set on the assignment. On an existing index the
+  exclusion arrives with the next mapping update — saving the class definition,
+  `generic-data-index:deployment:reindex` or `generic-data-index:update:index` — and the node an earlier mapping
+  already declared for the key is dropped when that index is built from scratch, as above.
 - [Indexing] The declared field count of a localized classification store now multiplies by the number of valid
   languages. A large store can therefore hit `index.mapping.total_fields.limit` when the index is created or the
   mapping is updated, instead of later at write time. Restrict the allowed groups of the field, or raise the limit — see

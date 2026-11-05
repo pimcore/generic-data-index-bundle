@@ -48,9 +48,15 @@ class ClassificationStoreMappingTest extends Unit
 
     private const KEY_NAME = 'Size';
 
+    private const EXCLUDED_KEY_NAME = 'Weight';
+
     private const KEY_VALUE = 42;
 
+    private const EXCLUDED_KEY_VALUE = 23;
+
     private const KEY_TYPE = 'numeric';
+
+    private const METADATA_INDEXED = 'indexed';
 
     private const PROPERTIES = 'properties';
 
@@ -64,6 +70,8 @@ class ClassificationStoreMappingTest extends Unit
     private GroupConfig $groupConfig;
 
     private KeyConfig $keyConfig;
+
+    private KeyConfig $excludedKeyConfig;
 
     private ClassDefinition $classDefinition;
 
@@ -83,11 +91,8 @@ class ClassificationStoreMappingTest extends Unit
         $this->tester->cleanupIndex();
         $this->tester->flushIndex();
         $this->classDefinition->delete();
-        $relation = new KeyGroupRelation();
-        $relation->setKeyId($this->keyConfig->getId());
-        $relation->setGroupId($this->groupConfig->getId());
-        $relation->delete();
-        $this->keyConfig->delete();
+        $this->deleteKeyWithAssignment($this->keyConfig);
+        $this->deleteKeyWithAssignment($this->excludedKeyConfig);
         $this->groupConfig->delete();
         $this->storeConfig->delete();
     }
@@ -139,6 +144,40 @@ class ClassificationStoreMappingTest extends Unit
         $this->assertSame([$object->getId()], $result->getIds(), $language);
     }
 
+    /**
+     * A key marked as not indexed on its assignment to the group is mapped nowhere and written nowhere: an
+     * index built from scratch declares no node for it under any language of the group, and the document of
+     * an object that has a value for it carries none, so it is not in _source either.
+     */
+    public function testExcludedKeyIsAbsentFromMappingAndSourceOnARecreatedIndex(): void
+    {
+        $language = $this->getValidLanguages()[0];
+        $object = $this->createObjectWithStoreValue($language);
+
+        $groupMapping = $this->getStoreFieldMapping()[self::PROPERTIES][self::GROUP_NAME][self::PROPERTIES];
+
+        // asserted before the loop, so an empty group node cannot satisfy the absence assertion vacuously
+        $this->assertEqualsCanonicalizing(
+            array_merge([MappingProperty::NOT_LOCALIZED_KEY], $this->getValidLanguages()),
+            array_keys($groupMapping)
+        );
+
+        foreach ($groupMapping as $mappedLanguage => $languageMapping) {
+            $keyMapping = $languageMapping[self::PROPERTIES];
+            $this->assertArrayHasKey(self::KEY_NAME, $keyMapping, $mappedLanguage);
+            $this->assertArrayNotHasKey(self::EXCLUDED_KEY_NAME, $keyMapping, $mappedLanguage);
+        }
+
+        $indexName = $this->tester->getIndexName(self::CLASS_NAME, true);
+        $source = $this->tester->checkIndexEntry($object->getId(), $indexName)['_source'];
+        $groupSource = $source[FieldCategory::STANDARD_FIELDS->value][self::FIELD_NAME][self::GROUP_NAME];
+
+        $this->assertEquals(self::KEY_VALUE, $groupSource[$language][self::KEY_NAME]);
+        foreach ($groupSource as $sourceLanguage => $keyValues) {
+            $this->assertArrayNotHasKey(self::EXCLUDED_KEY_NAME, $keyValues, $sourceLanguage);
+        }
+    }
+
     private function getStoreFieldMapping(): array
     {
         $indexName = $this->tester->getIndexName(self::CLASS_NAME, true);
@@ -176,6 +215,12 @@ class ClassificationStoreMappingTest extends Unit
             self::KEY_VALUE,
             $language
         );
+        $store->setLocalizedKeyValue(
+            $this->groupConfig->getId(),
+            $this->excludedKeyConfig->getId(),
+            self::EXCLUDED_KEY_VALUE,
+            $language
+        );
         $object->save();
         $this->tester->flushIndex();
 
@@ -193,29 +238,58 @@ class ClassificationStoreMappingTest extends Unit
         $this->groupConfig->setName(self::GROUP_NAME);
         $this->groupConfig->save();
 
+        $this->keyConfig = $this->createKeyWithAssignment(self::KEY_NAME);
+        $this->excludedKeyConfig = $this->createKeyWithAssignment(
+            self::EXCLUDED_KEY_NAME,
+            [self::METADATA_INDEXED => false]
+        );
+    }
+
+    /**
+     * The assignment of the indexed key carries no metadata at all, the way every assignment does that was
+     * created before the flag existed.
+     *
+     * @param array<string, mixed>|null $metadata
+     */
+    private function createKeyWithAssignment(string $name, ?array $metadata = null): KeyConfig
+    {
         $keyDefinition = (string) json_encode([
             'fieldtype' => self::KEY_TYPE,
-            'name' => self::KEY_NAME,
-            'title' => self::KEY_NAME,
+            'name' => $name,
+            'title' => $name,
             'integer' => true,
         ]);
 
-        $this->keyConfig = new KeyConfig();
-        $this->keyConfig->setStoreId($this->storeConfig->getId());
-        $this->keyConfig->setName(self::KEY_NAME);
-        $this->keyConfig->setType(self::KEY_TYPE);
-        $this->keyConfig->setDefinition($keyDefinition);
-        $this->keyConfig->setEnabled(true);
-        $this->keyConfig->save();
+        $keyConfig = new KeyConfig();
+        $keyConfig->setStoreId($this->storeConfig->getId());
+        $keyConfig->setName($name);
+        $keyConfig->setType(self::KEY_TYPE);
+        $keyConfig->setDefinition($keyDefinition);
+        $keyConfig->setEnabled(true);
+        $keyConfig->save();
 
         $relation = new KeyGroupRelation();
-        $relation->setKeyId($this->keyConfig->getId());
+        $relation->setKeyId($keyConfig->getId());
         $relation->setGroupId($this->groupConfig->getId());
-        $relation->setName(self::KEY_NAME);
+        $relation->setName($name);
         $relation->setType(self::KEY_TYPE);
         $relation->setDefinition($keyDefinition);
         $relation->setEnabled(true);
+        if ($metadata !== null) {
+            $relation->setMetadata($metadata);
+        }
         $relation->save();
+
+        return $keyConfig;
+    }
+
+    private function deleteKeyWithAssignment(KeyConfig $keyConfig): void
+    {
+        $relation = new KeyGroupRelation();
+        $relation->setKeyId($keyConfig->getId());
+        $relation->setGroupId($this->groupConfig->getId());
+        $relation->delete();
+        $keyConfig->delete();
     }
 
     private function createClassDefinition(): ClassDefinition
