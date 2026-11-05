@@ -1,0 +1,9 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    # Public API: read-only status of the index queue and the search client configuration.
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexStatusServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexStatusService
