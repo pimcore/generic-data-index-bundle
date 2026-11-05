@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexOutcome;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
 use Psr\Log\NullLogger;
@@ -88,6 +89,33 @@ final class IndexCopyServiceTest extends Unit
         );
         $this->assertSame(['standard_fields.price', 'standard_fields.score'], $result->getStrippedPaths());
         $this->assertSame(2, $result->getAttempts());
+    }
+
+    public function testTheIndexLockIsRefreshedBeforeEveryRetry(): void
+    {
+        $calls = [];
+        $refreshed = [];
+        $indexLock = $this->makeEmpty(IndexLockInterface::class, [
+            'refresh' => static function (string $aliasName) use (&$refreshed): void {
+                $refreshed[] = $aliasName;
+            },
+        ]);
+        $service = $this->createService(
+            $this->liveMapping(['price' => self::TEXT]),
+            $calls,
+            [
+                new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['standard_fields', 'score']]),
+                new ReindexOutcome(ReindexResult::MAPPING_INCOMPATIBLE, [['standard_fields', 'weight']]),
+                new ReindexOutcome(ReindexResult::SUCCESS),
+            ],
+            MappingChangeStrategy::COPY,
+            $indexLock
+        );
+
+        $result = $service->copy(self::ALIAS, $this->mapping(['price' => ['type' => 'float']]));
+
+        $this->assertSame(3, $result->getAttempts());
+        $this->assertSame([self::ALIAS, self::ALIAS], $refreshed, 'refreshed before the second and the third attempt');
     }
 
     public function testAKeptFieldThatFailsInTheCopyIsReportedAsStrippedOnly(): void
@@ -453,7 +481,8 @@ final class IndexCopyServiceTest extends Unit
         array $liveMapping,
         array &$calls,
         array $outcomes,
-        MappingChangeStrategy $strategy = MappingChangeStrategy::COPY
+        MappingChangeStrategy $strategy = MappingChangeStrategy::COPY,
+        ?IndexLockInterface $indexLock = null
     ): IndexCopyService {
         $searchIndexService = $this->makeEmpty(SearchIndexServiceInterface::class, [
             'getMapping' => $liveMapping,
@@ -467,7 +496,13 @@ final class IndexCopyServiceTest extends Unit
             },
         ]);
 
-        return new IndexCopyService($searchIndexService, new MappingDiffService(), new NullLogger(), $strategy->value);
+        return new IndexCopyService(
+            $searchIndexService,
+            new MappingDiffService(),
+            new NullLogger(),
+            $strategy->value,
+            $indexLock
+        );
     }
 
     private function liveMapping(array $fields): array

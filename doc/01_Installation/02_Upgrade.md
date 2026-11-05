@@ -6,6 +6,14 @@ description: Version-specific upgrade instructions and breaking changes for the 
 # Upgrade Information
 
 ## Upgrade to 2026.3.5
+- [Indexing] Mapping updates of the same index no longer overlap: every copy or recreation of an index runs under a
+  lock on the index alias, and a second update of the same index waits until the first one has finished. The lock is
+  taken from the lock store of the application (`Symfony\Component\Lock\LockFactory`; Pimcore configures the
+  database store, so all workers and nodes share it) and expires, if its process dies, after the longest copy attempt
+  (the wait of `reindex_settings.max_polls` × `poll_interval` plus the cancellation of a stuck task before and after
+  it) and a quarter of that. `AbstractIndexHandler` and the three index handlers take an `IndexLockInterface` as
+  their last constructor argument; constructing them without it is deprecated and leaves the mapping updates of
+  that handler unlocked.
 - [Indexing] Fixed: deleting a class definition no longer leaves the delete queue entries of its objects behind.
   They were dispatched again every 24 hours and failed each time with `index_not_found_exception`, blocking the
   other elements of their batch. The entries are now removed together with the class index, and a bulk deletion
