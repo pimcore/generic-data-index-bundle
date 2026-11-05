@@ -59,6 +59,11 @@ final class IndexQueueRepository
 
     private const CHUNK_RETRY_BASE_DELAY_MICROSECONDS = 20_000;
 
+    /**
+     * Ids claimed per statement, far below the 65,535 placeholders of native prepared statements.
+     */
+    private const CLAIM_CHUNK_SIZE = 5_000;
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly TimeServiceInterface $timeService,
@@ -341,22 +346,37 @@ final class IndexQueueRepository
         sort($ids);
 
         // The threshold is checked again under the row lock, so a row that another dispatcher
-        // claimed in the meantime is skipped instead of being claimed twice.
-        $this->connection->executeStatement(
-            sprintf(
-                'UPDATE %s SET %s = :dispatchId WHERE %s IN (:ids) AND %s < :threshold',
-                $this->connection->quoteIdentifier(IndexQueue::TABLE),
-                $this->connection->quoteIdentifier('dispatched'),
-                $this->connection->quoteIdentifier('id'),
-                $this->connection->quoteIdentifier('dispatched')
-            ),
-            [
-                'dispatchId' => $dispatchId,
-                'ids' => $ids,
-                'threshold' => $threshold,
-            ],
-            ['ids' => ArrayParameterType::INTEGER]
+        // claimed in the meantime is skipped instead of being claimed twice. Large batches are
+        // claimed in bounded statements within one transaction, so a failure leaves no partial claim.
+        $sql = sprintf(
+            'UPDATE %s SET %s = :dispatchId WHERE %s IN (:ids) AND %s < :threshold',
+            $this->connection->quoteIdentifier(IndexQueue::TABLE),
+            $this->connection->quoteIdentifier('dispatched'),
+            $this->connection->quoteIdentifier('id'),
+            $this->connection->quoteIdentifier('dispatched')
         );
+
+        $this->connection->beginTransaction();
+
+        try {
+            foreach (array_chunk($ids, self::CLAIM_CHUNK_SIZE) as $idChunk) {
+                $this->connection->executeStatement(
+                    $sql,
+                    [
+                        'dispatchId' => $dispatchId,
+                        'ids' => $idChunk,
+                        'threshold' => $threshold,
+                    ],
+                    ['ids' => ArrayParameterType::INTEGER]
+                );
+            }
+
+            $this->connection->commit();
+        } catch (Exception $e) {
+            $this->connection->rollBack();
+
+            throw $e;
+        }
 
         return $dispatchId;
     }

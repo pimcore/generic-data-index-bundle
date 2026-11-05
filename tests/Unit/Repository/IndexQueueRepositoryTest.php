@@ -132,6 +132,55 @@ final class IndexQueueRepositoryTest extends Unit
         $this->assertSame(self::TIMESTAMP, intdiv($dispatchId, 1_000_000));
     }
 
+    public function testDispatchItemsClaimsLargeBatchesInBoundedStatementsWithinOneTransaction(): void
+    {
+        // Keeps every statement far below the 65,535 placeholders of native prepared statements.
+        $this->connection->method('fetchFirstColumn')->willReturn(range(1, 12_000));
+        $this->connection->expects($this->once())->method('beginTransaction');
+        $this->connection->expects($this->once())->method('commit');
+        $this->connection->expects($this->never())->method('rollBack');
+
+        $claimedIds = [];
+        $dispatchIds = [];
+        $this->connection->expects($this->exactly(3))
+            ->method('executeStatement')
+            ->willReturnCallback(
+                static function (string $sql, array $params) use (&$claimedIds, &$dispatchIds): int {
+                    $claimedIds = array_merge($claimedIds, $params['ids']);
+                    $dispatchIds[] = $params['dispatchId'];
+
+                    return count($params['ids']);
+                }
+            );
+
+        $this->createRepository()->dispatchItems(100_000);
+
+        $this->assertSame(range(1, 12_000), $claimedIds);
+        $this->assertCount(1, array_unique($dispatchIds));
+    }
+
+    public function testDispatchItemsRollsBackAPartialClaim(): void
+    {
+        $this->connection->method('fetchFirstColumn')->willReturn(range(1, 12_000));
+        $this->connection->expects($this->once())->method('rollBack');
+        $this->connection->expects($this->never())->method('commit');
+
+        $statements = 0;
+        $this->connection->method('executeStatement')->willReturnCallback(
+            function () use (&$statements): int {
+                if (++$statements === 2) {
+                    throw $this->deadlock();
+                }
+
+                return 5_000;
+            }
+        );
+
+        $this->expectException(DeadlockException::class);
+
+        $this->createRepository()->dispatchItems(100_000);
+    }
+
     public function testDispatchItemsSkipsTheClaimWhenNothingIsDispatchable(): void
     {
         $this->connection->method('fetchFirstColumn')->willReturn([]);
