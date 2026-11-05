@@ -13,8 +13,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Repository;
 
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception as DBALException;
+use Doctrine\DBAL\Exception\DeadlockException;
 use Doctrine\DBAL\Query\QueryBuilder as DBALQueryBuilder;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\NonUniqueResultException;
@@ -47,6 +49,25 @@ final class IndexQueueRepository
      * high-order digits. See generateDispatchId().
      */
     private const DISPATCH_ID_FACTOR = 1_000_000;
+
+    /**
+     * How often an enqueue chunk is written before a deadlock is given up on. Concurrent enqueues
+     * of overlapping elements (e.g. saves moving assets between objects next to update:index) can
+     * deadlock each other; InnoDB then rolls back one of them, which is safe to replay.
+     */
+    private const MAX_CHUNK_ATTEMPTS = 3;
+
+    private const CHUNK_RETRY_BASE_DELAY_MICROSECONDS = 20_000;
+
+    /**
+     * Ids claimed per statement, far below the 65,535 placeholders of native prepared statements.
+     */
+    private const CLAIM_CHUNK_SIZE = 5_000;
+
+    /**
+     * How often a batch shortened by a concurrent dispatcher is refilled with a fresh pick.
+     */
+    private const MAX_CLAIM_ROUNDS = 3;
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
@@ -304,20 +325,136 @@ final class IndexQueueRepository
         $timestamp = $this->timeService->getCurrentMillisecondTimestamp();
         $dispatchId = $this->generateDispatchId($timestamp);
 
-        // Executed as direct SQL statement as doctrine ORM does not support LIMIT in UPDATE queries
-        $this->connection->executeQuery(
-            'UPDATE ' . IndexQueue::TABLE .
-            ' SET dispatched = :dispatchId WHERE dispatched < :threshold LIMIT ' . $limit,
+        // 24h staleness threshold, scaled to the dispatch id encoding so
+        // that unhandled (0) and stale rows are still re-dispatched.
+        $threshold = ($timestamp - 60*60*24*1000) * self::DISPATCH_ID_FACTOR;
 
-            [
-                'dispatchId' => $dispatchId,
-                // 24h staleness threshold, scaled to the dispatch id encoding so
-                // that unhandled (0) and stale rows are still re-dispatched.
-                'threshold' => ($timestamp - 60*60*24*1000) * self::DISPATCH_ID_FACTOR,
-            ]
-        );
+        // Pick the rows with a non-locking read and claim them by primary key afterwards. A ranged
+        // "UPDATE ... WHERE dispatched < :threshold LIMIT n" locks the scanned range of the
+        // dispatched index, which deadlocks with enqueues resetting rows to dispatched = 0.
+        // A concurrent dispatcher can take some of the picked rows. The batch is then refilled,
+        // because a short batch ends the drain loop of QueueMessageService while rows are pending.
+        $claimed = 0;
+
+        try {
+            for ($round = 1; $round <= self::MAX_CLAIM_ROUNDS && $claimed < $limit; $round++) {
+                $ids = $this->pickDispatchableIds($limit - $claimed, $threshold);
+                if ($ids === []) {
+                    break;
+                }
+
+                $claimedInRound = $this->claimIds($ids, $dispatchId, $threshold);
+                $claimed += $claimedInRound;
+
+                if ($claimedInRound === count($ids)) {
+                    break;
+                }
+            }
+        } catch (Exception $e) {
+            if ($claimed > 0) {
+                $this->releaseClaim($dispatchId);
+            }
+
+            throw $e;
+        }
 
         return $dispatchId;
+    }
+
+    /**
+     * @return list<int> ids in ascending order, so concurrent claims lock rows in the same order
+     *
+     * @throws DBALException
+     */
+    private function pickDispatchableIds(int $limit, int $threshold): array
+    {
+        $ids = $this->connection->fetchFirstColumn(
+            sprintf(
+                'SELECT %s FROM %s WHERE %s < :threshold LIMIT %d',
+                $this->connection->quoteIdentifier('id'),
+                $this->connection->quoteIdentifier(IndexQueue::TABLE),
+                $this->connection->quoteIdentifier('dispatched'),
+                $limit
+            ),
+            ['threshold' => $threshold]
+        );
+
+        $ids = array_map(intval(...), $ids);
+        sort($ids);
+
+        return $ids;
+    }
+
+    /**
+     * Claims the rows that are still dispatchable. The threshold is checked again under the row lock,
+     * so a row that another dispatcher claimed in the meantime is skipped instead of being claimed
+     * twice. Large batches are claimed in bounded statements within one transaction, so a failure
+     * leaves no partial claim.
+     *
+     * @param list<int> $ids
+     *
+     * @return int the number of claimed rows
+     *
+     * @throws DBALException
+     */
+    private function claimIds(array $ids, int $dispatchId, int $threshold): int
+    {
+        $sql = sprintf(
+            'UPDATE %s SET %s = :dispatchId WHERE %s IN (:ids) AND %s < :threshold',
+            $this->connection->quoteIdentifier(IndexQueue::TABLE),
+            $this->connection->quoteIdentifier('dispatched'),
+            $this->connection->quoteIdentifier('id'),
+            $this->connection->quoteIdentifier('dispatched')
+        );
+
+        $claimed = 0;
+        $this->connection->beginTransaction();
+
+        try {
+            foreach (array_chunk($ids, self::CLAIM_CHUNK_SIZE) as $idChunk) {
+                $claimed += (int)$this->connection->executeStatement(
+                    $sql,
+                    [
+                        'dispatchId' => $dispatchId,
+                        'ids' => $idChunk,
+                        'threshold' => $threshold,
+                    ],
+                    ['ids' => ArrayParameterType::INTEGER]
+                );
+            }
+
+            $this->connection->commit();
+        } catch (Exception $e) {
+            $this->connection->rollBack();
+
+            throw $e;
+        }
+
+        return $claimed;
+    }
+
+    /**
+     * Hands the rows of a failed dispatch back, so they are not left claimed until they turn stale.
+     */
+    private function releaseClaim(int $dispatchId): void
+    {
+        try {
+            $this->connection->executeStatement(
+                sprintf(
+                    'UPDATE %s SET %s = 0 WHERE %s = :dispatchId',
+                    $this->connection->quoteIdentifier(IndexQueue::TABLE),
+                    $this->connection->quoteIdentifier('dispatched'),
+                    $this->connection->quoteIdentifier('dispatched')
+                ),
+                ['dispatchId' => $dispatchId]
+            );
+        } catch (Exception $e) {
+            // The original failure is rethrown by the caller; the rows turn stale and are re-dispatched.
+            $this->logger->error('Releasing the claim of a failed dispatch failed', [
+                'dispatchId' => $dispatchId,
+                'exception' => $e,
+            ]);
+        }
     }
 
     /**
@@ -532,8 +669,44 @@ final class IndexQueueRepository
             $metaData
         );
 
-        $effectiveChunkSize = count($chunk);
+        $outerTransaction = $this->connection->getTransactionNestingLevel() > 0;
 
+        for ($attempt = 1; ; $attempt++) {
+            try {
+                $this->writeChunk($ids, $elementType, $operation, $operationTime, $elementIndexName);
+
+                return;
+            } catch (DeadlockException $e) {
+                // Inside an outer transaction the deadlock has rolled back the caller's work as well,
+                // so only the caller can replay it.
+                if ($outerTransaction || $attempt >= self::MAX_CHUNK_ATTEMPTS) {
+                    throw $e;
+                }
+
+                $this->logger->warning('Enqueueing index queue chunk deadlocked, retrying', [
+                    'elementType' => $elementType,
+                    'entries' => count($ids),
+                    'attempt' => $attempt,
+                ]);
+
+                usleep(self::CHUNK_RETRY_BASE_DELAY_MICROSECONDS * $attempt + random_int(0, 10_000));
+            }
+        }
+    }
+
+    /**
+     * @param list<string|int> $ids Element IDs
+     *
+     * @throws Throwable
+     * @throws DBALException
+     */
+    private function writeChunk(
+        array $ids,
+        string $elementType,
+        string $operation,
+        int $operationTime,
+        ?string $elementIndexName,
+    ): void {
         try {
             $this->connection->beginTransaction();
 
@@ -545,7 +718,7 @@ final class IndexQueueRepository
                 $elementIndexName
             );
 
-            if ($affectedRows < $effectiveChunkSize) {
+            if ($affectedRows < count($ids)) {
                 $this->updateFromChunk(
                     $ids,
                     $elementType,
