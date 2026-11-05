@@ -125,7 +125,8 @@ final class IndexQueueRepositoryTest extends Unit
                         && intdiv($params['dispatchId'], 1_000_000) === self::TIMESTAMP
                 ),
                 ['ids' => ArrayParameterType::INTEGER]
-            );
+            )
+            ->willReturn(3);
 
         $dispatchId = $this->createRepository()->dispatchItems(400);
 
@@ -179,6 +180,61 @@ final class IndexQueueRepositoryTest extends Unit
         $this->expectException(DeadlockException::class);
 
         $this->createRepository()->dispatchItems(100_000);
+    }
+
+    public function testDispatchItemsRefillsABatchShortenedByAConcurrentDispatcher(): void
+    {
+        // A short batch ends QueueMessageService's drain loop, so rows taken by another dispatcher are
+        // replaced by a fresh pick instead of returning fewer rows while more are dispatchable.
+        $limits = [];
+        $this->connection->expects($this->exactly(2))
+            ->method('fetchFirstColumn')
+            ->willReturnCallback(static function (string $sql) use (&$limits): array {
+                preg_match('/LIMIT (\d+)/', $sql, $match);
+                $limits[] = (int)$match[1];
+
+                return count($limits) === 1 ? range(1, 400) : range(401, 500);
+            });
+        $this->connection->method('executeStatement')->willReturnOnConsecutiveCalls(300, 100);
+
+        $this->createRepository()->dispatchItems(400);
+
+        $this->assertSame([400, 100], $limits);
+    }
+
+    public function testDispatchItemsStopsRefillingAfterThreeRounds(): void
+    {
+        $this->connection->expects($this->exactly(3))->method('fetchFirstColumn')->willReturn([1, 2, 3]);
+        $this->connection->method('executeStatement')->willReturn(0);
+
+        $this->createRepository()->dispatchItems(400);
+    }
+
+    public function testDispatchItemsReleasesEarlierRoundsWhenALaterRoundFails(): void
+    {
+        $this->connection->method('fetchFirstColumn')->willReturnOnConsecutiveCalls(
+            range(1, 400),
+            $this->throwException($this->deadlock())
+        );
+
+        $statements = [];
+        $this->connection->method('executeStatement')->willReturnCallback(
+            static function (string $sql, array $params) use (&$statements): int {
+                $statements[] = [$sql, $params];
+
+                return 300;
+            }
+        );
+
+        try {
+            $this->createRepository()->dispatchItems(400);
+            $this->fail('The failing round must be rethrown');
+        } catch (DeadlockException) {
+            $this->assertCount(2, $statements);
+            [$releaseSql, $releaseParams] = $statements[1];
+            $this->assertStringContainsString('SET dispatched = 0 WHERE dispatched = :dispatchId', $releaseSql);
+            $this->assertSame($statements[0][1]['dispatchId'], $releaseParams['dispatchId']);
+        }
     }
 
     public function testDispatchItemsSkipsTheClaimWhenNothingIsDispatchable(): void

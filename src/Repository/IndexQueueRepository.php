@@ -64,6 +64,11 @@ final class IndexQueueRepository
      */
     private const CLAIM_CHUNK_SIZE = 5_000;
 
+    /**
+     * How often a batch shortened by a concurrent dispatcher is refilled with a fresh pick.
+     */
+    private const MAX_CLAIM_ROUNDS = 3;
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly TimeServiceInterface $timeService,
@@ -327,6 +332,42 @@ final class IndexQueueRepository
         // Pick the rows with a non-locking read and claim them by primary key afterwards. A ranged
         // "UPDATE ... WHERE dispatched < :threshold LIMIT n" locks the scanned range of the
         // dispatched index, which deadlocks with enqueues resetting rows to dispatched = 0.
+        // A concurrent dispatcher can take some of the picked rows. The batch is then refilled,
+        // because a short batch ends the drain loop of QueueMessageService while rows are pending.
+        $claimed = 0;
+
+        try {
+            for ($round = 1; $round <= self::MAX_CLAIM_ROUNDS && $claimed < $limit; $round++) {
+                $ids = $this->pickDispatchableIds($limit - $claimed, $threshold);
+                if ($ids === []) {
+                    break;
+                }
+
+                $claimedInRound = $this->claimIds($ids, $dispatchId, $threshold);
+                $claimed += $claimedInRound;
+
+                if ($claimedInRound === count($ids)) {
+                    break;
+                }
+            }
+        } catch (Exception $e) {
+            if ($claimed > 0) {
+                $this->releaseClaim($dispatchId);
+            }
+
+            throw $e;
+        }
+
+        return $dispatchId;
+    }
+
+    /**
+     * @return list<int> ids in ascending order, so concurrent claims lock rows in the same order
+     *
+     * @throws DBALException
+     */
+    private function pickDispatchableIds(int $limit, int $threshold): array
+    {
         $ids = $this->connection->fetchFirstColumn(
             sprintf(
                 'SELECT %s FROM %s WHERE %s < :threshold LIMIT %d',
@@ -338,16 +379,26 @@ final class IndexQueueRepository
             ['threshold' => $threshold]
         );
 
-        if ($ids === []) {
-            return $dispatchId;
-        }
-
         $ids = array_map(intval(...), $ids);
         sort($ids);
 
-        // The threshold is checked again under the row lock, so a row that another dispatcher
-        // claimed in the meantime is skipped instead of being claimed twice. Large batches are
-        // claimed in bounded statements within one transaction, so a failure leaves no partial claim.
+        return $ids;
+    }
+
+    /**
+     * Claims the rows that are still dispatchable. The threshold is checked again under the row lock,
+     * so a row that another dispatcher claimed in the meantime is skipped instead of being claimed
+     * twice. Large batches are claimed in bounded statements within one transaction, so a failure
+     * leaves no partial claim.
+     *
+     * @param list<int> $ids
+     *
+     * @return int the number of claimed rows
+     *
+     * @throws DBALException
+     */
+    private function claimIds(array $ids, int $dispatchId, int $threshold): int
+    {
         $sql = sprintf(
             'UPDATE %s SET %s = :dispatchId WHERE %s IN (:ids) AND %s < :threshold',
             $this->connection->quoteIdentifier(IndexQueue::TABLE),
@@ -356,11 +407,12 @@ final class IndexQueueRepository
             $this->connection->quoteIdentifier('dispatched')
         );
 
+        $claimed = 0;
         $this->connection->beginTransaction();
 
         try {
             foreach (array_chunk($ids, self::CLAIM_CHUNK_SIZE) as $idChunk) {
-                $this->connection->executeStatement(
+                $claimed += (int)$this->connection->executeStatement(
                     $sql,
                     [
                         'dispatchId' => $dispatchId,
@@ -378,7 +430,31 @@ final class IndexQueueRepository
             throw $e;
         }
 
-        return $dispatchId;
+        return $claimed;
+    }
+
+    /**
+     * Hands the rows of a failed dispatch back, so they are not left claimed until they turn stale.
+     */
+    private function releaseClaim(int $dispatchId): void
+    {
+        try {
+            $this->connection->executeStatement(
+                sprintf(
+                    'UPDATE %s SET %s = 0 WHERE %s = :dispatchId',
+                    $this->connection->quoteIdentifier(IndexQueue::TABLE),
+                    $this->connection->quoteIdentifier('dispatched'),
+                    $this->connection->quoteIdentifier('dispatched')
+                ),
+                ['dispatchId' => $dispatchId]
+            );
+        } catch (Exception $e) {
+            // The original failure is rethrown by the caller; the rows turn stale and are re-dispatched.
+            $this->logger->error('Releasing the claim of a failed dispatch failed', [
+                'dispatchId' => $dispatchId,
+                'exception' => $e,
+            ]);
+        }
     }
 
     /**
