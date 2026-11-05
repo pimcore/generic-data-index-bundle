@@ -357,9 +357,10 @@ and the second one waits until the first has finished, then copies the index aga
 during `classes-rebuild` and `deployment:reindex` (see [Deployment Procedure](#deployment-procedure)), when a
 message is redelivered after `redeliver_timeout`, or when a class is saved twice within the copy time and two
 workers handle the messages. The waiting process logs a notice and blocks until the lock is free; a lock whose
-process died expires after the longest copy wait (`reindex_settings.max_polls` × `poll_interval`, one hour by
-default) plus a quarter of it. An update whose lock was taken over meanwhile stops with an `IndexLockException`
-instead of going on. Versions before 2.5.18 have no lock: there, the second copy cancels the first (it removes
+process died expires after the longest copy attempt (the wait of `reindex_settings.max_polls` × `poll_interval`,
+one hour by default, plus the cancellation of a stuck task before and after it) and a quarter of that. An update
+whose lock was taken over meanwhile stops with an `IndexLockException` instead of going on. Versions before
+2.5.18 have no lock: there, the second copy cancels the first (it removes
 running copies of its target before it starts), and the class index can disappear completely.
 
 To stop a copy, first stop the process that waits for it (the worker or the console command), then cancel the task.

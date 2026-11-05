@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 
 use Closure;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\IndexLockException;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Psr\Log\NullLogger;
 use Symfony\Component\Lock\Exception\ExceptionInterface as LockExceptionInterface;
@@ -36,7 +37,7 @@ final class IndexLock implements IndexLockInterface
 
     private const RESOURCE_PREFIX = 'generic-data-index:mapping-update:';
 
-    /** The least lifetime on top of the longest wait for one copy task. */
+    /** The least lifetime on top of the longest copy attempt. */
     private const TTL_MARGIN_SECONDS = 60;
 
     /** @var array<string, LockInterface> the locks this process holds, by alias name */
@@ -151,14 +152,18 @@ final class IndexLock implements IndexLockInterface
     }
 
     /**
-     * The longest wait for one copy task plus a quarter of it (at least a minute) for the requests around the copy
-     * and the latency of the status polls. The handler and the copy service refresh the lock before every further
-     * attempt, so an update never outlives its lock, while a lock whose process died expires.
+     * The longest copy attempt plus a quarter of it (at least a minute) for the requests around the copy and the
+     * latency of the status polls. An attempt waits for its task at most max_polls × poll_interval, and before and
+     * after that it may wait for a cancelled task to stop (a leftover of an aborted attempt, or its own one on a
+     * timeout); the lock must outlive all of it, or another update takes it over while the attempt still deletes
+     * and switches indices. The handler and the copy service refresh the lock before every further attempt, so an
+     * update never outlives its lock, while a lock whose process died expires.
      */
     private function ttl(): float
     {
-        $copyWait = $this->reindexMaxPolls * $this->reindexPollIntervalSeconds;
+        $attemptPolls = $this->reindexMaxPolls + 2 * SearchIndexServiceInterface::REINDEX_CANCEL_POLLS;
+        $attemptWait = $attemptPolls * $this->reindexPollIntervalSeconds;
 
-        return (float) ($copyWait + max(self::TTL_MARGIN_SECONDS, intdiv($copyWait, 4)));
+        return (float) ($attemptWait + max(self::TTL_MARGIN_SECONDS, intdiv($attemptWait, 4)));
     }
 }

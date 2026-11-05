@@ -27,6 +27,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
  */
 interface SearchIndexServiceInterface
 {
+    /**
+     * Status polls after a reindex task was told to stop, until it is observed gone or completed. One copy attempt
+     * cancels at most two tasks: a leftover of an aborted attempt before it starts, and its own one on a timeout.
+     */
+    public const REINDEX_CANCEL_POLLS = 3;
+
     public function refreshIndex(string $indexName): array;
 
     public function deleteIndex($indexName, bool $silent = false): void;
