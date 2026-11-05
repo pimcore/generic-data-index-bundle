@@ -42,7 +42,7 @@ depends on the trigger:
 | `update:index` | The console process, only if the in-place mapping update is rejected | Everything in scope |
 | `update:index -r` | No copy: the indices in scope are deleted and created empty | Everything in scope |
 | `generic-data-index:reindex` | The console process, every class, asset and document index | None (see [Commands](../03_Reindexing/README.md#commands)) |
-| Class definition deleted | No copy: the index is deleted during the request | None |
+| Class definition deleted | No copy: the index is deleted during the request. A running copy of that index is waited for first, so that it cannot bring the index back | None |
 
 A class save copies only if the class's mapping differs from the checksum stored after the last successful update.
 Some changes alter the mapping without a class save: a bundle upgrade with a mapping change, changes to field
