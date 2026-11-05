@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\I
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\IndexLockException;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLock;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
@@ -234,7 +235,11 @@ final class IndexLockTest extends Unit
 
         $lock->run(self::ALIAS, static fn () => null);
 
-        $this->assertSame(4500.0, $store->getLastTtl(), '720 polls of 5 seconds plus a quarter of that wait');
+        $this->assertSame(
+            4537.0,
+            $store->getLastTtl(),
+            '720 polls and 2 × 3 cancellation polls of 5 seconds, plus a quarter of that attempt'
+        );
     }
 
     public function testTheLockOutlivesAShortCopyWaitByAtLeastAMinute(): void
@@ -244,7 +249,29 @@ final class IndexLockTest extends Unit
 
         $lock->run(self::ALIAS, static fn () => null);
 
-        $this->assertSame(120.0, $store->getLastTtl(), '12 polls of 5 seconds plus the least margin of 60 seconds');
+        $this->assertSame(
+            150.0,
+            $store->getLastTtl(),
+            '12 polls and 2 × 3 cancellation polls of 5 seconds, plus the least margin of 60 seconds'
+        );
+    }
+
+    /**
+     * A copy attempt is not only the wait for its task: before it, a leftover task of an aborted attempt is
+     * cancelled, and on a timeout its own one; each cancellation waits for up to REINDEX_CANCEL_POLLS polls. A lock
+     * that covers only the task wait expires during the cancellation, and a second update takes it over while the
+     * first still deletes and switches indices.
+     */
+    public function testTheLockOutlivesTheCancellationsOfACopyAttempt(): void
+    {
+        $store = new RecordingLockStore();
+        $lock = new IndexLock(new LockFactory($store), 1, 120);
+
+        $lock->run(self::ALIAS, static fn () => null);
+
+        $cancellations = 2 * SearchIndexServiceInterface::REINDEX_CANCEL_POLLS * 120;
+        $this->assertGreaterThan(120 + $cancellations, $store->getLastTtl());
+        $this->assertSame(1050.0, $store->getLastTtl(), '7 polls of 120 seconds plus a quarter of that attempt');
     }
 
     private function createIndexLock(RecordingLockStore $store): IndexLock
