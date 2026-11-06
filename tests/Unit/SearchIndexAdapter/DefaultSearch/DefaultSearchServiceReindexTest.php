@@ -19,6 +19,7 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\DocumentCountFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexTimeoutException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexStripScript;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
@@ -124,7 +125,8 @@ final class DefaultSearchServiceReindexTest extends Unit
             ]
         );
 
-        $this->expectException(ReindexFailedException::class);
+        // The timeout has its own type: a message handler must not retry it with the same budget.
+        $this->expectException(ReindexTimeoutException::class);
         $this->expectExceptionMessageMatches('/did not complete within/');
 
         // maxPolls=3, every response says not completed → exhausts on 3rd poll
