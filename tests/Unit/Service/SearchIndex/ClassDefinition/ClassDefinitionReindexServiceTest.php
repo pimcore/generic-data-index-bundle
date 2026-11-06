@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\ClassDefinition;
 
+use Closure;
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Exception;
@@ -23,12 +24,19 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIco
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLock;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\IndexService\RecordingLockStore;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
+use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Lock\Store\InMemoryStore;
 
 /**
  * @internal
@@ -46,6 +54,8 @@ final class ClassDefinitionReindexServiceTest extends Unit
     ];
 
     private const CURRENT_CHECK_SUM = 4242;
+
+    private const ALIAS = 'pimcore_test';
 
     /**
      * Mapping properties are built in class definition field order, so checksums
@@ -359,6 +369,98 @@ final class ClassDefinitionReindexServiceTest extends Unit
     /**
      * @param array<string, string> $store
      */
+    /**
+     * A redelivered class mapping message, or a second save of the class within the copy time, waits for the lock
+     * of the index. The checksum is compared only then: when the first update stored it meanwhile, the second one
+     * skips the copy instead of copying the index again.
+     */
+    public function testASecondUpdateComparesTheChecksumAfterWaitingForTheLock(): void
+    {
+        $stored = 999;
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'reindexMappingWithResult' => Expected::never(),
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
+            'getClassMappingCheckSum' => static function () use (&$stored): int {
+                return $stored;
+            },
+            'storeClassMapping' => Expected::never(),
+        ]);
+        $firstUpdateFinishesWhileWaiting = $this->createLock(static function () use (&$stored): void {
+            $stored = self::CURRENT_CHECK_SUM;
+        });
+
+        $result = $this->createService($handler, $settingsStore, indexLock: $firstUpdateFinishesWhileWaiting)
+            ->reindexClassDefinitionMapping($this->createClassDefinition(), true);
+
+        $this->assertNull($result);
+    }
+
+    public function testTheChecksumIsStoredUnderTheRenewedLockOfTheIndex(): void
+    {
+        $events = [];
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'reindexMappingWithResult' => static function () use (&$events): MappingUpdateResult {
+                $events[] = 'copy';
+
+                return new MappingUpdateResult();
+            },
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
+            'getClassMappingCheckSum' => 999,
+            'storeClassMapping' => static function () use (&$events): void {
+                $events[] = 'store';
+            },
+        ]);
+        $lock = $this->createLock(
+            static function (string $alias) use (&$events): void {
+                $events[] = 'lock ' . $alias;
+            },
+            static function (string $alias) use (&$events): void {
+                $events[] = 'refresh ' . $alias;
+            }
+        );
+
+        $this->createService($handler, $settingsStore, indexLock: $lock)
+            ->reindexClassDefinition($this->createClassDefinition(), true);
+
+        $this->assertSame(['lock ' . self::ALIAS, 'copy', 'refresh ' . self::ALIAS, 'store'], $events);
+    }
+
+    public function testAFailureUnderTheLockIsReportedAsAnUpdateFailureAndReleasesTheLock(): void
+    {
+        $failure = new RuntimeException('cURL error 7: connection refused');
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'reindexMappingWithResult' => static function () use ($failure): never {
+                throw $failure;
+            },
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, ['getClassMappingCheckSum' => 999]);
+        $store = new RecordingLockStore();
+        $service = $this->createService(
+            $handler,
+            $settingsStore,
+            indexLock: new IndexLock(new LockFactory($store), 1, 1)
+        );
+
+        try {
+            $service->reindexClassDefinition($this->createClassDefinition(), true);
+        } catch (ClassDefinitionIndexUpdateFailedException $e) {
+            $this->assertSame($failure, $e->getPrevious());
+            $this->assertSame([], $store->getHeldResources(), 'The lock is released for the next update');
+
+            return;
+        }
+
+        $this->fail('The failure is reported as an update failure');
+    }
+
     private function createObligationService(array &$store): IndexRebuildObligationService
     {
         return new IndexRebuildObligationService(
@@ -383,6 +485,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         ?EnqueueServiceInterface $enqueueService = null,
         ?IndexIconUpdateServiceInterface $iconService = null,
         ?IndexRebuildObligationServiceInterface $obligations = null,
+        ?IndexLockInterface $indexLock = null,
     ): ClassDefinitionReindexService {
         return new ClassDefinitionReindexService(
             $handler,
@@ -391,7 +494,36 @@ final class ClassDefinitionReindexServiceTest extends Unit
             $iconService ?? $this->makeEmpty(IndexIconUpdateServiceInterface::class, ['updateIcon' => null]),
             $this->makeEmpty(LoggerInterface::class),
             $obligations ?? $this->makeEmpty(IndexRebuildObligationServiceInterface::class),
+            $indexLock ?? new IndexLock(new LockFactory(new InMemoryStore()), 1, 1),
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class, ['getIndexName' => self::ALIAS]),
         );
+    }
+
+    /**
+     * A lock stub that reports when the lock is taken and renewed, and lets the caller act in between (for
+     * example as the process that held the lock before).
+     */
+    private function createLock(Closure $onAcquire, ?Closure $onRefresh = null): IndexLockInterface
+    {
+        return new class($onAcquire, $onRefresh ?? static fn () => null) implements IndexLockInterface {
+            public function __construct(
+                private readonly Closure $onAcquire,
+                private readonly Closure $onRefresh,
+            ) {
+            }
+
+            public function run(string $aliasName, Closure $operation): mixed
+            {
+                ($this->onAcquire)($aliasName);
+
+                return $operation();
+            }
+
+            public function refresh(string $aliasName): void
+            {
+                ($this->onRefresh)($aliasName);
+            }
+        };
     }
 
     private function createClassDefinition(): ClassDefinition

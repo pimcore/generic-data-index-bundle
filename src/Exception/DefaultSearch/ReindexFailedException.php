@@ -17,8 +17,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\GenericDataIndexBundleExcept
 use RuntimeException;
 
 /**
+ * Not final: ReindexTimeoutException narrows the failure for callers that must not repeat the copy as it was.
+ *
  * @internal
  */
-final class ReindexFailedException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
+class ReindexFailedException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
 {
 }

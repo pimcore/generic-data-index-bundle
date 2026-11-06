@@ -18,6 +18,7 @@ use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\DocumentCountFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexTimeoutException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Debug\SearchInformation;
@@ -428,7 +429,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             sleep($this->reindexPollIntervalSeconds);
         }
 
-        throw new ReindexFailedException(
+        throw new ReindexTimeoutException(
             \sprintf(
                 'Reindex task %s did not complete within %d seconds',
                 $taskId,
