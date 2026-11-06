@@ -92,9 +92,10 @@ final class WorkflowPlaceIndexUpdateSubscriberTest extends Unit
         $this->collect($subscriber, '5', 'dataObject');
 
         $subscriber->onElementDeleted($this->createDeleteEvent(5));
-        $subscriber->dispatchQueueMessages();
 
+        // checked before the dispatch, which clears the list; the queue repository must never be called
         $this->assertSame([], $this->getPending($subscriber));
+        $subscriber->dispatchQueueMessages();
     }
 
     public function testDeletingAnotherElementKeepsTheCollectedOne(): void
@@ -150,7 +151,7 @@ final class WorkflowPlaceIndexUpdateSubscriberTest extends Unit
     {
         // Collecting needs Installer::isInstalled() (booted kernel), so the pending list is filled directly.
         (new ReflectionProperty($subscriber, 'pendingHits'))->setValue($subscriber, [
-            $type . '_' . $id => new HitData($id, $type, 'data_object_folder'),
+            $type . '_' . $id => new HitData($id, $type, 'data_object_object'),
         ]);
     }
 

@@ -48,6 +48,9 @@ interface SettingsStoreServiceInterface
      */
     public function storeWorkflowPlacesMappingChecksum(string $indexName, int $data): void;
 
+    /**
+     * @throws Exception
+     */
     public function storeIndexState(string $key, string $value): void;
 
     public function removeIndexState(string $key): void;

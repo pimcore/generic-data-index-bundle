@@ -14,7 +14,6 @@ declare(strict_types=1);
 namespace Functional\SearchIndex;
 
 use Codeception\Test\Unit;
-use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber\WorkflowPlaceIndexUpdateSubscriber;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\QueryLanguage\PqlFilter;
@@ -65,6 +64,8 @@ class WorkflowPlacesIndexingTest extends Unit
 
     protected function _after(): void
     {
+        // drop hits collected by a test which did not reach the end of its request
+        $this->endOfRequest();
         TestHelper::cleanUp();
         Db::get()->executeStatement('DELETE FROM element_workflow_state WHERE workflow = ?', [self::WORKFLOW]);
         $this->tester->clearQueue();
@@ -395,9 +396,6 @@ class WorkflowPlacesIndexingTest extends Unit
         return $workflow;
     }
 
-    /**
-     * @throws Exception
-     */
     /**
      * The end of a request or command, which writes the workflow place changes to the queue and dispatches them.
      */

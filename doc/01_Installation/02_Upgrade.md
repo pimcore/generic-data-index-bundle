@@ -58,6 +58,8 @@ description: Version-specific upgrade instructions and breaking changes for the 
 - [Indexing] Snapshots exported before the update are still accepted, but importing one writes its documents as they
   were exported, without `workflowPlaces`. Export snapshots again after the update, or run
   `generic-data-index:update:index` again after importing an older snapshot.
+- [Indexing] `SettingsStoreServiceInterface` has two new methods, `getWorkflowPlacesMappingChecksum()` and
+  `storeWorkflowPlacesMappingChecksum()`: custom implementations must add them.
 
 ## Upgrade to 2026.3.5
 - [Indexing] Mapping updates of the same index no longer overlap: every copy or recreation of an index runs under a
