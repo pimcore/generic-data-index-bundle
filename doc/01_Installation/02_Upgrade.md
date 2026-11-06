@@ -16,8 +16,12 @@ description: Version-specific upgrade instructions and breaking changes for the 
   the `IndexLockInterface` and the `SearchIndexConfigServiceInterface` as additional constructor arguments.
 - [Messenger] A failed language update (`UpdateLanguageSettingsMessage`) is no longer only logged as
   `Updating languages failed`: the exception reaches Messenger, so the message is retried and ends in
-  `pimcore_generic_data_index_failed`, where it can be retried once the cause is fixed. `UpdateClassMappingHandler`
-  and `UpdateLanguageSettingsHandler` take a `MappingUpdateRetryPolicyInterface` as their last constructor argument.
+  `pimcore_generic_data_index_failed`, where it can be retried once the cause is fixed. A retried message that is
+  older than a language change applied meanwhile is skipped, so it cannot reinstall the language list of its save;
+  `UpdateLanguageSettingsMessage` carries the time of its save for that. `UpdateClassMappingHandler` and
+  `UpdateLanguageSettingsHandler` take a `MappingUpdateRetryPolicyInterface` as a further constructor argument,
+  the language handler also the `SettingsStoreServiceInterface`, and `AdminSettingsSubscriber` the
+  `TimeServiceInterface`.
 - [Indexing] Mapping updates of the same index no longer overlap: every copy or recreation of an index runs under a
   lock on the index alias, and a second update of the same index waits until the first one has finished. The lock is
   taken from the lock store of the application (`Symfony\Component\Lock\LockFactory`; Pimcore configures the

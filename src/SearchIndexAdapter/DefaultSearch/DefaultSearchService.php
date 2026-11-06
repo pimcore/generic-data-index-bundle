@@ -254,7 +254,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
             $taskStatus = $this->waitForTaskCompletion($taskId);
         } catch (\Throwable $e) {
-            if ($this->abortCopy($indexName, $newIndexName, $taskId, $e)) {
+            if ($this->abortCopySafely($indexName, $newIndexName, $taskId, $e)) {
                 return null;
             }
 
@@ -279,6 +279,25 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
 
         return new ReindexOutcome(ReindexResult::SUCCESS);
+    }
+
+    /**
+     * A failing cleanup must not replace the cause of the abort: a timeout stays a timeout for the retry policy of
+     * the message handlers. The cleanup failure is logged; the next copy of the index removes what was left.
+     */
+    private function abortCopySafely(string $aliasName, string $newIndexName, ?string $taskId, \Throwable $e): bool
+    {
+        try {
+            return $this->abortCopy($aliasName, $newIndexName, $taskId, $e);
+        } catch (Exception $cleanupFailure) {
+            $this->logger->warning(sprintf(
+                'Cleaning up the aborted copy into "%s" failed, the next reindex cleans it up: %s',
+                $newIndexName,
+                $cleanupFailure->getMessage()
+            ), ['exception' => $cleanupFailure]);
+
+            return false;
+        }
     }
 
     /**

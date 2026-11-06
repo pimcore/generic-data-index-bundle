@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateLanguageSettingsMessage;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
 use Pimcore\Event\SystemEvents;
 use Pimcore\Helper\StopMessengerWorkersTrait;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -30,7 +31,8 @@ final readonly class AdminSettingsSubscriber implements EventSubscriberInterface
     use StopMessengerWorkersTrait;
 
     public function __construct(
-        private MessageBusInterface $messageBus
+        private MessageBusInterface $messageBus,
+        private TimeServiceInterface $timeService,
     ) {
     }
 
@@ -53,6 +55,7 @@ final readonly class AdminSettingsSubscriber implements EventSubscriberInterface
             new UpdateLanguageSettingsMessage(
                 currentLanguages: $arguments['existingValues']['general']['valid_languages'],
                 validLanguages: explode(',', $arguments['values']['general.validLanguages']),
+                dispatchedAt: $this->timeService->getCurrentMillisecondTimestamp(),
             ),
             [new DelayStamp(2000)]
         );
