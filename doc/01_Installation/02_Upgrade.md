@@ -22,7 +22,10 @@ description: Version-specific upgrade instructions and breaking changes for the 
   Language updates never overlap: the whole update runs under a lock shared by all language messages, which the
   updates of the single indices inside it renew, so a second one waits, then checks for a later save.
   `IndexLockInterface::refresh()` renews every lock the process holds, and a nested `run()` renews the locks
-  already held once it has the new one.
+  already held once it has the new one. During a rolling deployment, a language change saved on a node that still
+  runs the previous version is not recorded; if a node on the new version recorded a change before, the workers
+  skip the older node's message (notice `Skipping a language change that a later settings save has replaced`).
+  Change the languages after the deployment, or run `deployment:reindex --all` afterwards.
   `UpdateClassMappingHandler` and `UpdateLanguageSettingsHandler` take a `MappingUpdateRetryPolicyInterface` as a
   further constructor argument, the language handler and `AdminSettingsSubscriber` also the
   `LatestLanguageChangeInterface`.
