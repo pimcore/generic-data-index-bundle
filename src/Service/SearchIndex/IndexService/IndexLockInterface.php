@@ -27,7 +27,8 @@ interface IndexLockInterface
     /**
      * Runs a mapping update while holding the lock of its index alias. When another process holds the lock, the
      * update waits until that process has finished. A nested call for an alias whose lock this process already
-     * holds runs inside that lock.
+     * holds runs inside that lock; a nested call for another alias renews the locks already held once it has the
+     * new one, so a lock taken over during the wait stops the update before it changes the index.
      *
      * @template T
      *
@@ -40,10 +41,11 @@ interface IndexLockInterface
     public function run(string $aliasName, Closure $operation): mixed;
 
     /**
-     * Extends the lifetime of the held lock before a further attempt of the update. Does nothing without a held
-     * lock.
+     * Extends the lifetime of the held locks before a further attempt of the update: the given one and every other
+     * lock this process holds, so that a lock held across the updates of several indices outlives the waits and
+     * retries inside it. Does nothing without a held lock.
      *
-     * @throws IndexLockException when another process took the lock over, or the lock store fails twice in a row
+     * @throws IndexLockException when another process took a lock over, or the lock store fails twice in a row
      */
     public function refresh(string $aliasName): void;
 }

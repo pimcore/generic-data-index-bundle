@@ -50,8 +50,9 @@ final class UpdateLanguageSettingsHandler
     }
 
     /**
-     * Language updates never overlap: the whole update runs under a lock shared by all language messages, renewed
-     * before every index, so a second message waits until the first one has copied every index. It then checks
+     * Language updates never overlap: the whole update runs under a lock shared by all language messages, which
+     * the updates of the single indices inside it renew, so a second message waits until the first one has copied
+     * every index. It then checks
      * whether a later settings save has replaced its own and skips in that case: it would reinstall the language
      * list of its save. A failed update is reported to Messenger instead of being logged only: the message is
      * retried, or goes to the failed transport when a copy ran out of its budget.
@@ -88,7 +89,7 @@ final class UpdateLanguageSettingsHandler
         $this->languageService->setValidLanguages($newLanguages);
 
         try {
-            $this->reindexService->reindexAll(fn () => $this->indexLock->refresh(self::LANGUAGES_LOCK));
+            $this->reindexService->reindexAll();
             $this->enqueueService->dispatchQueueMessages(true);
         } catch (Exception $exception) {
             $this->retryPolicy->rethrow($exception);
