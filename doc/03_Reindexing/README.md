@@ -398,7 +398,8 @@ asset metadata is mapped per language as well.
   lists and, if they differ, runs a forced odd/even copy of every class, asset and document index, then adds every
   element to the index queue. On large installations this is the most expensive change there is: plan it for a
   quiet period and run enough messenger workers. All copies run one after the other in a single messenger worker,
-  and a failure is only logged; see [What Runs Where](../02_Configuration/07_Operations_Guide.md#what-runs-where).
+  and a failed copy fails the message, which Messenger retries or moves to the failed transport; see
+  [What Runs Where](../02_Configuration/07_Operations_Guide.md#what-runs-where).
 - **Only the order changed in the system settings:** this also triggers the full reindex, because the comparison is
   order-sensitive.
 - **Changed in config files or by a deployment** (`pimcore.general.valid_languages`): not automatic. This is the

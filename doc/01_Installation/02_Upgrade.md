@@ -3,6 +3,29 @@
 Following steps are necessary during updating to newer versions.
 
 ## Upgrade to 2.5.18
+- [Messenger] A copy that runs out of its budget (`reindex_settings.max_polls` × `poll_interval`) is no longer
+  retried with the same budget: the class mapping and language messages report it as unrecoverable, so the message
+  goes to the failed transport right away. Raise `max_polls`, then retry it with `messenger:failed:retry`. The
+  timeout is a `ReindexTimeoutException`, a subclass of `ReindexFailedException`, which is no longer final.
+- [Messenger] A class mapping message that is handled twice (redelivered after `redeliver_timeout`, or a second save
+  of the class within the copy time) no longer copies the index twice: the second handling waits for the lock of the
+  index and skips the copy when the first one stored the checksum meanwhile. `ClassDefinitionReindexService` takes
+  the `IndexLockInterface` and the `SearchIndexConfigServiceInterface` as additional constructor arguments.
+- [Messenger] A failed language update (`UpdateLanguageSettingsMessage`) is no longer only logged as
+  `Updating languages failed`: the exception reaches Messenger, so the message is retried and ends in
+  `pimcore_generic_data_index_failed`, where it can be retried once the cause is fixed. A retried message of a
+  settings save that a later save has replaced is skipped, so it cannot reinstall the language list of its own
+  save: the languages of the latest save are recorded in the settings store (`LatestLanguageChangeInterface`).
+  Language updates never overlap: the whole update runs under a lock shared by all language messages, which the
+  updates of the single indices inside it renew, so a second one waits, then checks for a later save.
+  `IndexLockInterface::refresh()` renews every lock the process holds, and a nested `run()` renews the locks
+  already held once it has the new one. During a rolling deployment, a language change saved on a node that still
+  runs the previous version is not recorded; if a node on the new version recorded a change before, the workers
+  skip the older node's message (notice `Skipping a language change that a later settings save has replaced`).
+  Change the languages after the deployment, or run `deployment:reindex --all` afterwards.
+  `UpdateClassMappingHandler` and `UpdateLanguageSettingsHandler` take a `MappingUpdateRetryPolicyInterface` as a
+  further constructor argument, the language handler and `AdminSettingsSubscriber` also the
+  `LatestLanguageChangeInterface`.
 - [Indexing] Mapping updates of the same index no longer overlap: every copy or recreation of an index runs under a
   lock on the index alias, and a second update of the same index waits until the first one has finished. The lock is
   taken from the lock store of the application (`Symfony\Component\Lock\LockFactory`; Pimcore configures the
