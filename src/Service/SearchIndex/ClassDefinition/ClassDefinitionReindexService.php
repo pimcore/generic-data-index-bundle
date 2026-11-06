@@ -101,6 +101,9 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
             if ($enqueueItems || $result->requiresRebuild()) {
                 $this->enqueueService->enqueueByClassDefinition($classDefinition);
             }
+            // Renewed again before the state is written: a lock lost while queuing (another update took it over)
+            // stops here, so the newer update's checksum and obligation are not overwritten.
+            $this->indexLock->refresh($this->getAliasIndexName($classDefinition));
             $this->rebuildObligationService->settle($target);
             $this->storeMappingCheckSum($classDefinition);
         }
