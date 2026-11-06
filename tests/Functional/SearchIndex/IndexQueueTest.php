@@ -331,17 +331,24 @@ class IndexQueueTest extends Unit
         );
         $select = 'SELECT operation, operationTime FROM generic_data_index_queue WHERE elementId = ? AND elementType = ?';
         $params = [$object->getId(), ElementType::DATA_OBJECT->value];
+        // the driver returns ints or numeric strings depending on PHP/PDO version
+        $fetch = static function () use ($db, $select, $params): array {
+            $row = $db->fetchAssociative($select, $params);
+            $row['operationTime'] = (int) $row['operationTime'];
+
+            return $row;
+        };
 
         $repo->enqueueByItemList([$hit], IndexQueueOperation::UPDATE, 5, true);
         $this->assertSame(
-            ['operation' => IndexQueueOperation::DELETE->value, 'operationTime' => '1'],
-            $db->fetchAssociative($select, $params)
+            ['operation' => IndexQueueOperation::DELETE->value, 'operationTime' => 1],
+            $fetch()
         );
 
         $repo->enqueueByItemList([$hit], IndexQueueOperation::UPDATE, 5);
         $this->assertSame(
-            ['operation' => IndexQueueOperation::UPDATE->value, 'operationTime' => '5'],
-            $db->fetchAssociative($select, $params)
+            ['operation' => IndexQueueOperation::UPDATE->value, 'operationTime' => 5],
+            $fetch()
         );
     }
 
