@@ -15,6 +15,7 @@ namespace Functional\SearchIndex;
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber\WorkflowPlaceIndexUpdateSubscriber;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\QueryLanguage\PqlFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
@@ -163,6 +164,40 @@ class WorkflowPlacesIndexingTest extends Unit
         );
         $this->assertContains($storedPlace, ['gdi_wf_draft', 'gdi_wf_done']);
         $this->assertSame([$storedPlace], $this->getIndexedPlaces($object));
+    }
+
+    public function testElementDeletedAfterATransitionStaysOutOfTheIndex(): void
+    {
+        // F6: transition without save, then delete in the same request. The collected place update is written at the
+        // end of the request and must not bring the deleted element back or turn its queued DELETE into an UPDATE.
+        $object = TestHelper::createEmptyObject(self::KEY_PREFIX);
+        $this->consumeQueue();
+        $indexName = $this->tester->grabService(SearchIndexConfigServiceInterface::class)
+            ->getIndexName($object->getClassName(), true);
+        $id = $object->getId();
+        $this->tester->disableSynchronousProcessing();
+
+        $this->workflowManager()->applyWithAdditionalData(
+            $this->getWorkflow($object),
+            $object,
+            'gdi_wf_finish_directly',
+            [],
+            false
+        );
+        $object->delete();
+        $this->endOfRequest();
+
+        $this->assertSame(
+            IndexQueueOperation::DELETE->value,
+            Db::get()->fetchOne(
+                'SELECT operation FROM generic_data_index_queue WHERE elementId = ? AND elementType = "dataObject"',
+                [$id]
+            )
+        );
+
+        $this->consumeQueue();
+
+        $this->tester->checkDeletedIndexEntry($id, $indexName);
     }
 
     public function testOnlyTheElementIsEnqueued(): void

@@ -47,8 +47,21 @@ final class IndexServiceWorkflowChecksumTest extends Unit
         $this->assertSame($this->getChecksum(null, 111), $this->getChecksum(null, 222));
     }
 
-    private function getChecksum(?array $places, ?int $appliedMappingChecksum): int
+    public function testAppliedMappingChecksumIsReadFromTheRuntimeCacheOncePerBatch(): void
     {
+        // F7: when the runtime cache holds the value, the settings store is not asked again.
+        $fromCache = $this->getChecksum(['wf_a' => ['draft']], 111, true, 222);
+        $fromStore = $this->getChecksum(['wf_a' => ['draft']], 222);
+
+        $this->assertSame($fromStore, $fromCache);
+    }
+
+    private function getChecksum(
+        ?array $places,
+        ?int $appliedMappingChecksum,
+        bool $cached = false,
+        ?int $cachedChecksum = null,
+    ): int {
         $systemFields = [SystemField::ID->value => 5];
         if ($places !== null) {
             $systemFields[SystemField::WORKFLOW_PLACES->value] = $places;
@@ -79,13 +92,17 @@ final class IndexServiceWorkflowChecksumTest extends Unit
             $bulk,
             $this->makeEmpty(EventDispatcherInterface::class),
             $this->makeEmpty(SettingsStoreServiceInterface::class, [
-                'getWorkflowPlacesMappingChecksum' => function (string $indexName) use ($appliedMappingChecksum) {
+                'getWorkflowPlacesMappingChecksum' => function (string $indexName) use ($appliedMappingChecksum, $cached) {
+                    $this->assertFalse($cached, 'The settings store must not be read when the runtime cache has the value');
                     $this->assertSame('index', $indexName);
 
                     return $appliedMappingChecksum;
                 },
             ]),
-            $this->makeEmpty(RuntimeCacheResolverInterface::class, ['isRegistered' => false]),
+            $this->makeEmpty(RuntimeCacheResolverInterface::class, [
+                'isRegistered' => $cached,
+                'load' => $cachedChecksum,
+            ]),
         );
         $service->setLogger(new NullLogger());
         $service->updateIndexData($element);

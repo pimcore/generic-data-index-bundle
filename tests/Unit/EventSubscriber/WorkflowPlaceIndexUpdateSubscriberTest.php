@@ -35,9 +35,12 @@ use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Workflow\ExpressionService;
 use Pimcore\Workflow\GlobalAction;
 use Pimcore\Workflow\MarkingStore\StateTableMarkingStore;
+use Psr\Log\LoggerInterface;
 use ReflectionProperty;
+use RuntimeException;
 use stdClass;
 use Symfony\Component\Console\ConsoleEvents;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpKernel\Bundle\BundleInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Messenger\Event\WorkerMessageFailedEvent;
@@ -63,12 +66,10 @@ final class WorkflowPlaceIndexUpdateSubscriberTest extends Unit
 
         $this->assertSame('onEntered', $events[WorkflowEvents::ENTERED]);
         $this->assertSame('onPostGlobalAction', $events[PimcoreWorkflowEvents::POST_GLOBAL_ACTION]);
-        foreach ([
-            AssetEvents::POST_DELETE,
-            DataObjectEvents::POST_DELETE,
-            DocumentEvents::POST_DELETE,
-        ] as $event) {
-            $this->assertSame('onElementDeleted', $events[$event]);
+        // A delete never drops a collected hit: the queue write keeps a queued DELETE, and a delete which is rolled
+        // back with its parent still needs the place update (R3-1).
+        foreach ([AssetEvents::POST_DELETE, DataObjectEvents::POST_DELETE, DocumentEvents::POST_DELETE] as $event) {
+            $this->assertArrayNotHasKey($event, $events);
         }
         foreach ([
             KernelEvents::TERMINATE,
@@ -85,27 +86,47 @@ final class WorkflowPlaceIndexUpdateSubscriberTest extends Unit
         $this->createSubscriber()->dispatchQueueMessages();
     }
 
-    public function testElementDeletedInTheSameRequestIsNotWrittenToTheQueue(): void
+    public function testCollectedHitStaysAfterTheElementWasDeleted(): void
     {
-        // A queued DELETE of the element must not be overwritten by the collected UPDATE at terminate.
+        // R3-1: the delete of a child can be rolled back with its parent. The hit must survive, the queue write
+        // keeps a queued DELETE of an element which really is gone (keepQueuedDelete, IndexQueueTest).
         $subscriber = $this->createSubscriber();
         $this->collect($subscriber, '5', 'dataObject');
 
-        $subscriber->onElementDeleted($this->createDeleteEvent(5));
-
-        // checked before the dispatch, which clears the list; the queue repository must never be called
-        $this->assertSame([], $this->getPending($subscriber));
-        $subscriber->dispatchQueueMessages();
-    }
-
-    public function testDeletingAnotherElementKeepsTheCollectedOne(): void
-    {
-        $subscriber = $this->createSubscriber();
-        $this->collect($subscriber, '5', 'dataObject');
-
-        $subscriber->onElementDeleted($this->createDeleteEvent(6));
+        // the subscriber is registered like in the kernel: the delete events must not touch the collected hit
+        $dispatcher = new EventDispatcher();
+        $dispatcher->addSubscriber($subscriber);
+        $dispatcher->dispatch(
+            new DataObjectEvent($this->makeEmpty(Concrete::class, ['getId' => 5])),
+            DataObjectEvents::POST_DELETE
+        );
 
         $this->assertSame(['dataObject_5'], array_keys($this->getPending($subscriber)));
+    }
+
+    public function testFailingQueueWriteDoesNotFailTheRequestAndLogsTheElements(): void
+    {
+        // R2-3: the list is emptied before the write; when the write fails the hits are lost, which is logged.
+        // The next save or reindex of the element repairs the index.
+        $connection = $this->makeEmpty(Connection::class, [
+            'quote' => static fn (mixed $value): string => "'" . $value . "'",
+            'executeQuery' => static function (): never {
+                throw new RuntimeException('queue table is gone');
+            },
+        ]);
+        $logged = [];
+        $logger = $this->makeEmpty(LoggerInterface::class, [
+            'error' => function (string $message, array $context) use (&$logged): void {
+                $logged = $context;
+            },
+        ]);
+        $subscriber = $this->createSubscriber($connection, $logger);
+        $this->collect($subscriber, '5', 'dataObject');
+
+        $subscriber->dispatchQueueMessages();
+
+        $this->assertSame(['5'], $logged['elementIds']);
+        $this->assertSame([], $this->getPending($subscriber));
     }
 
     public function testWorkflowWithOtherMarkingStoreIsIgnored(): void
@@ -142,11 +163,6 @@ final class WorkflowPlaceIndexUpdateSubscriberTest extends Unit
         $subscriber->dispatchQueueMessages();
     }
 
-    private function createDeleteEvent(int $id): DataObjectEvent
-    {
-        return new DataObjectEvent($this->makeEmpty(Concrete::class, ['getId' => $id]));
-    }
-
     private function collect(WorkflowPlaceIndexUpdateSubscriber $subscriber, string $id, string $type): void
     {
         // Collecting needs Installer::isInstalled() (booted kernel), so the pending list is filled directly.
@@ -177,9 +193,12 @@ final class WorkflowPlaceIndexUpdateSubscriberTest extends Unit
      * Fails when a guard lets the event through: Installer::isInstalled() needs a booted kernel (not available in
      * unit tests), and the Expected::never() expectations are verified after the test.
      */
-    private function createSubscriber(): WorkflowPlaceIndexUpdateSubscriber
-    {
-        $connection = $this->makeEmpty(Connection::class, [
+    private function createSubscriber(
+        ?Connection $connection = null,
+        ?LoggerInterface $logger = null,
+    ): WorkflowPlaceIndexUpdateSubscriber {
+        $withWrites = $connection !== null;
+        $connection ??= $this->makeEmpty(Connection::class, [
             'executeQuery' => Expected::never(),
             'executeStatement' => Expected::never(),
         ]);
@@ -190,7 +209,7 @@ final class WorkflowPlaceIndexUpdateSubscriberTest extends Unit
             $this->makeEmpty(DenormalizerInterface::class),
         );
 
-        return new WorkflowPlaceIndexUpdateSubscriber(
+        $subscriber = new WorkflowPlaceIndexUpdateSubscriber(
             new Installer($connection, $this->makeEmpty(BundleInterface::class)),
             $this->makeEmpty(AdapterServiceInterface::class, [
                 'getTypeAdapter' => $this->makeEmpty(AbstractElementTypeAdapter::class, [
@@ -198,11 +217,18 @@ final class WorkflowPlaceIndexUpdateSubscriberTest extends Unit
                 ]),
             ]),
             $indexQueueRepository,
-            $this->makeEmpty(TimeServiceInterface::class, ['getCurrentMillisecondTimestamp' => Expected::never()]),
+            $this->makeEmpty(TimeServiceInterface::class, [
+                'getCurrentMillisecondTimestamp' => $withWrites ? 1 : Expected::never(),
+            ]),
             new QueueMessagesDispatcher(
                 $this->makeEmpty(MessageBusInterface::class, ['dispatch' => Expected::never()]),
                 $indexQueueRepository
             ),
         );
+        if ($logger !== null) {
+            $subscriber->setLogger($logger);
+        }
+
+        return $subscriber;
     }
 }
