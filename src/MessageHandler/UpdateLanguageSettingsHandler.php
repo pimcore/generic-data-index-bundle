@@ -18,8 +18,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateLanguageSettingsMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\MappingUpdateRetryPolicyInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LatestLanguageChangeInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Psr\Log\NullLogger;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
@@ -32,15 +32,12 @@ final class UpdateLanguageSettingsHandler
 {
     use LoggerAwareTrait;
 
-    /** Index state key: the dispatch time of the last language change that was applied to the indices. */
-    private const APPLIED_CHANGE_KEY = 'language_change_applied_at';
-
     public function __construct(
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly LanguageServiceInterface $languageService,
         private readonly ReindexServiceInterface $reindexService,
         private readonly MappingUpdateRetryPolicyInterface $retryPolicy,
-        private readonly SettingsStoreServiceInterface $settingsStoreService,
+        private readonly LatestLanguageChangeInterface $latestLanguageChange,
     ) {
         if (!isset($this->logger)) {
             $this->logger = new NullLogger();
@@ -50,15 +47,15 @@ final class UpdateLanguageSettingsHandler
     /**
      * A failed update is reported to Messenger instead of being logged only: the message is retried, or goes to
      * the failed transport when a copy ran out of its budget, and the retry updates every index again. A retried
-     * message that is older than a language change applied meanwhile is skipped: it would reinstall the language
-     * list of its save, which a later save has replaced.
+     * message of a settings save that a later save has replaced is skipped: it would reinstall the language list
+     * of its own save.
      *
      * @throws Exception
      */
     public function __invoke(UpdateLanguageSettingsMessage $message): void
     {
-        if ($this->isSuperseded($message)) {
-            $this->logger->notice('Skipping a language change that a later one has replaced', [
+        if (!$this->latestLanguageChange->isLatest($message->getValidLanguages())) {
+            $this->logger->notice('Skipping a language change that a later settings save has replaced', [
                 'languages' => $message->getValidLanguages(),
             ]);
 
@@ -81,28 +78,6 @@ final class UpdateLanguageSettingsHandler
             $this->enqueueService->dispatchQueueMessages(true);
         } catch (Exception $exception) {
             $this->retryPolicy->rethrow($exception);
-        }
-
-        $this->rememberAppliedChange($message);
-    }
-
-    private function isSuperseded(UpdateLanguageSettingsMessage $message): bool
-    {
-        $dispatchedAt = $message->getDispatchedAt();
-        if ($dispatchedAt === null) {
-            return false;
-        }
-
-        $appliedAt = $this->settingsStoreService->getIndexState(self::APPLIED_CHANGE_KEY);
-
-        return $appliedAt !== null && (int) $appliedAt > $dispatchedAt;
-    }
-
-    private function rememberAppliedChange(UpdateLanguageSettingsMessage $message): void
-    {
-        $dispatchedAt = $message->getDispatchedAt();
-        if ($dispatchedAt !== null) {
-            $this->settingsStoreService->storeIndexState(self::APPLIED_CHANGE_KEY, (string) $dispatchedAt);
         }
     }
 }

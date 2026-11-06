@@ -22,8 +22,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\UpdateLanguageSettingsH
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\MappingUpdateRetryPolicy;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LatestLanguageChangeInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use RuntimeException;
 use Symfony\Component\Messenger\Exception\UnrecoverableMessageHandlingException;
 
@@ -32,8 +32,6 @@ use Symfony\Component\Messenger\Exception\UnrecoverableMessageHandlingException;
  */
 final class UpdateLanguageSettingsHandlerTest extends Unit
 {
-    private const APPLIED_KEY = 'language_change_applied_at';
-
     public function testUnchangedLanguagesUpdateNoIndex(): void
     {
         $handler = $this->createHandler(
@@ -82,12 +80,11 @@ final class UpdateLanguageSettingsHandlerTest extends Unit
                 }),
             ]),
             $this->makeEmpty(EnqueueServiceInterface::class, ['dispatchQueueMessages' => Expected::never()]),
-            $this->makeEmpty(LanguageServiceInterface::class, ['getNewLanguages' => ['en', 'de']]),
-            $this->makeEmpty(SettingsStoreServiceInterface::class, ['storeIndexState' => Expected::never()])
+            $this->makeEmpty(LanguageServiceInterface::class, ['getNewLanguages' => ['en', 'de']])
         );
 
         try {
-            $handler(new UpdateLanguageSettingsMessage(['en'], ['en', 'de'], 1000));
+            $handler(new UpdateLanguageSettingsMessage(['en'], ['en', 'de']));
         } catch (RuntimeException $e) {
             $this->assertSame($failure, $e, 'Messenger retries the message and moves it to the failed transport');
 
@@ -118,55 +115,21 @@ final class UpdateLanguageSettingsHandlerTest extends Unit
     }
 
     /**
-     * A failed message that is retried after a later language change was applied would reinstall the language
-     * list of its save (for example "de" added, then "fr" chosen instead) and copy every index with it.
+     * A failed message that is retried after a later settings save would reinstall the language list of its own
+     * save (for example "de" added, then "fr" chosen instead) and copy every index with it.
      */
-    public function testAMessageOlderThanTheLastAppliedChangeIsSkipped(): void
+    public function testAMessageOfASaveThatALaterSaveReplacedIsSkipped(): void
     {
         $handler = $this->createHandler(
             $this->makeEmpty(ReindexServiceInterface::class, ['reindexAll' => Expected::never()]),
             $this->makeEmpty(EnqueueServiceInterface::class, ['dispatchQueueMessages' => Expected::never()]),
             $this->makeEmpty(LanguageServiceInterface::class, ['setValidLanguages' => Expected::never()]),
-            $this->makeEmpty(SettingsStoreServiceInterface::class, [
-                'getIndexState' => Expected::once(function (string $key): string {
-                    $this->assertSame(self::APPLIED_KEY, $key);
+            $this->makeEmpty(LatestLanguageChangeInterface::class, [
+                'isLatest' => Expected::once(function (array $languages): bool {
+                    $this->assertSame(['en', 'de'], $languages);
 
-                    return '2000';
+                    return false;
                 }),
-                'storeIndexState' => Expected::never(),
-            ])
-        );
-
-        $handler(new UpdateLanguageSettingsMessage(['en'], ['en', 'de'], 1000));
-    }
-
-    public function testTheTimeOfTheAppliedChangeIsRemembered(): void
-    {
-        $handler = $this->createHandler(
-            $this->createReindexService(),
-            $this->makeEmpty(EnqueueServiceInterface::class),
-            $this->makeEmpty(LanguageServiceInterface::class, ['getNewLanguages' => ['en', 'fr']]),
-            $this->makeEmpty(SettingsStoreServiceInterface::class, [
-                'getIndexState' => '2000',
-                'storeIndexState' => Expected::once(function (string $key, string $value) {
-                    $this->assertSame(self::APPLIED_KEY, $key);
-                    $this->assertSame('3000', $value);
-                }),
-            ])
-        );
-
-        $handler(new UpdateLanguageSettingsMessage(['en', 'de'], ['en', 'fr'], 3000));
-    }
-
-    public function testAMessageWithoutADispatchTimeIsHandledAsBefore(): void
-    {
-        $handler = $this->createHandler(
-            $this->createReindexService(),
-            $this->makeEmpty(EnqueueServiceInterface::class, ['dispatchQueueMessages' => Expected::once()]),
-            $this->makeEmpty(LanguageServiceInterface::class, ['getNewLanguages' => ['en', 'de']]),
-            $this->makeEmpty(SettingsStoreServiceInterface::class, [
-                'getIndexState' => '2000',
-                'storeIndexState' => Expected::never(),
             ])
         );
 
@@ -189,14 +152,14 @@ final class UpdateLanguageSettingsHandlerTest extends Unit
         ReindexServiceInterface $reindexService,
         EnqueueServiceInterface $enqueueService,
         LanguageServiceInterface $languageService,
-        ?SettingsStoreServiceInterface $settingsStore = null
+        ?LatestLanguageChangeInterface $latestLanguageChange = null
     ): UpdateLanguageSettingsHandler {
         return new UpdateLanguageSettingsHandler(
             $enqueueService,
             $languageService,
             $reindexService,
             new MappingUpdateRetryPolicy(),
-            $settingsStore ?? $this->makeEmpty(SettingsStoreServiceInterface::class, ['getIndexState' => null])
+            $latestLanguageChange ?? $this->makeEmpty(LatestLanguageChangeInterface::class, ['isLatest' => true])
         );
     }
 }
