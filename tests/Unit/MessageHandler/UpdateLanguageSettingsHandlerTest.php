@@ -16,7 +16,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\MessageHandler;
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\IndexLockException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexTimeoutException;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateLanguageSettingsMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\UpdateLanguageSettingsHandler;
@@ -165,68 +164,6 @@ final class UpdateLanguageSettingsHandlerTest extends Unit
             ]),
             $lock
         );
-
-        $handler(new UpdateLanguageSettingsMessage(['en'], ['en', 'de']));
-    }
-
-    public function testTheSharedLockIsRenewedBeforeEveryIndex(): void
-    {
-        $renewals = [];
-        $lock = new ObservableIndexLock(
-            static fn () => null,
-            static function (string $alias) use (&$renewals): void {
-                $renewals[] = $alias;
-            }
-        );
-        $reindexService = null;
-        $reindexService = $this->makeEmpty(ReindexServiceInterface::class, [
-            'reindexAll' => Expected::once(static function (callable $beforeEachIndex) use (&$reindexService) {
-                // Three indices: the renewal runs before each of them.
-                $beforeEachIndex();
-                $beforeEachIndex();
-                $beforeEachIndex();
-
-                return $reindexService;
-            }),
-        ]);
-        $handler = $this->createHandler(
-            $reindexService,
-            $this->makeEmpty(EnqueueServiceInterface::class),
-            $this->makeEmpty(LanguageServiceInterface::class, ['getNewLanguages' => ['en', 'de']]),
-            null,
-            $lock
-        );
-
-        $handler(new UpdateLanguageSettingsMessage(['en'], ['en', 'de']));
-
-        $this->assertSame(['languages', 'languages', 'languages'], $renewals);
-    }
-
-    public function testALockTakenOverDuringTheUpdateStopsIt(): void
-    {
-        $lock = new ObservableIndexLock(
-            static fn () => null,
-            static function (): never {
-                throw new IndexLockException('The lock of "languages" was taken over by another mapping update');
-            }
-        );
-        $reindexService = null;
-        $reindexService = $this->makeEmpty(ReindexServiceInterface::class, [
-            'reindexAll' => Expected::once(static function (callable $beforeEachIndex) use (&$reindexService) {
-                $beforeEachIndex();
-
-                return $reindexService;
-            }),
-        ]);
-        $handler = $this->createHandler(
-            $reindexService,
-            $this->makeEmpty(EnqueueServiceInterface::class, ['dispatchQueueMessages' => Expected::never()]),
-            $this->makeEmpty(LanguageServiceInterface::class, ['getNewLanguages' => ['en', 'de']]),
-            null,
-            $lock
-        );
-
-        $this->expectException(IndexLockException::class);
 
         $handler(new UpdateLanguageSettingsMessage(['en'], ['en', 'de']));
     }

@@ -27,6 +27,8 @@ use Symfony\Component\Lock\LockFactory;
  */
 final class IndexLockTest extends Unit
 {
+    private const RESOURCE_PREFIX = 'generic-data-index:mapping-update:';
+
     private const ALIAS = 'test_alias';
 
     private const RESOURCE = 'generic-data-index:mapping-update:test_alias';
@@ -272,6 +274,60 @@ final class IndexLockTest extends Unit
         $cancellations = 2 * SearchIndexServiceInterface::REINDEX_CANCEL_POLLS * 120;
         $this->assertGreaterThan(120 + $cancellations, $store->getLastTtl());
         $this->assertSame(1050.0, $store->getLastTtl(), '7 polls of 120 seconds plus a quarter of that attempt');
+    }
+
+    /**
+     * An update of all indices (the language change) holds one lock across the updates of the single indices. The
+     * wait for an index lock and the attempts inside it renew that outer lock too, so it outlives them.
+     */
+    public function testANestedLockRenewsTheLocksAlreadyHeld(): void
+    {
+        $store = new RecordingLockStore();
+        $lock = $this->createIndexLock($store);
+
+        $lock->run('languages', static fn () => $lock->run('pimcore_class', static fn () => null));
+
+        // Taking a lock with a lifetime renews it once itself; the outer lock is renewed again by the nested one.
+        $this->assertSame(2, $store->getRefreshesOf(self::RESOURCE_PREFIX . 'languages'));
+        $this->assertSame(1, $store->getRefreshesOf(self::RESOURCE_PREFIX . 'pimcore_class'));
+    }
+
+    public function testRefreshRenewsEveryHeldLock(): void
+    {
+        $store = new RecordingLockStore();
+        $lock = $this->createIndexLock($store);
+
+        $lock->run('languages', static function () use ($lock): void {
+            $lock->run('pimcore_class', static fn () => $lock->refresh('pimcore_class'));
+        });
+
+        $this->assertSame(3, $store->getRefreshesOf(self::RESOURCE_PREFIX . 'languages'));
+        $this->assertSame(2, $store->getRefreshesOf(self::RESOURCE_PREFIX . 'pimcore_class'));
+    }
+
+    public function testALockTakenOverWhileWaitingForANestedOneStopsTheUpdate(): void
+    {
+        $store = new RecordingLockStore();
+        $lock = $this->createIndexLock($store);
+        $ran = false;
+
+        try {
+            $lock->run('languages', static function () use ($lock, $store, &$ran): void {
+                // Another language update takes the outer lock over while this one waits for the index lock.
+                $store->conflictOnNextRefreshOf(self::RESOURCE_PREFIX . 'languages');
+                $lock->run('pimcore_class', static function () use (&$ran): void {
+                    $ran = true;
+                });
+            });
+        } catch (IndexLockException $e) {
+            $this->assertStringContainsString('"languages"', $e->getMessage());
+            $this->assertFalse($ran, 'The index is not changed under a lock another update took over');
+            $this->assertSame([], $store->getHeldResources(), 'Both locks are released');
+
+            return;
+        }
+
+        $this->fail('A lock taken over during the wait for a nested lock must stop the update');
     }
 
     private function createIndexLock(RecordingLockStore $store): IndexLock
