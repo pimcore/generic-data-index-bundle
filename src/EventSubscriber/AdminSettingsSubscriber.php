@@ -15,7 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\EventSubscriber;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateLanguageSettingsMessage;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LatestLanguageChangeInterface;
 use Pimcore\Event\SystemEvents;
 use Pimcore\Helper\StopMessengerWorkersTrait;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -32,7 +32,7 @@ final readonly class AdminSettingsSubscriber implements EventSubscriberInterface
 
     public function __construct(
         private MessageBusInterface $messageBus,
-        private TimeServiceInterface $timeService,
+        private LatestLanguageChangeInterface $latestLanguageChange,
     ) {
     }
 
@@ -49,13 +49,15 @@ final readonly class AdminSettingsSubscriber implements EventSubscriberInterface
     public function updateSearchIndex(GenericEvent $event): void
     {
         $arguments = $event->getArguments();
+        $validLanguages = explode(',', $arguments['values']['general.validLanguages']);
+        // Recorded before the message goes out: an older message retried after this save is skipped.
+        $this->latestLanguageChange->record($validLanguages);
         $this->stopMessengerWorkers();
 
         $this->messageBus->dispatch(
             new UpdateLanguageSettingsMessage(
                 currentLanguages: $arguments['existingValues']['general']['valid_languages'],
-                validLanguages: explode(',', $arguments['values']['general.validLanguages']),
-                dispatchedAt: $this->timeService->getCurrentMillisecondTimestamp(),
+                validLanguages: $validLanguages,
             ),
             [new DelayStamp(2000)]
         );
