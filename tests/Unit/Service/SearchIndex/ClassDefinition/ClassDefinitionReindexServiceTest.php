@@ -13,22 +13,32 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\ClassDefinition;
 
+use Closure;
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\IndexLockException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLock;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\IndexService\ObservableIndexLock;
+use Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\IndexService\RecordingLockStore;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Psr\Log\LoggerInterface;
+use RuntimeException;
+use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Lock\Store\InMemoryStore;
 
 /**
  * @internal
@@ -46,6 +56,8 @@ final class ClassDefinitionReindexServiceTest extends Unit
     ];
 
     private const CURRENT_CHECK_SUM = 4242;
+
+    private const ALIAS = 'pimcore_test';
 
     /**
      * Mapping properties are built in class definition field order, so checksums
@@ -359,6 +371,142 @@ final class ClassDefinitionReindexServiceTest extends Unit
     /**
      * @param array<string, string> $store
      */
+    /**
+     * A redelivered class mapping message, or a second save of the class within the copy time, waits for the lock
+     * of the index. The checksum is compared only then: when the first update stored it meanwhile, the second one
+     * skips the copy instead of copying the index again.
+     */
+    public function testASecondUpdateComparesTheChecksumAfterWaitingForTheLock(): void
+    {
+        $stored = 999;
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'reindexMappingWithResult' => Expected::never(),
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
+            'getClassMappingCheckSum' => static function () use (&$stored): int {
+                return $stored;
+            },
+            'storeClassMapping' => Expected::never(),
+        ]);
+        $firstUpdateFinishesWhileWaiting = $this->createLock(static function () use (&$stored): void {
+            $stored = self::CURRENT_CHECK_SUM;
+        });
+
+        $result = $this->createService($handler, $settingsStore, indexLock: $firstUpdateFinishesWhileWaiting)
+            ->reindexClassDefinitionMapping($this->createClassDefinition(), true);
+
+        $this->assertNull($result);
+    }
+
+    public function testTheChecksumIsStoredUnderTheRenewedLockOfTheIndex(): void
+    {
+        $events = [];
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'reindexMappingWithResult' => static function () use (&$events): MappingUpdateResult {
+                $events[] = 'copy';
+
+                return new MappingUpdateResult();
+            },
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
+            'getClassMappingCheckSum' => 999,
+            'storeClassMapping' => static function () use (&$events): void {
+                $events[] = 'store';
+            },
+        ]);
+        $lock = $this->createLock(
+            static function (string $alias) use (&$events): void {
+                $events[] = 'lock ' . $alias;
+            },
+            static function (string $alias) use (&$events): void {
+                $events[] = 'refresh ' . $alias;
+            }
+        );
+
+        $this->createService($handler, $settingsStore, indexLock: $lock)
+            ->reindexClassDefinition($this->createClassDefinition(), true);
+
+        $this->assertSame(
+            ['lock ' . self::ALIAS, 'copy', 'refresh ' . self::ALIAS, 'refresh ' . self::ALIAS, 'store'],
+            $events,
+            'Renewed before the enqueue, and renewed (which verifies the ownership) before the checksum is stored'
+        );
+    }
+
+    /**
+     * Queuing the objects of a large class can outlast the lock. When another update took the lock over meanwhile,
+     * this one must not settle the obligation or store its checksum over the newer update's state.
+     */
+    public function testALockLostWhileQueuingLeavesTheChecksumUnstored(): void
+    {
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'reindexMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
+            'getClassMappingCheckSum' => 999,
+            'storeClassMapping' => Expected::never(),
+        ]);
+        $obligations = $this->makeEmpty(IndexRebuildObligationServiceInterface::class, [
+            'settle' => Expected::never(),
+        ]);
+        $refreshes = 0;
+        $lostWhileQueuing = $this->createLock(
+            static fn () => null,
+            static function () use (&$refreshes): void {
+                if (++$refreshes === 2) {
+                    throw new IndexLockException('The lock of "pimcore_test" was taken over by another mapping update');
+                }
+            }
+        );
+
+        try {
+            $this->createService($handler, $settingsStore, null, null, $obligations, $lostWhileQueuing)
+                ->reindexClassDefinition($this->createClassDefinition(), true);
+        } catch (ClassDefinitionIndexUpdateFailedException $e) {
+            $this->assertInstanceOf(IndexLockException::class, $e->getPrevious());
+
+            return;
+        }
+
+        $this->fail('A lost lock must stop the update before it writes its state');
+    }
+
+    public function testAFailureUnderTheLockIsReportedAsAnUpdateFailureAndReleasesTheLock(): void
+    {
+        $failure = new RuntimeException('cURL error 7: connection refused');
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'reindexMappingWithResult' => static function () use ($failure): never {
+                throw $failure;
+            },
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, ['getClassMappingCheckSum' => 999]);
+        $store = new RecordingLockStore();
+        $service = $this->createService(
+            $handler,
+            $settingsStore,
+            indexLock: new IndexLock(new LockFactory($store), 1, 1)
+        );
+
+        try {
+            $service->reindexClassDefinition($this->createClassDefinition(), true);
+        } catch (ClassDefinitionIndexUpdateFailedException $e) {
+            $this->assertSame($failure, $e->getPrevious());
+            $this->assertSame([], $store->getHeldResources(), 'The lock is released for the next update');
+
+            return;
+        }
+
+        $this->fail('The failure is reported as an update failure');
+    }
+
     private function createObligationService(array &$store): IndexRebuildObligationService
     {
         return new IndexRebuildObligationService(
@@ -383,6 +531,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         ?EnqueueServiceInterface $enqueueService = null,
         ?IndexIconUpdateServiceInterface $iconService = null,
         ?IndexRebuildObligationServiceInterface $obligations = null,
+        ?IndexLockInterface $indexLock = null,
     ): ClassDefinitionReindexService {
         return new ClassDefinitionReindexService(
             $handler,
@@ -391,7 +540,14 @@ final class ClassDefinitionReindexServiceTest extends Unit
             $iconService ?? $this->makeEmpty(IndexIconUpdateServiceInterface::class, ['updateIcon' => null]),
             $this->makeEmpty(LoggerInterface::class),
             $obligations ?? $this->makeEmpty(IndexRebuildObligationServiceInterface::class),
+            $indexLock ?? new IndexLock(new LockFactory(new InMemoryStore()), 1, 1),
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class, ['getIndexName' => self::ALIAS]),
         );
+    }
+
+    private function createLock(Closure $onAcquire, ?Closure $onRefresh = null): IndexLockInterface
+    {
+        return new ObservableIndexLock($onAcquire, $onRefresh);
     }
 
     private function createClassDefinition(): ClassDefinition

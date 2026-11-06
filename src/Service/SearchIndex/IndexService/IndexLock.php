@@ -63,6 +63,11 @@ final class IndexLock implements IndexLockInterface
         $this->held[$aliasName] = $lock;
 
         try {
+            // The wait for this lock may have outlasted the locks this process already holds (an update of all
+            // indices holds one across the updates of the single ones). They are renewed before the update starts,
+            // which also verifies that no other process took them over meanwhile.
+            $this->refreshHeld(except: $aliasName);
+
             return $operation();
         } finally {
             unset($this->held[$aliasName]);
@@ -72,11 +77,32 @@ final class IndexLock implements IndexLockInterface
 
     public function refresh(string $aliasName): void
     {
-        $lock = $this->held[$aliasName] ?? null;
-        if ($lock === null) {
-            return;
+        // Every lock this process holds is renewed, not only the given one: the attempts of a single index renew
+        // the lock of an update of all indices as well, so it outlives the waits and retries inside it.
+        $named = $this->held[$aliasName] ?? null;
+        if ($named !== null) {
+            $this->refreshOne($aliasName, $named);
         }
+        $this->refreshHeld(except: $aliasName);
+    }
 
+    /**
+     * @throws IndexLockException
+     */
+    private function refreshHeld(?string $except = null): void
+    {
+        foreach ($this->held as $heldAlias => $lock) {
+            if ($heldAlias !== $except) {
+                $this->refreshOne($heldAlias, $lock);
+            }
+        }
+    }
+
+    /**
+     * @throws IndexLockException
+     */
+    private function refreshOne(string $aliasName, LockInterface $lock): void
+    {
         try {
             $lock->refresh();
         } catch (LockConflictedException $e) {
