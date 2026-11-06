@@ -35,6 +35,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyS
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
 use Psr\Log\NullLogger;
 use ReflectionClass;
 use Symfony\Component\Lock\LockFactory;
@@ -164,6 +165,7 @@ final class ReindexServiceTest extends Unit
             $assetAdapter,
             $this->makeEmpty(MetadataProviderServiceInterface::class, ['getMappingProperties' => []]),
             $aliases,
+            $this->makeEmpty(WorkflowPlaceServiceInterface::class, ['getMapping' => ['type' => 'object']]),
             $copy,
             $lock
         );
@@ -174,6 +176,7 @@ final class ReindexServiceTest extends Unit
             $mapping,
             $documentAdapter,
             $aliases,
+            $this->makeEmpty(WorkflowPlaceServiceInterface::class, ['getMapping' => ['type' => 'object']]),
             $copy,
             $lock
         );

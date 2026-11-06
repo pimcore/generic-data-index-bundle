@@ -44,6 +44,23 @@ description: Version-specific upgrade instructions and breaking changes for the 
 - [Indexing] Snapshots exported before the update are refused for these classes, and `--force` skips them: export
   them again after the re-index.
 
+### Workflow places: run `update:index` right after the deployment
+
+- [Indexing] Places of workflows using the `state_table` marking store are indexed in the new system field
+  `workflowPlaces` (keyword per workflow name), see
+  [Workflow Places](../04_Searching_For_Data_In_Index/README.md#workflow-places).
+  Run `bin/console generic-data-index:update:index` to update the mapping and fill the field for existing elements.
+  Run it right after the deployment: elements indexed before the mapping is updated get a dynamic `text` mapping for
+  the new field, and the later update to `keyword` then needs a full re-index.
+  The `workflowPlaces` mapping depends on the configured `state_table` workflows. It is not part of the class mapping
+  checksum, so `generic-data-index:deployment:reindex` does not reindex every class because of it: run
+  `generic-data-index:update:index` after adding or removing a `state_table` workflow.
+- [Indexing] Snapshots exported before the update are still accepted, but importing one writes its documents as they
+  were exported, without `workflowPlaces`. Export snapshots again after the update, or run
+  `generic-data-index:update:index` again after importing an older snapshot.
+- [Indexing] `SettingsStoreServiceInterface` has two new methods, `getWorkflowPlacesMappingChecksum()` and
+  `storeWorkflowPlacesMappingChecksum()`: custom implementations must add them.
+
 ## Upgrade to 2026.3.5
 - [Indexing] Mapping updates of the same index no longer overlap: every copy or recreation of an index runs under a
   lock on the index alias, and a second update of the same index waits until the first one has finished. The lock is

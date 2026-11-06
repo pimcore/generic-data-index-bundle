@@ -26,6 +26,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDef
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolverInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedValueQueryStoreServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
 use Pimcore\Model\DataObject\AbstractObject;
@@ -48,6 +49,7 @@ final class DataObjectNormalizer implements NormalizerInterface
         private readonly DependencyServiceInterface $dependencyService,
         private readonly CalculatedFieldsIndexModeResolverInterface $calculatedFieldsIndexModeResolver,
         private readonly CalculatedValueQueryStoreServiceInterface $calculatedValueQueryStoreService,
+        private readonly WorkflowPlaceServiceInterface $workflowPlaceService,
     ) {
     }
 
@@ -155,6 +157,11 @@ final class DataObjectNormalizer implements NormalizerInterface
                 SystemField::TAGS->value => $this->extractTagIds($tags),
                 SystemField::PARENT_TAGS->value => $this->extractParentTagIds($tags),
             ]);
+
+            $workflowPlaces = $this->workflowPlaceService->getPlaces($dataObject);
+            if ($workflowPlaces !== []) {
+                $result[SystemField::WORKFLOW_PLACES->value] = $workflowPlaces;
+            }
         }
 
         return $result;

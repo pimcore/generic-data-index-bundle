@@ -16,6 +16,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService
 use Closure;
 use Exception;
 use JsonException;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
@@ -288,6 +290,10 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
      */
     public function getClassMappingCheckSum(array $properties): int
     {
+        // The workflowPlaces mapping depends on the configured workflows, not on the class: it has its own
+        // checksum and must not make every class look changed (and fully reindexed by the deployment commands).
+        unset($properties[FieldCategory::SYSTEM_FIELDS->value]['properties'][SystemField::WORKFLOW_PLACES->value]);
+
         return crc32(json_encode($this->normalizeForCheckSum($properties), JSON_THROW_ON_ERROR));
     }
 

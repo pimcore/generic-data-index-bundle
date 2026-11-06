@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
@@ -312,6 +313,42 @@ class IndexQueueTest extends Unit
                 [$elementId, $elementType]
             ),
             'elementIndexName must be overwritten when an existing queue entry is updated via the INSERT IGNORE + UPDATE fallback path'
+        );
+    }
+
+    public function testEnqueueByItemListKeepsQueuedDelete(): void
+    {
+        /** @var IndexQueueRepository $repo */
+        $repo = $this->tester->grabService(IndexQueueRepository::class);
+
+        $object = TestHelper::createEmptyObject();
+        $hit = new HitData((string) $object->getId(), ElementType::DATA_OBJECT->value, $object->getClassName());
+        $db = Db::get();
+        $db->executeStatement(
+            'UPDATE generic_data_index_queue SET operation = ?, operationTime = 1, dispatched = 0 ' .
+            'WHERE elementId = ? AND elementType = ?',
+            [IndexQueueOperation::DELETE->value, $object->getId(), ElementType::DATA_OBJECT->value]
+        );
+        $select = 'SELECT operation, operationTime FROM generic_data_index_queue WHERE elementId = ? AND elementType = ?';
+        $params = [$object->getId(), ElementType::DATA_OBJECT->value];
+        // the driver returns ints or numeric strings depending on PHP/PDO version
+        $fetch = static function () use ($db, $select, $params): array {
+            $row = $db->fetchAssociative($select, $params);
+            $row['operationTime'] = (int) $row['operationTime'];
+
+            return $row;
+        };
+
+        $repo->enqueueByItemList([$hit], IndexQueueOperation::UPDATE, 5, true);
+        $this->assertSame(
+            ['operation' => IndexQueueOperation::DELETE->value, 'operationTime' => 1],
+            $fetch()
+        );
+
+        $repo->enqueueByItemList([$hit], IndexQueueOperation::UPDATE, 5);
+        $this->assertSame(
+            ['operation' => IndexQueueOperation::UPDATE->value, 'operationTime' => 5],
+            $fetch()
         );
     }
 
