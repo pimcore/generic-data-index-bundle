@@ -7,6 +7,14 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 ## Upgrade to 2026.4.0
 
+### Index Status API
+
+- [Status] New public API `Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusServiceInterface`, covered
+  by the backward compatibility promise: read-only access to the index queue counts (total, pending, dispatched,
+  oldest pending operation time) and the configured search client (type, name) and index prefix, for monitoring and
+  diagnostics. It never exposes hosts, credentials or paths. Existing behaviour is unchanged. See
+  [Index Status API](../05_Extending_Data_Index/08_Index_Status_API.md).
+
 ### Re-indexing recommended
 
 - [Indexing] Fixed: localized fields inside object bricks, field collections and blocks were normalized with the
