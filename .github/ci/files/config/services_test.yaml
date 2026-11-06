@@ -8,6 +8,7 @@ services:
   generic-data-index.test.service.data-object-search-service: '@Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface'
   generic-data-index.test.service.document-search-service: '@Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Document\DocumentSearchServiceInterface'
   generic-data-index.test.service.element-search-service: '@Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface'
+  generic-data-index.test.service.calculated-value-query-store: '@Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedValueQueryStoreServiceInterface'
 
   test.calculatorservice:
     class: Pimcore\Tests\Support\Helper\DataType\Calculator

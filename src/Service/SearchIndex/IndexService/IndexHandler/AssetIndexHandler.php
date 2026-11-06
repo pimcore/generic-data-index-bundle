@@ -21,6 +21,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceI
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataProviderServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
@@ -40,8 +42,17 @@ final class AssetIndexHandler extends AbstractIndexHandler
         private readonly MetadataProviderServiceInterface $metadataProviderService,
         private readonly GlobalIndexAliasServiceInterface $globalIndexAliasService,
         private readonly WorkflowPlaceServiceInterface $workflowPlaceService,
+        IndexCopyServiceInterface $indexCopyService,
+        ?IndexLockInterface $indexLock = null,
     ) {
-        parent::__construct($searchIndexService, $searchIndexConfigService, $eventDispatcher, $indexMappingService);
+        parent::__construct(
+            $searchIndexService,
+            $searchIndexConfigService,
+            $eventDispatcher,
+            $indexMappingService,
+            $indexCopyService,
+            $indexLock
+        );
     }
 
     protected function extractMappingProperties(mixed $context = null): array

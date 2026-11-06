@@ -40,12 +40,20 @@ class ImageSerializationHandler extends AbstractHandler
 
     public function createSearchResultModel(array $indexData): AssetSearchResultItem
     {
-        return (new SearchResultItem\Image())
-            ->setThumbnail(ImageSystemField::THUMBNAIL->getData($indexData))
-            // Width/height stay non-nullable on the model for BC; fall back to 0 when extraction
-            // failed and the indexed value is null instead of widening the public setter signature.
+        // Width/height stay non-nullable on the model for BC; fall back to 0 when extraction
+        // failed and the indexed value is null instead of widening the public setter signature.
+        $image = (new SearchResultItem\Image())
             ->setWidth(ImageSystemField::WIDTH->getData($indexData) ?? 0)
             ->setHeight(ImageSystemField::HEIGHT->getData($indexData) ?? 0);
+
+        // The thumbnail is indexed as null when its generation failed. Same BC reasoning as above:
+        // keep setThumbnail(string) and leave the (nullable, null by default) property unset.
+        $thumbnail = ImageSystemField::THUMBNAIL->getData($indexData);
+        if ($thumbnail !== null) {
+            $image->setThumbnail($thumbnail);
+        }
+
+        return $image;
     }
 
     private function getThumbnail(Image $image): ?string

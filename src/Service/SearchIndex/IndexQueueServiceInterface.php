@@ -21,12 +21,18 @@ use Pimcore\Model\Element\ElementInterface;
  */
 interface IndexQueueServiceInterface
 {
+    /**
+     * @param bool $enqueueDependentItems false skips the elements that depend on the given one (for example the
+     *                                    elements referencing an asset) on the queued path; it does not reach the
+     *                                    deferred path taken with $enqueueRelatedItemsAsync
+     */
     public function updateIndexQueue(
         ElementInterface $element,
         string $operation,
         bool $processSynchronously = false,
         bool $enqueueRelatedItems = true,
-        bool $enqueueRelatedItemsAsync = false
+        bool $enqueueRelatedItemsAsync = false,
+        bool $enqueueDependentItems = true
     ): IndexQueueService;
 
     /**

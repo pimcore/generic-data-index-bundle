@@ -27,6 +27,7 @@
     "pimcore/elasticsearch-client": "^2026.3",
     "doctrine/orm": "^3.0",
     "doctrine/dbal": "^4.4",
+    "symfony/deprecation-contracts": "^3",
     "symfony/lock": "^7.2",
     "symfony/process": "^7.2",
     "symfony/scheduler": "^7.2"
@@ -37,7 +38,7 @@
     "codeception/module-asserts": "^3.0",
     "codeception/module-symfony": "^3.7.1",
     "codeception/stub": "^4.3",
-    "phpstan/phpstan": "2.1.40",
+    "phpstan/phpstan": "2.3.5",
     "phpstan/phpstan-symfony": "^2.0",
     "phpunit/phpunit": "^12.5.23 || ^13.1.7",
     "nyholm/psr7": "^1",
