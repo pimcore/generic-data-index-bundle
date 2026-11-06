@@ -34,9 +34,10 @@ use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 /**
- * The classification store writes <field>.<group>.<language>.<key> for every valid language, so the
- * mapping has to declare a node per language under every mapped group, and the nested root has to
- * refuse dynamic mapping for everything that is not declared.
+ * The classification store writes <field>.<group>.<language>.<key> for the languages each key is kept
+ * in, so the mapping has to declare a node per language under every mapped group - carrying only the
+ * keys that language holds - and the nested root has to refuse dynamic mapping for everything that is
+ * not declared.
  */
 class ClassificationStoreMappingTest extends Unit
 {
@@ -48,15 +49,19 @@ class ClassificationStoreMappingTest extends Unit
 
     private const KEY_NAME = 'Size';
 
+    private const NON_LOCALIZED_KEY_NAME = 'Depth';
+
     private const EXCLUDED_KEY_NAME = 'Weight';
 
     private const KEY_VALUE = 42;
+
+    private const NON_LOCALIZED_KEY_VALUE = 17;
 
     private const EXCLUDED_KEY_VALUE = 23;
 
     private const KEY_TYPE = 'numeric';
 
-    private const METADATA_INDEXED = 'indexed';
+    private const DEFINITION_INDEXED = 'indexed';
 
     private const PROPERTIES = 'properties';
 
@@ -70,6 +75,8 @@ class ClassificationStoreMappingTest extends Unit
     private GroupConfig $groupConfig;
 
     private KeyConfig $keyConfig;
+
+    private KeyConfig $nonLocalizedKeyConfig;
 
     private KeyConfig $excludedKeyConfig;
 
@@ -92,6 +99,7 @@ class ClassificationStoreMappingTest extends Unit
         $this->tester->flushIndex();
         $this->classDefinition->delete();
         $this->deleteKeyWithAssignment($this->keyConfig);
+        $this->deleteKeyWithAssignment($this->nonLocalizedKeyConfig);
         $this->deleteKeyWithAssignment($this->excludedKeyConfig);
         $this->groupConfig->delete();
         $this->storeConfig->delete();
@@ -105,17 +113,62 @@ class ClassificationStoreMappingTest extends Unit
         $this->assertArrayHasKey('dynamic', $fieldMapping);
         $this->assertFalse(filter_var($fieldMapping['dynamic'], FILTER_VALIDATE_BOOLEAN));
 
-        $expectedLanguages = array_merge(
-            [MappingProperty::NOT_LOCALIZED_KEY],
-            $this->getValidLanguages()
-        );
         $groupMapping = $fieldMapping[self::PROPERTIES][self::GROUP_NAME][self::PROPERTIES];
 
         // The engine does not promise an order for the properties of a mapping response.
-        $this->assertEqualsCanonicalizing($expectedLanguages, array_keys($groupMapping));
+        $this->assertEqualsCanonicalizing($this->getDeclaredLanguages(), array_keys($groupMapping));
 
         foreach ($groupMapping as $language => $languageMapping) {
             $this->assertArrayHasKey(self::KEY_NAME, $languageMapping[self::PROPERTIES], $language);
+        }
+    }
+
+    /**
+     * The language nodes a group declares are per key: the key that inherits the localized field is
+     * declared under the non-localized node and under every valid language, the key flagged as not
+     * localized only under the non-localized node, and the key excluded on its own definition under
+     * none of them. The index is built from scratch in _before(), so this is the mapping the bundle
+     * declares, not one dynamic mapping contributed to.
+     */
+    public function testThePerKeyLanguageSetIsDeclaredAndWrittenOnARecreatedIndex(): void
+    {
+        $language = $this->getValidLanguages()[0];
+        $object = $this->createObjectWithStoreValue($language);
+
+        $groupMapping = $this->getStoreFieldMapping()[self::PROPERTIES][self::GROUP_NAME][self::PROPERTIES];
+
+        // asserted before the loop, so an empty group node cannot satisfy the absence assertions vacuously
+        $this->assertEqualsCanonicalizing($this->getDeclaredLanguages(), array_keys($groupMapping));
+
+        $this->assertEqualsCanonicalizing(
+            [self::KEY_NAME, self::NON_LOCALIZED_KEY_NAME],
+            array_keys($groupMapping[MappingProperty::NOT_LOCALIZED_KEY][self::PROPERTIES])
+        );
+
+        foreach ($this->getValidLanguages() as $validLanguage) {
+            $this->assertSame(
+                [self::KEY_NAME],
+                array_keys($groupMapping[$validLanguage][self::PROPERTIES]),
+                $validLanguage
+            );
+        }
+
+        $indexName = $this->tester->getIndexName(self::CLASS_NAME, true);
+        $source = $this->tester->checkIndexEntry($object->getId(), $indexName)['_source'];
+        $groupSource = $source[FieldCategory::STANDARD_FIELDS->value][self::FIELD_NAME][self::GROUP_NAME];
+
+        $this->assertEquals(self::KEY_VALUE, $groupSource[$language][self::KEY_NAME]);
+        $this->assertEquals(
+            self::NON_LOCALIZED_KEY_VALUE,
+            $groupSource[MappingProperty::NOT_LOCALIZED_KEY][self::NON_LOCALIZED_KEY_NAME]
+        );
+
+        foreach ($groupSource as $sourceLanguage => $keyValues) {
+            $this->assertArrayNotHasKey(self::EXCLUDED_KEY_NAME, $keyValues, $sourceLanguage);
+
+            if ($sourceLanguage !== MappingProperty::NOT_LOCALIZED_KEY) {
+                $this->assertArrayNotHasKey(self::NON_LOCALIZED_KEY_NAME, $keyValues, $sourceLanguage);
+            }
         }
     }
 
@@ -145,37 +198,11 @@ class ClassificationStoreMappingTest extends Unit
     }
 
     /**
-     * A key marked as not indexed on its assignment to the group is mapped nowhere and written nowhere: an
-     * index built from scratch declares no node for it under any language of the group, and the document of
-     * an object that has a value for it carries none, so it is not in _source either.
+     * @return string[]
      */
-    public function testExcludedKeyIsAbsentFromMappingAndSourceOnARecreatedIndex(): void
+    private function getDeclaredLanguages(): array
     {
-        $language = $this->getValidLanguages()[0];
-        $object = $this->createObjectWithStoreValue($language);
-
-        $groupMapping = $this->getStoreFieldMapping()[self::PROPERTIES][self::GROUP_NAME][self::PROPERTIES];
-
-        // asserted before the loop, so an empty group node cannot satisfy the absence assertion vacuously
-        $this->assertEqualsCanonicalizing(
-            array_merge([MappingProperty::NOT_LOCALIZED_KEY], $this->getValidLanguages()),
-            array_keys($groupMapping)
-        );
-
-        foreach ($groupMapping as $mappedLanguage => $languageMapping) {
-            $keyMapping = $languageMapping[self::PROPERTIES];
-            $this->assertArrayHasKey(self::KEY_NAME, $keyMapping, $mappedLanguage);
-            $this->assertArrayNotHasKey(self::EXCLUDED_KEY_NAME, $keyMapping, $mappedLanguage);
-        }
-
-        $indexName = $this->tester->getIndexName(self::CLASS_NAME, true);
-        $source = $this->tester->checkIndexEntry($object->getId(), $indexName)['_source'];
-        $groupSource = $source[FieldCategory::STANDARD_FIELDS->value][self::FIELD_NAME][self::GROUP_NAME];
-
-        $this->assertEquals(self::KEY_VALUE, $groupSource[$language][self::KEY_NAME]);
-        foreach ($groupSource as $sourceLanguage => $keyValues) {
-            $this->assertArrayNotHasKey(self::EXCLUDED_KEY_NAME, $keyValues, $sourceLanguage);
-        }
+        return array_merge([MappingProperty::NOT_LOCALIZED_KEY], $this->getValidLanguages());
     }
 
     private function getStoreFieldMapping(): array
@@ -217,6 +244,12 @@ class ClassificationStoreMappingTest extends Unit
         );
         $store->setLocalizedKeyValue(
             $this->groupConfig->getId(),
+            $this->nonLocalizedKeyConfig->getId(),
+            self::NON_LOCALIZED_KEY_VALUE,
+            MappingProperty::NOT_LOCALIZED_KEY
+        );
+        $store->setLocalizedKeyValue(
+            $this->groupConfig->getId(),
             $this->excludedKeyConfig->getId(),
             self::EXCLUDED_KEY_VALUE,
             $language
@@ -239,32 +272,36 @@ class ClassificationStoreMappingTest extends Unit
         $this->groupConfig->save();
 
         $this->keyConfig = $this->createKeyWithAssignment(self::KEY_NAME);
-        $this->excludedKeyConfig = $this->createKeyWithAssignment(
-            self::EXCLUDED_KEY_NAME,
-            [self::METADATA_INDEXED => false]
-        );
+        $this->nonLocalizedKeyConfig = $this->createKeyWithAssignment(self::NON_LOCALIZED_KEY_NAME, false);
+        $this->excludedKeyConfig = $this->createKeyWithAssignment(self::EXCLUDED_KEY_NAME, indexed: false);
     }
 
     /**
-     * The assignment of the indexed key carries no metadata at all, the way every assignment does that was
-     * created before the flag existed.
-     *
-     * @param array<string, mixed>|null $metadata
+     * The indexed key carries neither flag, the way every key does that was created before they existed:
+     * it inherits the localized flag of the class definition field and is indexed.
      */
-    private function createKeyWithAssignment(string $name, ?array $metadata = null): KeyConfig
-    {
-        $keyDefinition = (string) json_encode([
+    private function createKeyWithAssignment(
+        string $name,
+        ?bool $localized = null,
+        bool $indexed = true
+    ): KeyConfig {
+        $definition = [
             'fieldtype' => self::KEY_TYPE,
             'name' => $name,
             'title' => $name,
             'integer' => true,
-        ]);
+        ];
+        if (!$indexed) {
+            $definition[self::DEFINITION_INDEXED] = false;
+        }
+        $keyDefinition = (string) json_encode($definition);
 
         $keyConfig = new KeyConfig();
         $keyConfig->setStoreId($this->storeConfig->getId());
         $keyConfig->setName($name);
         $keyConfig->setType(self::KEY_TYPE);
         $keyConfig->setDefinition($keyDefinition);
+        $keyConfig->setLocalized($localized);
         $keyConfig->setEnabled(true);
         $keyConfig->save();
 
@@ -275,9 +312,6 @@ class ClassificationStoreMappingTest extends Unit
         $relation->setType(self::KEY_TYPE);
         $relation->setDefinition($keyDefinition);
         $relation->setEnabled(true);
-        if ($metadata !== null) {
-            $relation->setMetadata($metadata);
-        }
         $relation->save();
 
         return $keyConfig;

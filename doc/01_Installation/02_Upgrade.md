@@ -46,7 +46,8 @@ description: Version-specific upgrade instructions and breaking changes for the 
 - [Indexing] Fixed: the mapping of a localized classification store declared only the `default` node under each
   group, while the documents are written as `<field>.<group>.<language>.<key>` for every valid language. The
   language nodes were therefore only mapped dynamically. The mapping now declares one node per entry of the same
-  language set the documents use — `default` plus every valid language — with the same key set under each.
+  language set the documents use — `default` plus every valid language — the `default` node carrying every indexed
+  key of the group and a language node the localized ones.
 - [Indexing] The classification store's nested root is now declared with `dynamic: false`. This is not cosmetic: the
   root ran on the engine default `dynamic: true`, so a key an editor filled in was auto-mapped from its first indexed
   value, and that guess has the wrong shape. A text key (input, textarea, wysiwyg, select, multiselect, country, …) is
@@ -84,22 +85,35 @@ description: Version-specific upgrade instructions and breaking changes for the 
   that already mapped that group dynamically, from the first mapping built from scratch (see above), not from the
   in-place update. They are still written to the document and stay readable in `_source`; only filters, PQL and grid
   columns on them stop matching. Add the group to the field's allowed groups and re-index to restore filtering.
-- [Indexing] New: a classification store key whose assignment to a group carries the JSON boolean `"indexed": false` in
-  its relation metadata is no longer mapped and no longer written to the document, so it is not filterable, sortable or
-  searchable. Only that boolean excludes an assignment — no metadata, metadata without the entry, and any other value
-  all mean indexed. On an existing index the two halves arrive separately: the value leaves `_source` only when an
+- [Indexing] New: a classification store key whose own definition carries the JSON boolean `"indexed": false` is no
+  longer mapped and no longer written to the document, so it is not filterable, sortable or searchable — in every group
+  the key is assigned to. Only that boolean on the key excludes it: a definition without the entry, an empty or
+  unparsable definition, and any other value all mean indexed, and the `indexed` entry of a key–group relation's
+  metadata is not read. On an existing index the two halves arrive separately: the value leaves `_source` only when an
   object's document is rewritten, so it needs the re-queue that saving the class definition,
   `generic-data-index:deployment:reindex` or `generic-data-index:update:index` performs — `generic-data-index:reindex`
   copies the documents as they are and keeps it (see above) — while the node an earlier mapping already declared for the
   key is dropped when that index is built from scratch, also as above.
-- [Indexing] The declared field count of a localized classification store now multiplies by the number of valid
-  languages. A large store can therefore hit `index.mapping.total_fields.limit` when the index is created or the
-  mapping is updated, instead of later at write time. Restrict the allowed groups of the field, or raise the limit — see
+- [Indexing] The declared field count of a classification store multiplies by the number of valid languages for its
+  localized keys only: every indexed key is declared once under `default`, and a localized key once more per valid
+  language. A large store can therefore hit `index.mapping.total_fields.limit` when the index is created or the
+  mapping is updated, instead of later at write time. Restrict the allowed groups of the field, mark the keys that do
+  not need a language as not localized, or raise the limit — see
   [Total Fields Limit](../02_Configuration/03_Index_Management.md#total-fields-limit).
-- [Indexing] A class whose only language-dependent data is a localized classification store now changes its checksum
-  when the valid languages change, because the languages are part of its mapping. `deployment:reindex` picks such a
-  class up by itself, where it used to skip it and the class had to be raised in `index_versions.classes` or
-  reindexed with `update:index -c <id>`. A language change can therefore reindex more classes than before.
+- [Indexing] A class whose only language-dependent data is a classification store with at least one localized key now
+  changes its checksum when the valid languages change, because those languages are part of its mapping.
+  `deployment:reindex` picks such a class up by itself, where it used to skip it and the class had to be raised in
+  `index_versions.classes` or reindexed with `update:index -c <id>`. A language change can therefore reindex more
+  classes than before. A store whose keys are all non-localized does not depend on the language list at all, so its
+  mapping and its checksum do not change and `deployment:reindex` skips it.
+- [Indexing] Changed: a classification store key is mapped and written under the languages the key itself is kept in —
+  `default`, plus every valid language for a key that is localized — instead of under every valid language of the
+  field. For a store at ETIM proportions (76,625 key assignments, 17 valid languages, 23,222 of the assignments
+  localized) the field count the field declares drops from 1,379,250 to 471,399. Flipping a key's localization or
+  index flag changes the class mapping but fires no event this bundle listens to, so apply it with
+  `generic-data-index:deployment:reindex` or `generic-data-index:update:index`; add `-r` (or let the command copy the
+  index natively) to drop the language nodes an earlier mapping declared, and note that the language values already
+  written stay in `_source` until each object's document is rewritten.
 - [Indexing] Existing indices already contain language and key nodes that dynamic mapping created with a guessed type,
   and the update declares the real types over them. For a text key this is accepted in place: the type stays `text`,
   the declared sub-fields are added to the guessed one, and `ignore_above` is updatable. A numeric key can conflict: a
