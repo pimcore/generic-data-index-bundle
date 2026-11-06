@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
+use Closure;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexRebuildReport;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -22,7 +23,10 @@ use Pimcore\Model\DataObject\ClassDefinition;
  */
 interface ReindexServiceInterface
 {
-    public function reindexAll(): ReindexServiceInterface;
+    /**
+     * @param Closure|null $beforeEachIndex runs before every index is copied, for example to renew a lock
+     */
+    public function reindexAll(?Closure $beforeEachIndex = null): ReindexServiceInterface;
 
     public function reindexAllIndices(): ReindexServiceInterface;
 

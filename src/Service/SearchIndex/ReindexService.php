@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
+use Closure;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
@@ -52,12 +53,22 @@ final readonly class ReindexService implements ReindexServiceInterface
     /**
      * @throws Exception
      */
-    public function reindexAll(): ReindexService
+    public function reindexAll(?Closure $beforeEachIndex = null): ReindexService
     {
-        $this
-            ->reindexClassDefinitions()
-            ->reindexAssets()
-            ->reindexDocuments();
+        foreach ((new Listing())->load() as $classDefinition) {
+            if ($beforeEachIndex !== null) {
+                $beforeEachIndex();
+            }
+            $this->applyClassDefinition($classDefinition, true);
+        }
+        if ($beforeEachIndex !== null) {
+            $beforeEachIndex();
+        }
+        $this->applyAssets(true);
+        if ($beforeEachIndex !== null) {
+            $beforeEachIndex();
+        }
+        $this->applyDocuments(true);
 
         return $this;
     }

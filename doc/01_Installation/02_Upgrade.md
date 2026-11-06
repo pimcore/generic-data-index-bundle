@@ -16,6 +16,9 @@ Following steps are necessary during updating to newer versions.
   `pimcore_generic_data_index_failed`, where it can be retried once the cause is fixed. A retried message of a
   settings save that a later save has replaced is skipped, so it cannot reinstall the language list of its own
   save: the languages of the latest save are recorded in the settings store (`LatestLanguageChangeInterface`).
+  Language updates never overlap: the whole update runs under a lock shared by all language messages (renewed
+  before every index), so a second one waits, then checks for a later save. `ReindexServiceInterface::reindexAll()`
+  takes an optional closure that runs before every index.
   `UpdateClassMappingHandler` and `UpdateLanguageSettingsHandler` take a `MappingUpdateRetryPolicyInterface` as a
   further constructor argument, the language handler and `AdminSettingsSubscriber` also the
   `LatestLanguageChangeInterface`.

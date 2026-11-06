@@ -32,6 +32,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebui
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\TimeServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\IndexService\ObservableIndexLock;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\IndexService\RecordingLockStore;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Psr\Log\LoggerInterface;
@@ -544,31 +545,9 @@ final class ClassDefinitionReindexServiceTest extends Unit
         );
     }
 
-    /**
-     * A lock stub that reports when the lock is taken and renewed, and lets the caller act in between (for
-     * example as the process that held the lock before).
-     */
     private function createLock(Closure $onAcquire, ?Closure $onRefresh = null): IndexLockInterface
     {
-        return new class($onAcquire, $onRefresh ?? static fn () => null) implements IndexLockInterface {
-            public function __construct(
-                private readonly Closure $onAcquire,
-                private readonly Closure $onRefresh,
-            ) {
-            }
-
-            public function run(string $aliasName, Closure $operation): mixed
-            {
-                ($this->onAcquire)($aliasName);
-
-                return $operation();
-            }
-
-            public function refresh(string $aliasName): void
-            {
-                ($this->onRefresh)($aliasName);
-            }
-        };
+        return new ObservableIndexLock($onAcquire, $onRefresh);
     }
 
     private function createClassDefinition(): ClassDefinition

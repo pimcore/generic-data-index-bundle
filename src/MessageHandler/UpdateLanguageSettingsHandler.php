@@ -17,6 +17,7 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateLanguageSettingsMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\MappingUpdateRetryPolicyInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LatestLanguageChangeInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
@@ -32,12 +33,16 @@ final class UpdateLanguageSettingsHandler
 {
     use LoggerAwareTrait;
 
+    /** The lock all language updates share, next to the locks of the single indices they copy. */
+    private const LANGUAGES_LOCK = 'languages';
+
     public function __construct(
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly LanguageServiceInterface $languageService,
         private readonly ReindexServiceInterface $reindexService,
         private readonly MappingUpdateRetryPolicyInterface $retryPolicy,
         private readonly LatestLanguageChangeInterface $latestLanguageChange,
+        private readonly IndexLockInterface $indexLock,
     ) {
         if (!isset($this->logger)) {
             $this->logger = new NullLogger();
@@ -45,14 +50,23 @@ final class UpdateLanguageSettingsHandler
     }
 
     /**
-     * A failed update is reported to Messenger instead of being logged only: the message is retried, or goes to
-     * the failed transport when a copy ran out of its budget, and the retry updates every index again. A retried
-     * message of a settings save that a later save has replaced is skipped: it would reinstall the language list
-     * of its own save.
+     * Language updates never overlap: the whole update runs under a lock shared by all language messages, renewed
+     * before every index, so a second message waits until the first one has copied every index. It then checks
+     * whether a later settings save has replaced its own and skips in that case: it would reinstall the language
+     * list of its save. A failed update is reported to Messenger instead of being logged only: the message is
+     * retried, or goes to the failed transport when a copy ran out of its budget.
      *
      * @throws Exception
      */
     public function __invoke(UpdateLanguageSettingsMessage $message): void
+    {
+        $this->indexLock->run(self::LANGUAGES_LOCK, fn () => $this->update($message));
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function update(UpdateLanguageSettingsMessage $message): void
     {
         if (!$this->latestLanguageChange->isLatest($message->getValidLanguages())) {
             $this->logger->notice('Skipping a language change that a later settings save has replaced', [
@@ -74,7 +88,7 @@ final class UpdateLanguageSettingsHandler
         $this->languageService->setValidLanguages($newLanguages);
 
         try {
-            $this->reindexService->reindexAll();
+            $this->reindexService->reindexAll(fn () => $this->indexLock->refresh(self::LANGUAGES_LOCK));
             $this->enqueueService->dispatchQueueMessages(true);
         } catch (Exception $exception) {
             $this->retryPolicy->rethrow($exception);
