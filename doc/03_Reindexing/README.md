@@ -393,13 +393,14 @@ checksum and therefore finds the classes affected indirectly.
 | Field collection | Any field change (add, remove, rename, type, nested table or block config) | Manual | Every class with a field collections field allowing it |
 | Object brick | Field change (add, remove, rename, type, localized fields inside the brick) | Manual | Every class with an object bricks field allowing it |
 | Object brick | Brick added to or removed from a class's allowed types, or brick deleted | Automatic (Pimcore saves the class) | The classes whose assignment changed |
-| Classification store | Group added, renamed or removed; key added, renamed, removed or type changed; key moved between groups | Manual | Every class with a classification store field using that store |
+| Classification store | Group added, renamed or removed; key added, renamed, removed or type changed; key moved between groups; a key's localization flag or index-exclusion flag changed | Manual | Every class with a classification store field using that store |
 
 Why these changes are not detected: a field collection save only fires `FieldcollectionDefinitionEvents` and
 updates the database tables of the classes using it; an object brick save saves a class only when its class
 assignment changes; classification store groups, keys and stores fire their own
 `DataObjectClassificationStoreEvents`, and key–group relations fire no event at all. The bundle listens to none of
-them. This applies to the admin UI, Studio and `classes-rebuild` alike.
+them — including the key save that carries the localization and index-exclusion flags, both of which change the
+mapping. This applies to the admin UI, Studio and `classes-rebuild` alike.
 
 Until `deployment:reindex` has run, the class indices keep the old mapping, so new or retyped fields in these
 definitions are not searchable or filterable as intended.
@@ -427,10 +428,13 @@ and predefined asset metadata is mapped per language as well.
 
 :::info
 
-A class whose only language-dependent data is a **localized classification store** is detected too: since 2026.4.0
-the store declares one node per valid language, so the class mapping and its checksum change with the language list.
-Before that release those values were mapped dynamically, the checksum stayed the same and `deployment:reindex`
-skipped the class, so it had to be raised in `index_versions.classes` or reindexed with `update:index -c <id>`.
+A class whose only language-dependent data is a **classification store with at least one localized key** is detected
+too: since 2026.4.0 the store declares one node per valid language for such a key, so the class mapping and its
+checksum change with the language list. Before that release those values were mapped dynamically, the checksum stayed
+the same and `deployment:reindex` skipped the class, so it had to be raised in `index_versions.classes` or reindexed
+with `update:index -c <id>`. A store whose keys are all non-localized declares no language node at all, so its
+checksum does not change with the language list and `deployment:reindex` skips it — its mapping genuinely does not
+change.
 
 :::
 

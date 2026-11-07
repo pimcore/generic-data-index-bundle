@@ -27,7 +27,7 @@ abstract class AbstractAdapter implements AdapterInterface
 {
     private Data $fieldDefinition;
 
-    private RuntimeCacheResolverInterface $runtimeCacheResolver;
+    protected RuntimeCacheResolverInterface $runtimeCacheResolver;
 
     public function __construct(
         protected SearchIndexConfigServiceInterface $searchIndexConfigService,
