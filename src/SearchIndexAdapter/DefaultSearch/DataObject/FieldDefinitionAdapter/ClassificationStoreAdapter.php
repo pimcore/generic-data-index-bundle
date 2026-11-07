@@ -434,20 +434,26 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * definition would otherwise be parsed again for every object. Runtime-cache scoped like the
      * inheritance origin memo of the base adapter, so the cleanup between queue batches bounds
      * staleness. An unhydrated relation is not memoized: that says nothing about the key.
+     *
+     * Both properties are checked before the memo is consulted, not just the one the cache key is
+     * built from. The memoized answer is about the key, but "true" is also a promise to the callers
+     * that this relation can be passed to definition resolution, and a second assignment of a
+     * memoized key can be unhydrated where the first was not. Reading the cache on the strength of
+     * "keyId" alone would hand such a relation back as indexed and have the caller read "definition"
+     * off it - the Error this method exists to prevent, reached through the memo instead of past it.
+     * The guards are two reflection calls and the memo still saves the decode, which is its point.
      */
     private function isIndexedKey(KeyGroupRelation $key): bool
     {
-        if (!$this->isHydratedRelationProperty($key, 'keyId')) {
+        if (!$this->isHydratedRelationProperty($key, 'keyId')
+            || !$this->isHydratedRelationProperty($key, 'definition')
+        ) {
             return false;
         }
 
         $cacheKey = sprintf(self::CACHE_KEY_INDEXED, $key->getKeyId());
         if ($this->runtimeCacheResolver->isRegistered($cacheKey)) {
             return $this->runtimeCacheResolver->load($cacheKey);
-        }
-
-        if (!$this->isHydratedRelationProperty($key, 'definition')) {
-            return false;
         }
 
         $definition = json_decode($key->getDefinition(), true);

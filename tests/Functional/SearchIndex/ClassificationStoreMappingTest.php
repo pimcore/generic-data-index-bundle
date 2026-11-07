@@ -15,7 +15,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\SearchIndex;
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\BooleanFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IntegerFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\BooleanMultiSelectFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\ClassificationStoreFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
@@ -301,10 +303,76 @@ class ClassificationStoreMappingTest extends Unit
     }
 
     /**
+     * The same guarantee for a filter that asks for a *missing* value, which is the case an equality
+     * filter cannot stand in for. Equality gives the empty result on a node the key is not indexed
+     * under by itself - there is nothing there to equal - but a missing-value filter is `must_not
+     * exists`, and an absent path satisfies it: before the locale was checked against the mapping this
+     * returned every element that has the group at all, including the one whose value sits under the
+     * node the key really is indexed under.
+     *
+     * The second assertion is the control. The same filter on a node the key *is* declared under still
+     * finds the element that has no value there, so the empty result above is the wrong node being
+     * ruled out and not missing-value filtering having stopped working inside the store.
+     */
+    public function testAMissingValueFilterOnAWrongLocaleFindsNothingRatherThanEverything(): void
+    {
+        $language = $this->getValidLanguages()[0];
+        $object = $this->createObjectWithStoreValue($language, self::CLASS_NAME);
+
+        // the non-localized key is declared under "default" only, and holds its value there
+        $this->assertSame(
+            [],
+            $this->filterByMissingKey(self::NON_LOCALIZED_KEY_NAME, $language),
+            $language
+        );
+
+        // the localized key is declared under "default" too, and the object wrote it under $language only
+        $this->assertSame(
+            [$object->getId()],
+            $this->filterByMissingKey(self::KEY_NAME, MappingProperty::NOT_LOCALIZED_KEY)
+        );
+
+        // the other sub-modifier that negates existence: a null in a BooleanMultiSelectFilter's values
+        $this->assertSame(
+            [],
+            $this->filterByStore(new BooleanMultiSelectFilter(self::NON_LOCALIZED_KEY_NAME, [null], false), $language),
+            $language
+        );
+        $this->assertSame(
+            [$object->getId()],
+            $this->filterByStore(
+                new BooleanMultiSelectFilter(self::KEY_NAME, [null], false),
+                MappingProperty::NOT_LOCALIZED_KEY
+            )
+        );
+    }
+
+    /**
      * @return int[]
      */
     private function filterByKey(string $keyName, int $value, string $locale): array
     {
+        return $this->filterByStore(new IntegerFilter($keyName, $value, false), $locale);
+    }
+
+    /**
+     * A BooleanFilter with a null search term is the bundle's "has no value" filter, whatever the type
+     * of the key - it becomes `must_not exists` on the key's path.
+     *
+     * @return int[]
+     */
+    private function filterByMissingKey(string $keyName, string $locale): array
+    {
+        return $this->filterByStore(new BooleanFilter($keyName, null, false), $locale);
+    }
+
+    /**
+     * @return int[]
+     */
+    private function filterByStore(
+        BooleanFilter|BooleanMultiSelectFilter|IntegerFilter $subModifier,
+        string $locale
+    ): array {
         /** @var DataObjectSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
         /** @var SearchProviderInterface $searchProvider */
@@ -316,7 +384,7 @@ class ClassificationStoreMappingTest extends Unit
                 ->addModifier(new ClassificationStoreFilter(
                     self::FIELD_NAME,
                     self::GROUP_NAME,
-                    new IntegerFilter($keyName, $value, false),
+                    $subModifier,
                     $locale
                 ))
                 ->setClassDefinition($this->classDefinition)

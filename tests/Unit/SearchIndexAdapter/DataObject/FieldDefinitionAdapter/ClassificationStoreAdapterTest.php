@@ -679,6 +679,76 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
+     * The memo is reached only after both properties are known to be there, so an unhydrated
+     * assignment of an already memoized key is still skipped. The order matters: the hydrated
+     * assignment caches "true" for the key id, and the unhydrated one shares that key id, so a memo
+     * consulted on "keyId" alone would answer "true" for a relation whose "definition" the callers
+     * then read - the reverse of the order
+     * {@see self::testTheIndexFlagIsParsedOncePerKeyIdAndNotMemoizedForAnUnhydratedRelation} covers.
+     */
+    public function testAnUnhydratedAssignmentOfAnAlreadyMemoizedKeyIsStillSkipped(): void
+    {
+        $entries = new ArrayObject();
+        $resolver = $this->createRuntimeCacheResolver($entries);
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'isIndexedKey');
+
+        $hydrated = $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME);
+
+        $unhydrated = new KeyGroupRelation();
+        $unhydrated->setKeyId(self::KEY_ID);
+        $unhydrated->setGroupId(self::OTHER_GROUP_ID);
+        $unhydrated->setName(self::KEY_NAME);
+
+        $this->assertTrue($method->invoke($this->createConfiguredAdapter([], null, null, $resolver), $hydrated));
+        $this->assertSame(
+            [sprintf(self::CACHE_KEY_INDEXED, self::KEY_ID) => true],
+            $entries->getArrayCopy(),
+            'the hydrated assignment memoizes the key as indexed'
+        );
+
+        $this->assertFalse(
+            $method->invoke($this->createConfiguredAdapter([], null, null, $resolver), $unhydrated),
+            'the cached "true" must not be returned for a relation that cannot answer'
+        );
+    }
+
+    /**
+     * The same guarantee through the callers, in the shape that actually reaches them: the memo spans
+     * key ids, so it spans groups, and getIndexMapping() walks every group of the store with one
+     * adapter. The first group hydrates the key and memoizes it as indexed; the second assigns the
+     * same key unhydrated, and that group must declare nothing rather than resolve a definition off a
+     * relation that has none. Same adapter for both calls, and a group of its own for each, so the
+     * per-call name bookkeeping cannot be what drops the second one.
+     */
+    public function testAMemoizedKeyDoesNotLetAnUnhydratedAssignmentOfAnotherGroupReachDefinitionResolution(): void
+    {
+        $adapter = $this->createConfiguredAdapter([], $this->createFieldDefinition(false));
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'getMappingForGroupConfig');
+        $languages = $this->getDeclarableLanguages($adapter);
+
+        $unhydrated = new KeyGroupRelation();
+        $unhydrated->setKeyId(self::KEY_ID);
+        $unhydrated->setGroupId(self::OTHER_GROUP_ID);
+        $unhydrated->setName(self::KEY_NAME);
+
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => self::LANGUAGE_NODE],
+            $method->invoke(
+                $adapter,
+                [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)],
+                $languages
+            ),
+            'the first group hydrates the key and memoizes it as indexed'
+        );
+
+        $this->assertSame(
+            [],
+            $method->invoke($adapter, [$unhydrated], $languages),
+            'the cached "true" must not declare a key the second group cannot resolve'
+        );
+    }
+
+    /**
      * The excluded key is dropped before its name is normalized, so it does not reserve the segment
      * "Size" that the key named "Size." normalizes to - on the mapping and on the document path alike.
      */

@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 use Pimcore\Bundle\GenericDataIndexBundle\Attribute\Search\AsSearchModifierHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchModifierContextInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\MatchNoneQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\NestedFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\SimpleQueryStringFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
@@ -31,7 +32,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType\TimeFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\FullTextSearch;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\WildcardSearch;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\FullTextSearch\FullTextSearchHandlers;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\MappedFieldPathServiceInterface;
 
 /**
  * @internal
@@ -41,7 +44,8 @@ final readonly class NestedTypeFilters
     public function __construct(
         private BasicFilters $basicFilters,
         private FieldTypeFilters $fieldTypeFilters,
-        private FullTextSearchHandlers $fullTextSearchHandlers
+        private FullTextSearchHandlers $fullTextSearchHandlers,
+        private MappedFieldPathServiceInterface $mappedFieldPathService
     ) {
     }
 
@@ -60,11 +64,37 @@ final readonly class NestedTypeFilters
         );
     }
 
+    /**
+     * A filter asking for a *missing* value has its group, language node and key checked against the
+     * mapping before the sub-modifier is built, and an address the mapping does not declare matches
+     * nothing.
+     *
+     * This is what makes the documented guarantee - a node the key is not indexed under is an empty
+     * result, not an error - hold for that filter too. A sub-modifier that compares a value to
+     * something cannot match an absent path and gave the empty result on its own, but one that asks
+     * for a missing value is `must_not exists` and an absent path *satisfies* it, so under a wrong
+     * language node it returned every element that has the group at all - including the ones whose
+     * value sits under the node the key really is indexed under, which is the opposite of the promise.
+     *
+     * The address is settled from the mapping rather than from the key's localization flag, which
+     * keeps that rule in the one place that owns it: the mapping is what the write side declared from
+     * it, so the read side never re-derives it and the two cannot disagree. It is also the only answer
+     * that stays right on an index upgraded in place, where a language node dynamic mapping created
+     * before `dynamic: false` is still declared and really does hold values - the flag alone would
+     * rule out a node that works. On an index built from scratch the undeclared node is not filterable
+     * by design, which the upgrade notes already state.
+     */
     #[AsSearchModifierHandler]
     public function handleClassificationStoreFilter(
         ClassificationStoreFilter $filter,
         SearchModifierContextInterface $context
     ): void {
+        if ($this->addressesUndeclaredKey($filter, $context->getOriginalSearch())) {
+            $context->getSearch()->addQuery(new MatchNoneQuery());
+
+            return;
+        }
+
         $subQuery = $this->getSubQuery($filter, $context->getOriginalSearch());
         if ($subQuery === null) {
             return;
@@ -73,6 +103,53 @@ final readonly class NestedTypeFilters
         $context->getSearch()->addQuery(
             new NestedFilter($this->buildFieldPrefix($filter->getFieldName()), $subQuery)
         );
+    }
+
+    /**
+     * Whether the mapping rules out the key a missing-value filter addresses under the node it
+     * addresses it in. Only such a filter is asked about, so nothing that already returned the empty
+     * result changes behaviour or pays for a mapping lookup.
+     */
+    private function addressesUndeclaredKey(ClassificationStoreFilter $filter, SearchInterface $search): bool
+    {
+        $keyName = $this->getMissingValueKeyName($filter->getSubModifier());
+        if ($keyName === null) {
+            return false;
+        }
+
+        return $this->mappedFieldPathService->isUndeclaredInMapping(
+            $search,
+            $this->buildStoreFieldPrefix($filter) . '.' . $keyName
+        );
+    }
+
+    /**
+     * The key of a sub-modifier that asks for a missing value, and null for every other one - which is
+     * what decides whether the address has to be checked at all.
+     *
+     * These two are the whole set: a null `BooleanFilter` is `must_not exists`
+     * ({@see BasicFilters::getBooleanQuery()}), and a null in a `BooleanMultiSelectFilter`'s value list
+     * is the same clause, alone or in a `should` beside the terms
+     * ({@see FieldTypeFilters::getBooleanMultiSelectFilter()}). Every other sub-modifier compares a
+     * value to something and cannot match an absent path, so it gave the empty result already.
+     * `MultiSelectFilter` can match a missing value too, but only for a top-level field - it keeps
+     * exact matching under a prefix, which is the only way it is reached from here.
+     */
+    private function getMissingValueKeyName(SearchModifierInterface $subModifier): ?string
+    {
+        return match (true) {
+            $subModifier instanceof BooleanFilter => $subModifier->getSearchTerm() === null
+                ? $subModifier->getFieldName()
+                : null,
+
+            $subModifier instanceof BooleanMultiSelectFilter => in_array(
+                null,
+                $subModifier->getValues(),
+                true
+            ) ? $subModifier->getField() : null,
+
+            default => null,
+        };
     }
 
     private function getSubQuery(ClassificationStoreFilter|NestedFilterParam $filter, SearchInterface $search): ?array
