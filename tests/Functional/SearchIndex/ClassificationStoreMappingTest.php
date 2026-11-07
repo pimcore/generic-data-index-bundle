@@ -61,6 +61,21 @@ class ClassificationStoreMappingTest extends Unit
 
     private const EXCLUDED_KEY_NAME = 'Weight';
 
+    /**
+     * A text key, which is the kind that carries multi-fields: getMappingForTextKeyword() gives it a
+     * "keyword" and a "sort" sub-field under "fields". It is flagged not localized, so it is declared
+     * under the non-localized node only, in both classes.
+     */
+    private const TEXT_KEY_NAME = 'Material';
+
+    private const TEXT_KEY_TYPE = 'input';
+
+    private const TEXT_KEY_VALUE = 'carbon';
+
+    private const KEYWORD_MULTI_FIELD = 'keyword';
+
+    private const SORT_MULTI_FIELD = 'sort';
+
     private const KEY_VALUE = 42;
 
     private const NON_LOCALIZED_KEY_VALUE = 17;
@@ -96,6 +111,8 @@ class ClassificationStoreMappingTest extends Unit
 
     private KeyConfig $excludedKeyConfig;
 
+    private KeyConfig $textKeyConfig;
+
     private ClassDefinition $classDefinition;
 
     private ?ClassDefinition $nonLocalizedClassDefinition = null;
@@ -121,6 +138,7 @@ class ClassificationStoreMappingTest extends Unit
         $this->deleteKeyWithAssignment($this->nonLocalizedKeyConfig);
         $this->deleteKeyWithAssignment($this->localizedKeyConfig);
         $this->deleteKeyWithAssignment($this->excludedKeyConfig);
+        $this->deleteKeyWithAssignment($this->textKeyConfig);
         $this->groupConfig->delete();
         $this->secondGroupConfig->delete();
         $this->storeConfig->delete();
@@ -165,7 +183,7 @@ class ClassificationStoreMappingTest extends Unit
         $this->assertEqualsCanonicalizing($this->getDeclaredLanguages(), array_keys($groupMapping));
 
         $this->assertEqualsCanonicalizing(
-            [self::KEY_NAME, self::NON_LOCALIZED_KEY_NAME, self::LOCALIZED_KEY_NAME],
+            [self::KEY_NAME, self::NON_LOCALIZED_KEY_NAME, self::LOCALIZED_KEY_NAME, self::TEXT_KEY_NAME],
             array_keys($groupMapping[MappingProperty::NOT_LOCALIZED_KEY][self::PROPERTIES])
         );
 
@@ -218,7 +236,7 @@ class ClassificationStoreMappingTest extends Unit
         $this->assertEqualsCanonicalizing($this->getDeclaredLanguages(), array_keys($groupMapping));
 
         $this->assertEqualsCanonicalizing(
-            [self::KEY_NAME, self::NON_LOCALIZED_KEY_NAME, self::LOCALIZED_KEY_NAME],
+            [self::KEY_NAME, self::NON_LOCALIZED_KEY_NAME, self::LOCALIZED_KEY_NAME, self::TEXT_KEY_NAME],
             array_keys($groupMapping[MappingProperty::NOT_LOCALIZED_KEY][self::PROPERTIES])
         );
 
@@ -348,6 +366,110 @@ class ClassificationStoreMappingTest extends Unit
     }
 
     /**
+     * A search that names no class reads the global alias, so every class index is behind it at once
+     * and whether the addressed node is declared is a per index answer. The two classes here differ in
+     * exactly the way the per key flag makes possible: the same key inherits the localized field in
+     * one and is not localized in the other, so the language node of that key exists in the first
+     * class's index only.
+     *
+     * A missing-value filter in that language must therefore not reach the second class's objects. The
+     * address does not exist for them - the language node is there, because another key of the group
+     * is localized, but this key is not declared under it - and an absent path is what `must_not
+     * exists` *satisfies*. So before the declaring indices were preserved, one index declaring the
+     * address disabled the guard for the other and this returned the second class's object: the one
+     * whose value sits under the node its own key really is indexed under, which is the opposite of
+     * the promise.
+     *
+     * The second assertion is the control, on the node both indices declare: the first class's object
+     * has no value there and is still found, and the second class's object - which does have one - is
+     * still excluded. So the narrowing above rules out the indices that cannot answer, and does not
+     * stop the other indices from answering.
+     */
+    public function testAMissingValueFilterAcrossClassesSkipsTheClassesThatDoNotDeclareTheLocale(): void
+    {
+        $this->nonLocalizedClassDefinition = $this->createClassDefinition(self::NON_LOCALIZED_CLASS_NAME, false);
+        $this->recreateClassIndex($this->nonLocalizedClassDefinition);
+
+        $language = $this->getValidLanguages()[0];
+        $localizedObject = $this->createObjectWithStoreValue($language, self::CLASS_NAME);
+        $nonLocalizedObject = $this->createObjectWithStoreValue($language, self::NON_LOCALIZED_CLASS_NAME);
+
+        // the non-localized class holds this key's value under "default", and declares no node for $language
+        $nonLocalizedSource = $this->getGroupSource($nonLocalizedObject, self::NON_LOCALIZED_CLASS_NAME);
+        $this->assertEquals(
+            self::KEY_VALUE,
+            $nonLocalizedSource[MappingProperty::NOT_LOCALIZED_KEY][self::KEY_NAME]
+        );
+        // the language node itself exists in that class - another key of the group is localized - but
+        // this key is not declared under it, which is the address the filter below builds
+        $this->assertArrayNotHasKey(
+            self::KEY_NAME,
+            $this->getGroupMapping(self::NON_LOCALIZED_CLASS_NAME)[$language][self::PROPERTIES],
+            $language
+        );
+
+        $this->assertSame(
+            [],
+            $this->filterByStoreAcrossClasses(new BooleanFilter(self::KEY_NAME, null, false), $language),
+            $language
+        );
+
+        $this->assertSame(
+            [$localizedObject->getId()],
+            $this->filterByStoreAcrossClasses(
+                new BooleanFilter(self::KEY_NAME, null, false),
+                MappingProperty::NOT_LOCALIZED_KEY
+            )
+        );
+    }
+
+    /**
+     * A key's mapping is not only the node named after the key. A text key declares its sub-fields
+     * under "fields" - getMappingForTextKeyword() gives every one of them a "keyword" and a "sort"
+     * multi-field - and a filter may address those, so a path ending in one is declared and has to be
+     * filtered on rather than ruled out. Reading "properties" alone reported it undeclared and turned
+     * the filter into match_none.
+     *
+     * The second half is the control, in both directions: the same filter finds nothing once the key
+     * holds a value, so the result above is missing-value filtering on the multi-field and not a
+     * clause that matches everything; and a sub-field the mapping does not declare is still ruled out,
+     * so traversing "fields" did not make the guard accept any suffix at all.
+     */
+    public function testAMissingValueFilterOnAMappedMultiFieldIsAnsweredRatherThanRuledOut(): void
+    {
+        $object = $this->createObjectWithStoreValue($this->getValidLanguages()[0], self::CLASS_NAME);
+
+        foreach ([self::KEYWORD_MULTI_FIELD, self::SORT_MULTI_FIELD] as $multiField) {
+            $this->assertSame(
+                [$object->getId()],
+                $this->filterByMissingKey(
+                    self::TEXT_KEY_NAME . '.' . $multiField,
+                    MappingProperty::NOT_LOCALIZED_KEY
+                ),
+                $multiField
+            );
+        }
+
+        $this->assertSame(
+            [],
+            $this->filterByMissingKey(
+                self::TEXT_KEY_NAME . '.notAMultiField',
+                MappingProperty::NOT_LOCALIZED_KEY
+            )
+        );
+
+        $this->setTextKeyValue($object);
+
+        $this->assertSame(
+            [],
+            $this->filterByMissingKey(
+                self::TEXT_KEY_NAME . '.' . self::KEYWORD_MULTI_FIELD,
+                MappingProperty::NOT_LOCALIZED_KEY
+            )
+        );
+    }
+
+    /**
      * @return int[]
      */
     private function filterByKey(string $keyName, int $value, string $locale): array
@@ -373,22 +495,49 @@ class ClassificationStoreMappingTest extends Unit
         BooleanFilter|BooleanMultiSelectFilter|IntegerFilter $subModifier,
         string $locale
     ): array {
+        return $this->runStoreSearch($subModifier, $locale, $this->classDefinition);
+    }
+
+    /**
+     * The same filter without setClassDefinition(), which is what a classless data object search is:
+     * it resolves to the global alias, so every class index is behind it at once.
+     *
+     * @return int[]
+     */
+    private function filterByStoreAcrossClasses(
+        BooleanFilter|BooleanMultiSelectFilter|IntegerFilter $subModifier,
+        string $locale
+    ): array {
+        return $this->runStoreSearch($subModifier, $locale, null);
+    }
+
+    /**
+     * @return int[]
+     */
+    private function runStoreSearch(
+        BooleanFilter|BooleanMultiSelectFilter|IntegerFilter $subModifier,
+        string $locale,
+        ?ClassDefinition $classDefinition
+    ): array {
         /** @var DataObjectSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
         /** @var SearchProviderInterface $searchProvider */
         $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
 
-        return $searchService->search(
-            $searchProvider
-                ->createDataObjectSearch()
-                ->addModifier(new ClassificationStoreFilter(
-                    self::FIELD_NAME,
-                    self::GROUP_NAME,
-                    $subModifier,
-                    $locale
-                ))
-                ->setClassDefinition($this->classDefinition)
-        )->getIds();
+        $search = $searchProvider
+            ->createDataObjectSearch()
+            ->addModifier(new ClassificationStoreFilter(
+                self::FIELD_NAME,
+                self::GROUP_NAME,
+                $subModifier,
+                $locale
+            ));
+
+        if ($classDefinition !== null) {
+            $search->setClassDefinition($classDefinition);
+        }
+
+        return $searchService->search($search)->getIds();
     }
 
     /**
@@ -486,6 +635,23 @@ class ClassificationStoreMappingTest extends Unit
         return $object;
     }
 
+    /**
+     * The text key is written under the non-localized node, which is the only node it is declared
+     * under - it carries localized = false.
+     */
+    private function setTextKeyValue(Concrete $object): void
+    {
+        $store = $object->get(self::FIELD_NAME);
+        $store->setLocalizedKeyValue(
+            $this->groupConfig->getId(),
+            $this->textKeyConfig->getId(),
+            self::TEXT_KEY_VALUE,
+            MappingProperty::NOT_LOCALIZED_KEY
+        );
+        $object->save();
+        $this->tester->flushIndex();
+    }
+
     private function createStoreDefinitions(): void
     {
         $this->storeConfig = new StoreConfig();
@@ -499,6 +665,11 @@ class ClassificationStoreMappingTest extends Unit
         $this->nonLocalizedKeyConfig = $this->createKeyWithAssignment(self::NON_LOCALIZED_KEY_NAME, false);
         $this->localizedKeyConfig = $this->createKeyWithAssignment(self::LOCALIZED_KEY_NAME, true);
         $this->excludedKeyConfig = $this->createKeyWithAssignment(self::EXCLUDED_KEY_NAME, indexed: false);
+        $this->textKeyConfig = $this->createKeyWithAssignment(
+            self::TEXT_KEY_NAME,
+            false,
+            type: self::TEXT_KEY_TYPE
+        );
 
         // the same two keys are assigned to a second group, so the exclusion is exercised per key
         $this->assignKeyToGroup($this->keyConfig, $this->secondGroupConfig);
@@ -522,14 +693,17 @@ class ClassificationStoreMappingTest extends Unit
     private function createKeyWithAssignment(
         string $name,
         ?bool $localized = null,
-        bool $indexed = true
+        bool $indexed = true,
+        string $type = self::KEY_TYPE
     ): KeyConfig {
         $definition = [
-            'fieldtype' => self::KEY_TYPE,
+            'fieldtype' => $type,
             'name' => $name,
             'title' => $name,
-            'integer' => true,
         ];
+        if ($type === self::KEY_TYPE) {
+            $definition['integer'] = true;
+        }
         if (!$indexed) {
             $definition[self::DEFINITION_INDEXED] = false;
         }
@@ -538,7 +712,7 @@ class ClassificationStoreMappingTest extends Unit
         $keyConfig = new KeyConfig();
         $keyConfig->setStoreId($this->storeConfig->getId());
         $keyConfig->setName($name);
-        $keyConfig->setType(self::KEY_TYPE);
+        $keyConfig->setType($type);
         $keyConfig->setDefinition($keyDefinition);
         $keyConfig->setLocalized($localized);
         $keyConfig->setEnabled(true);
@@ -560,7 +734,7 @@ class ClassificationStoreMappingTest extends Unit
         $relation->setKeyId($keyConfig->getId());
         $relation->setGroupId($groupConfig->getId());
         $relation->setName($keyConfig->getName());
-        $relation->setType(self::KEY_TYPE);
+        $relation->setType($keyConfig->getType());
         $relation->setEnabled(true);
         $relation->save();
     }

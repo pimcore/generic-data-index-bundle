@@ -19,7 +19,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Modifier\SearchMod
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\MatchNoneQuery;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\NestedFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\SimpleQueryStringFilter;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Query\TermsFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\MappedFieldPathDeclaration;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\BooleanFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\IntegerFilter;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\Basic\NumberFilter;
@@ -41,6 +43,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\MappedFie
  */
 final readonly class NestedTypeFilters
 {
+    /**
+     * The metadata field holding the concrete index a document lives in, which is how a query names
+     * a subset of the indices behind an alias.
+     */
+    private const INDEX_META_FIELD = '_index';
+
     public function __construct(
         private BasicFilters $basicFilters,
         private FieldTypeFilters $fieldTypeFilters,
@@ -83,13 +91,27 @@ final readonly class NestedTypeFilters
      * before `dynamic: false` is still declared and really does hold values - the flag alone would
      * rule out a node that works. On an index built from scratch the undeclared node is not filterable
      * by design, which the upgrade notes already state.
+     *
+     * The answer is kept per index, because a search can read more than one. A classless data object
+     * search names the global alias - IndexNameResolver::resolveIndexName() falls back to it when the
+     * search carries no class - so every class index is behind it at once, and a key that inherits the
+     * localized field of one class while being flagged not localized in another is declared under the
+     * language node of the first class's index only.
+     *
+     * One index declaring the address therefore cannot settle it for the rest. The filter is narrowed
+     * to the indices that do declare it, which leaves the others contributing nothing instead of
+     * contributing every object whose value sits under the node their own key is indexed under. The
+     * narrowing is on `_index`, so it also rules out the indices of classes that have no such field at
+     * all, which the nested clause cannot be built against.
      */
     #[AsSearchModifierHandler]
     public function handleClassificationStoreFilter(
         ClassificationStoreFilter $filter,
         SearchModifierContextInterface $context
     ): void {
-        if ($this->addressesUndeclaredKey($filter, $context->getOriginalSearch())) {
+        $declaration = $this->resolveMissingValueDeclaration($filter, $context->getOriginalSearch());
+
+        if ($declaration->isUndeclaredEverywhere()) {
             $context->getSearch()->addQuery(new MatchNoneQuery());
 
             return;
@@ -100,24 +122,36 @@ final readonly class NestedTypeFilters
             return;
         }
 
+        if ($declaration->isDeclaredByPartOfTheIndices()) {
+            $context->getSearch()->addQuery(
+                new TermsFilter(
+                    field: self::INDEX_META_FIELD,
+                    terms: $declaration->getDeclaringIndices()
+                )
+            );
+        }
+
         $context->getSearch()->addQuery(
             new NestedFilter($this->buildFieldPrefix($filter->getFieldName()), $subQuery)
         );
     }
 
     /**
-     * Whether the mapping rules out the key a missing-value filter addresses under the node it
+     * What the mappings say about the key a missing-value filter addresses, under the node it
      * addresses it in. Only such a filter is asked about, so nothing that already returned the empty
-     * result changes behaviour or pays for a mapping lookup.
+     * result changes behaviour or pays for a mapping lookup - every other sub-modifier gets the
+     * unanswered declaration, whose predicates are both false.
      */
-    private function addressesUndeclaredKey(ClassificationStoreFilter $filter, SearchInterface $search): bool
-    {
+    private function resolveMissingValueDeclaration(
+        ClassificationStoreFilter $filter,
+        SearchInterface $search
+    ): MappedFieldPathDeclaration {
         $keyName = $this->getMissingValueKeyName($filter->getSubModifier());
         if ($keyName === null) {
-            return false;
+            return MappedFieldPathDeclaration::unanswered();
         }
 
-        return $this->mappedFieldPathService->isUndeclaredInMapping(
+        return $this->mappedFieldPathService->resolveDeclaration(
             $search,
             $this->buildStoreFieldPrefix($filter) . '.' . $keyName
         );

@@ -14,21 +14,23 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\MappedFieldPathDeclaration;
 
 /**
- * Answers a field path against the mapping of the index a search runs against.
+ * Answers a field path against the mappings of the indices a search reads.
  *
  * @internal
  */
 interface MappedFieldPathServiceInterface
 {
     /**
-     * Whether the mapping positively rules this field path out: it was readable and does not declare
-     * the path, so no document of the index can hold a value there.
+     * Which of the indices behind the search's alias declare this field path, and which do not.
      *
-     * Only a definite answer is reported. A path the mapping declares, and a mapping that could not
-     * be read at all, both return false - the caller then builds the query it would have built
-     * anyway, rather than suppressing a filter on a guess.
+     * The answer is kept per index rather than reduced to a boolean, because an alias can be backed
+     * by more than one concrete index and the path can be declared in only some of them.
+     *
+     * Only a definite answer is reported: a mapping that could not be read at all is
+     * {@see MappedFieldPathDeclaration::unanswered()}, which asserts nothing about the path.
      */
-    public function isUndeclaredInMapping(SearchInterface $search, string $fieldPath): bool;
+    public function resolveDeclaration(SearchInterface $search, string $fieldPath): MappedFieldPathDeclaration;
 }
