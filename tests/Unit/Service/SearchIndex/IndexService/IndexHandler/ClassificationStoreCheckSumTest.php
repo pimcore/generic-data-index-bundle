@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDef
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\ClassificationStoreAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AbstractIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
@@ -117,7 +118,9 @@ final class ClassificationStoreCheckSumTest extends Unit
         $adapter->setLanguageService($this->makeEmpty(LanguageServiceInterface::class, [
             'getValidLanguages' => ['de', 'en'],
         ]));
-        $adapter->setLocalizationResolver(new LocalizationResolver($this->makeEmpty(Connection::class)));
+        $adapter->setKeyLocaleService(
+            new KeyLocaleService(new LocalizationResolver($this->makeEmpty(Connection::class)))
+        );
 
         $fieldDefinition = new Classificationstore();
         $fieldDefinition->setLocalized(false);

@@ -117,9 +117,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
   written stay in `_source` until each object's document is rewritten.
 - [Indexing] Behavior change on the read side: `ClassificationStoreFilter` takes the language node from its `$locale`
   argument and does not resolve it from the key, so a filter that passes a language for a key that is **not** localized
-  now finds nothing — that key is only indexed under `default`, which is the argument's default. The locale is per key,
-  not per group: a group holding one localized and one non-localized key needs the language for the first and
-  `default` for the second.
+  now finds nothing — that key is only indexed under `default`, which is the argument's default. The wrong node is an
+  empty result, not an error, so it reads like an absent value. The locale is per key, not per group: a group holding
+  one localized and one non-localized key needs the language for the first and `default` for the second.
+  `Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface::getLocaleForKey()` answers the node of a key id
+  with the resolution the mapping and the document use themselves, for callers that do not already know it.
 - [Indexing] Existing indices already contain language and key nodes that dynamic mapping created with a guessed type,
   and the update declares the real types over them. For a text key this is accepted in place: the type stays `text`,
   the declared sub-fields are added to the guessed one, and `ignore_above` is updatable. A numeric key can conflict: a

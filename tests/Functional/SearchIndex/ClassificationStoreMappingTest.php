@@ -49,6 +49,8 @@ class ClassificationStoreMappingTest extends Unit
 
     private const GROUP_NAME = 'Specifications';
 
+    private const SECOND_GROUP_NAME = 'Dimensions';
+
     private const KEY_NAME = 'Size';
 
     private const NON_LOCALIZED_KEY_NAME = 'Depth';
@@ -60,6 +62,8 @@ class ClassificationStoreMappingTest extends Unit
     private const KEY_VALUE = 42;
 
     private const NON_LOCALIZED_KEY_VALUE = 17;
+
+    private const NON_LOCALIZED_KEY_LANGUAGE_VALUE = 99;
 
     private const LOCALIZED_KEY_VALUE = 7;
 
@@ -79,6 +83,8 @@ class ClassificationStoreMappingTest extends Unit
     private StoreConfig $storeConfig;
 
     private GroupConfig $groupConfig;
+
+    private GroupConfig $secondGroupConfig;
 
     private KeyConfig $keyConfig;
 
@@ -114,6 +120,7 @@ class ClassificationStoreMappingTest extends Unit
         $this->deleteKeyWithAssignment($this->localizedKeyConfig);
         $this->deleteKeyWithAssignment($this->excludedKeyConfig);
         $this->groupConfig->delete();
+        $this->secondGroupConfig->delete();
         $this->storeConfig->delete();
     }
 
@@ -141,6 +148,9 @@ class ClassificationStoreMappingTest extends Unit
      * localized only under the non-localized node, and the key excluded on its own definition under
      * none of them. The index is built from scratch in _before(), so this is the mapping the bundle
      * declares, not one dynamic mapping contributed to.
+     *
+     * The non-localized key holds a value in a real language as well, so its absence from the language
+     * nodes of _source is the document not writing it there, not there being nothing to write.
      */
     public function testThePerKeyLanguageSetIsDeclaredAndWrittenOnARecreatedIndex(): void
     {
@@ -187,6 +197,10 @@ class ClassificationStoreMappingTest extends Unit
      * cannot express: a field that is not localized, carrying a key that is flagged localized. Every
      * other key of the group is declared and written under the non-localized node only, that one key
      * under every valid language - on an index built from scratch, so this is the declared mapping.
+     *
+     * The flag is resolved per key - LocalizationResolver::isKeyLocalized() - so the field's own flag
+     * being false does not override a key that carries one, and the non-localized key of the same group
+     * holds a value in a real language too, so its absence under that language is asserted, not vacuous.
      */
     public function testAKeyFlaggedLocalizedDeclaresTheLanguagesOnANonLocalizedField(): void
     {
@@ -225,6 +239,26 @@ class ClassificationStoreMappingTest extends Unit
 
         foreach ($groupSource as $sourceLanguage => $keyValues) {
             $this->assertArrayNotHasKey(self::EXCLUDED_KEY_NAME, $keyValues, $sourceLanguage);
+        }
+    }
+
+    /**
+     * The index exclusion belongs to the key, not to one of its assignments: the key excluded on its
+     * own definition is declared in neither of the two groups it is assigned to, while the key assigned
+     * to the same two groups without the flag is declared in both. Neither assignment carries a
+     * definition of its own, so what reaches the mapping is the key's, through the relation listing.
+     */
+    public function testAKeyExcludedOnItsDefinitionIsAbsentFromEveryGroupItIsAssignedTo(): void
+    {
+        $groupMappings = $this->getStoreFieldMapping()[self::PROPERTIES];
+
+        foreach ([self::GROUP_NAME, self::SECOND_GROUP_NAME] as $groupName) {
+            $declaredKeys = array_keys(
+                $groupMappings[$groupName][self::PROPERTIES][MappingProperty::NOT_LOCALIZED_KEY][self::PROPERTIES]
+            );
+
+            $this->assertContains(self::KEY_NAME, $declaredKeys, $groupName);
+            $this->assertNotContains(self::EXCLUDED_KEY_NAME, $declaredKeys, $groupName);
         }
     }
 
@@ -359,6 +393,13 @@ class ClassificationStoreMappingTest extends Unit
             self::NON_LOCALIZED_KEY_VALUE,
             MappingProperty::NOT_LOCALIZED_KEY
         );
+        // the store keeps this one too, so an absent language entry is a choice and not an empty value
+        $store->setLocalizedKeyValue(
+            $this->groupConfig->getId(),
+            $this->nonLocalizedKeyConfig->getId(),
+            self::NON_LOCALIZED_KEY_LANGUAGE_VALUE,
+            $language
+        );
         $store->setLocalizedKeyValue(
             $this->groupConfig->getId(),
             $this->localizedKeyConfig->getId(),
@@ -383,15 +424,27 @@ class ClassificationStoreMappingTest extends Unit
         $this->storeConfig->setName('gdiClassificationStoreMapping');
         $this->storeConfig->save();
 
-        $this->groupConfig = new GroupConfig();
-        $this->groupConfig->setStoreId($this->storeConfig->getId());
-        $this->groupConfig->setName(self::GROUP_NAME);
-        $this->groupConfig->save();
+        $this->groupConfig = $this->createGroup(self::GROUP_NAME);
+        $this->secondGroupConfig = $this->createGroup(self::SECOND_GROUP_NAME);
 
         $this->keyConfig = $this->createKeyWithAssignment(self::KEY_NAME);
         $this->nonLocalizedKeyConfig = $this->createKeyWithAssignment(self::NON_LOCALIZED_KEY_NAME, false);
         $this->localizedKeyConfig = $this->createKeyWithAssignment(self::LOCALIZED_KEY_NAME, true);
         $this->excludedKeyConfig = $this->createKeyWithAssignment(self::EXCLUDED_KEY_NAME, indexed: false);
+
+        // the same two keys are assigned to a second group, so the exclusion is exercised per key
+        $this->assignKeyToGroup($this->keyConfig, $this->secondGroupConfig);
+        $this->assignKeyToGroup($this->excludedKeyConfig, $this->secondGroupConfig);
+    }
+
+    private function createGroup(string $name): GroupConfig
+    {
+        $groupConfig = new GroupConfig();
+        $groupConfig->setStoreId($this->storeConfig->getId());
+        $groupConfig->setName($name);
+        $groupConfig->save();
+
+        return $groupConfig;
     }
 
     /**
@@ -423,24 +476,36 @@ class ClassificationStoreMappingTest extends Unit
         $keyConfig->setEnabled(true);
         $keyConfig->save();
 
-        $relation = new KeyGroupRelation();
-        $relation->setKeyId($keyConfig->getId());
-        $relation->setGroupId($this->groupConfig->getId());
-        $relation->setName($name);
-        $relation->setType(self::KEY_TYPE);
-        $relation->setDefinition($keyDefinition);
-        $relation->setEnabled(true);
-        $relation->save();
+        $this->assignKeyToGroup($keyConfig, $this->groupConfig);
 
         return $keyConfig;
     }
 
-    private function deleteKeyWithAssignment(KeyConfig $keyConfig): void
+    /**
+     * The assignment carries no definition of its own - the relation table has no such column, and the
+     * relation listing hands over the key's. Setting one here would hide which of the two the index
+     * exclusion is read from.
+     */
+    private function assignKeyToGroup(KeyConfig $keyConfig, GroupConfig $groupConfig): void
     {
         $relation = new KeyGroupRelation();
         $relation->setKeyId($keyConfig->getId());
-        $relation->setGroupId($this->groupConfig->getId());
-        $relation->delete();
+        $relation->setGroupId($groupConfig->getId());
+        $relation->setName($keyConfig->getName());
+        $relation->setType(self::KEY_TYPE);
+        $relation->setEnabled(true);
+        $relation->save();
+    }
+
+    private function deleteKeyWithAssignment(KeyConfig $keyConfig): void
+    {
+        foreach ([$this->groupConfig, $this->secondGroupConfig] as $groupConfig) {
+            $relation = new KeyGroupRelation();
+            $relation->setKeyId($keyConfig->getId());
+            $relation->setGroupId($groupConfig->getId());
+            $relation->delete();
+        }
+
         $keyConfig->delete();
     }
 

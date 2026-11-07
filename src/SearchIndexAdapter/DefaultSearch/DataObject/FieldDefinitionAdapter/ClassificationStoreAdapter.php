@@ -17,6 +17,7 @@ use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
@@ -28,7 +29,6 @@ use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig\Listing as GroupListing;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation\Listing as KeyGroupRelationListing;
-use Pimcore\Model\DataObject\Classificationstore\LocalizationResolver;
 use Pimcore\Model\DataObject\Concrete;
 use Symfony\Contracts\Service\Attribute\Required;
 
@@ -45,7 +45,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
     private LanguageServiceInterface $languageService;
 
-    private LocalizationResolver $localizationResolver;
+    private KeyLocaleServiceInterface $keyLocaleService;
 
     #[Required]
     public function setClassificationService(ServiceResolverInterface $serviceResolver): void
@@ -60,9 +60,9 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     #[Required]
-    public function setLocalizationResolver(LocalizationResolver $localizationResolver): void
+    public function setKeyLocaleService(KeyLocaleServiceInterface $keyLocaleService): void
     {
-        $this->localizationResolver = $localizationResolver;
+        $this->keyLocaleService = $keyLocaleService;
     }
 
     /**
@@ -266,8 +266,10 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
-     * The language set a localized key is declared and written under: the non-localized node plus
-     * every valid language of the installation. There is no per key subset of languages.
+     * The candidate set every key picks its own language nodes from: the non-localized node plus
+     * every valid language of the installation. What a key is declared and written under is the
+     * subset {@see self::getLanguagesForKey()} resolves from it - the non-localized node alone for a
+     * key that is not localized. There is no per key subset of languages.
      *
      * @return string[]
      */
@@ -280,9 +282,11 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
-     * The only place the adapter asks whether a key is localized. The rule - the key's own flag
-     * decides and a key without one inherits the class definition field's - belongs to
-     * {@see LocalizationResolver} and is not restated here, so the two cannot drift apart.
+     * The language nodes one key is declared and written under, resolved from the candidate set: the
+     * non-localized node alone for a key that is not localized, that node plus every valid language
+     * for one that is. The only place the adapter asks about a key's languages, and it asks the
+     * {@see KeyLocaleServiceInterface} whose other method answers a caller filtering that key, so the
+     * write side and the read side cannot disagree about where the key is indexed.
      *
      * @param string[] $validLanguages
      *
@@ -292,13 +296,11 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      */
     private function getLanguagesForKey(int $keyId, array $validLanguages): array
     {
-        $classificationStore = $this->getClassificationStoreDefinition();
-
-        if (!$this->localizationResolver->isKeyLocalized($keyId, $classificationStore)) {
-            return [MappingProperty::NOT_LOCALIZED_KEY];
-        }
-
-        return $validLanguages;
+        return $this->keyLocaleService->getLocalesForKey(
+            $keyId,
+            $this->getClassificationStoreDefinition(),
+            $validLanguages
+        );
     }
 
     private function getElementActiveGroups(Concrete $dataObject, Classificationstore $classificationStore): array
@@ -639,7 +641,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
-     * Every group is mapped with all of its keys (and languages), so mapping groups that an object of this
+     * Every group is mapped with all of its keys, so mapping groups that an object of this
      * class cannot get assigned can exceed the index total fields limit. When the field restricts the
      * allowed groups, only those are mapped; without a restriction, all groups of the store stay mapped.
      * The property has no default and stays uninitialized for definitions that never set it.

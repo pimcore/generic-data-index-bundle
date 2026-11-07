@@ -21,6 +21,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\Attribu
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\ClassificationStoreAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
@@ -383,6 +385,37 @@ final class ClassificationStoreAdapterTest extends Unit
             [self::DEFAULT_LANGUAGE],
             $this->getDeclaredLanguages(fieldLocalized: false, keyLocalized: false)
         );
+    }
+
+    /**
+     * One fixture, both sides of the per key language set: the locale a caller has to filter a key
+     * under is one of the language nodes the mapping declares for that key, over the whole flag
+     * matrix. Both answers come from the same service, and this is what keeps them that way.
+     */
+    public function testTheFilterLocaleOfAKeyIsOneOfItsDeclaredLanguageNodes(): void
+    {
+        $keyLocaleService = $this->createKeyLocaleService();
+        $language = self::LANGUAGES[0];
+
+        foreach ([true, false] as $fieldLocalized) {
+            foreach ([true, false, null] as $keyLocalized) {
+                $case = 'field ' . var_export($fieldLocalized, true) . ', key ' . var_export($keyLocalized, true);
+                $declaredLanguages = $this->getDeclaredLanguages($fieldLocalized, $keyLocalized);
+
+                $locale = $keyLocaleService->getLocaleForKey(
+                    self::KEY_ID,
+                    $this->createFieldDefinition($fieldLocalized),
+                    $language
+                );
+
+                $this->assertContains($locale, $declaredLanguages, $case);
+                $this->assertSame(
+                    ($keyLocalized ?? $fieldLocalized) ? $language : self::DEFAULT_LANGUAGE,
+                    $locale,
+                    $case
+                );
+            }
+        }
     }
 
     /**
@@ -841,11 +874,20 @@ final class ClassificationStoreAdapterTest extends Unit
         $adapter->setLanguageService($this->makeEmpty(LanguageServiceInterface::class, [
             'getValidLanguages' => $validLanguages,
         ]));
-        $adapter->setLocalizationResolver(new LocalizationResolver($this->makeEmpty(Connection::class)));
+        $adapter->setKeyLocaleService($this->createKeyLocaleService());
         $adapter->setFieldDefinition($fieldDefinition ?? new Classificationstore());
         $adapter->setLogger($logger ?? $this->createCollectingLogger());
 
         return $adapter;
+    }
+
+    /**
+     * The real resolver, not a stub of it: the rule under test is which languages the adapter asks it
+     * for, so a stubbed answer would assert the test's own arithmetic instead.
+     */
+    private function createKeyLocaleService(): KeyLocaleServiceInterface
+    {
+        return new KeyLocaleService(new LocalizationResolver($this->makeEmpty(Connection::class)));
     }
 
     private function getMappedGroupIds(Classificationstore $fieldDefinition, array $groupIds): array
