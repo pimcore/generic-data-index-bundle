@@ -31,6 +31,15 @@ interface MappedFieldPathServiceInterface
      *
      * Only a definite answer is reported: a mapping that could not be read at all is
      * {@see MappedFieldPathDeclaration::unanswered()}, which asserts nothing about the path.
+     *
+     * $pqlFieldNameResolutionEnabled is the filter's own setting, passed on so the answer is about the
+     * path the query will really read: with it on, PQL field name resolution may address a sub-field of
+     * the path instead - a `.keyword` multi-field, `.sort`, `.id` - and a guard answered on the bare
+     * path would not be a guard on the query.
      */
-    public function resolveDeclaration(SearchInterface $search, string $fieldPath): MappedFieldPathDeclaration;
+    public function resolveDeclaration(
+        SearchInterface $search,
+        string $fieldPath,
+        bool $pqlFieldNameResolutionEnabled = false,
+    ): MappedFieldPathDeclaration;
 }

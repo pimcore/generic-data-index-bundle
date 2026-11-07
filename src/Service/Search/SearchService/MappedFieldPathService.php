@@ -13,10 +13,10 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService;
 
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\SearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\MappedFieldPathDeclaration;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CachedSearchIndexMappingServiceInterface;
-use Throwable;
 
 /**
  * @internal
@@ -32,6 +32,7 @@ final readonly class MappedFieldPathService implements MappedFieldPathServiceInt
     public function __construct(
         private IndexNameResolverInterface $indexNameResolver,
         private CachedSearchIndexMappingServiceInterface $searchIndexMappingService,
+        private SearchPqlFieldNameTransformationServiceInterface $fieldNameTransformationService,
     ) {
     }
 
@@ -39,15 +40,36 @@ final readonly class MappedFieldPathService implements MappedFieldPathServiceInt
      * The mapping response is keyed by concrete index name even when an alias was asked for, which is
      * what makes the per index answer available at all - and what makes the names usable as query
      * terms, since `_index` of a document is that same concrete name.
+     *
+     * The path is resolved the same way the query that will read it is resolved, which is what
+     * $pqlFieldNameResolutionEnabled carries over from the filter. A caller's path is the one the
+     * filter was written with, and field name resolution is what the query is actually built on: it
+     * appends a sub-field when the mapping has one - `.keyword`, `.sort`, `.id` for a relation - and it
+     * takes that decision over all the indices behind the alias at once, so a sub-field only one of
+     * them declares still moves the query onto it for all of them. Answering about the path as given
+     * would then answer about a path the query never reads, and the per index answer below would report
+     * an index that declares the bare path without the sub-field as declaring the address.
+     *
+     * Only expected failures of reading the mapping are swallowed: the index name cannot be resolved,
+     * the index is gone, the cluster did not answer. A programming error is not a mapping that could
+     * not be read and is left to propagate, because the caller's fallback for "no answer" is to build
+     * the query it would have built anyway - which is the behaviour the guard exists to prevent.
      */
-    public function resolveDeclaration(SearchInterface $search, string $fieldPath): MappedFieldPathDeclaration
-    {
+    public function resolveDeclaration(
+        SearchInterface $search,
+        string $fieldPath,
+        bool $pqlFieldNameResolutionEnabled = false,
+    ): MappedFieldPathDeclaration {
         try {
             $indexMapping = $this->searchIndexMappingService->getMapping(
                 $this->indexNameResolver->resolveIndexName($search)
             );
-        } catch (Throwable) {
-            // the index could not be read, which says nothing about the path
+
+            if ($pqlFieldNameResolutionEnabled) {
+                $fieldPath = $this->fieldNameTransformationService->transformFieldnameForSearch($search, $fieldPath);
+            }
+        } catch (Exception) {
+            // the mapping could not be read, which says nothing about the path
             return MappedFieldPathDeclaration::unanswered();
         }
 

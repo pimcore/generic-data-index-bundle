@@ -141,20 +141,48 @@ final readonly class NestedTypeFilters
      * addresses it in. Only such a filter is asked about, so nothing that already returned the empty
      * result changes behaviour or pays for a mapping lookup - every other sub-modifier gets the
      * unanswered declaration, whose predicates are both false.
+     *
+     * The sub-modifier's field name resolution setting is passed with the path, because the path is
+     * only the address the guard is about if the query reads the same one. The sub-query builders
+     * resolve the field name when the sub-modifier asks them to - {@see BasicFilters::getBooleanQuery()}
+     * and {@see FieldTypeFilters::getBooleanMultiSelectFilter()} - which can address a sub-field of the
+     * key instead: a text key carries a `keyword` multi-field and the query reads that one. Resolution
+     * answers over all the indices behind the alias at once, so one index having the multi-field moves
+     * the query onto it for every index, and a guard answered on the bare path would still admit an
+     * index that declares the key without it - whose objects then satisfy `must_not exists` on a
+     * sub-field they do not have, which is the case this guard exists for.
      */
     private function resolveMissingValueDeclaration(
         ClassificationStoreFilter $filter,
         SearchInterface $search
     ): MappedFieldPathDeclaration {
-        $keyName = $this->getMissingValueKeyName($filter->getSubModifier());
+        $subModifier = $filter->getSubModifier();
+        $keyName = $this->getMissingValueKeyName($subModifier);
         if ($keyName === null) {
             return MappedFieldPathDeclaration::unanswered();
         }
 
         return $this->mappedFieldPathService->resolveDeclaration(
             $search,
-            $this->buildStoreFieldPrefix($filter) . '.' . $keyName
+            $this->buildStoreFieldPrefix($filter) . '.' . $keyName,
+            pqlFieldNameResolutionEnabled: $this->isPqlFieldNameResolutionEnabled($subModifier),
         );
+    }
+
+    /**
+     * Whether the sub-query the missing-value filter builds will have its field name resolved, which
+     * is the sub-modifier's own setting and defaults to on. The two sub-modifiers asked about here are
+     * the two {@see self::getMissingValueKeyName()} answers for; anything else is not asked.
+     */
+    private function isPqlFieldNameResolutionEnabled(SearchModifierInterface $subModifier): bool
+    {
+        return match (true) {
+            $subModifier instanceof BooleanFilter => $subModifier->isPqlFieldNameResolutionEnabled(),
+
+            $subModifier instanceof BooleanMultiSelectFilter => $subModifier->isPqlFieldNameResolutionEnabled(),
+
+            default => false,
+        };
     }
 
     /**

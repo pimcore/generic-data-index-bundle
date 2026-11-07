@@ -470,6 +470,41 @@ class ClassificationStoreMappingTest extends Unit
     }
 
     /**
+     * Field name resolution is on by default - every filter above switches it off - and for a text key
+     * it moves the query off the key's own path onto its `keyword` multi-field, because
+     * KeywordTransformer appends that sub-field whenever the mapping declares one. The guard is
+     * answered about the path the query really reads, so the filter is still answered here rather than
+     * ruled out, and it is answered on the multi-field.
+     *
+     * The second assertion is the control, in the same two directions as the test above: once the key
+     * holds a value the same filter finds nothing, so this is missing-value filtering on the resolved
+     * path and not a clause that matches everything.
+     *
+     * Resolution takes the sub-field decision over every index behind the alias at once, so a guard
+     * answered on the bare path would report an index that declares the key without the multi-field as
+     * declaring the address the query reads - and an absent path is what `must_not exists` satisfies,
+     * for every document of that index. That per index case is covered by the unit test
+     * MappedFieldPathServiceTest, which can put two such mappings behind one alias without needing an
+     * index whose mapping is older than its class.
+     */
+    public function testAMissingValueFilterWithFieldNameResolutionIsAnsweredOnTheResolvedPath(): void
+    {
+        $object = $this->createObjectWithStoreValue($this->getValidLanguages()[0], self::CLASS_NAME);
+
+        $this->assertSame(
+            [$object->getId()],
+            $this->filterByMissingKeyResolvingFieldName(self::TEXT_KEY_NAME, MappingProperty::NOT_LOCALIZED_KEY)
+        );
+
+        $this->setTextKeyValue($object);
+
+        $this->assertSame(
+            [],
+            $this->filterByMissingKeyResolvingFieldName(self::TEXT_KEY_NAME, MappingProperty::NOT_LOCALIZED_KEY)
+        );
+    }
+
+    /**
      * @return int[]
      */
     private function filterByKey(string $keyName, int $value, string $locale): array
@@ -486,6 +521,17 @@ class ClassificationStoreMappingTest extends Unit
     private function filterByMissingKey(string $keyName, string $locale): array
     {
         return $this->filterByStore(new BooleanFilter($keyName, null, false), $locale);
+    }
+
+    /**
+     * The same filter with PQL field name resolution left on, which is the default of the filter and
+     * what the query the guard has to agree with is built with.
+     *
+     * @return int[]
+     */
+    private function filterByMissingKeyResolvingFieldName(string $keyName, string $locale): array
+    {
+        return $this->filterByStore(new BooleanFilter($keyName, null, true), $locale);
     }
 
     /**
