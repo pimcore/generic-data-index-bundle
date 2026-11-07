@@ -87,9 +87,10 @@ description: Version-specific upgrade instructions and breaking changes for the 
   columns on them stop matching. Add the group to the field's allowed groups and re-index to restore filtering.
 - [Indexing] New: a classification store key whose own definition carries the JSON boolean `"indexed": false` is no
   longer mapped and no longer written to the document, so it is not filterable, sortable or searchable — in every group
-  the key is assigned to. Only that boolean on the key excludes it: a definition without the entry, an empty or
-  unparsable definition, and any other value all mean indexed, and the `indexed` entry of a key–group relation's
-  metadata is not read. On an existing index the two halves arrive separately: the value leaves `_source` only when an
+  the key is assigned to. Only that boolean on a definition that reads as a JSON object excludes it: a definition
+  without the entry, an empty, unparsable or null definition, one that reads as a scalar, and any other value of the
+  entry all mean indexed, and the `indexed` entry of a key–group relation's metadata is not read. On an existing index
+  the two halves arrive separately: the value leaves `_source` only when an
   object's document is rewritten, so it needs the re-queue that saving the class definition,
   `generic-data-index:deployment:reindex` or `generic-data-index:update:index` performs — `generic-data-index:reindex`
   copies the documents as they are and keeps it (see above) — while the node an earlier mapping already declared for the
@@ -114,6 +115,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
   `generic-data-index:deployment:reindex` or `generic-data-index:update:index`; add `-r` (or let the command copy the
   index natively) to drop the language nodes an earlier mapping declared, and note that the language values already
   written stay in `_source` until each object's document is rewritten.
+- [Indexing] Behavior change on the read side: `ClassificationStoreFilter` takes the language node from its `$locale`
+  argument and does not resolve it from the key, so a filter that passes a language for a key that is **not** localized
+  now finds nothing — that key is only indexed under `default`, which is the argument's default. The locale is per key,
+  not per group: a group holding one localized and one non-localized key needs the language for the first and
+  `default` for the second.
 - [Indexing] Existing indices already contain language and key nodes that dynamic mapping created with a guessed type,
   and the update declares the real types over them. For a text key this is accepted in place: the type stays `text`,
   the declared sub-fields are added to the guessed one, and `ignore_above` is updatable. A numeric key can conflict: a

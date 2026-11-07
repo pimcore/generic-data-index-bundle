@@ -21,6 +21,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\W
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 
+/**
+ * The locale is the language node the filtered key is indexed under, and it stays the caller's
+ * choice: it is not resolved from the key, where the mapping and the document resolve it per key.
+ * A group can therefore hold keys this filter has to be given different locales for - the default
+ * for a key that is not localized, the language for one that is.
+ */
 final readonly class ClassificationStoreFilter implements SearchModifierInterface
 {
     public function __construct(

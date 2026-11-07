@@ -48,11 +48,15 @@ final class ClassificationStoreAdapterTest extends Unit
 
     private const THIRD_KEY_NAME = 'Colour';
 
+    private const FOURTH_KEY_NAME = 'Material';
+
     private const KEY_ID = 42;
 
     private const OTHER_KEY_ID = 43;
 
     private const THIRD_KEY_ID = 44;
+
+    private const FOURTH_KEY_ID = 45;
 
     private const GROUP_ID = 9;
 
@@ -73,6 +77,12 @@ final class ClassificationStoreAdapterTest extends Unit
     private const DEFAULT_LANGUAGE = 'default';
 
     private const LANGUAGES = ['de', 'en'];
+
+    private const ETIM_ASSIGNMENTS = 76625;
+
+    private const ETIM_LOCALIZED_ASSIGNMENTS = 23222;
+
+    private const ETIM_LANGUAGES = 17;
 
     protected function _after(): void
     {
@@ -364,6 +374,18 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
+     * The sixth cell of the flag matrix: a flag that agrees with the field it is rendered in changes
+     * nothing, so neither explicit value is a special case of the other.
+     */
+    public function testAKeyFlaggedNonLocalizedDeclaresNoLanguageOnANonLocalizedField(): void
+    {
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE],
+            $this->getDeclaredLanguages(fieldLocalized: false, keyLocalized: false)
+        );
+    }
+
+    /**
      * A group, language or key that is not declared stays in _source without being indexed, instead of
      * being auto-mapped with a guessed type that the next mapping update then contradicts.
      */
@@ -469,8 +491,9 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
-     * Nothing is excluded unless the flag says so: a definition without the flag, an empty definition
-     * and an unparsable one are all mapped and written as before.
+     * Nothing is excluded unless the flag says so, which is what the documented default promises and
+     * wider than the flag itself needs: a definition without the flag, an empty one, an unparsable one
+     * and one that reads as a JSON scalar rather than an object are all mapped and written as before.
      */
     public function testKeyWithoutIndexFlagIsIndexedAsBefore(): void
     {
@@ -484,7 +507,10 @@ final class ClassificationStoreAdapterTest extends Unit
         $unparsableDefinition = $this->createRelation(self::THIRD_KEY_ID, self::GROUP_ID, self::THIRD_KEY_NAME);
         $unparsableDefinition->setDefinition('{"fieldtype": "input"');
 
-        $relations = [$withoutFlag, $emptyDefinition, $unparsableDefinition];
+        $scalarDefinition = $this->createRelation(self::FOURTH_KEY_ID, self::GROUP_ID, self::FOURTH_KEY_NAME);
+        $scalarDefinition->setDefinition('null');
+
+        $relations = [$withoutFlag, $emptyDefinition, $unparsableDefinition, $scalarDefinition];
 
         $this->assertSame(
             [
@@ -493,6 +519,7 @@ final class ClassificationStoreAdapterTest extends Unit
                         self::KEY_NAME => self::KEY_MAPPING,
                         self::OTHER_KEY_NAME => self::KEY_MAPPING,
                         self::THIRD_KEY_NAME => self::KEY_MAPPING,
+                        self::FOURTH_KEY_NAME => self::KEY_MAPPING,
                     ],
                 ],
             ],
@@ -505,6 +532,7 @@ final class ClassificationStoreAdapterTest extends Unit
                     self::KEY_NAME => self::KEY_ID,
                     self::OTHER_KEY_NAME => self::OTHER_KEY_ID,
                     self::THIRD_KEY_NAME => self::THIRD_KEY_ID,
+                    self::FOURTH_KEY_NAME => self::FOURTH_KEY_ID,
                 ],
             ],
             $this->getDocumentValues($fieldDefinition, [], $relations)
@@ -613,10 +641,13 @@ final class ClassificationStoreAdapterTest extends Unit
 
     /**
      * The declared field count of the classification store field at ETIM proportions: 76,625 key
-     * assignments, 17 valid languages plus the non-localized node, 23,222 of the assignments localized.
-     * The leaf count is additive over the groups of the store, so one synthetic group carrying every
-     * assignment produces the same total as the real group distribution, and no group restriction is
-     * applied. The stub maps one leaf per key, which is the unit the 1,379,250 baseline counts.
+     * assignments, 17 valid languages plus the non-localized node, 23,222 of the assignments localized,
+     * and no group restriction. Each group contributes its own leaves and each key of a group its own,
+     * so the quantity measured here is the leaf count of a single key at the language count of the
+     * shape, and the two totals are projected from it; the additivity the projection rests on is
+     * asserted on a mixed pair of the same keys. A unit suite is not where throughput is measured, so
+     * the volume stays out of it. The stub maps one leaf per key, which is the unit the 1,379,250
+     * baseline counts.
      *
      * Before: every key under every language node - what a localized field declared for all of its keys
      * and what a key without a flag still inherits - 76,625 x 18 = 1,379,250.
@@ -625,29 +656,48 @@ final class ClassificationStoreAdapterTest extends Unit
      */
     public function testTheDeclaredFieldCountOfAnEtimShapedStore(): void
     {
-        $assignments = 76625;
-        $localizedAssignments = 23222;
-        $languageCodes = array_map(static fn (int $index): string => 'l' . $index, range(1, 17));
+        $languages = array_map(static fn (int $index): string => 'l' . $index, range(1, self::ETIM_LANGUAGES));
 
-        $inheriting = [];
-        for ($keyId = 1; $keyId <= $assignments; $keyId++) {
-            $inheriting[] = $this->createRelation($keyId, self::GROUP_ID, 'k' . $keyId);
-        }
+        $inheritingOnALocalizedField = $this->countDeclaredFieldsOfKeys($languages, true, [self::KEY_ID => null]);
+        $localizedKey = $this->countDeclaredFieldsOfKeys($languages, false, [self::KEY_ID => true]);
+        $nonLocalizedKey = $this->countDeclaredFieldsOfKeys($languages, false, [self::KEY_ID => false]);
 
-        $before = $this->countDeclaredFields(
-            $this->getMappingForRelations($this->createFieldDefinition(true), $languageCodes, $inheriting)
+        // the projection is additive over the keys of a group, which is what a mixed group has to show
+        $this->assertSame(
+            $localizedKey + $nonLocalizedKey,
+            $this->countDeclaredFieldsOfKeys(
+                $languages,
+                false,
+                [self::KEY_ID => true, self::OTHER_KEY_ID => false]
+            )
         );
 
-        for ($keyId = 1; $keyId <= $assignments; $keyId++) {
-            $this->registerKey($keyId, $keyId <= $localizedAssignments);
-        }
-
-        $after = $this->countDeclaredFields(
-            $this->getMappingForRelations($this->createFieldDefinition(false), $languageCodes, $inheriting)
-        );
+        $before = self::ETIM_ASSIGNMENTS * $inheritingOnALocalizedField;
+        $after = self::ETIM_LOCALIZED_ASSIGNMENTS * $localizedKey
+            + (self::ETIM_ASSIGNMENTS - self::ETIM_LOCALIZED_ASSIGNMENTS) * $nonLocalizedKey;
 
         $this->assertSame(1379250, $before);
         $this->assertSame(471399, $after);
+    }
+
+    /**
+     * The declared leaves of one group mapping, for the keys given as key id => localization flag.
+     *
+     * @param string[] $validLanguages
+     * @param array<int, bool|null> $keyFlags
+     */
+    private function countDeclaredFieldsOfKeys(array $validLanguages, bool $fieldLocalized, array $keyFlags): int
+    {
+        $relations = [];
+        foreach ($keyFlags as $keyId => $localized) {
+            $relations[] = $this->createRelation($keyId, self::GROUP_ID, 'k' . $keyId, $localized);
+        }
+
+        return $this->countDeclaredFields($this->getMappingForRelations(
+            $this->createFieldDefinition($fieldLocalized),
+            $validLanguages,
+            $relations
+        ));
     }
 
     /**

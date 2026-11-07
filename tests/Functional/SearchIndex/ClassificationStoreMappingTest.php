@@ -43,6 +43,8 @@ class ClassificationStoreMappingTest extends Unit
 {
     private const CLASS_NAME = 'csMapping';
 
+    private const NON_LOCALIZED_CLASS_NAME = 'csMappingPerKey';
+
     private const FIELD_NAME = 'csstore';
 
     private const GROUP_NAME = 'Specifications';
@@ -51,11 +53,15 @@ class ClassificationStoreMappingTest extends Unit
 
     private const NON_LOCALIZED_KEY_NAME = 'Depth';
 
+    private const LOCALIZED_KEY_NAME = 'Colour';
+
     private const EXCLUDED_KEY_NAME = 'Weight';
 
     private const KEY_VALUE = 42;
 
     private const NON_LOCALIZED_KEY_VALUE = 17;
+
+    private const LOCALIZED_KEY_VALUE = 7;
 
     private const EXCLUDED_KEY_VALUE = 23;
 
@@ -78,17 +84,21 @@ class ClassificationStoreMappingTest extends Unit
 
     private KeyConfig $nonLocalizedKeyConfig;
 
+    private KeyConfig $localizedKeyConfig;
+
     private KeyConfig $excludedKeyConfig;
 
     private ClassDefinition $classDefinition;
+
+    private ?ClassDefinition $nonLocalizedClassDefinition = null;
 
     protected function _before(): void
     {
         $this->tester->enableSynchronousProcessing();
         $this->tester->clearQueue();
         $this->createStoreDefinitions();
-        $this->classDefinition = $this->createClassDefinition();
-        $this->recreateClassIndex();
+        $this->classDefinition = $this->createClassDefinition(self::CLASS_NAME, true);
+        $this->recreateClassIndex($this->classDefinition);
     }
 
     protected function _after(): void
@@ -98,8 +108,10 @@ class ClassificationStoreMappingTest extends Unit
         $this->tester->cleanupIndex();
         $this->tester->flushIndex();
         $this->classDefinition->delete();
+        $this->nonLocalizedClassDefinition?->delete();
         $this->deleteKeyWithAssignment($this->keyConfig);
         $this->deleteKeyWithAssignment($this->nonLocalizedKeyConfig);
+        $this->deleteKeyWithAssignment($this->localizedKeyConfig);
         $this->deleteKeyWithAssignment($this->excludedKeyConfig);
         $this->groupConfig->delete();
         $this->storeConfig->delete();
@@ -133,29 +145,27 @@ class ClassificationStoreMappingTest extends Unit
     public function testThePerKeyLanguageSetIsDeclaredAndWrittenOnARecreatedIndex(): void
     {
         $language = $this->getValidLanguages()[0];
-        $object = $this->createObjectWithStoreValue($language);
+        $object = $this->createObjectWithStoreValue($language, self::CLASS_NAME);
 
-        $groupMapping = $this->getStoreFieldMapping()[self::PROPERTIES][self::GROUP_NAME][self::PROPERTIES];
+        $groupMapping = $this->getGroupMapping(self::CLASS_NAME);
 
         // asserted before the loop, so an empty group node cannot satisfy the absence assertions vacuously
         $this->assertEqualsCanonicalizing($this->getDeclaredLanguages(), array_keys($groupMapping));
 
         $this->assertEqualsCanonicalizing(
-            [self::KEY_NAME, self::NON_LOCALIZED_KEY_NAME],
+            [self::KEY_NAME, self::NON_LOCALIZED_KEY_NAME, self::LOCALIZED_KEY_NAME],
             array_keys($groupMapping[MappingProperty::NOT_LOCALIZED_KEY][self::PROPERTIES])
         );
 
         foreach ($this->getValidLanguages() as $validLanguage) {
-            $this->assertSame(
-                [self::KEY_NAME],
+            $this->assertEqualsCanonicalizing(
+                [self::KEY_NAME, self::LOCALIZED_KEY_NAME],
                 array_keys($groupMapping[$validLanguage][self::PROPERTIES]),
                 $validLanguage
             );
         }
 
-        $indexName = $this->tester->getIndexName(self::CLASS_NAME, true);
-        $source = $this->tester->checkIndexEntry($object->getId(), $indexName)['_source'];
-        $groupSource = $source[FieldCategory::STANDARD_FIELDS->value][self::FIELD_NAME][self::GROUP_NAME];
+        $groupSource = $this->getGroupSource($object, self::CLASS_NAME);
 
         $this->assertEquals(self::KEY_VALUE, $groupSource[$language][self::KEY_NAME]);
         $this->assertEquals(
@@ -172,29 +182,111 @@ class ClassificationStoreMappingTest extends Unit
         }
     }
 
+    /**
+     * The combination the per key flag exists for, and the one the class definition field's flag alone
+     * cannot express: a field that is not localized, carrying a key that is flagged localized. Every
+     * other key of the group is declared and written under the non-localized node only, that one key
+     * under every valid language - on an index built from scratch, so this is the declared mapping.
+     */
+    public function testAKeyFlaggedLocalizedDeclaresTheLanguagesOnANonLocalizedField(): void
+    {
+        $this->nonLocalizedClassDefinition = $this->createClassDefinition(self::NON_LOCALIZED_CLASS_NAME, false);
+        $this->recreateClassIndex($this->nonLocalizedClassDefinition);
+
+        $language = $this->getValidLanguages()[0];
+        $object = $this->createObjectWithStoreValue($language, self::NON_LOCALIZED_CLASS_NAME);
+
+        $groupMapping = $this->getGroupMapping(self::NON_LOCALIZED_CLASS_NAME);
+
+        // the one localized key is what makes the languages part of the mapping of a non-localized field
+        $this->assertEqualsCanonicalizing($this->getDeclaredLanguages(), array_keys($groupMapping));
+
+        $this->assertEqualsCanonicalizing(
+            [self::KEY_NAME, self::NON_LOCALIZED_KEY_NAME, self::LOCALIZED_KEY_NAME],
+            array_keys($groupMapping[MappingProperty::NOT_LOCALIZED_KEY][self::PROPERTIES])
+        );
+
+        foreach ($this->getValidLanguages() as $validLanguage) {
+            $this->assertSame(
+                [self::LOCALIZED_KEY_NAME],
+                array_keys($groupMapping[$validLanguage][self::PROPERTIES]),
+                $validLanguage
+            );
+        }
+
+        $groupSource = $this->getGroupSource($object, self::NON_LOCALIZED_CLASS_NAME);
+
+        $this->assertEquals(self::LOCALIZED_KEY_VALUE, $groupSource[$language][self::LOCALIZED_KEY_NAME]);
+        $this->assertSame([self::LOCALIZED_KEY_NAME], array_keys($groupSource[$language]));
+        $this->assertEquals(
+            self::NON_LOCALIZED_KEY_VALUE,
+            $groupSource[MappingProperty::NOT_LOCALIZED_KEY][self::NON_LOCALIZED_KEY_NAME]
+        );
+
+        foreach ($groupSource as $sourceLanguage => $keyValues) {
+            $this->assertArrayNotHasKey(self::EXCLUDED_KEY_NAME, $keyValues, $sourceLanguage);
+        }
+    }
+
     public function testAValueInANonDefaultLanguageIsFilterable(): void
     {
         $language = $this->getValidLanguages()[0];
-        $object = $this->createObjectWithStoreValue($language);
+        $object = $this->createObjectWithStoreValue($language, self::CLASS_NAME);
 
+        $this->assertSame(
+            [$object->getId()],
+            $this->filterByKey(self::KEY_NAME, self::KEY_VALUE, $language),
+            $language
+        );
+    }
+
+    /**
+     * The read side of the per key language set: the filter takes its locale from the caller, so a
+     * non-localized key is only found under the node the mapping declares for it. The group holds keys
+     * of both kinds, which is why the locale has to be chosen per key and not per group.
+     */
+    public function testANonLocalizedKeyIsFilterableUnderTheDefaultLocaleOnly(): void
+    {
+        $language = $this->getValidLanguages()[0];
+        $object = $this->createObjectWithStoreValue($language, self::CLASS_NAME);
+
+        $this->assertSame(
+            [$object->getId()],
+            $this->filterByKey(
+                self::NON_LOCALIZED_KEY_NAME,
+                self::NON_LOCALIZED_KEY_VALUE,
+                MappingProperty::NOT_LOCALIZED_KEY
+            )
+        );
+
+        $this->assertSame(
+            [],
+            $this->filterByKey(self::NON_LOCALIZED_KEY_NAME, self::NON_LOCALIZED_KEY_VALUE, $language),
+            $language
+        );
+    }
+
+    /**
+     * @return int[]
+     */
+    private function filterByKey(string $keyName, int $value, string $locale): array
+    {
         /** @var DataObjectSearchServiceInterface $searchService */
         $searchService = $this->tester->grabService('generic-data-index.test.service.data-object-search-service');
         /** @var SearchProviderInterface $searchProvider */
         $searchProvider = $this->tester->grabService(SearchProviderInterface::class);
 
-        $result = $searchService->search(
+        return $searchService->search(
             $searchProvider
                 ->createDataObjectSearch()
                 ->addModifier(new ClassificationStoreFilter(
                     self::FIELD_NAME,
                     self::GROUP_NAME,
-                    new IntegerFilter(self::KEY_NAME, self::KEY_VALUE, false),
-                    $language
+                    new IntegerFilter($keyName, $value, false),
+                    $locale
                 ))
                 ->setClassDefinition($this->classDefinition)
-        );
-
-        $this->assertSame([$object->getId()], $result->getIds(), $language);
+        )->getIds();
     }
 
     /**
@@ -205,13 +297,32 @@ class ClassificationStoreMappingTest extends Unit
         return array_merge([MappingProperty::NOT_LOCALIZED_KEY], $this->getValidLanguages());
     }
 
-    private function getStoreFieldMapping(): array
+    private function getStoreFieldMapping(string $className = self::CLASS_NAME): array
     {
-        $indexName = $this->tester->getIndexName(self::CLASS_NAME, true);
+        $indexName = $this->tester->getIndexName($className, true);
         $mapping = $this->tester->getIndexMapping($indexName);
         $properties = $mapping[$indexName]['mappings'][self::PROPERTIES];
 
         return $properties[FieldCategory::STANDARD_FIELDS->value][self::PROPERTIES][self::FIELD_NAME];
+    }
+
+    /**
+     * The language nodes the group declares, keyed by language.
+     */
+    private function getGroupMapping(string $className): array
+    {
+        return $this->getStoreFieldMapping($className)[self::PROPERTIES][self::GROUP_NAME][self::PROPERTIES];
+    }
+
+    /**
+     * The values the group holds in _source, keyed by language.
+     */
+    private function getGroupSource(Concrete $object, string $className): array
+    {
+        $indexName = $this->tester->getIndexName($className, true);
+        $source = $this->tester->checkIndexEntry($object->getId(), $indexName)['_source'];
+
+        return $source[FieldCategory::STANDARD_FIELDS->value][self::FIELD_NAME][self::GROUP_NAME];
     }
 
     /**
@@ -225,9 +336,9 @@ class ClassificationStoreMappingTest extends Unit
         return $languageService->getValidLanguages();
     }
 
-    private function createObjectWithStoreValue(string $language): Concrete
+    private function createObjectWithStoreValue(string $language, string $classDefinitionName): Concrete
     {
-        $className = 'Pimcore\\Model\\DataObject\\' . ucfirst(self::CLASS_NAME);
+        $className = 'Pimcore\\Model\\DataObject\\' . ucfirst($classDefinitionName);
         /** @var Concrete $object */
         $object = new $className();
         $object->setParentId(1);
@@ -247,6 +358,12 @@ class ClassificationStoreMappingTest extends Unit
             $this->nonLocalizedKeyConfig->getId(),
             self::NON_LOCALIZED_KEY_VALUE,
             MappingProperty::NOT_LOCALIZED_KEY
+        );
+        $store->setLocalizedKeyValue(
+            $this->groupConfig->getId(),
+            $this->localizedKeyConfig->getId(),
+            self::LOCALIZED_KEY_VALUE,
+            $language
         );
         $store->setLocalizedKeyValue(
             $this->groupConfig->getId(),
@@ -273,6 +390,7 @@ class ClassificationStoreMappingTest extends Unit
 
         $this->keyConfig = $this->createKeyWithAssignment(self::KEY_NAME);
         $this->nonLocalizedKeyConfig = $this->createKeyWithAssignment(self::NON_LOCALIZED_KEY_NAME, false);
+        $this->localizedKeyConfig = $this->createKeyWithAssignment(self::LOCALIZED_KEY_NAME, true);
         $this->excludedKeyConfig = $this->createKeyWithAssignment(self::EXCLUDED_KEY_NAME, indexed: false);
     }
 
@@ -326,12 +444,12 @@ class ClassificationStoreMappingTest extends Unit
         $keyConfig->delete();
     }
 
-    private function createClassDefinition(): ClassDefinition
+    private function createClassDefinition(string $name, bool $localized): ClassDefinition
     {
         $field = new ClassificationstoreField();
         $field->setName(self::FIELD_NAME);
         $field->setStoreId($this->storeConfig->getId());
-        $field->setLocalized(true);
+        $field->setLocalized($localized);
 
         $panel = (new Panel())->setName('MyLayout');
         $panel->addChild($field);
@@ -341,7 +459,7 @@ class ClassificationStoreMappingTest extends Unit
         $root->addChild($tabPanel);
 
         $classDefinition = new ClassDefinition();
-        $classDefinition->setName(self::CLASS_NAME);
+        $classDefinition->setName($name);
         $classDefinition->setLayoutDefinitions($root);
         $classDefinition->save();
 
@@ -352,13 +470,13 @@ class ClassificationStoreMappingTest extends Unit
      * Other tests leave dynamically mapped fields behind in the shared indices, so the index of this
      * class is created from scratch to get the mapping the bundle itself declares.
      */
-    private function recreateClassIndex(): void
+    private function recreateClassIndex(ClassDefinition $classDefinition): void
     {
         /** @var IndexUpdateServiceInterface $indexUpdateService */
         $indexUpdateService = $this->tester->grabService(IndexUpdateServiceInterface::class);
         $indexUpdateService
             ->setReCreateIndex(true)
-            ->updateClassDefinition($this->classDefinition);
+            ->updateClassDefinition($classDefinition);
         $this->tester->flushIndex();
     }
 }

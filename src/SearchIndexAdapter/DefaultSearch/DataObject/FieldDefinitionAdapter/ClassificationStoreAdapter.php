@@ -407,10 +407,16 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     /**
      * A key marked as not indexed is dropped from the mapping, the document and the inheritance paths
      * alike, and before its name is normalized, so it does not reserve a segment another key of the same
-     * normalized name could use. The flag belongs to the key, not to one of its assignments: it is read
-     * from the key's own definition and therefore excludes the key from every group it is assigned to.
-     * A definition without the flag, an empty or unparsable one and any value other than the boolean
-     * false all mean indexed: nothing is excluded unless the flag says so.
+     * normalized name could use. The flag belongs to the key, not to one of its assignments: the
+     * relation table carries no definition of its own, so the definition the relation listing hands over
+     * is the key's, and the flag therefore excludes the key from every group it is assigned to.
+     *
+     * The flag is only honoured on a definition that decodes into an array, and only as the boolean
+     * false. Everything else means indexed: a definition without the entry, an empty, unparsable or
+     * null one, one that decodes into a scalar, and any other value of the entry. That is wider than
+     * the exclusion itself needs, and deliberately so - a definition this adapter cannot read must not
+     * silently drop a key out of the index. The flag the exclusion replaced was read from a nullable
+     * metadata array, where an unreadable value meant indexed for the same reason.
      */
     private function isIndexedKey(KeyGroupRelation $key): bool
     {
