@@ -30,6 +30,7 @@ use Pimcore\Model\DataObject\Classificationstore\GroupConfig\Listing as GroupLis
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation\Listing as KeyGroupRelationListing;
 use Pimcore\Model\DataObject\Concrete;
+use ReflectionProperty;
 use Symfony\Contracts\Service\Attribute\Required;
 
 /**
@@ -40,6 +41,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     use LoggerAwareTrait;
 
     private const DEFINITION_INDEXED = 'indexed';
+
+    private const CACHE_KEY_INDEXED = 'gdi_cs_key_indexed_%d';
 
     private ServiceResolverInterface $classificationService;
 
@@ -413,21 +416,51 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * relation table carries no definition of its own, so the definition the relation listing hands over
      * is the key's, and the flag therefore excludes the key from every group it is assigned to.
      *
-     * The flag is only honoured on a definition that decodes into an array, and only as the boolean
-     * false. Everything else means indexed: a definition without the entry, an empty, unparsable or
-     * null one, one that decodes into a scalar, and any other value of the entry. That is wider than
-     * the exclusion itself needs, and deliberately so - a definition this adapter cannot read must not
-     * silently drop a key out of the index. The flag the exclusion replaced was read from a nullable
-     * metadata array, where an unreadable value meant indexed for the same reason.
+     * What this method tolerates is a definition it cannot read: the flag is honoured only on one that
+     * decodes into an array, and only as the boolean false, so a definition without the entry, an empty
+     * or unparsable one, one that decodes into a JSON scalar and any other value of the entry all mean
+     * indexed. That is wider than the exclusion itself needs, and deliberately so - a definition this
+     * adapter cannot read must not silently drop a key out of the index.
+     *
+     * What it does not tolerate is a relation that was never hydrated. KeyGroupRelation declares both
+     * "keyId" and "definition" as typed properties without a default, so reading either off such a
+     * relation is an Error rather than a value to fall back on - the getter is not nullable and has
+     * nothing to return. Neither is read before it is known to be there, and a relation that cannot
+     * answer is skipped, which is what all three callers do with a key they cannot map.
+     *
+     * The resolved flag is a constant of the key, so it is memoized per key id - the whole of its
+     * scope, since two assignments of one key read one definition and cannot disagree. normalize()
+     * gets a new adapter per indexed object and visits every key of every active group, so the
+     * definition would otherwise be parsed again for every object. Runtime-cache scoped like the
+     * inheritance origin memo of the base adapter, so the cleanup between queue batches bounds
+     * staleness. An unhydrated relation is not memoized: that says nothing about the key.
      */
     private function isIndexedKey(KeyGroupRelation $key): bool
     {
-        $definition = json_decode($key->getDefinition(), true);
-        if (!is_array($definition)) {
-            return true;
+        if (!$this->isHydratedRelationProperty($key, 'keyId')) {
+            return false;
         }
 
-        return ($definition[self::DEFINITION_INDEXED] ?? true) !== false;
+        $cacheKey = sprintf(self::CACHE_KEY_INDEXED, $key->getKeyId());
+        if ($this->runtimeCacheResolver->isRegistered($cacheKey)) {
+            return $this->runtimeCacheResolver->load($cacheKey);
+        }
+
+        if (!$this->isHydratedRelationProperty($key, 'definition')) {
+            return false;
+        }
+
+        $definition = json_decode($key->getDefinition(), true);
+        $indexed = !is_array($definition) || ($definition[self::DEFINITION_INDEXED] ?? true) !== false;
+
+        $this->runtimeCacheResolver->save($indexed, $cacheKey);
+
+        return $indexed;
+    }
+
+    private function isHydratedRelationProperty(KeyGroupRelation $key, string $property): bool
+    {
+        return (new ReflectionProperty(KeyGroupRelation::class, $property))->isInitialized($key);
     }
 
     /**

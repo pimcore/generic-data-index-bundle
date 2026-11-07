@@ -350,7 +350,12 @@ The bundle sets the field limit per index to 100,000 by default
 each group is mapped with each of its keys, and a localized key adds a field per valid language.
 Restricting the allowed groups of the classification store field in the class definition maps only those
 groups and reduces the field count, and so does marking the keys that do not need a language as not
-localized. Otherwise, increase the limit with:
+localized. The two are not equivalent in what they keep. A group that is not allowed stays in `_source` and
+remains readable. A key that is not localized has no per-language value written to the document at all, so
+those values become unrecoverable *from the index*: they are still in the database, but nothing reads them
+back out of a search result, and an object indexed before the change keeps them in `_source` only until its
+document is next rewritten. Localizing the key again and re-indexing its objects is what brings them back.
+Otherwise, increase the limit with:
 
 ```yaml
 pimcore_generic_data_index:

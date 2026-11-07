@@ -13,6 +13,7 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\DataObject\FieldDefinitionAdapter;
 
+use ArrayObject;
 use Codeception\Test\Unit;
 use Doctrine\DBAL\Connection;
 use Exception;
@@ -25,6 +26,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStor
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox;
@@ -69,6 +71,8 @@ final class ClassificationStoreAdapterTest extends Unit
     private const GROUP_NAME = 'Specifications';
 
     private const DEFINITION_INDEXED = 'indexed';
+
+    private const CACHE_KEY_INDEXED = 'gdi_cs_key_indexed_%d';
 
     private const KEY_MAPPING = ['type' => 'keyword'];
 
@@ -594,6 +598,87 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
+     * A relation that was never hydrated cannot answer which key it assigns: KeyGroupRelation declares
+     * "keyId" and "definition" as typed properties without a default, so reading either is an Error and
+     * not a value to fall back on. The key is skipped instead, on all three paths that ask whether it is
+     * indexed, and the keys around it are mapped and written as before.
+     */
+    public function testARelationThatWasNeverHydratedIsSkippedRatherThanRead(): void
+    {
+        $fieldDefinition = $this->createFieldDefinition(false);
+
+        $withoutDefinition = new KeyGroupRelation();
+        $withoutDefinition->setKeyId(self::OTHER_KEY_ID);
+        $withoutDefinition->setGroupId(self::GROUP_ID);
+        $withoutDefinition->setName(self::OTHER_KEY_NAME);
+
+        $withoutKeyId = new KeyGroupRelation();
+        $withoutKeyId->setGroupId(self::GROUP_ID);
+        $withoutKeyId->setName(self::THIRD_KEY_NAME);
+        $withoutKeyId->setDefinition('{}');
+
+        $relations = [
+            $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME),
+            $withoutDefinition,
+            $withoutKeyId,
+        ];
+
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => self::LANGUAGE_NODE],
+            $this->getMappingForRelations($fieldDefinition, [], $relations)
+        );
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => [self::KEY_NAME => self::KEY_ID]],
+            $this->getDocumentValues($fieldDefinition, [], $relations)
+        );
+
+        $keyMapping = (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyMappingForInheritance'))
+            ->invoke($this->createConfiguredAdapter([], $fieldDefinition), $relations);
+
+        $this->assertSame([self::KEY_ID], array_keys($keyMapping));
+    }
+
+    /**
+     * The flag is a constant of the key, so it is parsed once and memoized per key id - which is the
+     * whole of its scope, since the relation listing hands every assignment the key's own definition.
+     * normalize() gets a new adapter for every indexed object, so without the memo each of them would
+     * parse the definition of every key of every active group again. A relation that cannot answer is
+     * not memoized: that says nothing about the key, and a hydrated assignment of it still resolves.
+     */
+    public function testTheIndexFlagIsParsedOncePerKeyIdAndNotMemoizedForAnUnhydratedRelation(): void
+    {
+        $entries = new ArrayObject();
+        $resolver = $this->createRuntimeCacheResolver($entries);
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'isIndexedKey');
+
+        $excluded = $this->excludeOnDefinition($this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME));
+        $sameKeyOtherGroup = $this->createRelation(self::KEY_ID, self::OTHER_GROUP_ID, self::KEY_NAME);
+
+        $unhydrated = new KeyGroupRelation();
+        $unhydrated->setKeyId(self::OTHER_KEY_ID);
+        $unhydrated->setGroupId(self::GROUP_ID);
+        $unhydrated->setName(self::OTHER_KEY_NAME);
+
+        $hydrated = $this->createRelation(self::OTHER_KEY_ID, self::GROUP_ID, self::OTHER_KEY_NAME);
+
+        // a fresh adapter per call, which is what the document path gets for every indexed object
+        $this->assertFalse($method->invoke($this->createConfiguredAdapter([], null, null, $resolver), $excluded));
+        $this->assertFalse(
+            $method->invoke($this->createConfiguredAdapter([], null, null, $resolver), $sameKeyOtherGroup)
+        );
+        $this->assertFalse($method->invoke($this->createConfiguredAdapter([], null, null, $resolver), $unhydrated));
+        $this->assertTrue($method->invoke($this->createConfiguredAdapter([], null, null, $resolver), $hydrated));
+
+        $this->assertSame(
+            [
+                sprintf(self::CACHE_KEY_INDEXED, self::KEY_ID) => false,
+                sprintf(self::CACHE_KEY_INDEXED, self::OTHER_KEY_ID) => true,
+            ],
+            $entries->getArrayCopy()
+        );
+    }
+
+    /**
      * The excluded key is dropped before its name is normalized, so it does not reserve the segment
      * "Size" that the key named "Size." normalizes to - on the mapping and on the document path alike.
      */
@@ -857,7 +942,8 @@ final class ClassificationStoreAdapterTest extends Unit
     private function createConfiguredAdapter(
         array $validLanguages,
         ?Classificationstore $fieldDefinition = null,
-        ?AbstractLogger $logger = null
+        ?AbstractLogger $logger = null,
+        ?RuntimeCacheResolverInterface $runtimeCacheResolver = null
     ): ClassificationStoreAdapter {
         $adapter = new ClassificationStoreAdapter(
             $this->makeEmpty(SearchIndexConfigServiceInterface::class),
@@ -877,8 +963,27 @@ final class ClassificationStoreAdapterTest extends Unit
         $adapter->setKeyLocaleService($this->createKeyLocaleService());
         $adapter->setFieldDefinition($fieldDefinition ?? new Classificationstore());
         $adapter->setLogger($logger ?? $this->createCollectingLogger());
+        $adapter->setRuntimeCacheResolver(
+            $runtimeCacheResolver ?? $this->createRuntimeCacheResolver(new ArrayObject())
+        );
 
         return $adapter;
+    }
+
+    /**
+     * An in-memory stand-in for the runtime cache. A case that is about the memo itself passes one
+     * instance to several adapters, which is what the runtime cache is for the adapters normalize()
+     * builds per object; every other case gets its own, so no memo crosses a test.
+     */
+    private function createRuntimeCacheResolver(ArrayObject $entries): RuntimeCacheResolverInterface
+    {
+        return $this->makeEmpty(RuntimeCacheResolverInterface::class, [
+            'isRegistered' => static fn (string $index): bool => $entries->offsetExists($index),
+            'load' => static fn (string $id): mixed => $entries[$id],
+            'save' => static function (mixed $data, string $id) use ($entries): void {
+                $entries[$id] = $data;
+            },
+        ]);
     }
 
     /**
