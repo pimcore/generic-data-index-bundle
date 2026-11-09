@@ -7,6 +7,12 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 ## Upgrade to 2026.4.0
 
+### Requires Pimcore 2026.4
+
+- [Diagnostics] The bundle now requires `pimcore/pimcore` `^2026.4`, because its diagnostic checks implement the core
+  diagnostics contract (`Pimcore\Contracts\Diagnostics`). Generic Data Index 2026.4 is released together with
+  Pimcore 2026.4; upgrade both together. See [Diagnostics](../06_Diagnostics/README.md).
+
 ### Re-indexing recommended
 
 - [Indexing] Fixed: localized fields inside object bricks, field collections and blocks were normalized with the
