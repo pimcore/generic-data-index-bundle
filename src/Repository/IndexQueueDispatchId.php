@@ -33,8 +33,31 @@ final class IndexQueueDispatchId
      */
     private const int MIN_ENCODED_ID = 1_000_000_000 * self::FACTOR;
 
+    /**
+     * A dispatched entry that is still in the queue after this time counts as stale and is dispatched again with a
+     * fresh dispatch id.
+     */
+    private const int REDISPATCH_AFTER_SECONDS = 86400;
+
     private function __construct()
     {
+    }
+
+    /**
+     * Seconds after which a dispatched entry that is still in the queue is dispatched again. A re-dispatch replaces
+     * its dispatch id, so the age derived from the dispatch id never grows beyond this window.
+     */
+    public static function getRedispatchAfterSeconds(): int
+    {
+        return self::REDISPATCH_AFTER_SECONDS;
+    }
+
+    /**
+     * Dispatch ids below this threshold (0 for undispatched entries, or stale ones) are dispatched at the given time.
+     */
+    public static function getRedispatchThreshold(int $millisecondTimestamp): int
+    {
+        return self::fromMillisecondTimestamp($millisecondTimestamp - self::REDISPATCH_AFTER_SECONDS * 1000);
     }
 
     /**

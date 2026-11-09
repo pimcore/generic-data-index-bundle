@@ -26,8 +26,7 @@ use Pimcore\Contracts\Diagnostics\Severity;
 use Pimcore\SearchClient\SearchClientInterface;
 
 /**
- * Health, document count and size of the search indices of the configured prefix. Registered only when the core
- * diagnostics contract exists (Pimcore 2026.4), see config/diagnostics.yaml.
+ * Health, document count and size of the search indices of the configured prefix.
  *
  * @internal
  */

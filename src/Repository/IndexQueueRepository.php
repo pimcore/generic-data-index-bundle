@@ -355,7 +355,7 @@ final class IndexQueueRepository
 
         // 24h staleness threshold, scaled to the dispatch id encoding so
         // that unhandled (0) and stale rows are still re-dispatched.
-        $threshold = IndexQueueDispatchId::fromMillisecondTimestamp($timestamp - 60*60*24*1000);
+        $threshold = IndexQueueDispatchId::getRedispatchThreshold($timestamp);
 
         // Pick the rows with a non-locking read and claim them by primary key afterwards. A ranged
         // "UPDATE ... WHERE dispatched < :threshold LIMIT n" locks the scanned range of the

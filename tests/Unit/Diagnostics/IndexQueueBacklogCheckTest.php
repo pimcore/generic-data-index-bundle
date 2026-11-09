@@ -20,9 +20,9 @@ use Doctrine\DBAL\ConnectionException;
 use Doctrine\DBAL\DriverManager;
 use Pimcore\Bundle\GenericDataIndexBundle\Diagnostics\IndexQueueBacklogCheck;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
+use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueDispatchId;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusService;
-use Pimcore\Contracts\Diagnostics\CheckInterface;
 use Pimcore\Contracts\Diagnostics\CheckResult;
 use Pimcore\Contracts\Diagnostics\DataClass;
 use Pimcore\Contracts\Diagnostics\DataContract;
@@ -40,10 +40,6 @@ final class IndexQueueBacklogCheckTest extends Unit
 
     public function _before(): void
     {
-        if (!interface_exists(CheckInterface::class)) {
-            $this->markTestSkipped('The diagnostics contract ships with Pimcore 2026.4.');
-        }
-
         $this->connection = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
         $this->connection->executeStatement(
             'CREATE TABLE ' . IndexQueue::TABLE . ' (
@@ -183,23 +179,73 @@ final class IndexQueueBacklogCheckTest extends Unit
         ]], $this->createCheck()->run()->toArray()['findings']);
     }
 
-    public function testDispatchedEntryOfExactlyOneDayIsStillAWarning(): void
+    public function testDispatchedEntryOfExactlySixHoursIsStillAWarning(): void
     {
-        $this->insertEntry(1, (self::NOW - 86400) * 1000, $this->dispatchIdAt(self::NOW - 86400));
+        $this->insertEntry(1, (self::NOW - 21600) * 1000, $this->dispatchIdAt(self::NOW - 21600));
 
         $this->assertSame('warning', $this->createCheck()->run()->toArray()['findings'][0]['severity']);
     }
 
-    public function testDispatchedEntryOlderThanOneDayIsCritical(): void
+    public function testDispatchedEntryOlderThanSixHoursIsCritical(): void
     {
-        $this->insertEntry(1, (self::NOW - 86401) * 1000, $this->dispatchIdAt(self::NOW - 86401));
+        $this->insertEntry(1, (self::NOW - 21601) * 1000, $this->dispatchIdAt(self::NOW - 21601));
 
         $this->assertSame([[
             'code' => 'index_queue_not_consumed',
             'severity' => 'critical',
-            'message' => 'Dispatched index queue entries older than one day are not processed.',
+            'message' => 'Dispatched index queue entries older than six hours are not processed.',
             'subject' => 'generic_data_index_queue',
         ]], $this->createCheck()->run()->toArray()['findings']);
+    }
+
+    /**
+     * The dispatcher gives an entry that is still in the queue a fresh dispatch id once its dispatch id falls below
+     * the re-dispatch threshold, so the dispatched age never passes the re-dispatch window. The critical level has
+     * to be reached inside that window, with the dispatch ids the repository really writes.
+     */
+    public function testNotConsumedIsCriticalBeforeTheDispatcherDispatchesTheEntryAgain(): void
+    {
+        $nowInMilliseconds = self::NOW * 1000;
+        $lastSecondBeforeRedispatch = IndexQueueDispatchId::getRedispatchAfterSeconds() - 1;
+        $dispatchId = IndexQueueDispatchId::generate($nowInMilliseconds - $lastSecondBeforeRedispatch * 1000);
+        $this->assertGreaterThanOrEqual(
+            IndexQueueDispatchId::getRedispatchThreshold($nowInMilliseconds),
+            $dispatchId,
+            'The entry must not be dispatched again yet.'
+        );
+        $this->insertEntry(1, $nowInMilliseconds - 2 * 86400 * 1000, $dispatchId);
+
+        $result = $this->createCheck()->run();
+
+        $this->assertSame($lastSecondBeforeRedispatch, $result->metrics['oldest_dispatched_age_seconds']);
+        $this->assertSame(
+            [['index_queue_not_consumed', 'critical']],
+            array_map(
+                static fn (array $finding): array => [$finding['code'], $finding['severity']],
+                $result->toArray()['findings']
+            )
+        );
+    }
+
+    /**
+     * A worker that is down for days leaves entries whose dispatch id is renewed every 24 hours. Right after a
+     * re-dispatch the age starts at zero, but for most of every window it is critical.
+     */
+    public function testNotConsumedIsCriticalForMostOfEveryRedispatchWindow(): void
+    {
+        $redispatchAfter = IndexQueueDispatchId::getRedispatchAfterSeconds();
+        $criticalSeconds = 0;
+        for ($age = 0; $age < $redispatchAfter; $age += 600) {
+            $this->connection->executeStatement('DELETE FROM ' . IndexQueue::TABLE);
+            $dispatchId = IndexQueueDispatchId::generate((self::NOW - $age) * 1000);
+            $this->insertEntry(1, (self::NOW - 3 * 86400) * 1000, $dispatchId);
+            $findings = $this->createCheck()->run()->toArray()['findings'];
+            if (($findings[0]['severity'] ?? null) === 'critical') {
+                $criticalSeconds += 600;
+            }
+        }
+
+        $this->assertGreaterThanOrEqual(intdiv($redispatchAfter * 2, 3), $criticalSeconds);
     }
 
     public function testBacklogAndNotConsumedAreReportedTogether(): void

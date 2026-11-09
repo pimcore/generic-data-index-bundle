@@ -28,7 +28,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkDispa
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusService;
-use Pimcore\Contracts\Diagnostics\CheckInterface;
 use Pimcore\SearchClient\SearchClientInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -65,11 +64,6 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
 
         $loader = new Loader\YamlFileLoader($container, new FileLocator(__DIR__.'/../../config'));
         $loader->load('services.yaml');
-
-        // The diagnostics contract ships with Pimcore 2026.4; on older core lines the checks are not registered.
-        if (interface_exists(CheckInterface::class)) {
-            $loader->load('diagnostics.yaml');
-        }
 
         $this->registerIndexServiceParams($container, $config['index_service']);
         $this->registerSnapshotParams($container, $config['snapshot']);

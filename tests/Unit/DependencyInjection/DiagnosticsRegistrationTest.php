@@ -18,7 +18,6 @@ use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\PimcoreGenericDataIndexExtension;
 use Pimcore\Bundle\GenericDataIndexBundle\Diagnostics\IndexHealthCheck;
 use Pimcore\Bundle\GenericDataIndexBundle\Diagnostics\IndexQueueBacklogCheck;
-use Pimcore\Contracts\Diagnostics\CheckInterface;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\DependencyInjection\Argument\TaggedIteratorArgument;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -27,9 +26,6 @@ use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\Yaml\Yaml;
 
 /**
- * The diagnostic checks implement a contract that ships with Pimcore 2026.4; on an older core their services must
- * not be registered at all.
- *
  * @internal
  */
 final class DiagnosticsRegistrationTest extends Unit
@@ -44,26 +40,17 @@ final class DiagnosticsRegistrationTest extends Unit
         return [IndexQueueBacklogCheck::class, IndexHealthCheck::class];
     }
 
-    public function testChecksAreRegisteredExactlyWhenTheContractExists(): void
+    public function testChecksAreRegistered(): void
     {
         $container = $this->loadExtension();
-        $contractExists = interface_exists(CheckInterface::class);
 
         foreach ($this->checkClasses() as $className) {
-            $this->assertSame(
-                $contractExists,
-                $container->hasDefinition($className),
-                $className . ' must be registered exactly when the diagnostics contract exists.'
-            );
+            $this->assertTrue($container->hasDefinition($className), $className . ' must be registered.');
         }
     }
 
     public function testChecksAreTaggedForTheSearchTopic(): void
     {
-        if (!interface_exists(CheckInterface::class)) {
-            $this->markTestSkipped('The diagnostics contract ships with Pimcore 2026.4.');
-        }
-
         $tagged = $this->loadExtension()->findTaggedServiceIds(self::CHECK_TAG);
 
         foreach ($this->checkClasses() as $className) {
@@ -77,10 +64,6 @@ final class DiagnosticsRegistrationTest extends Unit
      */
     public function testChecksCompileWhenTheTagIsCollected(): void
     {
-        if (!interface_exists(CheckInterface::class)) {
-            $this->markTestSkipped('The diagnostics contract ships with Pimcore 2026.4.');
-        }
-
         $bundleContainer = $this->loadExtension();
         $container = new ContainerBuilder();
         foreach ($bundleContainer->getDefinitions() as $id => $definition) {
@@ -109,18 +92,6 @@ final class DiagnosticsRegistrationTest extends Unit
             new Reference('generic-data-index.search-client'),
             $container->getDefinition(IndexHealthCheck::class)->getArgument(0),
         );
-    }
-
-    public function testDiagnosticsFileIsOutsideEveryImportedResource(): void
-    {
-        $services = Yaml::parseFile(__DIR__ . '/../../../config/services.yaml');
-
-        foreach ($services['imports'] as $import) {
-            $this->assertStringNotContainsString('diagnostics', $import['resource']);
-            $this->assertDoesNotMatchRegularExpression('~^\*|^\.\./?\*~', $import['resource']);
-        }
-        $this->assertFileExists(__DIR__ . '/../../../config/diagnostics.yaml');
-        $this->assertFileDoesNotExist(__DIR__ . '/../../../config/services/diagnostics.yaml');
     }
 
     private function loadExtension(): ContainerBuilder

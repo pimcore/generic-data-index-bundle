@@ -25,8 +25,7 @@ use Pimcore\Contracts\Diagnostics\Severity;
 use Psr\Clock\ClockInterface;
 
 /**
- * How many index queue entries wait and for how long. Registered only when the core diagnostics contract exists
- * (Pimcore 2026.4), see config/diagnostics.yaml.
+ * How many index queue entries wait and for how long.
  *
  * @internal
  */
@@ -51,7 +50,13 @@ final readonly class IndexQueueBacklogCheck implements CheckInterface
 
     private const int WARNING_AGE_SECONDS = 3600;
 
-    private const int CRITICAL_AGE_SECONDS = 86400;
+    private const int BACKLOG_CRITICAL_AGE_SECONDS = 86400;
+
+    /**
+     * Stays well below the re-dispatch window (IndexQueueDispatchId::getRedispatchAfterSeconds(), 24 h): a stale
+     * dispatched entry gets a fresh dispatch id then, so its age would never pass a one-day threshold.
+     */
+    private const int NOT_CONSUMED_CRITICAL_AGE_SECONDS = 21600;
 
     /**
      * Configuration names are reported only when they look like identifiers; anything else (e.g. a URL put into
@@ -127,6 +132,7 @@ final readonly class IndexQueueBacklogCheck implements CheckInterface
         return $this->getAgeFindings(
             $oldestPendingAge,
             self::BACKLOG_FINDING_CODE,
+            self::BACKLOG_CRITICAL_AGE_SECONDS,
             'Index queue entries older than one hour are waiting.',
             'Index queue entries older than one day are waiting.',
         );
@@ -135,6 +141,7 @@ final readonly class IndexQueueBacklogCheck implements CheckInterface
     /**
      * Dispatched entries wait for a messenger worker. The age counts from the time the entry was dispatched (stored
      * in its dispatch id), not from the time it was queued, so a busy dispatcher does not look like a missing worker.
+     * The dispatcher re-dispatches an entry after 24 h with a fresh dispatch id, so the critical level starts at 6 h.
      *
      * @return list<Finding>
      */
@@ -143,21 +150,27 @@ final readonly class IndexQueueBacklogCheck implements CheckInterface
         return $this->getAgeFindings(
             $oldestDispatchedAge,
             self::NOT_CONSUMED_FINDING_CODE,
+            self::NOT_CONSUMED_CRITICAL_AGE_SECONDS,
             'Dispatched index queue entries older than one hour are not processed.',
-            'Dispatched index queue entries older than one day are not processed.',
+            'Dispatched index queue entries older than six hours are not processed.',
         );
     }
 
     /**
      * @return list<Finding>
      */
-    private function getAgeFindings(?int $age, string $code, string $warningMessage, string $criticalMessage): array
-    {
+    private function getAgeFindings(
+        ?int $age,
+        string $code,
+        int $criticalAge,
+        string $warningMessage,
+        string $criticalMessage
+    ): array {
         if ($age === null || $age <= self::WARNING_AGE_SECONDS) {
             return [];
         }
 
-        if ($age > self::CRITICAL_AGE_SECONDS) {
+        if ($age > $criticalAge) {
             return [new Finding($code, Severity::Critical, $criticalMessage, self::SUBJECT)];
         }
 

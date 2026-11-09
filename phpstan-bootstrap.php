@@ -1,6 +1,5 @@
 <?php
 use Pimcore\Bootstrap;
-use Pimcore\Contracts\Diagnostics\CheckInterface;
 use Pimcore\Model\Exception\NotFoundException;
 
 if (file_exists(__DIR__ . '/vendor/autoload.php')) {
@@ -16,12 +15,6 @@ if (file_exists(__DIR__ . '/vendor/autoload.php')) {
 }
 
 include_once PIMCORE_PROJECT_ROOT . '/vendor/autoload.php';
-
-// The diagnostics contract ships with Pimcore 2026.4; analyse src/Diagnostics against stubs on older core lines.
-if (!interface_exists(CheckInterface::class)) {
-    require_once __DIR__ . '/tests/Support/Stubs/DiagnosticsContracts.php';
-}
-
 Bootstrap::setProjectRoot();
 Bootstrap::bootstrap();
 

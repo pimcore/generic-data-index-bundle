@@ -16,10 +16,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Diagnostics;
 use Codeception\Test\Unit;
 use Doctrine\DBAL\Connection;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
+use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueDispatchId;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\IndexTester;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\Support\DiagnosticChecks;
 use Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Diagnostics\DiagnosticsAssertions;
-use Pimcore\Contracts\Diagnostics\CheckInterface;
 use Pimcore\Db;
 
 /**
@@ -40,10 +40,6 @@ final class DiagnosticChecksTest extends Unit
 
     protected function _before(): void
     {
-        if (!interface_exists(CheckInterface::class)) {
-            $this->markTestSkipped('The diagnostics contract ships with Pimcore 2026.4.');
-        }
-
         $this->connection = Db::get();
         $this->connection->beginTransaction();
         $this->connection->executeStatement('DELETE FROM ' . IndexQueue::TABLE);
@@ -123,18 +119,19 @@ final class DiagnosticChecksTest extends Unit
     public function testDispatchedEntriesThatNoWorkerProcessesAreReported(): void
     {
         $now = time();
-        // Queued and dispatched more than one day ago, encoded as IndexQueueRepository writes dispatch ids.
-        $this->insertEntry(1, ($now - 100000) * 1000, ($now - 90000) * 1000 * 1_000_000 + 123);
+        // Queued a day ago and dispatched seven hours ago (inside the 24 h re-dispatch window), with a dispatch id
+        // as IndexQueueRepository writes it.
+        $this->insertEntry(1, ($now - 100000) * 1000, IndexQueueDispatchId::generate(($now - 25200) * 1000));
 
         $result = $this->getChecks()->get(self::BACKLOG_CHECK)->run();
 
         $this->assertSame(0, $result->metrics['queue_pending']);
         $this->assertSame(1, $result->metrics['queue_dispatched']);
-        $this->assertGreaterThanOrEqual(90000, $result->metrics['oldest_dispatched_age_seconds']);
+        $this->assertGreaterThanOrEqual(25200, $result->metrics['oldest_dispatched_age_seconds']);
         $this->assertSame([[
             'code' => 'index_queue_not_consumed',
             'severity' => 'critical',
-            'message' => 'Dispatched index queue entries older than one day are not processed.',
+            'message' => 'Dispatched index queue entries older than six hours are not processed.',
             'subject' => 'generic_data_index_queue',
         ]], $result->toArray()['findings']);
         DiagnosticsAssertions::assertNoHostSchemeOrCredential($result);

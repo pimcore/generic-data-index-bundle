@@ -5,5 +5,5 @@ services:
         public: false
 
     # Internal: read-only status of the index queue and the search client configuration, used by the diagnostic
-    # checks in config/diagnostics.yaml.
+    # checks in config/services/diagnostics.yaml.
     Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusService: ~

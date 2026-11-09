@@ -21,7 +21,6 @@ use Pimcore\Bundle\GenericDataIndexBundle\Diagnostics\IndexHealthCheck;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusService;
-use Pimcore\Contracts\Diagnostics\CheckInterface;
 use Pimcore\Contracts\Diagnostics\DataClass;
 use Pimcore\Contracts\Diagnostics\DataContract;
 use Pimcore\SearchClient\SearchClientInterface;
@@ -39,10 +38,6 @@ final class IndexHealthCheckTest extends Unit
 
     public function _before(): void
     {
-        if (!interface_exists(CheckInterface::class)) {
-            $this->markTestSkipped('The diagnostics contract ships with Pimcore 2026.4.');
-        }
-
         $this->connection = DriverManager::getConnection(['driver' => 'pdo_sqlite', 'memory' => true]);
         $this->connection->executeStatement(
             'CREATE TABLE ' . IndexQueue::TABLE . ' (id INTEGER PRIMARY KEY AUTOINCREMENT)'
