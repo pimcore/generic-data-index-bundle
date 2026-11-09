@@ -241,7 +241,7 @@ final class IndexHealthCheckTest extends Unit
         $this->assertCount(1, $attributes);
 
         $contract = $attributes[0]->newInstance();
-        $this->assertSame([DataClass::Metric, DataClass::Infrastructure, DataClass::Identifier], $contract->returns);
+        $this->assertSame([DataClass::Metric, DataClass::Identifier], $contract->returns);
         $this->assertSame(
             ['document contents', 'search hosts and credentials', 'exception messages'],
             $contract->neverReturns

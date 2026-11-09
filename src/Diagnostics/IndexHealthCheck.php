@@ -30,8 +30,9 @@ use Pimcore\SearchClient\SearchClientInterface;
  *
  * @internal
  */
+// returns must stay within Version, Configuration, Metric and Identifier, or the diagnostics overview skips the check.
 #[DataContract(
-    returns: [DataClass::Metric, DataClass::Infrastructure, DataClass::Identifier],
+    returns: [DataClass::Metric, DataClass::Identifier],
     neverReturns: ['document contents', 'search hosts and credentials', 'exception messages'],
     sources: ['search indices of the configured prefix'],
     doc: 'doc/06_Diagnostics/README.md#index_health',
