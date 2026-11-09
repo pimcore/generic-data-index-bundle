@@ -22,9 +22,13 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Status\QueueStatus;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
 /**
+ * Read-only status of the index queue and the configured search client: the shared building block of the
+ * diagnostic checks. Nothing here changes data, connects to the search engine or exposes hosts, credentials or
+ * file paths.
+ *
  * @internal
  */
-final readonly class IndexQueueStatusService implements IndexQueueStatusServiceInterface
+final readonly class IndexQueueStatusService
 {
     public function __construct(
         private Connection $connection,
@@ -33,6 +37,11 @@ final readonly class IndexQueueStatusService implements IndexQueueStatusServiceI
     ) {
     }
 
+    /**
+     * Counts of the index queue table, read with one aggregate query.
+     *
+     * @throws IndexStatusException when the queue table cannot be read
+     */
     public function getQueueStatus(): QueueStatus
     {
         try {
@@ -58,6 +67,9 @@ final readonly class IndexQueueStatusService implements IndexQueueStatusServiceI
         );
     }
 
+    /**
+     * The configured search client (type and name) and the index prefix. Reads the bundle configuration only.
+     */
     public function getClientConfiguration(): ClientConfiguration
     {
         return new ClientConfiguration(

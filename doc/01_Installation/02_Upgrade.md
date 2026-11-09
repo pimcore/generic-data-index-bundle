@@ -7,14 +7,6 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 ## Upgrade to 2026.4.0
 
-### Index Status API
-
-- [Status] New public API `Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusServiceInterface`, covered
-  by the backward compatibility promise: read-only access to the index queue counts (total, pending, dispatched,
-  oldest pending operation time) and the configured search client (type, name) and index prefix, for monitoring and
-  diagnostics. It never exposes hosts, credentials or paths. Existing behaviour is unchanged. See
-  [Index Status API](../05_Extending_Data_Index/08_Index_Status_API.md).
-
 ### Re-indexing recommended
 
 - [Indexing] Fixed: localized fields inside object bricks, field collections and blocks were normalized with the
@@ -52,7 +44,32 @@ description: Version-specific upgrade instructions and breaking changes for the 
 - [Indexing] Snapshots exported before the update are refused for these classes, and `--force` skips them: export
   them again after the re-index.
 
+### Workflow places: run `update:index` right after the deployment
+
+- [Indexing] Places of workflows using the `state_table` marking store are indexed in the new system field
+  `workflowPlaces` (keyword per workflow name), see
+  [Workflow Places](../04_Searching_For_Data_In_Index/README.md#workflow-places).
+  Run `bin/console generic-data-index:update:index` to update the mapping and fill the field for existing elements.
+  Run it right after the deployment: elements indexed before the mapping is updated get a dynamic `text` mapping for
+  the new field, and the later update to `keyword` then needs a full re-index.
+  The `workflowPlaces` mapping depends on the configured `state_table` workflows. It is not part of the class mapping
+  checksum, so `generic-data-index:deployment:reindex` does not reindex every class because of it: run
+  `generic-data-index:update:index` after adding or removing a `state_table` workflow.
+- [Indexing] Snapshots exported before the update are still accepted, but importing one writes its documents as they
+  were exported, without `workflowPlaces`. Export snapshots again after the update, or run
+  `generic-data-index:update:index` again after importing an older snapshot.
+- [Indexing] `SettingsStoreServiceInterface` has two new methods, `getWorkflowPlacesMappingChecksum()` and
+  `storeWorkflowPlacesMappingChecksum()`: custom implementations must add them.
+
 ## Upgrade to 2026.3.5
+- [Indexing] Mapping updates of the same index no longer overlap: every copy or recreation of an index runs under a
+  lock on the index alias, and a second update of the same index waits until the first one has finished. The lock is
+  taken from the lock store of the application (`Symfony\Component\Lock\LockFactory`; Pimcore configures the
+  database store, so all workers and nodes share it) and expires, if its process dies, after the longest copy attempt
+  (the wait of `reindex_settings.max_polls` × `poll_interval` plus the cancellation of a stuck task before and after
+  it) and a quarter of that. `AbstractIndexHandler` and the three index handlers take an `IndexLockInterface` as
+  their last constructor argument; constructing them without it is deprecated and leaves the mapping updates of
+  that handler unlocked.
 - [Indexing] Fixed: deleting a class definition no longer leaves the delete queue entries of its objects behind.
   They were dispatched again every 24 hours and failed each time with `index_not_found_exception`, blocking the
   other elements of their batch. The entries are now removed together with the class index, and a bulk deletion

@@ -17,6 +17,7 @@ use Codeception\Test\Unit;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Status\ClientConfiguration;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Status\QueueStatus;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusService;
 use ReflectionClass;
 use ReflectionMethod;
 
@@ -54,8 +55,8 @@ final class StatusModelTest extends Unit
     }
 
     /**
-     * Data contract: the status API exposes counts, a timestamp and configuration names only, never hosts,
-     * credentials or paths. A new getter has to be added here deliberately.
+     * The status reader exposes counts, a timestamp and configuration names only, never hosts, credentials or
+     * paths. A new getter has to be added here deliberately.
      */
     public function testStatusModelsExposeOnlyTheDocumentedFields(): void
     {
@@ -67,6 +68,17 @@ final class StatusModelTest extends Unit
             ['getClientType', 'getClientName', 'getIndexPrefix'],
             $this->publicGetters(ClientConfiguration::class)
         );
+    }
+
+    public function testReaderClassesAreInternal(): void
+    {
+        foreach ([QueueStatus::class, ClientConfiguration::class, IndexQueueStatusService::class] as $className) {
+            $this->assertStringContainsString(
+                '@internal',
+                (string) (new ReflectionClass($className))->getDocComment(),
+                $className . ' must not become public API.'
+            );
+        }
     }
 
     public function testClientConfigurationReportsValuesAsConfiguredEvenWhenEmpty(): void

@@ -4,6 +4,6 @@ services:
         autoconfigure: true
         public: false
 
-    # Public API: read-only status of the index queue and the search client configuration.
-    Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusServiceInterface:
-        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusService
+    # Internal: read-only status of the index queue and the search client configuration, used by the diagnostic
+    # checks in config/diagnostics.yaml.
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusService: ~

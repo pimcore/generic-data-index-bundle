@@ -16,8 +16,10 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Model\Status;
 use InvalidArgumentException;
 
 /**
- * Counts of the index queue at one point in time. Public API: part of the read-only status API
- * (see IndexQueueStatusServiceInterface). It holds counts and a timestamp only, no element ids or index data.
+ * Counts of the index queue at one point in time, as read by the index status reader for the diagnostic checks.
+ * It holds counts and a timestamp only, no element ids or index data.
+ *
+ * @internal
  */
 final readonly class QueueStatus
 {

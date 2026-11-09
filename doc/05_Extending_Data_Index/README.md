@@ -16,5 +16,3 @@ search, listings, and filters. For guidance on index creation and maintenance, s
 - [Custom Field Definition Adapters](./07_Custom_Field_Definition_Adapters.md) -
   Register adapters for custom data object field types so the Generic Data Index
   can index and filter them.
-- [Index Status API](./08_Index_Status_API.md) -
-  Read the index queue counts and the configured search client from your own code.
