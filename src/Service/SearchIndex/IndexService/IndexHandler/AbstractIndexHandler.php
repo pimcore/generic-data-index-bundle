@@ -13,14 +13,18 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
+use Closure;
 use Exception;
 use JsonException;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
@@ -50,6 +54,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         protected readonly EventDispatcherInterface $eventDispatcher,
         protected readonly IndexMappingServiceInterface $indexMappingService,
         private readonly ?IndexCopyServiceInterface $indexCopyService = null,
+        private readonly ?IndexLockInterface $indexLock = null,
     ) {
         if ($indexCopyService === null) {
             trigger_deprecation(
@@ -59,6 +64,16 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                 . 'next major version.',
                 static::class,
                 IndexCopyServiceInterface::class
+            );
+        }
+        if ($indexLock === null) {
+            trigger_deprecation(
+                'pimcore/generic-data-index-bundle',
+                '2026.3.5',
+                'Calling the constructor of %s without an %s is deprecated; the argument will be required in the '
+                . 'next major version. Without it, mapping updates of the same index can overlap.',
+                static::class,
+                IndexLockInterface::class
             );
         }
     }
@@ -71,7 +86,10 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         bool $forceCreateIndex = false,
         ?array $mappingProperties = null
     ): void {
-        $this->doUpdateMappingFull($context, $forceCreateIndex, $mappingProperties, 0);
+        $this->underIndexLock(
+            $this->getAliasIndexName($context),
+            fn () => $this->doUpdateMappingFull($context, $forceCreateIndex, $mappingProperties, 0)
+        );
     }
 
     /**
@@ -129,7 +147,10 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): void {
-        $this->doReindexMapping($context, $mappingProperties, 0);
+        $this->underIndexLock(
+            $this->getAliasIndexName($context),
+            fn () => $this->doReindexMapping($context, $mappingProperties, 0)
+        );
     }
 
     /**
@@ -143,6 +164,19 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     public function reindexMappingWithResult(
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
+    ): MappingUpdateResult {
+        return $this->underIndexLock(
+            $this->getAliasIndexName($context),
+            fn () => $this->doReindexMappingWithResult($context, $mappingProperties)
+        );
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function doReindexMappingWithResult(
+        ?ClassDefinition $context,
+        ?array $mappingProperties
     ): MappingUpdateResult {
         // An override that delegates back to this method runs the copy itself instead of calling the override again.
         if ($this->isReindexMappingOverridden() && !$this->runningReindexMappingOverride) {
@@ -179,6 +213,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         }
 
         $alias = $this->getAliasIndexName($context);
+        $this->refreshIndexLock($alias);
         $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
 
         if (!$this->searchIndexService->existsAlias($alias)) {
@@ -203,6 +238,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                     'Recreating index for alias "%s": the new mapping is incompatible with the indexed documents',
                     $alias
                 ));
+                $this->refreshIndexLock($alias);
                 $this->doUpdateMappingFull($context, true, $mappingProperties, $depth);
                 $result = new MappingUpdateResult($copy->getStrippedPaths(), $copy->getKeptPaths(), true);
             }
@@ -230,8 +266,9 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
 
     public function deleteIndex(mixed $context = null): void
     {
-        $this->searchIndexService->deleteIndex(
-            $this->getCurrentFullIndexName($context)
+        $this->underIndexLock(
+            $this->getAliasIndexName($context),
+            fn () => $this->searchIndexService->deleteIndex($this->getCurrentFullIndexName($context))
         );
     }
 
@@ -253,6 +290,10 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
      */
     public function getClassMappingCheckSum(array $properties): int
     {
+        // The workflowPlaces mapping depends on the configured workflows, not on the class: it has its own
+        // checksum and must not make every class look changed (and fully reindexed by the deployment commands).
+        unset($properties[FieldCategory::SYSTEM_FIELDS->value]['properties'][SystemField::WORKFLOW_PLACES->value]);
+
         return crc32(json_encode($this->normalizeForCheckSum($properties), JSON_THROW_ON_ERROR));
     }
 
@@ -287,6 +328,27 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         return $this->reindexMappingOverridden;
     }
 
+    /**
+     * Every mapping update of an index runs under the lock of its alias, so two processes never copy or recreate
+     * the same index at the same time; the second one waits. The retries of an update and the recreation as the
+     * last resort run inside the same lock.
+     *
+     * @template T
+     *
+     * @param Closure(): T $operation
+     *
+     * @return T
+     */
+    private function underIndexLock(string $aliasName, Closure $operation): mixed
+    {
+        return $this->indexLock === null ? $operation() : $this->indexLock->run($aliasName, $operation);
+    }
+
+    private function refreshIndexLock(string $aliasName): void
+    {
+        $this->indexLock?->refresh($aliasName);
+    }
+
     private function getIndexCopyService(): IndexCopyServiceInterface
     {
         if ($this->indexCopyService !== null) {
@@ -294,9 +356,10 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         }
         if ($this->defaultIndexCopyService === null) {
             $this->defaultIndexCopyService = new IndexCopyService(
-                $this->searchIndexService,
-                new MappingDiffService(),
-                $this->logger ?? new NullLogger()
+                searchIndexService: $this->searchIndexService,
+                mappingDiffService: new MappingDiffService(),
+                pimcoreGenericDataIndexLogger: $this->logger ?? new NullLogger(),
+                indexLock: $this->indexLock
             );
         }
 

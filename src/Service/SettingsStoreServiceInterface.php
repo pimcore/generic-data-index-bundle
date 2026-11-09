@@ -36,7 +36,17 @@ interface SettingsStoreServiceInterface
         string $classDefinitionId
     ): void;
 
+    /**
+     * Checksum of the workflowPlaces mapping applied to the index by the last index update.
+     */
+    public function getWorkflowPlacesMappingChecksum(string $indexName): ?int;
+
     public function getIndexState(string $key): ?string;
+
+    /**
+     * @throws Exception
+     */
+    public function storeWorkflowPlacesMappingChecksum(string $indexName, int $data): void;
 
     /**
      * @throws Exception

@@ -14,15 +14,18 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler;
 
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Event\Asset\ExtractMappingEvent;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Asset\MetadataProviderServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -38,14 +41,17 @@ final class AssetIndexHandler extends AbstractIndexHandler
         private readonly AssetTypeAdapter $assetAdapter,
         private readonly MetadataProviderServiceInterface $metadataProviderService,
         private readonly GlobalIndexAliasServiceInterface $globalIndexAliasService,
+        private readonly WorkflowPlaceServiceInterface $workflowPlaceService,
         IndexCopyServiceInterface $indexCopyService,
+        ?IndexLockInterface $indexLock = null,
     ) {
         parent::__construct(
             $searchIndexService,
             $searchIndexConfigService,
             $eventDispatcher,
             $indexMappingService,
-            $indexCopyService
+            $indexCopyService,
+            $indexLock
         );
     }
 
@@ -53,8 +59,11 @@ final class AssetIndexHandler extends AbstractIndexHandler
     {
         $mappingProperties = [
             FieldCategory::SYSTEM_FIELDS->value => [
-                'properties' => $this->searchIndexConfigService
-                    ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELD_ASSET),
+                'properties' => [
+                    SystemField::WORKFLOW_PLACES->value => $this->workflowPlaceService->getMapping(),
+                    ...$this->searchIndexConfigService
+                        ->getSystemFieldsSettings(SearchIndexConfigService::SYSTEM_FIELD_ASSET),
+                ],
             ],
             FieldCategory::STANDARD_FIELDS->value => ['properties' => []],
             FieldCategory::CUSTOM_FIELDS->value => [],
