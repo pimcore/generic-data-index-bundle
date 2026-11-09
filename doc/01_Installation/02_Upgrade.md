@@ -10,7 +10,8 @@ description: Version-specific upgrade instructions and breaking changes for the 
 ### Requires Pimcore 2026.4
 
 - [Diagnostics] The bundle now requires `pimcore/pimcore` `^2026.4`, because its diagnostic checks implement the core
-  diagnostics contract (`Pimcore\Contracts\Diagnostics`). See [Diagnostics](../06_Diagnostics/README.md).
+  diagnostics contract (`Pimcore\Contracts\Diagnostics`). Generic Data Index 2026.4 is released together with
+  Pimcore 2026.4; upgrade both together. See [Diagnostics](../06_Diagnostics/README.md).
 
 ### Re-indexing recommended
 
