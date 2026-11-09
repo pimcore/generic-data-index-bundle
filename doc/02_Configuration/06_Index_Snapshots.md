@@ -77,10 +77,11 @@ afterwards. A 16 MiB page decodes to roughly 100–200 MB of PHP memory at its p
 with a small `memory_limit`; raising them buys little, because the number of requests is rarely
 the bottleneck. Both commands log every page and every bulk flush at debug level.
 
-Export and import share one lock, so they never run at the same time. The lock is taken from
-Symfony's lock component (`framework.lock`), whose default store is a host-local file lock. On an
-installation with several application nodes, configure a shared lock store (for example Redis or
-the database) so that an export on one node also excludes an import on another.
+Export and import share one lock, so they never run at the same time. The lock is taken from the
+lock store of the application (`Symfony\Component\Lock\LockFactory`; Pimcore configures the database
+store, so all application nodes share it): an export on one node also excludes an import on another,
+without further configuration. Only an application that replaces the lock store with a host-local one
+(for example a file lock) limits the exclusion to one node.
 
 Run both commands in the `prod` environment, or at least with `--no-debug`. In debug mode the
 bundle keeps a history of executed searches, including their full responses, for the profiler; on
