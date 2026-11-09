@@ -45,6 +45,11 @@ final class RecordingLockStore implements PersistingStoreInterface
 
     private int $refreshes = 0;
 
+    /** @var array<string, int> refreshes by lock resource */
+    private array $refreshesByResource = [];
+
+    private ?string $conflictingResource = null;
+
     private ?float $lastTtl = null;
 
     /** @var array<string, true> */
@@ -62,6 +67,12 @@ final class RecordingLockStore implements PersistingStoreInterface
     }
 
     /** The next refreshes fail as if another process had taken the lock over. */
+    /** The next refresh of this one resource is answered with a conflict: another process took the lock over. */
+    public function conflictOnNextRefreshOf(string $resource): void
+    {
+        $this->conflictingResource = $resource;
+    }
+
     public function conflictOnNextRefreshes(int $count): void
     {
         $this->conflictingRefreshes = $count;
@@ -115,7 +126,13 @@ final class RecordingLockStore implements PersistingStoreInterface
     public function putOffExpiration(Key $key, float $ttl): void
     {
         ++$this->refreshes;
+        $this->refreshesByResource[(string) $key] = ($this->refreshesByResource[(string) $key] ?? 0) + 1;
         $this->lastTtl = $ttl;
+        if ($this->conflictingResource === (string) $key) {
+            $this->conflictingResource = null;
+
+            throw new LockConflictedException('taken over by another process');
+        }
         if ($this->conflictingRefreshes > 0) {
             --$this->conflictingRefreshes;
 
@@ -137,6 +154,11 @@ final class RecordingLockStore implements PersistingStoreInterface
     public function getDeletes(): int
     {
         return $this->deletes;
+    }
+
+    public function getRefreshesOf(string $resource): int
+    {
+        return $this->refreshesByResource[$resource] ?? 0;
     }
 
     public function getRefreshes(): int
