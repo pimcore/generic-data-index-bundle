@@ -7,6 +7,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LatestLanguageChangeInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LatestLanguageChange
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService
 
