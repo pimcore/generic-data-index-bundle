@@ -17,6 +17,7 @@ use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
@@ -29,6 +30,7 @@ use Pimcore\Model\DataObject\Classificationstore\GroupConfig\Listing as GroupLis
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation\Listing as KeyGroupRelationListing;
 use Pimcore\Model\DataObject\Concrete;
+use ReflectionProperty;
 use Symfony\Contracts\Service\Attribute\Required;
 
 /**
@@ -38,11 +40,15 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 {
     use LoggerAwareTrait;
 
-    private const METADATA_INDEXED = 'indexed';
+    private const DEFINITION_INDEXED = 'indexed';
+
+    private const CACHE_KEY_INDEXED = 'gdi_cs_key_indexed_%d';
 
     private ServiceResolverInterface $classificationService;
 
     private LanguageServiceInterface $languageService;
+
+    private KeyLocaleServiceInterface $keyLocaleService;
 
     #[Required]
     public function setClassificationService(ServiceResolverInterface $serviceResolver): void
@@ -56,13 +62,19 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $this->languageService = $languageService;
     }
 
+    #[Required]
+    public function setKeyLocaleService(KeyLocaleServiceInterface $keyLocaleService): void
+    {
+        $this->keyLocaleService = $keyLocaleService;
+    }
+
     /**
      * @throws InvalidArgumentException
      */
     public function getIndexMapping(): array
     {
         $classificationStore = $this->getClassificationStoreDefinition();
-        $validLanguages = $this->getValidLanguages($classificationStore);
+        $validLanguages = $this->getValidLanguages();
         $mapping = [];
 
         $groups = $this->filterAllowedGroups(
@@ -109,7 +121,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             return null;
         }
 
-        $validLanguages = $this->getValidLanguages($fieldDefinition);
+        $validLanguages = $this->getValidLanguages();
         $resultItems = [];
 
         foreach ($this->getActiveGroups($value) as $groupId => $groupConfig) {
@@ -134,6 +146,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     /**
      * @param KeyGroupRelation[] $keys
      * @param string[] $validLanguages
+     *
+     * @throws InvalidArgumentException
      */
     private function normalizeGroupValues(
         ClassificationstoreModel $value,
@@ -142,27 +156,27 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         array $validLanguages
     ): array {
         $normalizedGroup = [];
+        $usedKeyNames = [];
 
-        foreach ($validLanguages as $validLanguage) {
-            $usedKeyNames = [];
+        foreach ($keys as $key) {
+            if (!$this->isIndexedKey($key)) {
+                continue;
+            }
 
-            foreach ($keys as $key) {
-                if (!$this->isIndexedKey($key)) {
-                    continue;
-                }
+            $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId());
+            if ($keyName === null
+                || $this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId())
+            ) {
+                continue;
+            }
 
-                $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId());
-                if ($keyName === null
-                    || $this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId())
-                ) {
-                    continue;
-                }
+            $usedKeyNames[$keyName] = true;
 
-                $usedKeyNames[$keyName] = true;
-                $normalizedValue = $this->getNormalizedValue($value, $groupId, $key, $validLanguage);
+            foreach ($this->getLanguagesForKey($key->getKeyId(), $validLanguages) as $keyLanguage) {
+                $normalizedValue = $this->getNormalizedValue($value, $groupId, $key, $keyLanguage);
 
                 if ($normalizedValue !== null) {
-                    $normalizedGroup[$validLanguage][$keyName] = $normalizedValue;
+                    $normalizedGroup[$keyLanguage][$keyName] = $normalizedValue;
                 }
             }
         }
@@ -182,11 +196,19 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         ?callable $callback = null
     ): array {
         $classificationStore = $this->getClassificationStoreDefinition();
-        $languages = $this->getValidLanguages($classificationStore);
+        $languages = $this->getValidLanguages();
         $result = [];
         foreach ($this->getMappingForInheritance($dataObject, $classificationStore) as $groupId => $group) {
             foreach ($group['keys'] as $keyId => $groupKey) {
-                foreach ($languages as $lang) {
+                $paths = $this->getInheritancePathsForKey(
+                    $key,
+                    $group['name'],
+                    $groupKey['name'],
+                    $keyId,
+                    $languages
+                );
+
+                foreach ($paths as $lang => $path) {
                     $originId = $this->getKeyValueFromElement(
                         $groupKey['definition'],
                         $dataObject,
@@ -197,9 +219,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                     );
 
                     if ($originId !== null && $originId !== $objectId) {
-                        $result[$this->getInheritancePath($key, $group['name'], $groupKey['name'], $lang)] = [
-                            'originId' => $originId,
-                        ];
+                        $result[$path] = ['originId' => $originId];
                     }
                 }
             }
@@ -248,14 +268,42 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         return $this->getKeyValueFromElement($definition, $parent, $storeKey, $groupId, $groupKeyId, $language);
     }
 
-    private function getValidLanguages(Classificationstore $classificationStore): array
+    /**
+     * The candidate set every key picks its own language nodes from: the non-localized node plus
+     * every valid language of the installation. What a key is declared and written under is the
+     * subset {@see self::getLanguagesForKey()} resolves from it - the non-localized node alone for a
+     * key that is not localized. There is no per key subset of languages.
+     *
+     * @return string[]
+     */
+    private function getValidLanguages(): array
     {
-        $languages = [MappingProperty::NOT_LOCALIZED_KEY];
-        if ($classificationStore->isLocalized()) {
-            $languages = array_merge($languages, $this->languageService->getValidLanguages());
-        }
+        return array_merge(
+            [MappingProperty::NOT_LOCALIZED_KEY],
+            $this->languageService->getValidLanguages()
+        );
+    }
 
-        return $languages;
+    /**
+     * The language nodes one key is declared and written under, resolved from the candidate set: the
+     * non-localized node alone for a key that is not localized, that node plus every valid language
+     * for one that is. The only place the adapter asks about a key's languages, and it asks the
+     * {@see KeyLocaleServiceInterface} whose other method answers a caller filtering that key, so the
+     * write side and the read side cannot disagree about where the key is indexed.
+     *
+     * @param string[] $validLanguages
+     *
+     * @return string[]
+     *
+     * @throws InvalidArgumentException
+     */
+    private function getLanguagesForKey(int $keyId, array $validLanguages): array
+    {
+        return $this->keyLocaleService->getLocalesForKey(
+            $keyId,
+            $this->getClassificationStoreDefinition(),
+            $validLanguages
+        );
     }
 
     private function getElementActiveGroups(Concrete $dataObject, Classificationstore $classificationStore): array
@@ -362,15 +410,88 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
-     * An assignment marked as not indexed is dropped from the mapping, the document and the inheritance
-     * paths alike, and before its name is normalized, so it does not reserve a segment another key of the
-     * same normalized name could use. The flag is read from the assignment, not from the key, so the same
-     * key stays indexed in a group whose assignment does not carry it. An assignment without metadata and
-     * metadata without the flag both mean indexed: nothing is excluded unless the flag says so.
+     * A key marked as not indexed is dropped from the mapping, the document and the inheritance paths
+     * alike, and before its name is normalized, so it does not reserve a segment another key of the same
+     * normalized name could use. The flag belongs to the key, not to one of its assignments: the
+     * relation table carries no definition of its own, so the definition the relation listing hands over
+     * is the key's, and the flag therefore excludes the key from every group it is assigned to.
+     *
+     * What this method tolerates is a definition it cannot read: the flag is honoured only on one that
+     * decodes into an array, and only as the boolean false, so a definition without the entry, an empty
+     * or unparsable one, one that decodes into a JSON scalar and any other value of the entry all mean
+     * indexed. That is wider than the exclusion itself needs, and deliberately so - a definition this
+     * adapter cannot read must not silently drop a key out of the index.
+     *
+     * What it does not tolerate is a relation that was never hydrated. KeyGroupRelation declares both
+     * "keyId" and "definition" as typed properties without a default, so reading either off such a
+     * relation is an Error rather than a value to fall back on - the getter is not nullable and has
+     * nothing to return. Neither is read before it is known to be there, and a relation that cannot
+     * answer is skipped, which is what all three callers do with a key they cannot map.
+     *
+     * The resolved flag is a constant of the key, so it is memoized per key id - the whole of its
+     * scope, since two assignments of one key read one definition and cannot disagree. normalize()
+     * gets a new adapter per indexed object and visits every key of every active group, so the
+     * definition would otherwise be parsed again for every object. Runtime-cache scoped like the
+     * inheritance origin memo of the base adapter, so the cleanup between queue batches bounds
+     * staleness. An unhydrated relation is not memoized: that says nothing about the key.
+     *
+     * Both properties are checked before the memo is consulted, not just the one the cache key is
+     * built from. The memoized answer is about the key, but "true" is also a promise to the callers
+     * that this relation can be passed to definition resolution, and a second assignment of a
+     * memoized key can be unhydrated where the first was not. Reading the cache on the strength of
+     * "keyId" alone would hand such a relation back as indexed and have the caller read "definition"
+     * off it - the Error this method exists to prevent, reached through the memo instead of past it.
+     * The guards are two reflection calls and the memo still saves the decode, which is its point.
      */
     private function isIndexedKey(KeyGroupRelation $key): bool
     {
-        return ($key->getMetadata()[self::METADATA_INDEXED] ?? true) !== false;
+        if (!$this->isHydratedRelationProperty($key, 'keyId')
+            || !$this->isHydratedRelationProperty($key, 'definition')
+        ) {
+            return false;
+        }
+
+        $cacheKey = sprintf(self::CACHE_KEY_INDEXED, $key->getKeyId());
+        if ($this->runtimeCacheResolver->isRegistered($cacheKey)) {
+            return $this->runtimeCacheResolver->load($cacheKey);
+        }
+
+        $definition = json_decode($key->getDefinition(), true);
+        $indexed = !is_array($definition) || ($definition[self::DEFINITION_INDEXED] ?? true) !== false;
+
+        $this->runtimeCacheResolver->save($indexed, $cacheKey);
+
+        return $indexed;
+    }
+
+    private function isHydratedRelationProperty(KeyGroupRelation $key, string $property): bool
+    {
+        return (new ReflectionProperty(KeyGroupRelation::class, $property))->isInitialized($key);
+    }
+
+    /**
+     * The inherited field paths of one key, keyed by the language each was built for: a single path
+     * for a non-localized key and one per valid language for a localized one.
+     *
+     * @param string[] $validLanguages
+     *
+     * @return array<string, string>
+     *
+     * @throws InvalidArgumentException
+     */
+    private function getInheritancePathsForKey(
+        string $key,
+        string $groupName,
+        string $groupKeyName,
+        int $keyId,
+        array $validLanguages
+    ): array {
+        $paths = [];
+        foreach ($this->getLanguagesForKey($keyId, $validLanguages) as $language) {
+            $paths[$language] = $this->getInheritancePath($key, $groupName, $groupKeyName, $language);
+        }
+
+        return $paths;
     }
 
     private function getInheritancePath(string $key, string $groupName, string $groupKeyName, string $lang): string
@@ -476,12 +597,20 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
+     * The language nodes of a group are declared per key, not per group: every indexed key is declared
+     * under the non-localized node and a localized one under each valid language as well, so a group
+     * holding keys of differing flag declares a different key set per node.
+     *
      * @param KeyGroupRelation[] $groupConfigs
      * @param string[] $validLanguages
+     *
+     * @throws InvalidArgumentException
      */
     private function getMappingForGroupConfig(array $groupConfigs, array $validLanguages): array
     {
-        $keyMapping = [];
+        $groupMapping = [];
+        $usedKeyNames = [];
+
         foreach ($groupConfigs as $key) {
             if (!$this->isIndexedKey($key)) {
                 continue;
@@ -500,21 +629,17 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 continue;
             }
 
-            if ($this->isTakenNameSegment($keyMapping, $keyName, $key->getName(), 'key', $key->getKeyId(), true)) {
+            if ($this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId(), true)) {
                 continue;
             }
 
-            // once: the mapping of the key does not depend on the language
-            $keyMapping[$keyName] = $adapter->getIndexMapping();
-        }
+            $usedKeyNames[$keyName] = true;
+            // once per key: the mapping of the key does not depend on the language
+            $keyMapping = $adapter->getIndexMapping();
 
-        if ($keyMapping === []) {
-            return [];
-        }
-
-        $groupMapping = [];
-        foreach ($validLanguages as $validLanguage) {
-            $groupMapping[$validLanguage]['properties'] = $keyMapping;
+            foreach ($this->getLanguagesForKey($key->getKeyId(), $validLanguages) as $language) {
+                $groupMapping[$language]['properties'][$keyName] = $keyMapping;
+            }
         }
 
         return $groupMapping;
@@ -555,7 +680,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
-     * Every group is mapped with all of its keys (and languages), so mapping groups that an object of this
+     * Every group is mapped with all of its keys, so mapping groups that an object of this
      * class cannot get assigned can exceed the index total fields limit. When the field restricts the
      * allowed groups, only those are mapped; without a restriction, all groups of the store stay mapped.
      * The property has no default and stays uninitialized for definitions that never set it.
@@ -564,7 +689,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * field stays in _source, where it is still readable, and "dynamic: false" keeps it out of the index -
      * out of this mapping, that is: an in-place update merges into the existing one and leaves a node that
      * dynamic mapping created there until the index is built from scratch. A key marked as not indexed on
-     * its assignment is the exclusion that does reach the document, see {@see self::isIndexedKey()}.
+     * its own definition is the exclusion that does reach the document, see {@see self::isIndexedKey()}.
      *
      * @param GroupConfig[] $groups
      *

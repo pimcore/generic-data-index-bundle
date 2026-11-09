@@ -21,6 +21,18 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\FullTextSearch\W
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\SearchModifierInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 
+/**
+ * The locale is the language node the filtered key is indexed under, and it stays the caller's
+ * choice: it is not resolved from the key, where the mapping and the document resolve it per key.
+ * A group can therefore hold keys this filter has to be given different locales for - the default
+ * for a key that is not localized, the language for one that is - and a locale the key is not
+ * indexed under matches nothing instead of failing, so the empty result reads like an absent value.
+ *
+ * The service below answers the locale of a key id with the resolution the mapping and the document
+ * use themselves, and is what a caller that does not already know a key's languages should ask.
+ *
+ * @see \Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface
+ */
 final readonly class ClassificationStoreFilter implements SearchModifierInterface
 {
     public function __construct(
