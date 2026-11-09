@@ -21,6 +21,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexStatusException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Status\ClientConfiguration;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Status\QueueStatus;
+use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueDispatchId;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 
 /**
@@ -56,8 +57,8 @@ final readonly class IndexQueueStatusService
                     SUM(CASE WHEN ' . $dispatched . ' = 0 THEN 1 ELSE 0 END) AS pending,
                     SUM(CASE WHEN ' . $dispatched . ' = 0 THEN 0 ELSE 1 END) AS dispatched,
                     MIN(CASE WHEN ' . $dispatched . ' = 0 THEN ' . $operationTime . ' END) AS oldestPending,
-                    MIN(CASE WHEN ' . $dispatched . ' = 0 THEN NULL ELSE ' . $operationTime . ' END)
-                        AS oldestDispatched
+                    MIN(CASE WHEN ' . $dispatched . ' = 0 THEN NULL ELSE ' . $dispatched . ' END)
+                        AS oldestDispatchId
                 FROM ' . $this->connection->quoteIdentifier(IndexQueue::TABLE)
             );
         } catch (DBALException $e) {
@@ -65,13 +66,15 @@ final readonly class IndexQueueStatusService
         }
 
         $oldestPending = $row['oldestPending'] ?? null;
-        $oldestDispatched = $row['oldestDispatched'] ?? null;
+        $oldestDispatchId = $row['oldestDispatchId'] ?? null;
 
         return new QueueStatus(
             pending: (int) ($row['pending'] ?? 0),
             dispatched: (int) ($row['dispatched'] ?? 0),
             oldestPendingOperationTime: $oldestPending === null ? null : (int) $oldestPending,
-            oldestDispatchedOperationTime: $oldestDispatched === null ? null : (int) $oldestDispatched,
+            oldestDispatchTime: $oldestDispatchId === null
+                ? null
+                : IndexQueueDispatchId::toMillisecondTimestamp((int) $oldestDispatchId),
         );
     }
 

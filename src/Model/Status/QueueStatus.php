@@ -28,8 +28,8 @@ final readonly class QueueStatus
      * @param int $dispatched entries handed to the messenger transport and not yet processed
      * @param int|null $oldestPendingOperationTime operation time (Unix timestamp in milliseconds) of the oldest
      *                                             pending entry; null when no entry is pending
-     * @param int|null $oldestDispatchedOperationTime operation time (Unix timestamp in milliseconds) of the oldest
-     *                                                dispatched entry; null when no entry is dispatched
+     * @param int|null $oldestDispatchTime dispatch time (Unix timestamp in milliseconds) of the entry dispatched
+     *                                     longest ago; null when no entry is dispatched
      *
      * @throws InvalidArgumentException
      */
@@ -37,7 +37,7 @@ final readonly class QueueStatus
         private int $pending,
         private int $dispatched,
         private ?int $oldestPendingOperationTime,
-        private ?int $oldestDispatchedOperationTime,
+        private ?int $oldestDispatchTime,
     ) {
         if ($pending < 0 || $dispatched < 0) {
             throw new InvalidArgumentException('Queue counts must not be negative.');
@@ -49,9 +49,9 @@ final readonly class QueueStatus
             );
         }
 
-        if (($dispatched === 0) !== ($oldestDispatchedOperationTime === null)) {
+        if (($dispatched === 0) !== ($oldestDispatchTime === null)) {
             throw new InvalidArgumentException(
-                'The oldest dispatched operation time must be set exactly when entries are dispatched.'
+                'The oldest dispatch time must be set exactly when entries are dispatched.'
             );
         }
     }
@@ -76,8 +76,8 @@ final readonly class QueueStatus
         return $this->oldestPendingOperationTime;
     }
 
-    public function getOldestDispatchedOperationTime(): ?int
+    public function getOldestDispatchTime(): ?int
     {
-        return $this->oldestDispatchedOperationTime;
+        return $this->oldestDispatchTime;
     }
 }

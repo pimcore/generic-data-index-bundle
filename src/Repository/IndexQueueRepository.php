@@ -44,13 +44,6 @@ final class IndexQueueRepository
     public const BATCH_SIZE = 500;
 
     /**
-     * Factor reserving the low-order digits of a dispatch id for a random
-     * uniqueness suffix, while the millisecond timestamp stays in the
-     * high-order digits. See generateDispatchId().
-     */
-    private const DISPATCH_ID_FACTOR = 1_000_000;
-
-    /**
      * How often an enqueue chunk is written before a deadlock is given up on. Concurrent enqueues
      * of overlapping elements (e.g. saves moving assets between objects next to update:index) can
      * deadlock each other; InnoDB then rolls back one of them, which is safe to replay.
@@ -362,7 +355,7 @@ final class IndexQueueRepository
 
         // 24h staleness threshold, scaled to the dispatch id encoding so
         // that unhandled (0) and stale rows are still re-dispatched.
-        $threshold = ($timestamp - 60*60*24*1000) * self::DISPATCH_ID_FACTOR;
+        $threshold = IndexQueueDispatchId::fromMillisecondTimestamp($timestamp - 60*60*24*1000);
 
         // Pick the rows with a non-locking read and claim them by primary key afterwards. A ranged
         // "UPDATE ... WHERE dispatched < :threshold LIMIT n" locks the scanned range of the
@@ -504,7 +497,7 @@ final class IndexQueueRepository
      */
     private function generateDispatchId(int $timestamp): int
     {
-        return $timestamp * self::DISPATCH_ID_FACTOR + random_int(0, self::DISPATCH_ID_FACTOR - 1);
+        return IndexQueueDispatchId::generate($timestamp);
     }
 
     public function resetDispatchedItems(string $dispatchId): void

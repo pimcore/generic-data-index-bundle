@@ -86,7 +86,7 @@ final class IndexQueueBacklogCheckTest extends Unit
     {
         $this->insertEntry(1, (self::NOW - 120) * 1000 + 999, 0);
         $this->insertEntry(2, (self::NOW - 30) * 1000, 0);
-        $this->insertEntry(3, (self::NOW - 9000) * 1000, 1_700_000_000_000_123);
+        $this->insertEntry(3, (self::NOW - 9000) * 1000, $this->dispatchIdAt(self::NOW - 9000));
 
         $result = $this->createCheck()->run();
 
@@ -154,7 +154,7 @@ final class IndexQueueBacklogCheckTest extends Unit
 
     public function testOldDispatchedEntriesAreNoBacklog(): void
     {
-        $this->insertEntry(1, (self::NOW - 90000) * 1000, 1_700_000_000_000_123);
+        $this->insertEntry(1, (self::NOW - 90000) * 1000, $this->dispatchIdAt(self::NOW - 90000));
 
         $codes = array_column($this->createCheck()->run()->toArray()['findings'], 'code');
 
@@ -163,7 +163,7 @@ final class IndexQueueBacklogCheckTest extends Unit
 
     public function testDispatchedEntryOfExactlyOneHourIsNoFinding(): void
     {
-        $this->insertEntry(1, (self::NOW - 3600) * 1000, 1_700_000_000_000_123);
+        $this->insertEntry(1, (self::NOW - 3600) * 1000, $this->dispatchIdAt(self::NOW - 3600));
 
         $result = $this->createCheck()->run();
 
@@ -173,7 +173,7 @@ final class IndexQueueBacklogCheckTest extends Unit
 
     public function testDispatchedEntryOlderThanOneHourIsAWarningThatNoWorkerConsumesTheQueue(): void
     {
-        $this->insertEntry(1, (self::NOW - 3601) * 1000, 1_700_000_000_000_123);
+        $this->insertEntry(1, (self::NOW - 3601) * 1000, $this->dispatchIdAt(self::NOW - 3601));
 
         $this->assertSame([[
             'code' => 'index_queue_not_consumed',
@@ -185,14 +185,14 @@ final class IndexQueueBacklogCheckTest extends Unit
 
     public function testDispatchedEntryOfExactlyOneDayIsStillAWarning(): void
     {
-        $this->insertEntry(1, (self::NOW - 86400) * 1000, 1_700_000_000_000_123);
+        $this->insertEntry(1, (self::NOW - 86400) * 1000, $this->dispatchIdAt(self::NOW - 86400));
 
         $this->assertSame('warning', $this->createCheck()->run()->toArray()['findings'][0]['severity']);
     }
 
     public function testDispatchedEntryOlderThanOneDayIsCritical(): void
     {
-        $this->insertEntry(1, (self::NOW - 86401) * 1000, 1_700_000_000_000_123);
+        $this->insertEntry(1, (self::NOW - 86401) * 1000, $this->dispatchIdAt(self::NOW - 86401));
 
         $this->assertSame([[
             'code' => 'index_queue_not_consumed',
@@ -205,7 +205,7 @@ final class IndexQueueBacklogCheckTest extends Unit
     public function testBacklogAndNotConsumedAreReportedTogether(): void
     {
         $this->insertEntry(1, (self::NOW - 90000) * 1000, 0);
-        $this->insertEntry(2, (self::NOW - 7200) * 1000, 1_700_000_000_000_123);
+        $this->insertEntry(2, (self::NOW - 7200) * 1000, $this->dispatchIdAt(self::NOW - 7200));
 
         $findings = $this->createCheck()->run()->toArray()['findings'];
 
@@ -213,6 +213,23 @@ final class IndexQueueBacklogCheckTest extends Unit
             [['index_queue_backlog', 'critical'], ['index_queue_not_consumed', 'warning']],
             array_map(static fn (array $finding): array => [$finding['code'], $finding['severity']], $findings)
         );
+    }
+
+    public function testEntryQueuedLongAgoButDispatchedRecentlyIsNoFinding(): void
+    {
+        $this->insertEntry(1, (self::NOW - 7200) * 1000, $this->dispatchIdAt(self::NOW - 60));
+
+        $result = $this->createCheck()->run();
+
+        $this->assertSame(60, $result->metrics['oldest_dispatched_age_seconds']);
+        $this->assertSame([], $result->findings);
+    }
+
+    public function testDispatchIdWithoutUniquenessSuffixIsReadAsPlainMillisecondTimestamp(): void
+    {
+        $this->insertEntry(1, (self::NOW - 7200) * 1000, (self::NOW - 120) * 1000);
+
+        $this->assertSame(120, $this->createCheck()->run()->metrics['oldest_dispatched_age_seconds']);
     }
 
     public function testMissingTableIsReportedAsNotAvailable(): void
@@ -317,6 +334,14 @@ final class IndexQueueBacklogCheckTest extends Unit
             'operationTime' => $operationTime,
             'dispatched' => $dispatched,
         ]);
+    }
+
+    /**
+     * A dispatch id as IndexQueueRepository writes it: the dispatch time in milliseconds plus a uniqueness suffix.
+     */
+    private function dispatchIdAt(int $timestamp): int
+    {
+        return $timestamp * 1000 * 1_000_000 + 123;
     }
 
     private function assertNoInstanceSecrets(CheckResult $result): void

@@ -32,7 +32,7 @@ final class StatusModelTest extends Unit
             pending: 2,
             dispatched: 3,
             oldestPendingOperationTime: 10,
-            oldestDispatchedOperationTime: 5,
+            oldestDispatchTime: 5,
         );
 
         $this->assertSame(5, $status->getTotal());
@@ -46,7 +46,7 @@ final class StatusModelTest extends Unit
             pending: -1,
             dispatched: 0,
             oldestPendingOperationTime: null,
-            oldestDispatchedOperationTime: null,
+            oldestDispatchTime: null,
         );
     }
 
@@ -58,7 +58,7 @@ final class StatusModelTest extends Unit
             pending: 0,
             dispatched: 1,
             oldestPendingOperationTime: 10,
-            oldestDispatchedOperationTime: 10,
+            oldestDispatchTime: 10,
         );
     }
 
@@ -70,7 +70,7 @@ final class StatusModelTest extends Unit
             pending: 1,
             dispatched: 0,
             oldestPendingOperationTime: 10,
-            oldestDispatchedOperationTime: 10,
+            oldestDispatchTime: 10,
         );
     }
 
@@ -82,7 +82,7 @@ final class StatusModelTest extends Unit
             pending: 0,
             dispatched: 1,
             oldestPendingOperationTime: null,
-            oldestDispatchedOperationTime: null,
+            oldestDispatchTime: null,
         );
     }
 
@@ -94,7 +94,7 @@ final class StatusModelTest extends Unit
             pending: 1,
             dispatched: 0,
             oldestPendingOperationTime: null,
-            oldestDispatchedOperationTime: null,
+            oldestDispatchTime: null,
         );
     }
 
@@ -107,7 +107,7 @@ final class StatusModelTest extends Unit
         $this->assertSame(
             [
                 'getDispatched',
-                'getOldestDispatchedOperationTime',
+                'getOldestDispatchTime',
                 'getOldestPendingOperationTime',
                 'getPending',
                 'getTotal',

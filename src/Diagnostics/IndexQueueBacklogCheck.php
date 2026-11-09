@@ -87,7 +87,7 @@ final readonly class IndexQueueBacklogCheck implements CheckInterface
         }
 
         $oldestPendingAge = $this->getAgeInSeconds($status->getOldestPendingOperationTime());
-        $oldestDispatchedAge = $this->getAgeInSeconds($status->getOldestDispatchedOperationTime());
+        $oldestDispatchedAge = $this->getAgeInSeconds($status->getOldestDispatchTime());
 
         return new CheckResult(
             findings: [
@@ -106,15 +106,15 @@ final readonly class IndexQueueBacklogCheck implements CheckInterface
     }
 
     /**
-     * @param int|null $operationTime Unix timestamp in milliseconds
+     * @param int|null $millisecondTimestamp Unix timestamp in milliseconds
      */
-    private function getAgeInSeconds(?int $operationTime): ?int
+    private function getAgeInSeconds(?int $millisecondTimestamp): ?int
     {
-        if ($operationTime === null) {
+        if ($millisecondTimestamp === null) {
             return null;
         }
 
-        return max(0, $this->clock->now()->getTimestamp() - intdiv($operationTime, 1000));
+        return max(0, $this->clock->now()->getTimestamp() - intdiv($millisecondTimestamp, 1000));
     }
 
     /**
@@ -133,8 +133,8 @@ final readonly class IndexQueueBacklogCheck implements CheckInterface
     }
 
     /**
-     * Dispatched entries wait for a messenger worker. The age counts from the entry's operation time, so an entry
-     * that waited long for the dispatcher looks older here as well.
+     * Dispatched entries wait for a messenger worker. The age counts from the time the entry was dispatched (stored
+     * in its dispatch id), not from the time it was queued, so a busy dispatcher does not look like a missing worker.
      *
      * @return list<Finding>
      */

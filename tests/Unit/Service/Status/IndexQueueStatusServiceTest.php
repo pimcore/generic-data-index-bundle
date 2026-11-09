@@ -55,14 +55,14 @@ final class IndexQueueStatusServiceTest extends Unit
         $this->assertSame(0, $status->getPending());
         $this->assertSame(0, $status->getDispatched());
         $this->assertNull($status->getOldestPendingOperationTime());
-        $this->assertNull($status->getOldestDispatchedOperationTime());
+        $this->assertNull($status->getOldestDispatchTime());
     }
 
     public function testQueueCountsPendingAndDispatchedEntries(): void
     {
         $this->insertEntry(1, 'asset', 1_700_000_000_300, 0);
         $this->insertEntry(2, 'asset', 1_700_000_000_100, 0);
-        $this->insertEntry(3, 'dataObject', 1_700_000_000_050, 1_700_000_000_000_123);
+        $this->insertEntry(3, 'dataObject', 1_700_000_000_050, 1_700_000_000_400_000_123);
         $this->insertEntry(4, 'document', 1_700_000_000_200, 0);
 
         $status = $this->createService()->getQueueStatus();
@@ -72,20 +72,29 @@ final class IndexQueueStatusServiceTest extends Unit
         $this->assertSame(1, $status->getDispatched());
         // The dispatched entry is older, but only entries waiting for dispatch count.
         $this->assertSame(1_700_000_000_100, $status->getOldestPendingOperationTime());
-        $this->assertSame(1_700_000_000_050, $status->getOldestDispatchedOperationTime());
+        // The dispatch time comes from the dispatch id, not from the time the entry was queued.
+        $this->assertSame(1_700_000_000_400, $status->getOldestDispatchTime());
     }
 
     public function testQueueWithOnlyDispatchedEntriesHasNoOldestPendingTime(): void
     {
-        $this->insertEntry(1, 'asset', 1_700_000_000_100, 42);
+        $this->insertEntry(1, 'asset', 1_700_000_000_100, 1_700_000_000_900_000_042);
+        $this->insertEntry(2, 'asset', 1_700_000_000_200, 1_700_000_000_500_999_999);
 
         $status = $this->createService()->getQueueStatus();
 
-        $this->assertSame(1, $status->getTotal());
+        $this->assertSame(2, $status->getTotal());
         $this->assertSame(0, $status->getPending());
-        $this->assertSame(1, $status->getDispatched());
+        $this->assertSame(2, $status->getDispatched());
         $this->assertNull($status->getOldestPendingOperationTime());
-        $this->assertSame(1_700_000_000_100, $status->getOldestDispatchedOperationTime());
+        $this->assertSame(1_700_000_000_500, $status->getOldestDispatchTime());
+    }
+
+    public function testDispatchIdWithoutUniquenessSuffixIsReadAsPlainMillisecondTimestamp(): void
+    {
+        $this->insertEntry(1, 'asset', 1_700_000_000_100, 1_700_000_000_300);
+
+        $this->assertSame(1_700_000_000_300, $this->createService()->getQueueStatus()->getOldestDispatchTime());
     }
 
     public function testQueueStatusFailsWithDomainExceptionWhenTheTableCannotBeRead(): void

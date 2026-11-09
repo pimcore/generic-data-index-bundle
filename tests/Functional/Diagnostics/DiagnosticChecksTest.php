@@ -94,7 +94,7 @@ final class DiagnosticChecksTest extends Unit
         $now = time();
         $this->insertEntry(1, ($now - 7200) * 1000, 0);
         $this->insertEntry(2, ($now - 10) * 1000, 0);
-        $this->insertEntry(3, ($now - 60) * 1000, $now * 1000);
+        $this->insertEntry(3, ($now - 60) * 1000, $now * 1000 * 1_000_000 + 1);
 
         $result = $this->getChecks()->get(self::BACKLOG_CHECK)->run();
 
@@ -123,13 +123,14 @@ final class DiagnosticChecksTest extends Unit
     public function testDispatchedEntriesThatNoWorkerProcessesAreReported(): void
     {
         $now = time();
-        $this->insertEntry(1, ($now - 100000) * 1000, $now * 1000);
+        // Queued and dispatched more than one day ago, encoded as IndexQueueRepository writes dispatch ids.
+        $this->insertEntry(1, ($now - 100000) * 1000, ($now - 90000) * 1000 * 1_000_000 + 123);
 
         $result = $this->getChecks()->get(self::BACKLOG_CHECK)->run();
 
         $this->assertSame(0, $result->metrics['queue_pending']);
         $this->assertSame(1, $result->metrics['queue_dispatched']);
-        $this->assertGreaterThanOrEqual(100000, $result->metrics['oldest_dispatched_age_seconds']);
+        $this->assertGreaterThanOrEqual(90000, $result->metrics['oldest_dispatched_age_seconds']);
         $this->assertSame([[
             'code' => 'index_queue_not_consumed',
             'severity' => 'critical',
