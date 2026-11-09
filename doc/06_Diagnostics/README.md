@@ -54,3 +54,39 @@ Dispatched entries are not counted as backlog: they wait for a messenger worker,
 
 **Sources:** `generic_data_index_queue` (one aggregate query, bounded to two seconds on MariaDB and MySQL), the
 search index configuration (client type, client name, prefix).
+
+## index_health
+
+Check id `generic_data_index.index_health`: health, document count and size of the search indices of the
+configured index prefix, read with one `_cat/indices` call through the bundle's configured search client.
+
+**Metrics**
+
+| Field              | Type | Meaning                                                                               |
+|--------------------|------|---------------------------------------------------------------------------------------|
+| `index_count`      | int  | Indices whose name starts with the configured prefix.                                 |
+| `indices_red`      | int  | Indices with health `red`.                                                            |
+| `indices_yellow`   | int  | Indices with health `yellow`.                                                         |
+| `documents_total`  | int  | Sum of the indices' document counts as reported by the search engine (this count includes nested sub-documents, so it can be higher than the number of indexed elements). |
+| `size_bytes_total` | int  | Sum of the indices' store size in bytes (primaries and replicas).                     |
+
+**Findings**
+
+| Code                    | Severity                         | Subject        | Message                                                    |
+|-------------------------|----------------------------------|----------------|------------------------------------------------------------|
+| `index_not_green`       | critical (red), warning (yellow) | the index name | The index is not green.                                    |
+| `no_indices_for_prefix` | warning                          | none           | No search index exists for the configured index prefix.   |
+
+`index_not_green` is reported for at most 20 indices; the metrics count all of them. The index name is used as
+the subject only when it matches `^[A-Za-z0-9][A-Za-z0-9 ._+\-]{0,254}$`; otherwise the finding has no subject.
+`no_indices_for_prefix` is reported only when the index queue table exists, i.e. the bundle is installed but its
+indices were not created (run `bin/console generic-data-index:update:index`).
+
+**Not available** (subject `indices`)
+
+- `not_readable`: the search engine could not be reached or answered with an unexpected response. No metrics are
+  reported.
+
+**Never returned:** document contents, search hosts and credentials, exception messages.
+
+**Sources:** the search indices of the configured prefix (`_cat/indices`).

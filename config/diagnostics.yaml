@@ -9,3 +9,6 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\Diagnostics\IndexQueueBacklogCheck:
         tags: [{ name: 'pimcore.diagnostics.check', topic: 'search' }]
+
+    Pimcore\Bundle\GenericDataIndexBundle\Diagnostics\IndexHealthCheck:
+        tags: [{ name: 'pimcore.diagnostics.check', topic: 'search' }]

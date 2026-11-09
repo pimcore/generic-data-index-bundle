@@ -55,7 +55,7 @@ final readonly class IndexQueueBacklogCheck implements CheckInterface
      * Configuration names are reported only when they look like identifiers; anything else (e.g. a URL put into
      * the wrong option) is reported as null.
      */
-    private const string IDENTIFIER_PATTERN = '/^[A-Za-z0-9._\-]{0,255}$/';
+    private const string IDENTIFIER_PATTERN = '/^[A-Za-z0-9._\-]{0,255}$/D';
 
     public function __construct(
         private IndexQueueStatusService $statusService,

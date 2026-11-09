@@ -32,6 +32,8 @@ final class DiagnosticChecksTest extends Unit
 {
     private const string BACKLOG_CHECK = 'generic_data_index.index_queue_backlog';
 
+    private const string HEALTH_CHECK = 'generic_data_index.index_health';
+
     protected IndexTester $tester;
 
     private Connection $connection;
@@ -59,6 +61,7 @@ final class DiagnosticChecksTest extends Unit
         $ids = $this->getChecks()->getIds();
 
         $this->assertContains(self::BACKLOG_CHECK, $ids);
+        $this->assertContains(self::HEALTH_CHECK, $ids);
     }
 
     public function testBacklogOfAnEmptyQueue(): void
@@ -113,6 +116,26 @@ final class DiagnosticChecksTest extends Unit
             'message' => 'Index queue entries older than one day are waiting.',
             'subject' => 'generic_data_index_queue',
         ]], $this->getChecks()->get(self::BACKLOG_CHECK)->run()->toArray()['findings']);
+    }
+
+    public function testHealthOfTheTestIndices(): void
+    {
+        $this->tester->runConsoleCommand('generic-data-index:update:index');
+
+        $result = $this->getChecks()->get(self::HEALTH_CHECK)->run();
+
+        $this->assertSame(
+            ['index_count', 'indices_red', 'indices_yellow', 'documents_total', 'size_bytes_total'],
+            array_keys($result->metrics)
+        );
+        $this->assertGreaterThan(0, $result->metrics['index_count']);
+        $this->assertSame(0, $result->metrics['indices_red']);
+        $this->assertSame([], $result->notAvailable);
+        foreach ($result->toArray()['findings'] as $finding) {
+            $this->assertSame('index_not_green', $finding['code']);
+            $this->assertSame('The index is not green.', $finding['message']);
+        }
+        DiagnosticsAssertions::assertNoHostSchemeOrCredential($result);
     }
 
     private function getChecks(): DiagnosticChecks

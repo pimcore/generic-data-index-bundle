@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\DependencyInjection;
 
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\DependencyInjection\PimcoreGenericDataIndexExtension;
+use Pimcore\Bundle\GenericDataIndexBundle\Diagnostics\IndexHealthCheck;
 use Pimcore\Bundle\GenericDataIndexBundle\Diagnostics\IndexQueueBacklogCheck;
 use Pimcore\Contracts\Diagnostics\CheckInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -35,7 +36,7 @@ final class DiagnosticsRegistrationTest extends Unit
      */
     private function checkClasses(): array
     {
-        return [IndexQueueBacklogCheck::class];
+        return [IndexQueueBacklogCheck::class, IndexHealthCheck::class];
     }
 
     public function testChecksAreRegisteredExactlyWhenTheContractExists(): void
