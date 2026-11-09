@@ -51,6 +51,8 @@ final readonly class DependencyTargetsChangedHandler
                     IndexQueueOperation::UPDATE->value,
                     processSynchronously: $this->synchronousProcessing->isEnabled(),
                     enqueueRelatedItems: false,
+                    // only the asset's own isReferenced flag changes, the data of its dependents does not
+                    enqueueDependentItems: false,
                 )
                 ->commit();
         }

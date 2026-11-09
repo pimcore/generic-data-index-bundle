@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexStateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
@@ -22,6 +23,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\Index
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DataObjectIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DocumentIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\ClassDefinition\Listing;
 
@@ -38,6 +40,8 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
         private readonly DataObjectIndexHandler $dataObjectIndexHandler,
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly SettingsStoreServiceInterface $settingsStoreService,
+        private readonly WorkflowPlaceServiceInterface $workflowPlaceService,
+        private readonly SearchIndexConfigServiceInterface $searchIndexConfigService,
         private readonly IndexStateServiceInterface $indexStateService,
     ) {
 
@@ -74,13 +78,9 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
      */
     public function updateClassDefinition(ClassDefinition $classDefinition): IndexUpdateService
     {
-        if ($this->reCreateIndex) {
-            $this->dataObjectIndexHandler
-                ->deleteIndex($classDefinition);
-        }
-
         $mappingProperties = $this->dataObjectIndexHandler->getMappingProperties($classDefinition);
 
+        // With forceCreateIndex, the handler deletes and recreates the index under the lock of the index.
         $this
             ->dataObjectIndexHandler
             ->updateMapping(
@@ -89,6 +89,9 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
                 mappingProperties: $mappingProperties
             );
 
+        $this->storeWorkflowPlacesMapping(
+            $this->searchIndexConfigService->getIndexName($classDefinition->getName(), true)
+        );
         $this->settingsStoreService->storeClassMapping(
             classDefinitionId: $classDefinition->getId(),
             data: $this->dataObjectIndexHandler->getClassMappingCheckSum($mappingProperties)
@@ -109,16 +112,15 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
      */
     public function updateDataObjectFolders(): IndexUpdateService
     {
-        if ($this->reCreateIndex) {
-            $this->dataObjectIndexHandler
-                ->deleteIndex();
-        }
-
         $this
             ->dataObjectIndexHandler
             ->updateMapping(
                 forceCreateIndex: $this->reCreateIndex
             );
+
+        $this->storeWorkflowPlacesMapping(
+            $this->searchIndexConfigService->getIndexName(IndexName::DATA_OBJECT_FOLDER->value)
+        );
 
         //add dataObjects to update queue
         $this
@@ -136,16 +138,15 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
     public function updateAssets(): IndexUpdateService
     {
 
-        if ($this->reCreateIndex) {
-            $this->assetIndexHandler
-                ->deleteIndex();
-        }
-
         $this
             ->assetIndexHandler
             ->updateMapping(
                 forceCreateIndex: $this->reCreateIndex
             );
+
+        $this->storeWorkflowPlacesMapping(
+            $this->searchIndexConfigService->getIndexName(IndexName::ASSET->value)
+        );
 
         //add assets to update queue
         $this
@@ -163,16 +164,15 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
     public function updateDocuments(): IndexUpdateService
     {
 
-        if ($this->reCreateIndex) {
-            $this->documentIndexHandler
-                ->deleteIndex();
-        }
-
         $this
             ->documentIndexHandler
             ->updateMapping(
                 forceCreateIndex: $this->reCreateIndex
             );
+
+        $this->storeWorkflowPlacesMapping(
+            $this->searchIndexConfigService->getIndexName(IndexName::DOCUMENT->value)
+        );
 
         //add assets to update queue
         $this
@@ -189,6 +189,20 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
         $this->reCreateIndex = $reCreateIndex;
 
         return $this;
+    }
+
+    /**
+     * Documents with places are written again once the workflowPlaces mapping applied to the index changed:
+     * the places are part of the document source even if the mapping did not know the workflow yet.
+     *
+     * @throws Exception
+     */
+    private function storeWorkflowPlacesMapping(string $indexName): void
+    {
+        $this->settingsStoreService->storeWorkflowPlacesMappingChecksum(
+            $indexName,
+            crc32(json_encode($this->workflowPlaceService->getMapping(), JSON_THROW_ON_ERROR))
+        );
     }
 
     /**

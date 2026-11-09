@@ -28,6 +28,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceIn
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolverInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedValueQueryStoreServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\DataObjectNormalizer;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -261,12 +262,35 @@ final class DataObjectNormalizerTest extends Unit
         ]);
     }
 
+    public function testWorkflowPlacesAreAddedToSystemFields(): void
+    {
+        $places = ['product_workflow' => ['edit_text', 'edit_images']];
+        $normalizer = $this->createNormalizer(
+            workflowPlaceService: $this->makeEmpty(WorkflowPlaceServiceInterface::class, ['getPlaces' => $places]),
+        );
+
+        $result = $normalizer->normalize($this->createConcreteObjectMock());
+
+        $this->assertSame($places, $result[FieldCategory::SYSTEM_FIELDS->value][SystemField::WORKFLOW_PLACES->value]);
+    }
+
+    public function testWorkflowPlacesAreOmittedWithoutPlaces(): void
+    {
+        $result = $this->createNormalizer()->normalize($this->createConcreteObjectMock());
+
+        $this->assertArrayNotHasKey(
+            SystemField::WORKFLOW_PLACES->value,
+            $result[FieldCategory::SYSTEM_FIELDS->value]
+        );
+    }
+
     private function createNormalizer(
         ?FieldDefinitionServiceInterface $fieldDefinitionService = null,
         ?WorkflowServiceInterface $workflowService = null,
         ?DependencyServiceInterface $dependencyService = null,
         CalculatedFieldsIndexMode $calculatedFieldsIndexMode = CalculatedFieldsIndexMode::LIVE,
         ?CalculatedValueQueryStoreServiceInterface $calculatedValueQueryStoreService = null,
+        ?WorkflowPlaceServiceInterface $workflowPlaceService = null,
     ): DataObjectNormalizer {
         return new DataObjectNormalizer(
             $fieldDefinitionService ?? $this->makeEmpty(FieldDefinitionServiceInterface::class),
@@ -277,6 +301,7 @@ final class DataObjectNormalizerTest extends Unit
                 ['getMode' => $calculatedFieldsIndexMode]
             ),
             $calculatedValueQueryStoreService ?? $this->makeEmpty(CalculatedValueQueryStoreServiceInterface::class),
+            $workflowPlaceService ?? $this->makeEmpty(WorkflowPlaceServiceInterface::class, ['getPlaces' => []]),
         );
     }
 

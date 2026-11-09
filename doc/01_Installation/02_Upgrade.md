@@ -7,6 +7,12 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 ## Upgrade to 2026.4.0
 
+### Requires Pimcore 2026.4
+
+- [Diagnostics] The bundle now requires `pimcore/pimcore` `^2026.4`, because its diagnostic checks implement the core
+  diagnostics contract (`Pimcore\Contracts\Diagnostics`). Generic Data Index 2026.4 is released together with
+  Pimcore 2026.4; upgrade both together. See [Diagnostics](../06_Diagnostics/README.md).
+
 ### Re-indexing recommended
 
 - [Indexing] Fixed: localized fields inside object bricks, field collections and blocks were normalized with the
@@ -131,7 +137,55 @@ description: Version-specific upgrade instructions and breaking changes for the 
   parse into the declared types. Apply the new mapping with `bin/console generic-data-index:update:index`; add `-r` to
   build the affected indices from scratch instead, which is also what removes the nodes dynamic mapping created.
 
+### Workflow places: run `update:index` right after the deployment
+
+- [Indexing] Places of workflows using the `state_table` marking store are indexed in the new system field
+  `workflowPlaces` (keyword per workflow name), see
+  [Workflow Places](../04_Searching_For_Data_In_Index/README.md#workflow-places).
+  Run `bin/console generic-data-index:update:index` to update the mapping and fill the field for existing elements.
+  Run it right after the deployment: elements indexed before the mapping is updated get a dynamic `text` mapping for
+  the new field, and the later update to `keyword` then needs a full re-index.
+  The `workflowPlaces` mapping depends on the configured `state_table` workflows. It is not part of the class mapping
+  checksum, so `generic-data-index:deployment:reindex` does not reindex every class because of it: run
+  `generic-data-index:update:index` after adding or removing a `state_table` workflow.
+- [Indexing] Snapshots exported before the update are still accepted, but importing one writes its documents as they
+  were exported, without `workflowPlaces`. Export snapshots again after the update, or run
+  `generic-data-index:update:index` again after importing an older snapshot.
+- [Indexing] `SettingsStoreServiceInterface` has two new methods, `getWorkflowPlacesMappingChecksum()` and
+  `storeWorkflowPlacesMappingChecksum()`: custom implementations must add them.
+
 ## Upgrade to 2026.3.5
+- [Messenger] A copy that runs out of its budget (`reindex_settings.max_polls` × `poll_interval`) is no longer
+  retried with the same budget: the class mapping and language messages report it as unrecoverable, so the message
+  goes to the failed transport right away. Raise `max_polls`, then retry it with `messenger:failed:retry`. The
+  timeout is a `ReindexTimeoutException`, a subclass of `ReindexFailedException`, which is no longer final.
+- [Messenger] A class mapping message that is handled twice (redelivered after `redeliver_timeout`, or a second save
+  of the class within the copy time) no longer copies the index twice: the second handling waits for the lock of the
+  index and skips the copy when the first one stored the checksum meanwhile. `ClassDefinitionReindexService` takes
+  the `IndexLockInterface` and the `SearchIndexConfigServiceInterface` as additional constructor arguments.
+- [Messenger] A failed language update (`UpdateLanguageSettingsMessage`) is no longer only logged as
+  `Updating languages failed`: the exception reaches Messenger, so the message is retried and ends in
+  `pimcore_generic_data_index_failed`, where it can be retried once the cause is fixed. A retried message of a
+  settings save that a later save has replaced is skipped, so it cannot reinstall the language list of its own
+  save: the languages of the latest save are recorded in the settings store (`LatestLanguageChangeInterface`).
+  Language updates never overlap: the whole update runs under a lock shared by all language messages, which the
+  updates of the single indices inside it renew, so a second one waits, then checks for a later save.
+  `IndexLockInterface::refresh()` renews every lock the process holds, and a nested `run()` renews the locks
+  already held once it has the new one. During a rolling deployment, a language change saved on a node that still
+  runs the previous version is not recorded; if a node on the new version recorded a change before, the workers
+  skip the older node's message (notice `Skipping a language change that a later settings save has replaced`).
+  Change the languages after the deployment, or run `deployment:reindex --all` afterwards.
+  `UpdateClassMappingHandler` and `UpdateLanguageSettingsHandler` take a `MappingUpdateRetryPolicyInterface` as a
+  further constructor argument, the language handler and `AdminSettingsSubscriber` also the
+  `LatestLanguageChangeInterface`.
+- [Indexing] Mapping updates of the same index no longer overlap: every copy or recreation of an index runs under a
+  lock on the index alias, and a second update of the same index waits until the first one has finished. The lock is
+  taken from the lock store of the application (`Symfony\Component\Lock\LockFactory`; Pimcore configures the
+  database store, so all workers and nodes share it) and expires, if its process dies, after the longest copy attempt
+  (the wait of `reindex_settings.max_polls` × `poll_interval` plus the cancellation of a stuck task before and after
+  it) and a quarter of that. `AbstractIndexHandler` and the three index handlers take an `IndexLockInterface` as
+  their last constructor argument; constructing them without it is deprecated and leaves the mapping updates of
+  that handler unlocked.
 - [Indexing] Fixed: deleting a class definition no longer leaves the delete queue entries of its objects behind.
   They were dispatched again every 24 hours and failed each time with `index_not_found_exception`, blocking the
   other elements of their batch. The entries are now removed together with the class index, and a bulk deletion

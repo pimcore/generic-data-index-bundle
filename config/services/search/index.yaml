@@ -7,6 +7,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageService
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LatestLanguageChangeInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LatestLanguageChange
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleService
 
@@ -94,6 +97,9 @@ services:
             - [ ]
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\DocumentIndexHandler: ~
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLock
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasService

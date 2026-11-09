@@ -44,7 +44,7 @@ depends on the trigger:
 | `update:index` | The console process, only if the in-place mapping update is rejected | Everything in scope |
 | `update:index -r` | No copy: the indices in scope are deleted and created empty | Everything in scope |
 | `generic-data-index:reindex` | The console process, every class, asset and document index | See [Commands](../03_Reindexing/README.md#commands) |
-| Class definition deleted | No copy: the index is deleted during the request | None |
+| Class definition deleted | No copy: the index is deleted during the request. A running copy of that index is waited for first, so that it cannot bring the index back | None |
 
 A class save copies only if the class's mapping differs from the checksum stored after the last successful update.
 Some changes alter the mapping without a class save: a bundle upgrade with a mapping change, changes to field
@@ -174,12 +174,15 @@ message, related elements, and the class mapping and language messages that run 
 
 **Redelivery.** The Doctrine transport hands a message that is still being handled after `redeliver_timeout`
 (default 3600 seconds) to another worker. A class mapping message whose copy takes longer than an hour is then handled
-by two workers at the same time, which must not happen (see the warning under
-[When a Copy Fails, Times Out or Is Cancelled](#when-a-copy-fails-times-out-or-is-cancelled)). Either raise
-`redeliver_timeout` above the longest message you expect, with a margin, or start the workers with `--keepalive`,
-which keeps the message marked as being handled; the keepalive interval must be smaller than `redeliver_timeout`. Size
-it for the whole message, not a single copy: the language message copies every class, asset and document index one
-after the other and queues their elements before it is acknowledged.
+by a second worker, which waits for the lock of the index (see the warning under
+[When a Copy Fails, Times Out or Is Cancelled](#when-a-copy-fails-times-out-or-is-cancelled)). Once the first worker
+has finished and stored the checksum of the class, the second one finds the mapping current and skips the copy, but
+it is blocked for the whole wait. A redelivered language message copies every index again, because the language
+update copies all of them regardless of their checksums. Either raise `redeliver_timeout` above the longest message
+you expect, with a margin, or start the workers with `--keepalive`, which keeps the message marked as being handled;
+the keepalive interval must be smaller than `redeliver_timeout`. Size it for the whole message, not a single copy:
+the language message copies every class, asset and document index one after the other and queues their elements
+before it is acknowledged.
 
 ```yaml
 framework:
@@ -203,10 +206,12 @@ the copy time budget.
 Other transports configured through `PIMCORE_MESSENGER_TRANSPORT_DSN_PREFIX` have their own redelivery settings.
 
 **Retries.** The bundle sets no retry strategy, so Symfony's default applies: 3 retries after about 1, 2 and 4
-seconds, then the message goes to `pimcore_generic_data_index_failed`. A copy that ran out of its budget is retried
-from the start, each time with the full budget: one class save can copy the same index up to four times. A retry
-strategy set on the transport in the application config replaces the default and applies to all messages of the
-bundle, including index queue batches.
+seconds, then the message goes to `pimcore_generic_data_index_failed`. A copy that ran out of its budget is the
+exception: the class mapping and language messages report it as unrecoverable, so the message goes to the failed
+transport right away instead of copying the index up to four times with a budget that is too small. Raise `max_polls`
+(see [Copy Time Budget](#copy-time-budget)), then retry the message with `messenger:failed:retry`. A retry strategy
+set on the transport in the application config replaces the default and applies to all messages of the bundle,
+including index queue batches.
 
 **Dedicated worker for copies.** To keep copies away from the index queue workers, route the class mapping and
 language messages to a transport of their own and run one worker for it:
@@ -237,7 +242,8 @@ bin/console messenger:consume pimcore_generic_data_index_mapping
 During a deployment, class changes reach the index in two ways: `classes-rebuild` sends one message per changed class
 to the workers, and `deployment:reindex` copies the changed classes in the console process. Both compare the class
 mapping with the checksum that is stored only after a successful update. If the workers are running, a worker and the
-console can therefore copy the same class at the same time. Stop the workers first:
+console can therefore both copy the same class. The lock of the index keeps the copies apart (the second one waits
+and then copies again), but every class is still copied twice. Stop the workers first:
 
 1. **Prepare.** On a staging system with the new code and production-like data, run
    `deployment:reindex --all --dry-run` to see which indices will be copied or rebuilt, and estimate copy and rebuild
@@ -329,27 +335,33 @@ Messenger: `bin/console messenger:stats` shows the messages waiting per transpor
 
 | Case | What happens | What to do |
 | --- | --- | --- |
-| The copy runs out of its budget (`did not complete within N seconds`) | The bundle cancels the task and deletes the new index. The old index stays live with the old mapping, the checksum is not stored, nothing is queued. A console command exits with a non-zero status; a worker retries the message 3 times, then moves it to the failed transport. | Raise `max_polls` (and the worker redelivery), then repeat what failed in a quiet period: run the command again, or retry the failed message (`messenger:failed:retry --transport=pimcore_generic_data_index_failed`). `deployment:reindex --all` only helps where it still detects the change, for example a class whose checksum was not stored; it compares stored states and doesn't know about unfinished copies. |
+| The copy runs out of its budget (`did not complete within N seconds`) | The bundle cancels the task and deletes the new index. The old index stays live with the old mapping, the checksum is not stored, nothing is queued. A console command exits with a non-zero status; a worker moves the message to the failed transport without retrying it, because a retry with the same budget would run out of it as well. | Raise `max_polls` (and the worker redelivery), then repeat what failed in a quiet period: run the command again, or retry the failed message (`messenger:failed:retry --transport=pimcore_generic_data_index_failed`). `deployment:reindex --all` only helps where it still detects the change, for example a class whose checksum was not stored; it compares stored states and doesn't know about unfinished copies. |
 | The task reports an error, or the cluster is unreachable | As above. Single failed status polls are retried and don't abort the copy. | Fix the cause, then as above. |
 | The existing documents don't fit the new mapping | See the [Reindexing Guide](../03_Reindexing/README.md); the log shows `Recreating index for alias` if the index is recreated. | Run enough workers for the rebuild and watch `generic-data-index:status`. If the copy came from `generic-data-index:reindex`, nothing was queued: run `update:index -c <id>`, `-a` or `-d` for the recreated index. |
 | The task could not be confirmed as cancelled | The new index is kept (`Keeping index` warning). | The next copy of the index cancels the leftover task and deletes the index. Remove it by hand only after the tasks API shows no task for it and no copy process is running; `cleanup:unused-indices` checks the age and the alias, not running tasks. |
 | The worker or console process was killed during the copy | The engine task keeps running; its new index stays. | The next copy of the index cancels the task. Check the tasks API before you start one by hand. |
-| Valid languages changed in the system settings, and the copies failed | The error is logged (`Updating languages failed`); the message is not retried. | Run `deployment:reindex --all`. Indices it reports with "no stored state yet" need `update:index` once (see [Other Index Changes](./03_Index_Management.md#other-index-changes)). Classes whose only language-dependent data is a localized classification store keep their checksum; rebuild them with `update:index -c <id>` (see [Languages](../03_Reindexing/README.md#languages)). |
+| Valid languages changed in the system settings, and a copy failed | The message fails like a class mapping message: it is retried 3 times (not at all when a copy ran out of its budget), then goes to the failed transport. The indices after the failing one are not updated in that run; the retry copies every index again. Two language messages never run at the same time: the second one waits for the first (lock `languages`), and a message of a save that a later save has replaced is skipped (`Skipping a language change that a later settings save has replaced`). The saves are recorded by the version with this change only: a save on a node that still runs the previous version during a rolling deployment can be skipped as well; run `deployment:reindex --all` after the deployment in that case. | Fix the cause, then retry the failed message (`messenger:failed:retry --transport=pimcore_generic_data_index_failed`), which copies every index again, or run `deployment:reindex --all`. Indices it reports with "no stored state yet" need `update:index` once (see [Other Index Changes](./03_Index_Management.md#other-index-changes)). Classes whose only language-dependent data is a localized classification store keep their checksum; rebuild them with `update:index -c <id>` (see [Languages](../03_Reindexing/README.md#languages)). |
 | `deployment:reindex` without options fails for one class | The classes after it are not processed in this run. | Fix the cause and run the command again, or use `--all`, which continues with the other indices. |
 
 :::warning
 
-Don't cancel a running copy task of the bundle by hand (`POST _tasks/<task_id>/_cancel`), and don't let two copies of
-the same index overlap. The engine reports a cancelled task as finished without errors, and versions without the fix
-for [#639](https://github.com/pimcore/platform-version/issues/639) take it as a complete copy: the alias switches to
-the incomplete index and the old index is deleted. When two copies of the same index overlap, the second one cancels
-the first (it removes running copies of its target before it starts), and the class index can disappear completely.
-With the fix, a cancelled copy fails and the alias stays on the complete index, but an overlapping copy still starts
-the first one over.
+Don't cancel a running copy task of the bundle by hand (`POST _tasks/<task_id>/_cancel`). The engine reports a
+cancelled task as finished without errors, and versions without the fix for
+[#639](https://github.com/pimcore/platform-version/issues/639) take it as a complete copy: the alias switches to
+the incomplete index and the old index is deleted. With the fix, a cancelled copy fails and the alias stays on the
+complete index.
 
-Copies of the same index overlap when workers run during `classes-rebuild` and `deployment:reindex` (see
-[Deployment Procedure](#deployment-procedure)), when a message is redelivered after `redeliver_timeout`, or when a
-class is saved twice within the copy time and two workers handle the messages.
+Two mapping updates of the same index never run at the same time. Each one holds a lock on the index alias, taken
+from the lock store of the application (Pimcore configures the database store, so all workers and nodes share it),
+and the second one waits until the first has finished, then copies the index again. This happens when workers run
+during `classes-rebuild` and `deployment:reindex` (see [Deployment Procedure](#deployment-procedure)), when a
+message is redelivered after `redeliver_timeout`, or when a class is saved twice within the copy time and two
+workers handle the messages. The waiting process logs a notice and blocks until the lock is free; a lock whose
+process died expires after the longest copy attempt (the wait of `reindex_settings.max_polls` × `poll_interval`,
+one hour by default, plus the cancellation of a stuck task before and after it) and a quarter of that. An update
+whose lock was taken over meanwhile stops with an `IndexLockException` instead of going on. Versions before
+2026.3.5 have no lock: there, the second copy cancels the first (it removes
+running copies of its target before it starts), and the class index can disappear completely.
 
 To stop a copy, first stop the process that waits for it (the worker or the console command), then cancel the task.
 The next copy of the index removes the incomplete index.

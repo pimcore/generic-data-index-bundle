@@ -18,6 +18,7 @@ use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\DocumentCountFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexTimeoutException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\SearchFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Debug\SearchInformation;
@@ -253,7 +254,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
             $taskStatus = $this->waitForTaskCompletion($taskId);
         } catch (\Throwable $e) {
-            if ($this->abortCopy($indexName, $newIndexName, $taskId, $e)) {
+            if ($this->abortCopySafely($indexName, $newIndexName, $taskId, $e)) {
                 return null;
             }
 
@@ -278,6 +279,25 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
 
         return new ReindexOutcome(ReindexResult::SUCCESS);
+    }
+
+    /**
+     * A failing cleanup must not replace the cause of the abort: a timeout stays a timeout for the retry policy of
+     * the message handlers. The cleanup failure is logged; the next copy of the index removes what was left.
+     */
+    private function abortCopySafely(string $aliasName, string $newIndexName, ?string $taskId, \Throwable $e): bool
+    {
+        try {
+            return $this->abortCopy($aliasName, $newIndexName, $taskId, $e);
+        } catch (Exception $cleanupFailure) {
+            $this->logger->warning(sprintf(
+                'Cleaning up the aborted copy into "%s" failed, the next reindex cleans it up: %s',
+                $newIndexName,
+                $cleanupFailure->getMessage()
+            ), ['exception' => $cleanupFailure]);
+
+            return false;
+        }
     }
 
     /**
@@ -428,7 +448,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             sleep($this->reindexPollIntervalSeconds);
         }
 
-        throw new ReindexFailedException(
+        throw new ReindexTimeoutException(
             \sprintf(
                 'Reindex task %s did not complete within %d seconds',
                 $taskId,
@@ -579,7 +599,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
 
         // Cancellation is cooperative: the task stops between batches. Report the
         // target as safe to delete only once the task is observed gone or completed.
-        for ($attempt = 0; $attempt < self::MAX_CONSECUTIVE_POLL_FAILURES; $attempt++) {
+        for ($attempt = 0; $attempt < self::REINDEX_CANCEL_POLLS; $attempt++) {
             try {
                 $taskStatus = $this->fetchTaskStatus($taskId);
             } catch (ReindexFailedException $e) {

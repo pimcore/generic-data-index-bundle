@@ -23,6 +23,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceI
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AbstractIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLock;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
@@ -31,6 +32,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use Symfony\Component\Lock\LockFactory;
+use Symfony\Component\Lock\Store\InMemoryStore;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -72,12 +75,13 @@ final class AbstractIndexHandlerBcTest extends Unit
         $this->assertSame([], $result->getStrippedPaths());
         $this->assertFalse($result->isRecreated());
         $this->assertFalse($result->requiresRebuild());
-        $this->assertCount(1, $deprecations);
+        $this->assertCount(2, $deprecations, 'one for the copy service, one for the index lock');
         $this->assertStringContainsString('IndexCopyServiceInterface', $deprecations[0]);
         $this->assertStringContainsString('is deprecated', $deprecations[0]);
+        $this->assertStringContainsString('IndexLockInterface', $deprecations[1]);
     }
 
-    public function testPassingTheCopyServiceTriggersNoDeprecation(): void
+    public function testPassingAllArgumentsTriggersNoDeprecation(): void
     {
         $search = $this->makeEmpty(SearchIndexServiceInterface::class);
 
@@ -95,7 +99,8 @@ final class AbstractIndexHandlerBcTest extends Unit
         $events = $this->makeEmpty(EventDispatcherInterface::class);
         $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
         $copy = new IndexCopyService($search, new MappingDiffService(), new NullLogger());
-        $handler = new class($search, $config, $events, $mapping, $copy) extends AbstractIndexHandler {
+        $lock = new IndexLock(new LockFactory(new InMemoryStore()), 1, 1);
+        $handler = new class($search, $config, $events, $mapping, $copy, $lock) extends AbstractIndexHandler {
             public int $calls = 0;
 
             public function reindexMapping(
@@ -132,7 +137,8 @@ final class AbstractIndexHandlerBcTest extends Unit
         $events = $this->makeEmpty(EventDispatcherInterface::class);
         $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
         $copy = new IndexCopyService($search, new MappingDiffService(), new NullLogger());
-        $handler = new class($search, $config, $events, $mapping, $copy) extends AbstractIndexHandler {
+        $lock = new IndexLock(new LockFactory(new InMemoryStore()), 1, 1);
+        $handler = new class($search, $config, $events, $mapping, $copy, $lock) extends AbstractIndexHandler {
             public int $calls = 0;
 
             public function reindexMapping(
@@ -166,6 +172,8 @@ final class AbstractIndexHandlerBcTest extends Unit
             $this->makeEmpty(IndexIconUpdateServiceInterface::class, ['updateIcon' => null]),
             $this->makeEmpty(LoggerInterface::class),
             $this->makeEmpty(IndexRebuildObligationServiceInterface::class),
+            new IndexLock(new LockFactory(new InMemoryStore()), 1, 1),
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class, ['getIndexName' => 'pimcore_test']),
         );
         $classDefinition = new ClassDefinition();
         $classDefinition->setId('TEST');
@@ -198,8 +206,9 @@ final class AbstractIndexHandlerBcTest extends Unit
         $events = $this->makeEmpty(EventDispatcherInterface::class);
         $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
         $copy = new IndexCopyService($search, new MappingDiffService(), new NullLogger());
+        $lock = new IndexLock(new LockFactory(new InMemoryStore()), 1, 1);
 
-        $handler = new class($search, $config, $events, $mapping, $copy) extends AbstractIndexHandler {
+        $handler = new class($search, $config, $events, $mapping, $copy, $lock) extends AbstractIndexHandler {
             public int $calls = 0;
 
             public function reindexMapping(
@@ -257,8 +266,9 @@ final class AbstractIndexHandlerBcTest extends Unit
         $events = $this->makeEmpty(EventDispatcherInterface::class);
         $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
         $copy = new IndexCopyService($search, new MappingDiffService(), new NullLogger());
+        $lock = new IndexLock(new LockFactory(new InMemoryStore()), 1, 1);
 
-        return new class($search, $config, $events, $mapping, $copy) extends AbstractIndexHandler {
+        return new class($search, $config, $events, $mapping, $copy, $lock) extends AbstractIndexHandler {
             protected function extractMappingProperties(mixed $context = null): array
             {
                 return [];
