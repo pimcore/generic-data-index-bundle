@@ -47,6 +47,8 @@ final readonly class IndexHealthCheck implements CheckInterface
 
     private const int MAX_INDEX_FINDINGS = 20;
 
+    private const array HEALTH_VALUES = ['green', 'yellow', 'red'];
+
     public function __construct(
         private SearchClientInterface $client,
         private SearchIndexConfigServiceInterface $searchIndexConfigService,
@@ -83,10 +85,16 @@ final readonly class IndexHealthCheck implements CheckInterface
             'documents_total' => 0,
             'size_bytes_total' => 0,
         ];
-        $findings = [];
+        $findingsBySeverity = [Severity::Critical->value => [], Severity::Warning->value => []];
 
         foreach ($indices as $index) {
-            if (!is_array($index)) {
+            if (!is_array($index) || !is_string($index['index'] ?? null) || $index['index'] === '') {
+                return $this->notReadable();
+            }
+
+            $health = $index['health'] ?? null;
+            $isClosed = ($index['status'] ?? null) === 'close';
+            if (!$isClosed && !in_array($health, self::HEALTH_VALUES, true)) {
                 return $this->notReadable();
             }
 
@@ -94,7 +102,7 @@ final readonly class IndexHealthCheck implements CheckInterface
             $metrics['documents_total'] += $this->toInt($index['docs.count'] ?? null);
             $metrics['size_bytes_total'] += $this->toInt($index['store.size'] ?? null);
 
-            $severity = match ($index['health'] ?? null) {
+            $severity = match ($health) {
                 'red' => Severity::Critical,
                 'yellow' => Severity::Warning,
                 default => null,
@@ -104,15 +112,20 @@ final readonly class IndexHealthCheck implements CheckInterface
             }
 
             $metrics[$severity === Severity::Critical ? 'indices_red' : 'indices_yellow']++;
-            if (count($findings) < self::MAX_INDEX_FINDINGS) {
-                $findings[] = new Finding(
-                    'index_not_green',
-                    $severity,
-                    'The index is not green.',
-                    $this->asIndexName($index['index'] ?? null),
-                );
-            }
+            $findingsBySeverity[$severity->value][] = new Finding(
+                'index_not_green',
+                $severity,
+                'The index is not green.',
+                $this->asIndexName($index['index']),
+            );
         }
+
+        // Critical findings first, so the cap never hides a red index behind yellow ones.
+        $findings = array_slice(
+            array_merge($findingsBySeverity[Severity::Critical->value], $findingsBySeverity[Severity::Warning->value]),
+            0,
+            self::MAX_INDEX_FINDINGS,
+        );
 
         if ($metrics['index_count'] === 0 && $this->isQueueTableAvailable()) {
             $findings[] = new Finding(

@@ -139,6 +139,52 @@ final class IndexHealthCheckTest extends Unit
         $this->assertSame(25, $result->metrics['index_count']);
     }
 
+    public function testRedIndicesAreReportedBeforeYellowOnesWhenTheCapApplies(): void
+    {
+        $rows = [];
+        for ($i = 0; $i < 20; $i++) {
+            $rows[] = $this->row('pimcore_yellow_' . $i, 'yellow', '1', '1');
+        }
+        $rows[] = $this->row('pimcore_red', 'red', '1', '1');
+
+        $findings = $this->createCheck($rows)->run()->toArray()['findings'];
+
+        $this->assertCount(20, $findings);
+        $this->assertSame('critical', $findings[0]['severity']);
+        $this->assertSame('pimcore_red', $findings[0]['subject']);
+        $this->assertSame('warning', $findings[19]['severity']);
+    }
+
+    /**
+     * @return array<string, array{0: array<mixed>}>
+     */
+    public static function malformedRowProvider(): array
+    {
+        return [
+            'empty row' => [[]],
+            'missing index name' => [['health' => 'green', 'status' => 'open']],
+            'non-string index name' => [['index' => 42, 'health' => 'green', 'status' => 'open']],
+            'empty index name' => [['index' => '', 'health' => 'green', 'status' => 'open']],
+            'open index without health' => [['index' => 'pimcore_asset', 'status' => 'open']],
+            'unknown health' => [['index' => 'pimcore_asset', 'health' => 'purple', 'status' => 'open']],
+            'closed index without name' => [['status' => 'close']],
+        ];
+    }
+
+    /**
+     * @dataProvider malformedRowProvider
+     *
+     * @param array<mixed> $row
+     */
+    public function testMalformedRowInsideTheListIsNotReadable(array $row): void
+    {
+        $result = $this->createCheck([$this->row('pimcore_document', 'green', '1', '1'), $row])->run();
+
+        $this->assertSame([['subject' => 'indices', 'reason' => 'not_readable']], $result->toArray()['not_available']);
+        $this->assertSame([], $result->metrics);
+        $this->assertSame([], $result->findings);
+    }
+
     public function testNoIndexForThePrefixIsAWarningWhenTheQueueTableExists(): void
     {
         $result = $this->createCheck([])->run();

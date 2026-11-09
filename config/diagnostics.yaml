@@ -10,5 +10,8 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Diagnostics\IndexQueueBacklogCheck:
         tags: [{ name: 'pimcore.diagnostics.check', topic: 'search' }]
 
+    # The search client is registered only under its id, there is no alias for SearchClientInterface.
     Pimcore\Bundle\GenericDataIndexBundle\Diagnostics\IndexHealthCheck:
+        arguments:
+            $client: '@generic-data-index.search-client'
         tags: [{ name: 'pimcore.diagnostics.check', topic: 'search' }]

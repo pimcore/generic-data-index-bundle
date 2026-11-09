@@ -77,15 +77,16 @@ configured index prefix, read with one `_cat/indices` call through the bundle's 
 | `index_not_green`       | critical (red), warning (yellow) | the index name | The index is not green.                                    |
 | `no_indices_for_prefix` | warning                          | none           | No search index exists for the configured index prefix.   |
 
-`index_not_green` is reported for at most 20 indices; the metrics count all of them. The index name is used as
+`index_not_green` is reported for at most 20 indices, red ones first; the metrics count all of them. The index name is used as
 the subject only when it matches `^[A-Za-z0-9][A-Za-z0-9 ._+\-]{0,254}$`; otherwise the finding has no subject.
 `no_indices_for_prefix` is reported only when the index queue table exists, i.e. the bundle is installed but its
 indices were not created (run `bin/console generic-data-index:update:index`).
 
 **Not available** (subject `indices`)
 
-- `not_readable`: the search engine could not be reached or answered with an unexpected response. No metrics are
-  reported.
+- `not_readable`: the search engine could not be reached or answered with an unexpected response (for example a
+  row without an index name, or an open index without a `green`, `yellow` or `red` health; closed indices need no
+  health). No metrics are reported.
 
 **Never returned:** document contents, search hosts and credentials, exception messages.
 
