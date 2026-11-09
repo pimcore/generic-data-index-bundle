@@ -50,12 +50,14 @@ final readonly class IndexQueueStatusService
     {
         try {
             $dispatched = $this->connection->quoteIdentifier('dispatched');
+            $operationTime = $this->connection->quoteIdentifier('operationTime');
             $row = $this->connection->fetchAssociative(
                 $this->getStatementTimeLimitPrefix() . 'SELECT ' . $this->getStatementTimeLimitHint() . '
                     SUM(CASE WHEN ' . $dispatched . ' = 0 THEN 1 ELSE 0 END) AS pending,
                     SUM(CASE WHEN ' . $dispatched . ' = 0 THEN 0 ELSE 1 END) AS dispatched,
-                    MIN(CASE WHEN ' . $dispatched . ' = 0 THEN '
-                        . $this->connection->quoteIdentifier('operationTime') . ' END) AS oldestPending
+                    MIN(CASE WHEN ' . $dispatched . ' = 0 THEN ' . $operationTime . ' END) AS oldestPending,
+                    MIN(CASE WHEN ' . $dispatched . ' = 0 THEN NULL ELSE ' . $operationTime . ' END)
+                        AS oldestDispatched
                 FROM ' . $this->connection->quoteIdentifier(IndexQueue::TABLE)
             );
         } catch (DBALException $e) {
@@ -63,11 +65,13 @@ final readonly class IndexQueueStatusService
         }
 
         $oldestPending = $row['oldestPending'] ?? null;
+        $oldestDispatched = $row['oldestDispatched'] ?? null;
 
         return new QueueStatus(
             pending: (int) ($row['pending'] ?? 0),
             dispatched: (int) ($row['dispatched'] ?? 0),
             oldestPendingOperationTime: $oldestPending === null ? null : (int) $oldestPending,
+            oldestDispatchedOperationTime: $oldestDispatched === null ? null : (int) $oldestDispatched,
         );
     }
 

@@ -45,7 +45,9 @@ final readonly class IndexQueueBacklogCheck implements CheckInterface
 
     private const string SUBJECT = 'generic_data_index_queue';
 
-    private const string FINDING_CODE = 'index_queue_backlog';
+    private const string BACKLOG_FINDING_CODE = 'index_queue_backlog';
+
+    private const string NOT_CONSUMED_FINDING_CODE = 'index_queue_not_consumed';
 
     private const int WARNING_AGE_SECONDS = 3600;
 
@@ -85,14 +87,19 @@ final readonly class IndexQueueBacklogCheck implements CheckInterface
         }
 
         $oldestPendingAge = $this->getAgeInSeconds($status->getOldestPendingOperationTime());
+        $oldestDispatchedAge = $this->getAgeInSeconds($status->getOldestDispatchedOperationTime());
 
         return new CheckResult(
-            findings: $this->getFindings($oldestPendingAge),
+            findings: [
+                ...$this->getBacklogFindings($oldestPendingAge),
+                ...$this->getNotConsumedFindings($oldestDispatchedAge),
+            ],
             metrics: [
                 'queue_total' => $status->getTotal(),
                 'queue_dispatched' => $status->getDispatched(),
                 'queue_pending' => $status->getPending(),
                 'oldest_pending_age_seconds' => $oldestPendingAge,
+                'oldest_dispatched_age_seconds' => $oldestDispatchedAge,
                 ...$this->getConfigurationMetrics(),
             ],
         );
@@ -111,29 +118,50 @@ final readonly class IndexQueueBacklogCheck implements CheckInterface
     }
 
     /**
+     * Pending entries wait to be dispatched to the messenger transport.
+     *
      * @return list<Finding>
      */
-    private function getFindings(?int $oldestPendingAge): array
+    private function getBacklogFindings(?int $oldestPendingAge): array
     {
-        if ($oldestPendingAge === null || $oldestPendingAge <= self::WARNING_AGE_SECONDS) {
+        return $this->getAgeFindings(
+            $oldestPendingAge,
+            self::BACKLOG_FINDING_CODE,
+            'Index queue entries older than one hour are waiting.',
+            'Index queue entries older than one day are waiting.',
+        );
+    }
+
+    /**
+     * Dispatched entries wait for a messenger worker. The age counts from the entry's operation time, so an entry
+     * that waited long for the dispatcher looks older here as well.
+     *
+     * @return list<Finding>
+     */
+    private function getNotConsumedFindings(?int $oldestDispatchedAge): array
+    {
+        return $this->getAgeFindings(
+            $oldestDispatchedAge,
+            self::NOT_CONSUMED_FINDING_CODE,
+            'Dispatched index queue entries older than one hour are not processed.',
+            'Dispatched index queue entries older than one day are not processed.',
+        );
+    }
+
+    /**
+     * @return list<Finding>
+     */
+    private function getAgeFindings(?int $age, string $code, string $warningMessage, string $criticalMessage): array
+    {
+        if ($age === null || $age <= self::WARNING_AGE_SECONDS) {
             return [];
         }
 
-        if ($oldestPendingAge > self::CRITICAL_AGE_SECONDS) {
-            return [new Finding(
-                self::FINDING_CODE,
-                Severity::Critical,
-                'Index queue entries older than one day are waiting.',
-                self::SUBJECT,
-            )];
+        if ($age > self::CRITICAL_AGE_SECONDS) {
+            return [new Finding($code, Severity::Critical, $criticalMessage, self::SUBJECT)];
         }
 
-        return [new Finding(
-            self::FINDING_CODE,
-            Severity::Warning,
-            'Index queue entries older than one hour are waiting.',
-            self::SUBJECT,
-        )];
+        return [new Finding($code, Severity::Warning, $warningMessage, self::SUBJECT)];
     }
 
     /**

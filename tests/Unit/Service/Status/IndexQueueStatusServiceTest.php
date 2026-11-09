@@ -55,6 +55,7 @@ final class IndexQueueStatusServiceTest extends Unit
         $this->assertSame(0, $status->getPending());
         $this->assertSame(0, $status->getDispatched());
         $this->assertNull($status->getOldestPendingOperationTime());
+        $this->assertNull($status->getOldestDispatchedOperationTime());
     }
 
     public function testQueueCountsPendingAndDispatchedEntries(): void
@@ -71,6 +72,7 @@ final class IndexQueueStatusServiceTest extends Unit
         $this->assertSame(1, $status->getDispatched());
         // The dispatched entry is older, but only entries waiting for dispatch count.
         $this->assertSame(1_700_000_000_100, $status->getOldestPendingOperationTime());
+        $this->assertSame(1_700_000_000_050, $status->getOldestDispatchedOperationTime());
     }
 
     public function testQueueWithOnlyDispatchedEntriesHasNoOldestPendingTime(): void
@@ -83,6 +85,7 @@ final class IndexQueueStatusServiceTest extends Unit
         $this->assertSame(0, $status->getPending());
         $this->assertSame(1, $status->getDispatched());
         $this->assertNull($status->getOldestPendingOperationTime());
+        $this->assertSame(1_700_000_000_100, $status->getOldestDispatchedOperationTime());
     }
 
     public function testQueueStatusFailsWithDomainExceptionWhenTheTableCannotBeRead(): void

@@ -28,7 +28,12 @@ final class StatusModelTest extends Unit
 {
     public function testQueueStatusTotalIsPendingPlusDispatched(): void
     {
-        $status = new QueueStatus(pending: 2, dispatched: 3, oldestPendingOperationTime: 10);
+        $status = new QueueStatus(
+            pending: 2,
+            dispatched: 3,
+            oldestPendingOperationTime: 10,
+            oldestDispatchedOperationTime: 5,
+        );
 
         $this->assertSame(5, $status->getTotal());
     }
@@ -37,21 +42,60 @@ final class StatusModelTest extends Unit
     {
         $this->expectException(InvalidArgumentException::class);
 
-        new QueueStatus(pending: -1, dispatched: 0, oldestPendingOperationTime: null);
+        new QueueStatus(
+            pending: -1,
+            dispatched: 0,
+            oldestPendingOperationTime: null,
+            oldestDispatchedOperationTime: null,
+        );
     }
 
     public function testQueueStatusRequiresOldestTimeExactlyWhenEntriesArePending(): void
     {
         $this->expectException(InvalidArgumentException::class);
 
-        new QueueStatus(pending: 0, dispatched: 1, oldestPendingOperationTime: 10);
+        new QueueStatus(
+            pending: 0,
+            dispatched: 1,
+            oldestPendingOperationTime: 10,
+            oldestDispatchedOperationTime: 10,
+        );
+    }
+
+    public function testQueueStatusRequiresOldestDispatchedTimeExactlyWhenEntriesAreDispatched(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new QueueStatus(
+            pending: 1,
+            dispatched: 0,
+            oldestPendingOperationTime: 10,
+            oldestDispatchedOperationTime: 10,
+        );
+    }
+
+    public function testQueueStatusRequiresOldestDispatchedTimeWhenEntriesAreDispatched(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new QueueStatus(
+            pending: 0,
+            dispatched: 1,
+            oldestPendingOperationTime: null,
+            oldestDispatchedOperationTime: null,
+        );
     }
 
     public function testQueueStatusRequiresOldestTimeWhenEntriesArePending(): void
     {
         $this->expectException(InvalidArgumentException::class);
 
-        new QueueStatus(pending: 1, dispatched: 0, oldestPendingOperationTime: null);
+        new QueueStatus(
+            pending: 1,
+            dispatched: 0,
+            oldestPendingOperationTime: null,
+            oldestDispatchedOperationTime: null,
+        );
     }
 
     /**
@@ -61,11 +105,17 @@ final class StatusModelTest extends Unit
     public function testStatusModelsExposeOnlyTheDocumentedFields(): void
     {
         $this->assertSame(
-            ['getTotal', 'getPending', 'getDispatched', 'getOldestPendingOperationTime'],
+            [
+                'getDispatched',
+                'getOldestDispatchedOperationTime',
+                'getOldestPendingOperationTime',
+                'getPending',
+                'getTotal',
+            ],
             $this->publicGetters(QueueStatus::class)
         );
         $this->assertSame(
-            ['getClientType', 'getClientName', 'getIndexPrefix'],
+            ['getClientName', 'getClientType', 'getIndexPrefix'],
             $this->publicGetters(ClientConfiguration::class)
         );
     }
@@ -93,15 +143,18 @@ final class StatusModelTest extends Unit
     /**
      * @param class-string $className
      *
-     * @return string[]
+     * @return list<string> sorted by name, because the order of ReflectionClass::getMethods() is not guaranteed
      */
     private function publicGetters(string $className): array
     {
         $methods = (new ReflectionClass($className))->getMethods(ReflectionMethod::IS_PUBLIC);
 
-        return array_values(array_filter(
+        $getters = array_values(array_filter(
             array_map(static fn (ReflectionMethod $method): string => $method->getName(), $methods),
             static fn (string $name): bool => $name !== '__construct'
         ));
+        sort($getters);
+
+        return $getters;
     }
 }

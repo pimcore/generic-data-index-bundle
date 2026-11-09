@@ -28,6 +28,7 @@ Check id `generic_data_index.index_queue_backlog`: how many index queue entries 
 | `queue_dispatched`           | int         | Entries handed to the messenger transport and not yet processed.           |
 | `queue_pending`              | int         | Entries waiting to be dispatched.                                          |
 | `oldest_pending_age_seconds` | int or null | Age of the oldest pending entry in seconds; null when nothing is pending.  |
+| `oldest_dispatched_age_seconds` | int or null | Age of the oldest dispatched entry in seconds; null when nothing is dispatched. |
 | `client_type`                | string      | Configured search client type (`openSearch` or `elasticsearch`).           |
 | `client_name`                | string      | Configured search client name.                                             |
 | `index_prefix`               | string      | Configured index prefix.                                                   |
@@ -35,14 +36,19 @@ Check id `generic_data_index.index_queue_backlog`: how many index queue entries 
 The configuration fields are reported only when they look like identifiers (letters, digits, `.`, `_`, `-`);
 any other value is reported as `null`.
 
-**Findings** (code `index_queue_backlog`, subject `generic_data_index_queue`)
+**Findings** (subject `generic_data_index_queue`)
 
-| Severity | Condition                                       | Message                                                |
-|----------|-------------------------------------------------|--------------------------------------------------------|
-| warning  | oldest pending entry older than 3600 seconds    | Index queue entries older than one hour are waiting.   |
-| critical | oldest pending entry older than 86400 seconds   | Index queue entries older than one day are waiting.    |
+| Code                       | Severity | Condition                                        | Message                                                                 |
+|----------------------------|----------|--------------------------------------------------|-------------------------------------------------------------------------|
+| `index_queue_backlog`      | warning  | oldest pending entry older than 3600 seconds     | Index queue entries older than one hour are waiting.                    |
+| `index_queue_backlog`      | critical | oldest pending entry older than 86400 seconds    | Index queue entries older than one day are waiting.                     |
+| `index_queue_not_consumed` | warning  | oldest dispatched entry older than 3600 seconds  | Dispatched index queue entries older than one hour are not processed.   |
+| `index_queue_not_consumed` | critical | oldest dispatched entry older than 86400 seconds | Dispatched index queue entries older than one day are not processed.    |
 
-Dispatched entries are not counted as backlog: they wait for a messenger worker, not for the dispatcher.
+Pending entries wait to be dispatched to the messenger transport; dispatched entries wait for a messenger worker.
+`index_queue_not_consumed` therefore usually means that no worker consumes the generic data index transport. Both
+ages count from the entry's operation time (when it was queued), so an entry that waited long before it was
+dispatched also counts as an old dispatched entry.
 
 **Not available** (subject `generic_data_index_queue`)
 

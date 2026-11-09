@@ -28,6 +28,8 @@ final readonly class QueueStatus
      * @param int $dispatched entries handed to the messenger transport and not yet processed
      * @param int|null $oldestPendingOperationTime operation time (Unix timestamp in milliseconds) of the oldest
      *                                             pending entry; null when no entry is pending
+     * @param int|null $oldestDispatchedOperationTime operation time (Unix timestamp in milliseconds) of the oldest
+     *                                                dispatched entry; null when no entry is dispatched
      *
      * @throws InvalidArgumentException
      */
@@ -35,6 +37,7 @@ final readonly class QueueStatus
         private int $pending,
         private int $dispatched,
         private ?int $oldestPendingOperationTime,
+        private ?int $oldestDispatchedOperationTime,
     ) {
         if ($pending < 0 || $dispatched < 0) {
             throw new InvalidArgumentException('Queue counts must not be negative.');
@@ -43,6 +46,12 @@ final readonly class QueueStatus
         if (($pending === 0) !== ($oldestPendingOperationTime === null)) {
             throw new InvalidArgumentException(
                 'The oldest pending operation time must be set exactly when entries are pending.'
+            );
+        }
+
+        if (($dispatched === 0) !== ($oldestDispatchedOperationTime === null)) {
+            throw new InvalidArgumentException(
+                'The oldest dispatched operation time must be set exactly when entries are dispatched.'
             );
         }
     }
@@ -65,5 +74,10 @@ final readonly class QueueStatus
     public function getOldestPendingOperationTime(): ?int
     {
         return $this->oldestPendingOperationTime;
+    }
+
+    public function getOldestDispatchedOperationTime(): ?int
+    {
+        return $this->oldestDispatchedOperationTime;
     }
 }

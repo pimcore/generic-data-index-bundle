@@ -74,6 +74,7 @@ final class DiagnosticChecksTest extends Unit
                 'queue_dispatched',
                 'queue_pending',
                 'oldest_pending_age_seconds',
+                'oldest_dispatched_age_seconds',
                 'client_type',
                 'client_name',
                 'index_prefix',
@@ -82,6 +83,7 @@ final class DiagnosticChecksTest extends Unit
         );
         $this->assertSame(0, $result->metrics['queue_total']);
         $this->assertNull($result->metrics['oldest_pending_age_seconds']);
+        $this->assertNull($result->metrics['oldest_dispatched_age_seconds']);
         $this->assertSame([], $result->findings);
         $this->assertSame([], $result->notAvailable);
         DiagnosticsAssertions::assertNoHostSchemeOrCredential($result);
@@ -92,7 +94,7 @@ final class DiagnosticChecksTest extends Unit
         $now = time();
         $this->insertEntry(1, ($now - 7200) * 1000, 0);
         $this->insertEntry(2, ($now - 10) * 1000, 0);
-        $this->insertEntry(3, ($now - 100000) * 1000, $now * 1000);
+        $this->insertEntry(3, ($now - 60) * 1000, $now * 1000);
 
         $result = $this->getChecks()->get(self::BACKLOG_CHECK)->run();
 
@@ -116,6 +118,25 @@ final class DiagnosticChecksTest extends Unit
             'message' => 'Index queue entries older than one day are waiting.',
             'subject' => 'generic_data_index_queue',
         ]], $this->getChecks()->get(self::BACKLOG_CHECK)->run()->toArray()['findings']);
+    }
+
+    public function testDispatchedEntriesThatNoWorkerProcessesAreReported(): void
+    {
+        $now = time();
+        $this->insertEntry(1, ($now - 100000) * 1000, $now * 1000);
+
+        $result = $this->getChecks()->get(self::BACKLOG_CHECK)->run();
+
+        $this->assertSame(0, $result->metrics['queue_pending']);
+        $this->assertSame(1, $result->metrics['queue_dispatched']);
+        $this->assertGreaterThanOrEqual(100000, $result->metrics['oldest_dispatched_age_seconds']);
+        $this->assertSame([[
+            'code' => 'index_queue_not_consumed',
+            'severity' => 'critical',
+            'message' => 'Dispatched index queue entries older than one day are not processed.',
+            'subject' => 'generic_data_index_queue',
+        ]], $result->toArray()['findings']);
+        DiagnosticsAssertions::assertNoHostSchemeOrCredential($result);
     }
 
     public function testHealthOfTheTestIndices(): void

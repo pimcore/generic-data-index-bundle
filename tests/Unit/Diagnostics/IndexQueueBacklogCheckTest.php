@@ -72,6 +72,7 @@ final class IndexQueueBacklogCheckTest extends Unit
             'queue_dispatched' => 0,
             'queue_pending' => 0,
             'oldest_pending_age_seconds' => null,
+            'oldest_dispatched_age_seconds' => null,
             'client_type' => 'openSearch',
             'client_name' => 'default',
             'index_prefix' => 'pimcore_',
@@ -93,7 +94,13 @@ final class IndexQueueBacklogCheckTest extends Unit
         $this->assertSame(1, $result->metrics['queue_dispatched']);
         $this->assertSame(2, $result->metrics['queue_pending']);
         $this->assertSame(120, $result->metrics['oldest_pending_age_seconds']);
-        $this->assertSame([], $result->findings);
+        $this->assertSame(9000, $result->metrics['oldest_dispatched_age_seconds']);
+        $this->assertSame([[
+            'code' => 'index_queue_not_consumed',
+            'severity' => 'warning',
+            'message' => 'Dispatched index queue entries older than one hour are not processed.',
+            'subject' => 'generic_data_index_queue',
+        ]], $result->toArray()['findings']);
     }
 
     public function testAnEntryInTheFutureCountsAsAgeZero(): void
@@ -149,7 +156,63 @@ final class IndexQueueBacklogCheckTest extends Unit
     {
         $this->insertEntry(1, (self::NOW - 90000) * 1000, 1_700_000_000_000_123);
 
-        $this->assertSame([], $this->createCheck()->run()->findings);
+        $codes = array_column($this->createCheck()->run()->toArray()['findings'], 'code');
+
+        $this->assertNotContains('index_queue_backlog', $codes);
+    }
+
+    public function testDispatchedEntryOfExactlyOneHourIsNoFinding(): void
+    {
+        $this->insertEntry(1, (self::NOW - 3600) * 1000, 1_700_000_000_000_123);
+
+        $result = $this->createCheck()->run();
+
+        $this->assertSame(3600, $result->metrics['oldest_dispatched_age_seconds']);
+        $this->assertSame([], $result->findings);
+    }
+
+    public function testDispatchedEntryOlderThanOneHourIsAWarningThatNoWorkerConsumesTheQueue(): void
+    {
+        $this->insertEntry(1, (self::NOW - 3601) * 1000, 1_700_000_000_000_123);
+
+        $this->assertSame([[
+            'code' => 'index_queue_not_consumed',
+            'severity' => 'warning',
+            'message' => 'Dispatched index queue entries older than one hour are not processed.',
+            'subject' => 'generic_data_index_queue',
+        ]], $this->createCheck()->run()->toArray()['findings']);
+    }
+
+    public function testDispatchedEntryOfExactlyOneDayIsStillAWarning(): void
+    {
+        $this->insertEntry(1, (self::NOW - 86400) * 1000, 1_700_000_000_000_123);
+
+        $this->assertSame('warning', $this->createCheck()->run()->toArray()['findings'][0]['severity']);
+    }
+
+    public function testDispatchedEntryOlderThanOneDayIsCritical(): void
+    {
+        $this->insertEntry(1, (self::NOW - 86401) * 1000, 1_700_000_000_000_123);
+
+        $this->assertSame([[
+            'code' => 'index_queue_not_consumed',
+            'severity' => 'critical',
+            'message' => 'Dispatched index queue entries older than one day are not processed.',
+            'subject' => 'generic_data_index_queue',
+        ]], $this->createCheck()->run()->toArray()['findings']);
+    }
+
+    public function testBacklogAndNotConsumedAreReportedTogether(): void
+    {
+        $this->insertEntry(1, (self::NOW - 90000) * 1000, 0);
+        $this->insertEntry(2, (self::NOW - 7200) * 1000, 1_700_000_000_000_123);
+
+        $findings = $this->createCheck()->run()->toArray()['findings'];
+
+        $this->assertSame(
+            [['index_queue_backlog', 'critical'], ['index_queue_not_consumed', 'warning']],
+            array_map(static fn (array $finding): array => [$finding['code'], $finding['severity']], $findings)
+        );
     }
 
     public function testMissingTableIsReportedAsNotAvailable(): void
