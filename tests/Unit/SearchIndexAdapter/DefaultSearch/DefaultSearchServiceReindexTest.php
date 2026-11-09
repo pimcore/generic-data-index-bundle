@@ -19,6 +19,7 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\DocumentCountFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexTimeoutException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexStripScript;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchExecutionServiceInterface;
@@ -28,6 +29,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\SearchClient\SearchClientInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use RuntimeException;
 
 /**
  * @internal
@@ -124,11 +126,46 @@ final class DefaultSearchServiceReindexTest extends Unit
             ]
         );
 
-        $this->expectException(ReindexFailedException::class);
+        // The timeout has its own type: a message handler must not retry it with the same budget.
+        $this->expectException(ReindexTimeoutException::class);
         $this->expectExceptionMessageMatches('/did not complete within/');
 
         // maxPolls=3, every response says not completed → exhausts on 3rd poll
         $this->createService(client: $client, reindexMaxPolls: 3)->reindex('test_index', []);
+    }
+
+    /**
+     * The cleanup after the timeout (cancelling the task, checking the alias, deleting the new index) can fail
+     * as well, for example when the cluster is overloaded. The timeout stays the reported failure, so that the
+     * message handlers do not retry the copy with the same budget.
+     */
+    public function testACleanupFailureAfterTheTimeoutKeepsTheTimeout(): void
+    {
+        $client = $this->buildClientWithTaskResponses(
+            taskId: 'node:1',
+            taskResponses: [
+                ['completed' => false],
+                ['completed' => false],
+                ['completed' => false],
+            ]
+        );
+        $aliasLookups = 0;
+        $aliasService = $this->makeEmpty(IndexAliasServiceInterface::class, [
+            'existsAlias' => static function () use (&$aliasLookups): bool {
+                // The lookups before the copy succeed; the one of the cleanup after the timeout fails.
+                if (++$aliasLookups > 2) {
+                    throw new RuntimeException('alias lookup failed: cluster overloaded');
+                }
+
+                return false;
+            },
+        ]);
+
+        $this->expectException(ReindexTimeoutException::class);
+        $this->expectExceptionMessageMatches('/did not complete within/');
+
+        $this->createService(client: $client, indexAliasService: $aliasService, reindexMaxPolls: 3)
+            ->reindex('test_index', []);
     }
 
     // -------------------------------------------------------------------------
