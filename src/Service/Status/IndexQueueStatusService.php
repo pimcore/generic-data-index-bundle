@@ -15,6 +15,8 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\Status;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception as DBALException;
+use Doctrine\DBAL\Platforms\MariaDBPlatform;
+use Doctrine\DBAL\Platforms\MySQLPlatform;
 use Pimcore\Bundle\GenericDataIndexBundle\Entity\IndexQueue;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexStatusException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Status\ClientConfiguration;
@@ -30,6 +32,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
  */
 final readonly class IndexQueueStatusService
 {
+    private const int STATEMENT_TIME_LIMIT_SECONDS = 2;
+
     public function __construct(
         private Connection $connection,
         private SearchIndexConfigServiceInterface $searchIndexConfigService,
@@ -47,7 +51,7 @@ final readonly class IndexQueueStatusService
         try {
             $dispatched = $this->connection->quoteIdentifier('dispatched');
             $row = $this->connection->fetchAssociative(
-                'SELECT
+                $this->getStatementTimeLimitPrefix() . 'SELECT ' . $this->getStatementTimeLimitHint() . '
                     SUM(CASE WHEN ' . $dispatched . ' = 0 THEN 1 ELSE 0 END) AS pending,
                     SUM(CASE WHEN ' . $dispatched . ' = 0 THEN 0 ELSE 1 END) AS dispatched,
                     MIN(CASE WHEN ' . $dispatched . ' = 0 THEN '
@@ -68,6 +72,20 @@ final readonly class IndexQueueStatusService
     }
 
     /**
+     * Whether the index queue table exists, e.g. false before the bundle's migrations ran.
+     *
+     * @throws IndexStatusException when the schema cannot be read
+     */
+    public function isQueueTableAvailable(): bool
+    {
+        try {
+            return $this->connection->createSchemaManager()->tablesExist([IndexQueue::TABLE]);
+        } catch (DBALException $e) {
+            throw new IndexStatusException('The index queue table could not be looked up.', 0, $e);
+        }
+    }
+
+    /**
      * The configured search client (type and name) and the index prefix. Reads the bundle configuration only.
      */
     public function getClientConfiguration(): ClientConfiguration
@@ -77,5 +95,34 @@ final readonly class IndexQueueStatusService
             clientName: $this->clientName,
             indexPrefix: $this->searchIndexConfigService->getIndexPrefix(),
         );
+    }
+
+    /**
+     * MariaDB bounds a statement with SET STATEMENT ... FOR, the time is given in seconds.
+     *
+     * @throws DBALException
+     */
+    private function getStatementTimeLimitPrefix(): string
+    {
+        if ($this->connection->getDatabasePlatform() instanceof MariaDBPlatform) {
+            return 'SET STATEMENT max_statement_time=' . self::STATEMENT_TIME_LIMIT_SECONDS . ' FOR ';
+        }
+
+        return '';
+    }
+
+    /**
+     * MySQL bounds a read-only SELECT with an optimizer hint, the time is given in milliseconds. Other platforms
+     * run the plain aggregate.
+     *
+     * @throws DBALException
+     */
+    private function getStatementTimeLimitHint(): string
+    {
+        if ($this->connection->getDatabasePlatform() instanceof MySQLPlatform) {
+            return '/*+ MAX_EXECUTION_TIME(' . (self::STATEMENT_TIME_LIMIT_SECONDS * 1000) . ') */';
+        }
+
+        return '';
     }
 }

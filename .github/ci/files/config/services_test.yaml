@@ -10,6 +10,10 @@ services:
   generic-data-index.test.service.element-search-service: '@Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Element\ElementSearchServiceInterface'
   generic-data-index.test.service.calculated-value-query-store: '@Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedValueQueryStoreServiceInterface'
 
+  # Collects the diagnostic checks (empty on a core without the diagnostics contract) for the functional tests.
+  Pimcore\Bundle\GenericDataIndexBundle\Tests\Support\DiagnosticChecks:
+    arguments: [!tagged_iterator pimcore.diagnostics.check]
+
   test.calculatorservice:
     class: Pimcore\Tests\Support\Helper\DataType\Calculator
 

@@ -1,0 +1,11 @@
+# Diagnostic checks for the Pimcore diagnostics contract (Pimcore\Contracts\Diagnostics, ships with Pimcore 2026.4).
+# Loaded by PimcoreGenericDataIndexExtension only when the contract exists, so this file must stay outside every
+# resource glob that services.yaml imports. The topic attribute groups the checks for the diagnostics consumer.
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: false
+        public: false
+
+    Pimcore\Bundle\GenericDataIndexBundle\Diagnostics\IndexQueueBacklogCheck:
+        tags: [{ name: 'pimcore.diagnostics.check', topic: 'search' }]

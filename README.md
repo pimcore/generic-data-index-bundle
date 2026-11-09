@@ -20,3 +20,4 @@ This bundle can be extended and customized to fit your specific needs, for examp
 - [Reindexing](./doc/03_Reindexing/README.md)
 - [Searching Data Index](./doc/04_Searching_For_Data_In_Index/README.md)
 - [Extending Data Index](./doc/05_Extending_Data_Index/README.md)
+- [Diagnostics](./doc/06_Diagnostics/README.md)

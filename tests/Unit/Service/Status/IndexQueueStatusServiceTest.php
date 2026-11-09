@@ -94,6 +94,18 @@ final class IndexQueueStatusServiceTest extends Unit
         $this->createService()->getQueueStatus();
     }
 
+    public function testQueueTableIsAvailableWhenItExists(): void
+    {
+        $this->assertTrue($this->createService()->isQueueTableAvailable());
+    }
+
+    public function testQueueTableIsNotAvailableAfterItWasDropped(): void
+    {
+        $this->connection->executeStatement('DROP TABLE ' . IndexQueue::TABLE);
+
+        $this->assertFalse($this->createService()->isQueueTableAvailable());
+    }
+
     public function testClientConfigurationComesFromTheBundleConfiguration(): void
     {
         $configuration = $this->createService(
