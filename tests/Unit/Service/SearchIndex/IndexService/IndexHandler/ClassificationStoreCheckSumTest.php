@@ -29,6 +29,7 @@ use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
+use Pimcore\Model\DataObject\ClassDefinition\Data\MultiValue;
 use Pimcore\Model\DataObject\Classificationstore\DefinitionCache;
 use Pimcore\Model\DataObject\Classificationstore\KeyConfig;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
@@ -83,7 +84,41 @@ final class ClassificationStoreCheckSumTest extends Unit
         );
     }
 
-    private function getGroupMapping(bool $keyLocalized): array
+    /**
+     * Declaring a variant adds a sibling property, so the checksum changes and the rebuild paths pick
+     * the class up; removing it again restores the checksum, and an unchanged declaration keeps it.
+     */
+    public function testDeclaringOrRemovingAVariantChangesTheClassMappingCheckSum(): void
+    {
+        $indexHandler = $this->getIndexHandler();
+
+        $none = $indexHandler->getClassMappingCheckSum($this->getGroupMapping(false, $this->createMultiValue([])));
+        $declared = $indexHandler->getClassMappingCheckSum($this->getGroupMapping(false, $this->createMultiValue(['metric'])));
+
+        $this->assertNotSame($none, $declared);
+        $this->assertSame(
+            $declared,
+            $indexHandler->getClassMappingCheckSum($this->getGroupMapping(false, $this->createMultiValue(['metric'])))
+        );
+        $this->assertSame(
+            $none,
+            $indexHandler->getClassMappingCheckSum($this->getGroupMapping(false, $this->createMultiValue([])))
+        );
+    }
+
+    /**
+     * @param string[] $variants
+     */
+    private function createMultiValue(array $variants): MultiValue
+    {
+        $definition = new MultiValue();
+        $definition->setVariants($variants);
+        $definition->setDelegate(new Input());
+
+        return $definition;
+    }
+
+    private function getGroupMapping(bool $keyLocalized, ?MultiValue $definition = null): array
     {
         $keyConfig = (new KeyConfig())->setId(self::KEY_ID);
         $keyConfig->setLocalized($keyLocalized);
@@ -95,7 +130,7 @@ final class ClassificationStoreCheckSumTest extends Unit
         $relation->setName(self::KEY_NAME);
         $relation->setDefinition((string) json_encode(['fieldtype' => 'input', 'name' => self::KEY_NAME]));
 
-        $adapter = $this->getClassificationStoreAdapter();
+        $adapter = $this->getClassificationStoreAdapter($definition);
         $languages = (new ReflectionMethod(ClassificationStoreAdapter::class, 'getValidLanguages'))
             ->invoke($adapter);
 
@@ -103,7 +138,7 @@ final class ClassificationStoreCheckSumTest extends Unit
             ->invoke($adapter, [$relation], $languages);
     }
 
-    private function getClassificationStoreAdapter(): ClassificationStoreAdapter
+    private function getClassificationStoreAdapter(?MultiValue $definition = null): ClassificationStoreAdapter
     {
         $adapter = new ClassificationStoreAdapter(
             $this->makeEmpty(SearchIndexConfigServiceInterface::class),
@@ -114,7 +149,7 @@ final class ClassificationStoreCheckSumTest extends Unit
             ])
         );
         $adapter->setClassificationService($this->makeEmpty(ServiceResolverInterface::class, [
-            'getFieldDefinitionFromKeyConfig' => new Input(),
+            'getFieldDefinitionFromKeyConfig' => $definition ?? new Input(),
         ]));
         $adapter->setLanguageService($this->makeEmpty(LanguageServiceInterface::class, [
             'getValidLanguages' => ['de', 'en'],

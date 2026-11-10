@@ -23,6 +23,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
+use Pimcore\Model\DataObject\ClassDefinition\Data\MultiValue;
 use Pimcore\Model\DataObject\Classificationstore as ClassificationstoreModel;
 use Pimcore\Model\DataObject\Classificationstore\DefinitionCache;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
@@ -172,16 +173,67 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
             $usedKeyNames[$keyName] = true;
 
-            foreach ($this->getLanguagesForKey($key->getKeyId(), $validLanguages) as $keyLanguage) {
-                $normalizedValue = $this->getNormalizedValue($value, $groupId, $key, $keyLanguage);
+            $definition = $this->getFieldDefinitionForKey($key);
+            $variantNames = $this->getVariantSiblingNames($usedKeyNames, $keyName, $definition, $key);
+            foreach ($variantNames as $siblingName) {
+                $usedKeyNames[$siblingName] = true;
+            }
 
-                if ($normalizedValue !== null) {
-                    $normalizedGroup[$keyLanguage][$keyName] = $normalizedValue;
+            $multiValue = $definition instanceof MultiValue && $definition->isMultiValue();
+
+            foreach ($this->getLanguagesForKey($key->getKeyId(), $validLanguages) as $keyLanguage) {
+                $entries = $this->getEntriesForKey(
+                    $value,
+                    $groupId,
+                    $key,
+                    $keyLanguage,
+                    $keyName,
+                    $variantNames,
+                    $multiValue
+                );
+
+                foreach ($entries as $entryName => $entry) {
+                    $normalizedGroup[$keyLanguage][$entryName] = $entry;
                 }
             }
         }
 
         return $normalizedGroup;
+    }
+
+    /**
+     * The bare entry keeps the default variant, each declared variant gets a sibling entry.
+     *
+     * @param array<string, string> $variantNames declared variant name => sibling entry name
+     */
+    private function getEntriesForKey(
+        ClassificationstoreModel $value,
+        int $groupId,
+        KeyGroupRelation $key,
+        string $language,
+        string $keyName,
+        array $variantNames,
+        bool $multiValue
+    ): array {
+        $entries = [];
+
+        $bareValue = $multiValue
+            ? $this->getNormalizedValues($value, $groupId, $key, $language, null)
+            : $this->getNormalizedValue($value, $groupId, $key, $language);
+
+        if ($bareValue !== null) {
+            $entries[$keyName] = $bareValue;
+        }
+
+        foreach ($variantNames as $variantName => $siblingName) {
+            $variantValues = $this->getNormalizedValues($value, $groupId, $key, $language, (string) $variantName);
+
+            if ($variantValues !== null) {
+                $entries[$siblingName] = $multiValue ? $variantValues : $variantValues[0];
+            }
+        }
+
+        return $entries;
     }
 
     /**
@@ -621,11 +673,18 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 continue;
             }
 
-            $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($definition);
+            $valueDefinition = $this->getValueDefinition($definition);
+            $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($valueDefinition);
 
             $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId(), true);
 
-            if ($adapter === null || $keyName === null) {
+            if ($keyName === null) {
+                continue;
+            }
+
+            if ($adapter === null) {
+                $this->reportKeyWithoutAdapter($key, $valueDefinition);
+
                 continue;
             }
 
@@ -634,15 +693,96 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             }
 
             $usedKeyNames[$keyName] = true;
+
+            $variantNames = $this->getVariantSiblingNames($usedKeyNames, $keyName, $definition, $key, true);
+            foreach ($variantNames as $siblingName) {
+                $usedKeyNames[$siblingName] = true;
+            }
+
             // once per key: the mapping of the key does not depend on the language
             $keyMapping = $adapter->getIndexMapping();
+            $keyMappings = array_fill_keys([$keyName, ...array_values($variantNames)], $keyMapping);
 
             foreach ($this->getLanguagesForKey($key->getKeyId(), $validLanguages) as $language) {
-                $groupMapping[$language]['properties'][$keyName] = $keyMapping;
+                $groupMapping[$language]['properties'] = ($groupMapping[$language]['properties'] ?? []) + $keyMappings;
             }
         }
 
         return $groupMapping;
+    }
+
+    /** A multiValue key is indexed as the type it wraps. */
+    private function getValueDefinition(Data $definition): Data
+    {
+        while ($definition instanceof MultiValue) {
+            $delegate = $definition->getDelegate();
+            if (!$delegate instanceof Data) {
+                break;
+            }
+
+            $definition = $delegate;
+        }
+
+        return $definition;
+    }
+
+    /**
+     * One sibling "<key>_<variant>" per declared variant; a name already taken is skipped, first wins.
+     *
+     * @param array<string, bool> $usedKeyNames
+     *
+     * @return array<string, string> declared variant name => sibling name
+     */
+    private function getVariantSiblingNames(
+        array $usedKeyNames,
+        string $keyName,
+        ?Data $definition,
+        KeyGroupRelation $key,
+        bool $reportDiagnostics = false
+    ): array {
+        if (!$definition instanceof MultiValue) {
+            return [];
+        }
+
+        $siblingNames = [];
+
+        foreach ($definition->getVariantNames() as $variantName) {
+            $variantSegment = $this->normalizeNameSegment($variantName, 'variant', $variantName, $reportDiagnostics);
+            if ($variantSegment === null) {
+                continue;
+            }
+
+            $siblingName = $keyName . '_' . $variantSegment;
+            if ($this->isTakenNameSegment(
+                $usedKeyNames,
+                $siblingName,
+                $key->getName() . '_' . $variantName,
+                'key',
+                $key->getKeyId(),
+                $reportDiagnostics
+            )) {
+                continue;
+            }
+
+            $usedKeyNames[$siblingName] = true;
+            $siblingNames[$variantName] = $siblingName;
+        }
+
+        return $siblingNames;
+    }
+
+    /** Logged, not thrown: IndexMappingService would drop the whole field on an exception. */
+    private function reportKeyWithoutAdapter(KeyGroupRelation $key, Data $valueDefinition): void
+    {
+        $this->logger->error(sprintf(
+            'Classification store %d: key %d "%s" of group %s has type "%s", for which the search index has no ' .
+            'field definition adapter. The key is not indexed.',
+            $this->getClassificationStoreDefinition()->getStoreId(),
+            $key->getKeyId(),
+            $key->getName(),
+            $this->isHydratedRelationProperty($key, 'groupId') ? (string) $key->getGroupId() : 'unknown',
+            $valueDefinition->getFieldType()
+        ));
     }
 
     private function getFieldDefinitionForKey(KeyGroupRelation $key): ?Data
@@ -745,12 +885,58 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             return null;
         }
 
+        return $this->normalizeKeyValue($key, $value);
+    }
+
+    /**
+     * The normalized values of one (language, variant) slot in position order, null when empty.
+     *
+     * @return array<int, mixed>|null
+     */
+    private function getNormalizedValues(
+        ClassificationstoreModel $classificationstore,
+        int $groupId,
+        KeyGroupRelation $key,
+        string $language,
+        ?string $variant
+    ): ?array {
+        try {
+            $values = $classificationstore->getKeyValues($groupId, $key->getKeyId(), $language, $variant);
+        } catch (Exception $exception) {
+            $this->logger->warning(sprintf(
+                'Could not get values for key %s in group %s: %s',
+                $key->getKeyId(),
+                $groupId,
+                $exception->getMessage()
+            ));
+
+            return null;
+        }
+
+        ksort($values);
+
+        $normalized = [];
+        foreach ($values as $value) {
+            $normalizedValue = $this->normalizeKeyValue($key, $value);
+            if ($normalizedValue !== null) {
+                $normalized[] = $normalizedValue;
+            }
+        }
+
+        return $normalized === [] ? null : $normalized;
+    }
+
+    private function normalizeKeyValue(KeyGroupRelation $key, mixed $value): mixed
+    {
         $keyConfig = DefinitionCache::get($key->getKeyId());
         if ($keyConfig === null) {
             return null;
         }
 
         $fieldDefinition = $this->classificationService->getFieldDefinitionFromKeyConfig($keyConfig);
+        if ($fieldDefinition !== null) {
+            $fieldDefinition = $this->getValueDefinition($fieldDefinition);
+        }
 
         return $this->fieldDefinitionService->normalizeValue($fieldDefinition, $value);
     }
