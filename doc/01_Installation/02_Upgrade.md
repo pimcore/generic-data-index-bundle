@@ -130,15 +130,17 @@ description: Version-specific upgrade instructions and breaking changes for the 
   with the resolution the mapping and the document use themselves, for callers that do not already know it.
 - [Indexing] Changed: a classification store key is now indexed exactly as a class field of its type is, and the
   type is no longer silently skipped when the indexer does not recognise it — it is reported as an error naming the
-  store, group, key and type, and that key is not indexed. A `multiValue` key publishes a JSON array in its own field,
-  in position order (a key holding one value publishes a one-element array), and adds no field. A declared variant
-  publishes a sibling field named `<key>_<variant>`, filterable by passing that name to `ClassificationStoreFilter`
-  like any key, and multiplies the key's declared fields by one plus the number of variants per language node it is
-  declared in. A key of a relation type declares the fields its class-field counterpart does: three per language node
-  for a relation, and for an advanced relation eight plus one per configured column. At ETIM proportions the field
-  count stays at 471,399 for `multiValue`, becomes 942,798 with one variant on every key, and becomes 471,435 when
-  one localized key is a relation. Declaring or removing a variant changes the class mapping, so apply it with
-  `generic-data-index:deployment:reindex` or `generic-data-index:update:index`.
+  store, group, key and type, and that key is not indexed. One type is exempt: an `encryptedField` key is still
+  skipped without the error, because an encrypted value is deliberately not indexed. A `multiValue` key publishes a
+  JSON array in its own field, in position order (a key holding one value publishes a one-element array), and adds
+  no field. A declared variant publishes a sibling field named `<key>_<variant>`, filterable by passing that name to
+  `ClassificationStoreFilter` like any key, and multiplies the key's declared fields by one plus the number of
+  variants per language node it is declared in. A key of a relation type declares the fields its class-field
+  counterpart does: three per language node for a relation, and for an advanced relation eight plus one per
+  configured column. At ETIM proportions the field count stays at 471,399 for `multiValue`, becomes 942,798 with one
+  variant on every key, and becomes 471,435 when one localized key is a relation. Declaring or removing a variant
+  changes the class mapping, so apply it with `generic-data-index:deployment:reindex` or
+  `generic-data-index:update:index`.
 - [Indexing] Existing indices already contain language and key nodes that dynamic mapping created with a guessed type,
   and the update declares the real types over them. For a text key this is accepted in place: the type stays `text`,
   the declared sub-fields are added to the guessed one, and `ignore_above` is updatable. A numeric key can conflict: a

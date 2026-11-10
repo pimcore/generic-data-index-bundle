@@ -25,6 +25,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
+use Pimcore\Model\DataObject\ClassDefinition\Data\EncryptedField;
 use Pimcore\Model\DataObject\ClassDefinition\Data\MultiValue;
 use Pimcore\Model\DataObject\Classificationstore as ClassificationstoreModel;
 use Pimcore\Model\DataObject\Classificationstore\DefinitionCache;
@@ -839,7 +840,10 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         }
 
         if ($adapter === null) {
-            $this->reportKeyWithoutAdapter($key, $this->getValueDefinition($definition));
+            $valueDefinition = $this->getValueDefinition($definition);
+            if (!$this->isDeliberatelyNotIndexedType($valueDefinition)) {
+                $this->reportKeyWithoutAdapter($key, $valueDefinition);
+            }
 
             return null;
         }
@@ -933,6 +937,33 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         }
 
         return $siblingNames;
+    }
+
+    /**
+     * A value type this bundle does not index ON PURPOSE, for which "no field definition adapter" is
+     * the intended answer rather than the gap {@see self::reportKeyWithoutAdapter()} reports. Such a
+     * key is dropped exactly as any other unsupported key is - it declares no mapping node, writes no
+     * document entry and emits no inherited path - it is just not reported while being dropped.
+     *
+     * `encryptedField` is the whole list, and it is here because the diagnostic would otherwise turn a
+     * correct exclusion into an error on every index update. This bundle has never had an adapter for
+     * the type - nothing under `src/` or `config/` names it - so an encrypted key has always been
+     * skipped silently, which is the right outcome: the value of such a key is a secret and indexing it
+     * would publish it in a searchable, filterable and `_source`-readable form. Core's
+     * {@see \Pimcore\Model\DataObject\Classificationstore\Service::getValueDefinition()} draws the same
+     * line from the other side - it stops ON an `encryptedField` rather than unwrapping through it,
+     * "that wrapper carries the stored form itself" - so the definition that reaches this check is the
+     * `encryptedField` itself and not the delegate whose adapter would have typed the plaintext.
+     *
+     * The key is reachable, which is why the exclusion has to be stated rather than assumed: core's
+     * {@see \Pimcore\Model\DataObject\Classificationstore\KeyTypeSupport} classes `encryptedField` as a
+     * WRAPPER type, not an excluded one, so a key may be defined with it. A `multiValue` wrapping one
+     * arrives here too, since {@see self::getValueDefinition()} unwraps the `multiValue` layers and
+     * stops on the `encryptedField` the same way core does.
+     */
+    private function isDeliberatelyNotIndexedType(Data $valueDefinition): bool
+    {
+        return $valueDefinition instanceof EncryptedField;
     }
 
     /** Logged, not thrown: IndexMappingService would drop the whole field on an exception. */

@@ -37,6 +37,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\AdvancedManyToManyRelation;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
+use Pimcore\Model\DataObject\ClassDefinition\Data\EncryptedField;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyRelation;
 use Pimcore\Model\DataObject\ClassDefinition\Data\MultiValue;
@@ -1063,6 +1064,74 @@ final class ClassificationStoreAdapterTest extends Unit
         );
     }
 
+    /**
+     * `encryptedField` is the one type whose missing adapter is the intended answer rather than a gap:
+     * the bundle has never indexed encrypted values and must not start, so such a key is dropped
+     * silently while a type the index merely cannot handle is still reported. Both keys drop out of the
+     * mapping; only the second one is logged.
+     */
+    public function testAnEncryptedFieldKeyIsSkippedWithoutAnErrorWhileAnotherTypeWithNoAdapterIsStillReported(): void
+    {
+        $logger = $this->createCollectingLogger();
+
+        $mapping = $this->getMappingForRelations(
+            $this->createFieldDefinition(false),
+            self::LANGUAGES,
+            [
+                $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME),
+                $this->createRelation(self::OTHER_KEY_ID, self::GROUP_ID, self::OTHER_KEY_NAME),
+                $this->createRelation(self::THIRD_KEY_ID, self::GROUP_ID, self::THIRD_KEY_NAME),
+            ],
+            $logger,
+            static fn (KeyGroupRelation $relation): Data => match ($relation->getKeyId()) {
+                self::KEY_ID => new EncryptedField(),
+                self::OTHER_KEY_ID => new Checkbox(),
+                default => new Input(),
+            },
+            $this->createServiceWithoutAdapterForUnindexableTypes()
+        );
+
+        $this->assertCount(1, $logger->records);
+        $this->assertStringContainsString(self::OTHER_KEY_NAME, $logger->records[0]['message']);
+        $this->assertStringNotContainsString(self::KEY_NAME, $logger->records[0]['message']);
+
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => [self::PROPERTIES => [self::THIRD_KEY_NAME => self::KEY_MAPPING]]],
+            $mapping
+        );
+    }
+
+    /**
+     * The exclusion is read off the resolved value definition, so a `multiValue` wrapping an
+     * `encryptedField` is silent too: {@see ClassificationStoreAdapter::getValueDefinition()} unwraps
+     * the `multiValue` layers and stops on the `encryptedField`, the way core's
+     * `Classificationstore\Service::getValueDefinition()` does, so the type this check sees is the
+     * wrapper that carries the stored form and not the delegate it encrypts.
+     */
+    public function testAMultiValueKeyWrappingAnEncryptedFieldIsSkippedWithoutAnErrorToo(): void
+    {
+        $logger = $this->createCollectingLogger();
+        $wrapped = $this->createMultiValue([self::METRIC, self::IMPERIAL], true);
+        $wrapped->setDelegate(new EncryptedField());
+
+        $mapping = $this->getMappingForRelations(
+            $this->createFieldDefinition(false),
+            self::LANGUAGES,
+            $this->createKeysWithNoAdapterForTheFirst(),
+            $logger,
+            static fn (KeyGroupRelation $relation): Data => $relation->getKeyId() === self::KEY_ID
+                ? $wrapped
+                : new Input(),
+            $this->createServiceWithoutAdapterForUnindexableTypes()
+        );
+
+        $this->assertSame([], $logger->records);
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => [self::PROPERTIES => [self::OTHER_KEY_NAME => self::KEY_MAPPING]]],
+            $mapping
+        );
+    }
+
     public function testAKeyWithNoAdapterDoesNotDropTheClassificationStoreFieldFromTheMapping(): void
     {
         $fieldDefinition = $this->createFieldDefinition(false);
@@ -1529,6 +1598,22 @@ final class ClassificationStoreAdapterTest extends Unit
         ) === $checkboxKeyId
             ? new Checkbox()
             : new Input();
+    }
+
+    /**
+     * No adapter for either of the two kinds of key the mapping path has to tell apart: a `checkbox`,
+     * standing for a type the index cannot handle, which is reported, and an `encryptedField`, the
+     * recorded intentional exclusion, which is not.
+     */
+    private function createServiceWithoutAdapterForUnindexableTypes(): FieldDefinitionServiceInterface
+    {
+        return $this->makeEmpty(FieldDefinitionServiceInterface::class, [
+            'getFieldDefinitionAdapter' => fn (Data $definition): ?AdapterInterface =>
+                $definition instanceof Checkbox || $definition instanceof EncryptedField
+                    ? null
+                    : $this->makeEmpty(AdapterInterface::class, ['getIndexMapping' => self::KEY_MAPPING]),
+            'normalizeValue' => static fn (?Data $definition, mixed $value): mixed => $value,
+        ]);
     }
 
     private function createServiceWithoutAdapterForCheckbox(): FieldDefinitionServiceInterface
