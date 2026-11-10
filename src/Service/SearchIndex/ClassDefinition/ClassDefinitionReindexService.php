@@ -149,7 +149,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
 
         // A stored checksum says nothing about an index that is gone (deleted by hand, lost with the cluster, or never
-        // created for a class whose checksum was stamped): such a class is created again, not skipped.
+        // created for a class whose checksum was stamped): such a class is not skipped, its index is created again.
         if ($skipIfClassNotChanged && $storedCheckSum !== null && $this->indexExists($classDefinition)) {
             if ($storedCheckSum === $currentCheckSum) {
                 // Same structured keys as the reindex branch below (here they are equal by
