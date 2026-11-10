@@ -22,6 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\IndexLockExcep
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
@@ -128,6 +129,56 @@ final class ClassDefinitionReindexServiceTest extends Unit
             ->reindexClassDefinition($this->createClassDefinition(), true);
 
         $this->assertFalse($updated);
+    }
+
+    /**
+     * The checksum is stored but the index is gone (deleted by hand, lost with the cluster, or the checksum of a class
+     * without index was stamped): the class must not be skipped as unchanged. Its index is created again and the
+     * objects are queued, so that `deployment:reindex` neither fails on the icon update of a missing index nor leaves
+     * the class unindexed.
+     *
+     * @see https://github.com/pimcore/platform-version/issues/782
+     */
+    public function testAStoredCheckSumWithoutIndexDoesNotSkipTheReindex(): void
+    {
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult(recreated: true)),
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'storeClassMapping' => Expected::once(),
+        ]);
+        $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
+            'enqueueByClassDefinition' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),
+        ]);
+
+        $updated = $this->createService($handler, $settingsStore, $enqueueService, indexExists: false)
+            ->reindexClassDefinition($this->createClassDefinition(), true, true);
+
+        $this->assertTrue($updated, 'A class without index is created again although its checksum matches');
+    }
+
+    /**
+     * A checksum of an older algorithm is no reason to skip either when the index is gone.
+     */
+    public function testALegacyCheckSumWithoutIndexDoesNotSkipTheReindex(): void
+    {
+        $legacyCheckSum = crc32(json_encode(self::MAPPING_PROPERTIES, JSON_THROW_ON_ERROR));
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult(recreated: true)),
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
+            'getClassMappingCheckSum' => $legacyCheckSum,
+        ]);
+
+        $updated = $this->createService($handler, $settingsStore, indexExists: false)
+            ->reindexClassDefinition($this->createClassDefinition(), true);
+
+        $this->assertTrue($updated);
     }
 
     /**
@@ -532,6 +583,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         ?IndexIconUpdateServiceInterface $iconService = null,
         ?IndexRebuildObligationServiceInterface $obligations = null,
         ?IndexLockInterface $indexLock = null,
+        bool $indexExists = true,
     ): ClassDefinitionReindexService {
         return new ClassDefinitionReindexService(
             $handler,
@@ -542,6 +594,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
             $obligations ?? $this->makeEmpty(IndexRebuildObligationServiceInterface::class),
             $indexLock ?? new IndexLock(new LockFactory(new InMemoryStore()), 1, 1),
             $this->makeEmpty(SearchIndexConfigServiceInterface::class, ['getIndexName' => self::ALIAS]),
+            $this->makeEmpty(SearchIndexServiceInterface::class, ['existsAlias' => $indexExists]),
         );
     }
 
