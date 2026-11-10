@@ -33,6 +33,7 @@ use Pimcore\Model\DataObject\Classificationstore\KeyConfig;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
 use Pimcore\Model\DataObject\Classificationstore\StoreConfig;
 use Pimcore\Model\DataObject\Concrete;
+use Pimcore\Model\DataObject\Data\MultiValue as MultiValueEntry;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 /**
@@ -77,6 +78,12 @@ class ClassificationStoreMappingTest extends Unit
     private const SORT_MULTI_FIELD = 'sort';
 
     private const KEY_VALUE = 42;
+
+    private const VARIANT_KEY_NAME = 'Length';
+
+    private const VARIANT_NAME = 'metric';
+
+    private const VARIANT_VALUE = 17;
 
     private const NON_LOCALIZED_KEY_VALUE = 17;
 
@@ -280,6 +287,40 @@ class ClassificationStoreMappingTest extends Unit
             $this->assertContains(self::KEY_NAME, $declaredKeys, $groupName);
             $this->assertNotContains(self::EXCLUDED_KEY_NAME, $declaredKeys, $groupName);
         }
+    }
+
+    /**
+     * A value written under a declared variant is declared and written as the sibling "<key>_<variant>",
+     * so the unchanged ClassificationStoreFilter finds it by that name and does not find the default
+     * variant's value under it. The key is created here, so the key sets the other cases assert stay as
+     * they are, and the index is rebuilt for it.
+     */
+    public function testAValueWrittenUnderAVariantIsFilterableBySiblingName(): void
+    {
+        $variantKeyConfig = $this->createVariantKeyWithAssignment();
+        $this->recreateClassIndex($this->classDefinition);
+
+        $siblingName = self::VARIANT_KEY_NAME . '_' . self::VARIANT_NAME;
+        $declaredKeys = array_keys(
+            $this->getGroupMapping(self::CLASS_NAME)[MappingProperty::NOT_LOCALIZED_KEY][self::PROPERTIES]
+        );
+        $this->assertContains(self::VARIANT_KEY_NAME, $declaredKeys);
+        $this->assertContains($siblingName, $declaredKeys);
+
+        $variantHolder = $this->createObjectWithVariantValue($variantKeyConfig, self::VARIANT_VALUE, true);
+        $defaultHolder = $this->createObjectWithVariantValue($variantKeyConfig, self::KEY_VALUE, false);
+
+        $locale = MappingProperty::NOT_LOCALIZED_KEY;
+        $this->assertSame(
+            [$variantHolder->getId()],
+            $this->filterByStore(new IntegerFilter($siblingName, self::VARIANT_VALUE, false), $locale)
+        );
+        $this->assertSame(
+            [$defaultHolder->getId()],
+            $this->filterByStore(new IntegerFilter(self::VARIANT_KEY_NAME, self::KEY_VALUE, false), $locale)
+        );
+
+        $this->deleteKeyWithAssignment($variantKeyConfig);
     }
 
     public function testAValueInANonDefaultLanguageIsFilterable(): void
@@ -720,6 +761,62 @@ class ClassificationStoreMappingTest extends Unit
         // the same two keys are assigned to a second group, so the exclusion is exercised per key
         $this->assignKeyToGroup($this->keyConfig, $this->secondGroupConfig);
         $this->assignKeyToGroup($this->excludedKeyConfig, $this->secondGroupConfig);
+    }
+
+    /**
+     * A key of the multiValue wrapper type holding an integer and declaring one variant, not localized.
+     */
+    private function createVariantKeyWithAssignment(): KeyConfig
+    {
+        $keyConfig = new KeyConfig();
+        $keyConfig->setStoreId($this->storeConfig->getId());
+        $keyConfig->setName(self::VARIANT_KEY_NAME);
+        $keyConfig->setType('multiValue');
+        $keyConfig->setDefinition((string) json_encode([
+            'fieldtype' => 'multiValue',
+            'name' => self::VARIANT_KEY_NAME,
+            'title' => self::VARIANT_KEY_NAME,
+            'variants' => [['name' => self::VARIANT_NAME]],
+            'multiValue' => false,
+            'delegateDatatype' => self::KEY_TYPE,
+            'delegate' => [
+                'fieldtype' => self::KEY_TYPE,
+                'name' => self::VARIANT_KEY_NAME,
+                'integer' => true,
+            ],
+        ]));
+        $keyConfig->setLocalized(false);
+        $keyConfig->setEnabled(true);
+        $keyConfig->save();
+
+        $this->assignKeyToGroup($keyConfig, $this->groupConfig);
+
+        return $keyConfig;
+    }
+
+    /**
+     * Holds the value under the declared variant, or as the default variant when $variant is false.
+     */
+    private function createObjectWithVariantValue(KeyConfig $keyConfig, int $value, bool $variant): Concrete
+    {
+        $className = 'Pimcore\\Model\\DataObject\\' . ucfirst(self::CLASS_NAME);
+        /** @var Concrete $object */
+        $object = new $className();
+        $object->setParentId(1);
+        $object->setKey(uniqid('cs-variant-'));
+        $object->setPublished(true);
+
+        $store = $object->get(self::FIELD_NAME);
+        $store->setActiveGroups([$this->groupConfig->getId() => true]);
+        $store->setKeyValues(
+            $this->groupConfig->getId(),
+            $keyConfig->getId(),
+            [new MultiValueEntry($value, MappingProperty::NOT_LOCALIZED_KEY, $variant ? self::VARIANT_NAME : null)]
+        );
+        $object->save();
+        $this->tester->flushIndex();
+
+        return $object;
     }
 
     private function createGroup(string $name): GroupConfig

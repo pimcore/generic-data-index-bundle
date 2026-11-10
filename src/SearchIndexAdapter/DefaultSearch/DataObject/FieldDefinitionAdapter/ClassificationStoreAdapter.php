@@ -16,13 +16,17 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\ClassificationStore\KeyEntrySlot;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
+use Pimcore\Model\DataObject\ClassDefinition\Data\EncryptedField;
+use Pimcore\Model\DataObject\ClassDefinition\Data\MultiValue;
 use Pimcore\Model\DataObject\Classificationstore as ClassificationstoreModel;
 use Pimcore\Model\DataObject\Classificationstore\DefinitionCache;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
@@ -159,29 +163,102 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $usedKeyNames = [];
 
         foreach ($keys as $key) {
-            if (!$this->isIndexedKey($key)) {
+            $entryNames = $this->getDocumentEntryNames($usedKeyNames, $key);
+            if ($entryNames === null) {
                 continue;
             }
 
-            $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId());
-            if ($keyName === null
-                || $this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId())
-            ) {
-                continue;
-            }
-
-            $usedKeyNames[$keyName] = true;
+            $usedKeyNames += array_fill_keys([$entryNames['name'], ...array_values($entryNames['variants'])], true);
 
             foreach ($this->getLanguagesForKey($key->getKeyId(), $validLanguages) as $keyLanguage) {
-                $normalizedValue = $this->getNormalizedValue($value, $groupId, $key, $keyLanguage);
+                $entries = $this->getEntriesForKey($value, $groupId, $key, $keyLanguage, $entryNames);
 
-                if ($normalizedValue !== null) {
-                    $normalizedGroup[$keyLanguage][$keyName] = $normalizedValue;
+                foreach ($entries as $entryName => $entry) {
+                    $normalizedGroup[$keyLanguage][$entryName] = $entry;
                 }
             }
         }
 
         return $normalizedGroup;
+    }
+
+    /**
+     * The entries one key owns in the document and the shape they are written in - the bare entry plus
+     * a sibling per declared variant - or null for a key that writes none, which is also a key that
+     * reserves no name segment.
+     *
+     * A key the index cannot type is refused here before its name segment is reserved, not merely left
+     * valueless by {@see self::normalizeKeyValue()}: the value would be dropped either way, but a
+     * reserved segment would cost a later key of the same normalized name the document entry the
+     * mapping declares for it. Asked in the order the mapping asks it - name, then value adapter, then
+     * collision - of the definition the relation resolves to, which is the one the mapping gates on. A
+     * relation that resolves to no definition at all keeps today's behaviour: the value path reads its
+     * own definition from the definition cache, so that key is not what this guard is about.
+     *
+     * @param array<string, bool> $usedKeyNames the segments the earlier keys of this group reserved
+     *
+     * @return array{name: string, variants: array<string, string>, multiValue: bool}|null
+     *
+     * @throws InvalidArgumentException
+     */
+    private function getDocumentEntryNames(array $usedKeyNames, KeyGroupRelation $key): ?array
+    {
+        if (!$this->isIndexedKey($key)) {
+            return null;
+        }
+
+        $definition = $this->getFieldDefinitionForKey($key);
+        $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId());
+
+        if ($keyName === null
+            || ($definition !== null && $this->getValueAdapterForKey($definition) === null)
+            || $this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId())
+        ) {
+            return null;
+        }
+
+        // the bare name is reserved before the siblings are named, so no sibling can take it
+        $usedKeyNames[$keyName] = true;
+
+        return [
+            'name' => $keyName,
+            'variants' => $this->getVariantSiblingNames($usedKeyNames, $keyName, $definition, $key),
+            'multiValue' => $definition instanceof MultiValue && $definition->isMultiValue(),
+        ];
+    }
+
+    /**
+     * The bare entry keeps the default variant, each declared variant gets a sibling entry.
+     *
+     * @param array{name: string, variants: array<string, string>, multiValue: bool} $entryNames
+     */
+    private function getEntriesForKey(
+        ClassificationstoreModel $value,
+        int $groupId,
+        KeyGroupRelation $key,
+        string $language,
+        array $entryNames
+    ): array {
+        $entries = [];
+        $multiValue = $entryNames['multiValue'];
+
+        $bareValue = $multiValue
+            ? $this->getNormalizedValues($value, $groupId, $key, $language, null)
+            : $this->getNormalizedValue($value, $groupId, $key, $language);
+
+        if ($bareValue !== null) {
+            $entries[$entryNames['name']] = $bareValue;
+        }
+
+        foreach ($entryNames['variants'] as $variantName => $siblingName) {
+            $variantValues = $this->getNormalizedValues($value, $groupId, $key, $language, (string) $variantName);
+
+            if ($variantValues !== null) {
+                $entries[$siblingName] = $multiValue ? $variantValues : $variantValues[0];
+            }
+        }
+
+        return $entries;
     }
 
     /**
@@ -200,32 +277,74 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $result = [];
         foreach ($this->getMappingForInheritance($dataObject, $classificationStore) as $groupId => $group) {
             foreach ($group['keys'] as $keyId => $groupKey) {
-                $paths = $this->getInheritancePathsForKey(
-                    $key,
-                    $group['name'],
-                    $groupKey['name'],
-                    $keyId,
-                    $languages
-                );
-
-                foreach ($paths as $lang => $path) {
-                    $originId = $this->getKeyValueFromElement(
-                        $groupKey['definition'],
-                        $dataObject,
-                        $key,
-                        $groupId,
-                        $keyId,
-                        $lang
+                foreach ($this->getEntryVariants($groupKey) as $entryName => $variant) {
+                    $slot = new KeyEntrySlot(
+                        definition: $groupKey['definition'],
+                        storeKey: $key,
+                        groupId: $groupId,
+                        keyId: $keyId,
+                        variant: $variant,
+                        multiValue: $groupKey['multiValue'],
                     );
+                    $paths = $this->getInheritancePathsForKey($key, $group['name'], $entryName, $keyId, $languages);
 
-                    if ($originId !== null && $originId !== $objectId) {
-                        $result[$path] = ['originId' => $originId];
-                    }
+                    $result = array_replace(
+                        $result,
+                        $this->getInheritedPathsForEntry($slot, $dataObject, $objectId, $paths)
+                    );
                 }
             }
         }
 
         return $result;
+    }
+
+    /**
+     * The inherited paths of one entry: the path of every language node the entry is written under
+     * whose value this element does not hold itself, pointing at the ancestor that does.
+     *
+     * @param array<string, string> $paths language => the inherited field path built for it
+     *
+     * @return array<string, array{originId: int}>
+     *
+     * @throws Exception
+     */
+    private function getInheritedPathsForEntry(
+        KeyEntrySlot $slot,
+        Concrete $dataObject,
+        int $objectId,
+        array $paths
+    ): array {
+        $inherited = [];
+
+        foreach ($paths as $language => $path) {
+            $originId = $this->getKeyValueFromElement($slot, $dataObject, $language);
+
+            if ($originId !== null && $originId !== $objectId) {
+                $inherited[$path] = ['originId' => $originId];
+            }
+        }
+
+        return $inherited;
+    }
+
+    /**
+     * Every document entry of one key, as entry name => the variant it holds: the bare entry holds
+     * the default variant and answers null for it, each sibling the variant it was declared for.
+     *
+     * @param array{name: string, variants: array<string, string>} $groupKey
+     *
+     * @return array<string, string|null>
+     */
+    private function getEntryVariants(array $groupKey): array
+    {
+        $entries = [$groupKey['name'] => null];
+
+        foreach ($groupKey['variants'] as $variantName => $siblingName) {
+            $entries[$siblingName] = (string) $variantName;
+        }
+
+        return $entries;
     }
 
     /**
@@ -244,19 +363,16 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
+     * The nearest ancestor holding the slot this entry is written from, which is the slot the entry
+     * is written from and no other: a sibling's provenance is resolved against its own variant, and
+     * a `multiValue` entry against the whole list the bare entry carries rather than against
+     * position 0 alone.
+     *
      * @throws Exception
      */
-    private function getKeyValueFromElement(
-        Data $definition,
-        Concrete $dataObject,
-        string $storeKey,
-        int $groupId,
-        int $groupKeyId,
-        string $language
-    ): ?int {
-        $data = $dataObject->get($storeKey)->getLocalizedKeyValue($groupId, $groupKeyId, $language, true, true);
-
-        if (!$definition->isEmpty($data)) {
+    private function getKeyValueFromElement(KeyEntrySlot $slot, Concrete $dataObject, string $language): ?int
+    {
+        if ($this->holdsEntry($slot, $dataObject, $language)) {
             return $dataObject->getId();
         }
 
@@ -265,7 +381,51 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             return $dataObject->getId();
         }
 
-        return $this->getKeyValueFromElement($definition, $parent, $storeKey, $groupId, $groupKeyId, $language);
+        return $this->getKeyValueFromElement($slot, $parent, $language);
+    }
+
+    /**
+     * Whether the given element's own store holds a value for the entry. The qualified reader is
+     * asked only for an entry that is written from it - a key with neither a variant nor a list is
+     * read the way it is read today - and a slot it refuses answers that the element holds nothing,
+     * which is what {@see self::getNormalizedValues()} indexes for the same slot.
+     *
+     * The refusal is not logged here: a store whose engine cannot address variants raises it for
+     * every variant of every such key, and the write path above already reports that slot of this
+     * object in the same index run. Reporting it again per ancestor of the inheritance walk would
+     * multiply one configuration mistake by the depth of the tree without naming anything new.
+     *
+     * @throws Exception
+     */
+    private function holdsEntry(KeyEntrySlot $slot, Concrete $dataObject, string $language): bool
+    {
+        $store = $dataObject->get($slot->getStoreKey());
+        $definition = $slot->getDefinition();
+
+        if ($slot->getVariant() === null && !$slot->isMultiValue()) {
+            return !$definition->isEmpty(
+                $store->getLocalizedKeyValue($slot->getGroupId(), $slot->getKeyId(), $language, true, true)
+            );
+        }
+
+        try {
+            $values = $store->getKeyValues(
+                $slot->getGroupId(),
+                $slot->getKeyId(),
+                $language,
+                $slot->getVariant()
+            );
+        } catch (Exception) {
+            return false;
+        }
+
+        foreach ($values as $value) {
+            if (!$definition->isEmpty($value)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -541,9 +701,20 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
+     * The entries a key owns in the document, which is what the inheritance side has to enumerate:
+     * the bare one plus a sibling per declared variant, named and de-duplicated by the same rules
+     * {@see self::getMappingForGroupConfig()} and {@see self::normalizeGroupValues()} apply, so a
+     * sibling the mapping and the document agree on is the sibling an inherited path is built for.
+     *
+     * A key the index cannot type contributes nothing here either: the resolved value adapter is the
+     * condition the mapping gates the key on, so asking it here is what keeps an inherited path from
+     * naming a document path that neither the mapping nor the document has
+     * {@see self::getValueAdapterForKey()}.
+     *
      * @param KeyGroupRelation[] $keys
      *
-     * @return array<int, array{name: string, definition: Data}>
+     * @return array<int, array{name: string, definition: Data, multiValue: bool,
+     *                          variants: array<string, string>}>
      */
     private function getKeyMappingForInheritance(array $keys): array
     {
@@ -556,7 +727,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             }
 
             $definition = $this->getFieldDefinitionForKey($groupKey);
-            if ($definition === null) {
+            if ($definition === null || $this->getValueAdapterForKey($definition) === null) {
                 continue;
             }
 
@@ -569,9 +740,17 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             }
 
             $usedKeyNames[$keyName] = true;
+
+            $variantNames = $this->getVariantSiblingNames($usedKeyNames, $keyName, $definition, $groupKey);
+            foreach ($variantNames as $siblingName) {
+                $usedKeyNames[$siblingName] = true;
+            }
+
             $keyMapping[$keyId] = [
                 'name' => $keyName,
                 'definition' => $definition,
+                'multiValue' => $definition instanceof MultiValue && $definition->isMultiValue(),
+                'variants' => $variantNames,
             ];
         }
 
@@ -612,37 +791,193 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $usedKeyNames = [];
 
         foreach ($groupConfigs as $key) {
-            if (!$this->isIndexedKey($key)) {
+            $keyMappings = $this->getMappingNodesForKey($usedKeyNames, $key);
+            if ($keyMappings === null) {
                 continue;
             }
 
-            $definition = $this->getFieldDefinitionForKey($key);
-            if ($definition === null) {
-                continue;
-            }
-
-            $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($definition);
-
-            $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId(), true);
-
-            if ($adapter === null || $keyName === null) {
-                continue;
-            }
-
-            if ($this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId(), true)) {
-                continue;
-            }
-
-            $usedKeyNames[$keyName] = true;
-            // once per key: the mapping of the key does not depend on the language
-            $keyMapping = $adapter->getIndexMapping();
+            $usedKeyNames += array_fill_keys(array_keys($keyMappings), true);
 
             foreach ($this->getLanguagesForKey($key->getKeyId(), $validLanguages) as $language) {
-                $groupMapping[$language]['properties'][$keyName] = $keyMapping;
+                $groupMapping[$language]['properties'] = ($groupMapping[$language]['properties'] ?? []) + $keyMappings;
             }
         }
 
         return $groupMapping;
+    }
+
+    /**
+     * The mapping nodes one key declares, as the name segment each is declared under => the mapping of
+     * the key's value type, or null for a key that declares none, which is also a key that reserves no
+     * name segment. The nodes of a key are the same under every language node it is declared under, so
+     * the value adapter is asked once per key rather than once per language.
+     *
+     * This is the only one of the three key-enumerating paths that reports diagnostics, because it is
+     * the only one that runs once per index update rather than once per element and locale.
+     *
+     * @param array<string, bool> $usedKeyNames the segments the earlier keys of this group reserved
+     *
+     * @return array<string, array>|null
+     *
+     * @throws InvalidArgumentException
+     */
+    private function getMappingNodesForKey(array $usedKeyNames, KeyGroupRelation $key): ?array
+    {
+        if (!$this->isIndexedKey($key)) {
+            return null;
+        }
+
+        $definition = $this->getFieldDefinitionForKey($key);
+        if ($definition === null) {
+            return null;
+        }
+
+        $adapter = $this->getValueAdapterForKey($definition);
+        $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId(), true);
+
+        if ($keyName === null) {
+            return null;
+        }
+
+        if ($adapter === null) {
+            $valueDefinition = $this->getValueDefinition($definition);
+            if (!$this->isDeliberatelyNotIndexedType($valueDefinition)) {
+                $this->reportKeyWithoutAdapter($key, $valueDefinition);
+            }
+
+            return null;
+        }
+
+        if ($this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId(), true)) {
+            return null;
+        }
+
+        // the bare name is reserved before the siblings are named, so no sibling can take it
+        $usedKeyNames[$keyName] = true;
+        $variantNames = $this->getVariantSiblingNames($usedKeyNames, $keyName, $definition, $key, true);
+
+        return array_fill_keys([$keyName, ...array_values($variantNames)], $adapter->getIndexMapping());
+    }
+
+    /**
+     * The field definition adapter of the key's value type, which is the last condition of "this key
+     * is indexed" and therefore has to be asked by all three paths: a key whose resolved value
+     * definition has no adapter declares no mapping node {@see self::getMappingForGroupConfig()},
+     * writes no document entry {@see self::normalizeGroupValues()} and emits no inherited field path
+     * {@see self::getKeyMappingForInheritance()} - neither for the key nor for any of its variant
+     * siblings, since the sibling is indexed as the same type the bare entry is.
+     *
+     * Asked before the key's name segment is reserved, so a key the index cannot type does not shadow
+     * a later key of the same normalized name that it can, which is the ordering
+     * {@see self::isTakenNameSegment()} relies on to drop the same entry in all three.
+     *
+     * The diagnostic is not raised here: it belongs to the mapping path alone, which runs once per
+     * index update, and only to the key that survived its own name check there.
+     */
+    private function getValueAdapterForKey(Data $definition): ?AdapterInterface
+    {
+        return $this->getFieldDefinitionService()->getFieldDefinitionAdapter($this->getValueDefinition($definition));
+    }
+
+    /** A multiValue key is indexed as the type it wraps. */
+    private function getValueDefinition(Data $definition): Data
+    {
+        while ($definition instanceof MultiValue) {
+            $delegate = $definition->getDelegate();
+            if (!$delegate instanceof Data) {
+                break;
+            }
+
+            $definition = $delegate;
+        }
+
+        return $definition;
+    }
+
+    /**
+     * One sibling "<key>_<variant>" per declared variant; a name already taken is skipped, first wins.
+     *
+     * @param array<string, bool> $usedKeyNames
+     *
+     * @return array<string, string> declared variant name => sibling name
+     */
+    private function getVariantSiblingNames(
+        array $usedKeyNames,
+        string $keyName,
+        ?Data $definition,
+        KeyGroupRelation $key,
+        bool $reportDiagnostics = false
+    ): array {
+        if (!$definition instanceof MultiValue) {
+            return [];
+        }
+
+        $siblingNames = [];
+
+        foreach ($definition->getVariantNames() as $variantName) {
+            $variantSegment = $this->normalizeNameSegment($variantName, 'variant', $variantName, $reportDiagnostics);
+            if ($variantSegment === null) {
+                continue;
+            }
+
+            $siblingName = $keyName . '_' . $variantSegment;
+            if ($this->isTakenNameSegment(
+                $usedKeyNames,
+                $siblingName,
+                $key->getName() . '_' . $variantName,
+                'key',
+                $key->getKeyId(),
+                $reportDiagnostics
+            )) {
+                continue;
+            }
+
+            $usedKeyNames[$siblingName] = true;
+            $siblingNames[$variantName] = $siblingName;
+        }
+
+        return $siblingNames;
+    }
+
+    /**
+     * A value type this bundle does not index ON PURPOSE, for which "no field definition adapter" is
+     * the intended answer rather than the gap {@see self::reportKeyWithoutAdapter()} reports. Such a
+     * key is dropped exactly as any other unsupported key is - it declares no mapping node, writes no
+     * document entry and emits no inherited path - it is just not reported while being dropped.
+     *
+     * `encryptedField` is the whole list, and it is here because the diagnostic would otherwise turn a
+     * correct exclusion into an error on every index update. This bundle has never had an adapter for
+     * the type - nothing under `src/` or `config/` names it - so an encrypted key has always been
+     * skipped silently, which is the right outcome: the value of such a key is a secret and indexing it
+     * would publish it in a searchable, filterable and `_source`-readable form. Core's
+     * {@see \Pimcore\Model\DataObject\Classificationstore\Service::getValueDefinition()} draws the same
+     * line from the other side - it stops ON an `encryptedField` rather than unwrapping through it,
+     * "that wrapper carries the stored form itself" - so the definition that reaches this check is the
+     * `encryptedField` itself and not the delegate whose adapter would have typed the plaintext.
+     *
+     * The key is reachable, which is why the exclusion has to be stated rather than assumed: core's
+     * {@see \Pimcore\Model\DataObject\Classificationstore\KeyTypeSupport} classes `encryptedField` as a
+     * WRAPPER type, not an excluded one, so a key may be defined with it. A `multiValue` wrapping one
+     * arrives here too, since {@see self::getValueDefinition()} unwraps the `multiValue` layers and
+     * stops on the `encryptedField` the same way core does.
+     */
+    private function isDeliberatelyNotIndexedType(Data $valueDefinition): bool
+    {
+        return $valueDefinition instanceof EncryptedField;
+    }
+
+    /** Logged, not thrown: IndexMappingService would drop the whole field on an exception. */
+    private function reportKeyWithoutAdapter(KeyGroupRelation $key, Data $valueDefinition): void
+    {
+        $this->logger->error(sprintf(
+            'Classification store %d: key %d "%s" of group %s has type "%s", for which the search index has no ' .
+            'field definition adapter. The key is not indexed.',
+            $this->getClassificationStoreDefinition()->getStoreId(),
+            $key->getKeyId(),
+            $key->getName(),
+            $this->isHydratedRelationProperty($key, 'groupId') ? (string) $key->getGroupId() : 'unknown',
+            $valueDefinition->getFieldType()
+        ));
     }
 
     private function getFieldDefinitionForKey(KeyGroupRelation $key): ?Data
@@ -745,12 +1080,58 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             return null;
         }
 
+        return $this->normalizeKeyValue($key, $value);
+    }
+
+    /**
+     * The normalized values of one (language, variant) slot in position order, null when empty.
+     *
+     * @return array<int, mixed>|null
+     */
+    private function getNormalizedValues(
+        ClassificationstoreModel $classificationstore,
+        int $groupId,
+        KeyGroupRelation $key,
+        string $language,
+        ?string $variant
+    ): ?array {
+        try {
+            $values = $classificationstore->getKeyValues($groupId, $key->getKeyId(), $language, $variant);
+        } catch (Exception $exception) {
+            $this->logger->warning(sprintf(
+                'Could not get values for key %s in group %s: %s',
+                $key->getKeyId(),
+                $groupId,
+                $exception->getMessage()
+            ));
+
+            return null;
+        }
+
+        ksort($values);
+
+        $normalized = [];
+        foreach ($values as $value) {
+            $normalizedValue = $this->normalizeKeyValue($key, $value);
+            if ($normalizedValue !== null) {
+                $normalized[] = $normalizedValue;
+            }
+        }
+
+        return $normalized === [] ? null : $normalized;
+    }
+
+    private function normalizeKeyValue(KeyGroupRelation $key, mixed $value): mixed
+    {
         $keyConfig = DefinitionCache::get($key->getKeyId());
         if ($keyConfig === null) {
             return null;
         }
 
         $fieldDefinition = $this->classificationService->getFieldDefinitionFromKeyConfig($keyConfig);
+        if ($fieldDefinition !== null) {
+            $fieldDefinition = $this->getValueDefinition($fieldDefinition);
+        }
 
         return $this->fieldDefinitionService->normalizeValue($fieldDefinition, $value);
     }
