@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFa
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
@@ -42,6 +43,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         private IndexRebuildObligationServiceInterface $rebuildObligationService,
         private IndexLockInterface $indexLock,
         private SearchIndexConfigServiceInterface $searchIndexConfigService,
+        private SearchIndexServiceInterface $searchIndexService,
     ) {
     }
 
@@ -146,7 +148,9 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         $currentCheckSum = $this->dataObjectIndexHandler->getClassMappingCheckSum($mappingProperties);
         $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
 
-        if ($skipIfClassNotChanged && $storedCheckSum !== null) {
+        // A stored checksum says nothing about an index that is gone (deleted by hand, lost with the cluster, or never
+        // created for a class whose checksum was stamped): such a class is created again, not skipped.
+        if ($skipIfClassNotChanged && $storedCheckSum !== null && $this->indexExists($classDefinition)) {
             if ($storedCheckSum === $currentCheckSum) {
                 // Same structured keys as the reindex branch below (here they are equal by
                 // definition), so a log query on storedChecksum/currentChecksum includes skipped
@@ -199,6 +203,11 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
                 context: $classDefinition,
                 mappingProperties: $mappingProperties
             );
+    }
+
+    private function indexExists(ClassDefinition $classDefinition): bool
+    {
+        return $this->searchIndexService->existsAlias($this->getAliasIndexName($classDefinition));
     }
 
     private function getAliasIndexName(ClassDefinition $classDefinition): string
