@@ -252,32 +252,55 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $result = [];
         foreach ($this->getMappingForInheritance($dataObject, $classificationStore) as $groupId => $group) {
             foreach ($group['keys'] as $keyId => $groupKey) {
-                $paths = $this->getInheritancePathsForKey(
-                    $key,
-                    $group['name'],
-                    $groupKey['name'],
-                    $keyId,
-                    $languages
-                );
-
-                foreach ($paths as $lang => $path) {
-                    $originId = $this->getKeyValueFromElement(
-                        $groupKey['definition'],
-                        $dataObject,
+                foreach ($this->getEntryVariants($groupKey) as $entryName => $variant) {
+                    $paths = $this->getInheritancePathsForKey(
                         $key,
-                        $groupId,
+                        $group['name'],
+                        $entryName,
                         $keyId,
-                        $lang
+                        $languages
                     );
 
-                    if ($originId !== null && $originId !== $objectId) {
-                        $result[$path] = ['originId' => $originId];
+                    foreach ($paths as $lang => $path) {
+                        $originId = $this->getKeyValueFromElement(
+                            $groupKey['definition'],
+                            $dataObject,
+                            $key,
+                            $groupId,
+                            $keyId,
+                            $lang,
+                            $variant,
+                            $groupKey['multiValue']
+                        );
+
+                        if ($originId !== null && $originId !== $objectId) {
+                            $result[$path] = ['originId' => $originId];
+                        }
                     }
                 }
             }
         }
 
         return $result;
+    }
+
+    /**
+     * Every document entry of one key, as entry name => the variant it holds: the bare entry holds
+     * the default variant and answers null for it, each sibling the variant it was declared for.
+     *
+     * @param array{name: string, variants: array<string, string>} $groupKey
+     *
+     * @return array<string, string|null>
+     */
+    private function getEntryVariants(array $groupKey): array
+    {
+        $entries = [$groupKey['name'] => null];
+
+        foreach ($groupKey['variants'] as $variantName => $siblingName) {
+            $entries[$siblingName] = (string) $variantName;
+        }
+
+        return $entries;
     }
 
     /**
@@ -296,6 +319,15 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
+     * The nearest ancestor holding the slot this entry is written from, which is the slot the entry
+     * is written from and no other: a sibling's provenance is resolved against its own variant, and
+     * a `multiValue` entry against the whole list the bare entry carries rather than against
+     * position 0 alone.
+     *
+     * @param string|null $variant the declared variant of the sibling, null for the bare entry
+     * @param bool $multiValue whether the key's declaration permits a list, which is what decides
+     *                         whether the bare entry is read as one
+     *
      * @throws Exception
      */
     private function getKeyValueFromElement(
@@ -304,11 +336,22 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         string $storeKey,
         int $groupId,
         int $groupKeyId,
-        string $language
+        string $language,
+        ?string $variant = null,
+        bool $multiValue = false
     ): ?int {
-        $data = $dataObject->get($storeKey)->getLocalizedKeyValue($groupId, $groupKeyId, $language, true, true);
+        $holdsEntry = $this->holdsEntry(
+            $definition,
+            $dataObject,
+            $storeKey,
+            $groupId,
+            $groupKeyId,
+            $language,
+            $variant,
+            $multiValue
+        );
 
-        if (!$definition->isEmpty($data)) {
+        if ($holdsEntry) {
             return $dataObject->getId();
         }
 
@@ -317,7 +360,62 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             return $dataObject->getId();
         }
 
-        return $this->getKeyValueFromElement($definition, $parent, $storeKey, $groupId, $groupKeyId, $language);
+        return $this->getKeyValueFromElement(
+            $definition,
+            $parent,
+            $storeKey,
+            $groupId,
+            $groupKeyId,
+            $language,
+            $variant,
+            $multiValue
+        );
+    }
+
+    /**
+     * Whether the given element's own store holds a value for the entry. The qualified reader is
+     * asked only for an entry that is written from it - a key with neither a variant nor a list is
+     * read the way it is read today - and a slot it refuses answers that the element holds nothing,
+     * which is what {@see self::getNormalizedValues()} indexes for the same slot.
+     *
+     * The refusal is not logged here: a store whose engine cannot address variants raises it for
+     * every variant of every such key, and the write path above already reports that slot of this
+     * object in the same index run. Reporting it again per ancestor of the inheritance walk would
+     * multiply one configuration mistake by the depth of the tree without naming anything new.
+     *
+     * @throws Exception
+     */
+    private function holdsEntry(
+        Data $definition,
+        Concrete $dataObject,
+        string $storeKey,
+        int $groupId,
+        int $groupKeyId,
+        string $language,
+        ?string $variant,
+        bool $multiValue
+    ): bool {
+        $store = $dataObject->get($storeKey);
+
+        if ($variant === null && !$multiValue) {
+            return !$definition->isEmpty(
+                $store->getLocalizedKeyValue($groupId, $groupKeyId, $language, true, true)
+            );
+        }
+
+        try {
+            $values = $store->getKeyValues($groupId, $groupKeyId, $language, $variant);
+        } catch (Exception) {
+            return false;
+        }
+
+        foreach ($values as $value) {
+            if (!$definition->isEmpty($value)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -593,9 +691,15 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
+     * The entries a key owns in the document, which is what the inheritance side has to enumerate:
+     * the bare one plus a sibling per declared variant, named and de-duplicated by the same rules
+     * {@see self::getMappingForGroupConfig()} and {@see self::normalizeGroupValues()} apply, so a
+     * sibling the mapping and the document agree on is the sibling an inherited path is built for.
+     *
      * @param KeyGroupRelation[] $keys
      *
-     * @return array<int, array{name: string, definition: Data}>
+     * @return array<int, array{name: string, definition: Data, multiValue: bool,
+     *                          variants: array<string, string>}>
      */
     private function getKeyMappingForInheritance(array $keys): array
     {
@@ -621,9 +725,17 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             }
 
             $usedKeyNames[$keyName] = true;
+
+            $variantNames = $this->getVariantSiblingNames($usedKeyNames, $keyName, $definition, $groupKey);
+            foreach ($variantNames as $siblingName) {
+                $usedKeyNames[$siblingName] = true;
+            }
+
             $keyMapping[$keyId] = [
                 'name' => $keyName,
                 'definition' => $definition,
+                'multiValue' => $definition instanceof MultiValue && $definition->isMultiValue(),
+                'variants' => $variantNames,
             ];
         }
 

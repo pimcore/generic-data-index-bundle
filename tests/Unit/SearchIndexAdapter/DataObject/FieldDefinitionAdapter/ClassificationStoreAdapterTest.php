@@ -45,6 +45,7 @@ use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
 use Pimcore\Model\DataObject\Classificationstore\KeyConfig;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
 use Pimcore\Model\DataObject\Classificationstore\LocalizationResolver;
+use Pimcore\Model\DataObject\Concrete;
 use Psr\Log\AbstractLogger;
 use ReflectionMethod;
 
@@ -841,6 +842,151 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
+     * The fourth path the invariant covers: the inheritance side enumerates the same entries as the
+     * mapping and the document, so every variant sibling is an entry an inherited path is built for
+     * and the sibling name is what {@see ClassificationStoreAdapter::getInheritancePathsForKey()} is
+     * then given. A sibling name another key already holds is dropped here as it is dropped there.
+     */
+    public function testTheInheritedEntriesOfAKeyAreItsBareNameAndOneSiblingPerDeclaredVariant(): void
+    {
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyMappingForInheritance');
+        $entries = new ReflectionMethod(ClassificationStoreAdapter::class, 'getEntryVariants');
+
+        $adapter = $this->createConfiguredAdapter(
+            [],
+            keyDefinition: $this->createMultiValue([self::METRIC, self::IMPERIAL], true)
+        );
+        $keyMapping = $method->invoke(
+            $adapter,
+            [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)]
+        );
+
+        $this->assertTrue($keyMapping[self::KEY_ID]['multiValue']);
+        $this->assertSame(
+            [
+                self::KEY_NAME => null,
+                self::KEY_NAME . '_' . self::METRIC => self::METRIC,
+                self::KEY_NAME . '_' . self::IMPERIAL => self::IMPERIAL,
+            ],
+            $entries->invoke($adapter, $keyMapping[self::KEY_ID])
+        );
+
+        $collidingAdapter = $this->createConfiguredAdapter(
+            [],
+            keyDefinition: fn (KeyGroupRelation $relation): Data => $relation->getKeyId() === self::KEY_ID
+                ? $this->createMultiValue([self::METRIC])
+                : new Input()
+        );
+        $collided = $method->invoke(
+            $collidingAdapter,
+            [
+                $this->createRelation(self::OTHER_KEY_ID, self::GROUP_ID, self::KEY_NAME . '_' . self::METRIC),
+                $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME),
+            ]
+        );
+
+        // the earlier key holds "Size_metric", so the variant of "Size" contributes no entry here either
+        $this->assertSame([self::OTHER_KEY_ID, self::KEY_ID], array_keys($collided));
+        $this->assertSame(
+            [self::KEY_NAME => null],
+            $entries->invoke($collidingAdapter, $collided[self::KEY_ID])
+        );
+    }
+
+    /**
+     * The provenance of a sibling is resolved against the sibling's own slot: a variant the child does
+     * not hold and a parent does is attributed to the parent, instead of the whole key taking the
+     * verdict of position 0 of its default variant. A `multiValue` entry is resolved against the whole
+     * list the bare entry carries, so a parent holding only a higher position is found as well.
+     */
+    public function testASiblingTakesItsInheritanceOriginFromItsOwnVariantSlot(): void
+    {
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyValueFromElement');
+        $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL]);
+
+        $parent = $this->createObjectWithStore(10, [self::METRIC => [0 => 'parent metric']]);
+        $child = $this->createObjectWithStore(
+            1,
+            [self::IMPERIAL => [0 => 'child imperial']],
+            'own default',
+            $parent
+        );
+
+        $origin = fn (?string $variant, bool $multiValue = false): ?int => $method->invoke(
+            $this->createConfiguredAdapter([]),
+            $definition,
+            $child,
+            self::FIELD_NAME,
+            self::GROUP_ID,
+            self::KEY_ID,
+            self::DEFAULT_LANGUAGE,
+            $variant,
+            $multiValue
+        );
+
+        $this->assertSame(1, $origin(null));
+        $this->assertSame(10, $origin(self::METRIC));
+        $this->assertSame(1, $origin(self::IMPERIAL));
+
+        // a list the child does not hold at all and the parent holds above position 0
+        $listParent = $this->createObjectWithStore(10, [self::DEFAULT_LANGUAGE => [1 => 'second']]);
+        $listChild = $this->createObjectWithStore(1, [], '', $listParent);
+
+        $this->assertSame(
+            10,
+            $method->invoke(
+                $this->createConfiguredAdapter([]),
+                $this->createMultiValue(multiValue: true),
+                $listChild,
+                self::FIELD_NAME,
+                self::GROUP_ID,
+                self::KEY_ID,
+                self::DEFAULT_LANGUAGE,
+                null,
+                true
+            )
+        );
+    }
+
+    /**
+     * A store whose engine cannot address variants refuses the read. The sibling then holds nothing
+     * anywhere on the chain, which is the verdict an empty chain already gets - the topmost ancestor -
+     * and the walk adds no log line of its own: the write path reports that slot of this object in the
+     * same index run, so repeating it per ancestor would multiply one configuration mistake by the
+     * depth of the tree.
+     */
+    public function testAVariantSlotTheEngineRefusesIsNotReportedAgainByTheInheritanceWalk(): void
+    {
+        $logger = $this->createCollectingLogger();
+        $refusing = fn (int $id, ?Concrete $parent = null): Concrete => $this->makeEmpty(Concrete::class, [
+            'getId' => $id,
+            'getNextParentForInheritance' => $parent,
+            'get' => $this->makeEmpty(ClassificationstoreModel::class, [
+                'getLocalizedKeyValue' => 'own default',
+                'getKeyValues' => static function (): never {
+                    throw new Exception('the engine behind this store does not support variants');
+                },
+            ]),
+        ]);
+
+        $this->assertSame(
+            10,
+            (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyValueFromElement'))->invoke(
+                $this->createConfiguredAdapter([], logger: $logger),
+                $this->createMultiValue([self::METRIC]),
+                $refusing(1, $refusing(10)),
+                self::FIELD_NAME,
+                self::GROUP_ID,
+                self::KEY_ID,
+                self::DEFAULT_LANGUAGE,
+                self::METRIC,
+                false
+            )
+        );
+        $this->assertSame([], $logger->records);
+    }
+
+    /**
      * The declared field count of the classification store field at ETIM proportions: 76,625 key
      * assignments, 17 valid languages plus the non-localized node, 23,222 of the assignments localized,
      * and no group restriction. Each group contributes its own leaves and each key of a group its own,
@@ -1122,6 +1268,47 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
+     * A key that declares both carries a list in every slot it holds: the sibling of a declared
+     * variant is an array of that variant's positions in position order, independent of the bare
+     * entry's list, where a key without `multiValue` writes the one value its sibling permits. A
+     * declared variant the store holds nothing for writes no sibling entry at all.
+     */
+    public function testASiblingOfAMultiValueKeyCarriesItsOwnListInPositionOrder(): void
+    {
+        $slots = [
+            self::DEFAULT_LANGUAGE => [1 => 'default second', 0 => 'default first'],
+            self::METRIC => [2 => 'metric third', 0 => 'metric first', 1 => 'metric second'],
+            self::IMPERIAL => [],
+        ];
+
+        $this->assertSame(
+            [
+                self::DEFAULT_LANGUAGE => [
+                    self::KEY_NAME => ['default first', 'default second'],
+                    self::KEY_NAME . '_' . self::METRIC => ['metric first', 'metric second', 'metric third'],
+                ],
+            ],
+            $this->getDocumentValues(
+                $this->createFieldDefinition(false),
+                self::LANGUAGES,
+                [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)],
+                keyDefinition: $this->createMultiValue([self::METRIC, self::IMPERIAL], true),
+                store: $this->makeEmpty(ClassificationstoreModel::class, [
+                    'getKeyValues' => static fn (
+                        int $group,
+                        int $keyId,
+                        ?string $language,
+                        ?string $variant
+                    ): array => $slots[$variant ?? self::DEFAULT_LANGUAGE] ?? [],
+                    'getLocalizedKeyValue' => static function (): never {
+                        throw new Exception('a multiValue key is read through getKeyValues');
+                    },
+                ])
+            )
+        );
+    }
+
+    /**
      * Pins today's shape: without variants or multiValue the entry is the one value, read the way it
      * is read today, and the qualified reader is never asked.
      */
@@ -1191,6 +1378,36 @@ final class ClassificationStoreAdapterTest extends Unit
                 },
             ])
         );
+    }
+
+    /**
+     * An element whose own store holds the given qualified slots, keyed by variant name - the default
+     * variant under {@see self::DEFAULT_LANGUAGE}, which is the name a slot addressed with no variant
+     * resolves to - and the given value at position 0 of the default variant for the resolving reader.
+     *
+     * @param array<string, array<int, mixed>> $slots
+     */
+    private function createObjectWithStore(
+        int $id,
+        array $slots,
+        string $defaultValue = '',
+        ?Concrete $parent = null
+    ): Concrete {
+        $store = $this->makeEmpty(ClassificationstoreModel::class, [
+            'getLocalizedKeyValue' => $defaultValue,
+            'getKeyValues' => static fn (
+                int $group,
+                int $keyId,
+                ?string $language,
+                ?string $variant
+            ): array => $slots[$variant ?? self::DEFAULT_LANGUAGE] ?? [],
+        ]);
+
+        return $this->makeEmpty(Concrete::class, [
+            'getId' => $id,
+            'getNextParentForInheritance' => $parent,
+            'get' => $store,
+        ]);
     }
 
     /**
