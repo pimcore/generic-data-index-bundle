@@ -18,6 +18,7 @@ use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\ClassificationStore\KeyEntrySlot;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -146,6 +147,14 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
+     * A key the index cannot type is skipped here before its name segment is reserved, not merely left
+     * valueless by {@see self::normalizeKeyValue()}: the value would be dropped either way, but a
+     * reserved segment would cost a later key of the same normalized name the document entry the
+     * mapping declares for it. Asked in the order the mapping asks it - name, then value adapter, then
+     * collision - of the definition the relation resolves to, which is the one the mapping gates on. A
+     * relation that resolves to no definition at all keeps today's behaviour: the value path reads its
+     * own definition from the definition cache, so that key is not what this guard is about.
+     *
      * @param KeyGroupRelation[] $keys
      * @param string[] $validLanguages
      *
@@ -165,8 +174,11 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 continue;
             }
 
+            $definition = $this->getFieldDefinitionForKey($key);
             $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId());
+
             if ($keyName === null
+                || ($definition !== null && $this->getValueAdapterForKey($definition) === null)
                 || $this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId())
             ) {
                 continue;
@@ -174,7 +186,6 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
             $usedKeyNames[$keyName] = true;
 
-            $definition = $this->getFieldDefinitionForKey($key);
             $variantNames = $this->getVariantSiblingNames($usedKeyNames, $keyName, $definition, $key);
             foreach ($variantNames as $siblingName) {
                 $usedKeyNames[$siblingName] = true;
@@ -682,6 +693,11 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * {@see self::getMappingForGroupConfig()} and {@see self::normalizeGroupValues()} apply, so a
      * sibling the mapping and the document agree on is the sibling an inherited path is built for.
      *
+     * A key the index cannot type contributes nothing here either: the resolved value adapter is the
+     * condition the mapping gates the key on, so asking it here is what keeps an inherited path from
+     * naming a document path that neither the mapping nor the document has
+     * {@see self::getValueAdapterForKey()}.
+     *
      * @param KeyGroupRelation[] $keys
      *
      * @return array<int, array{name: string, definition: Data, multiValue: bool,
@@ -698,7 +714,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             }
 
             $definition = $this->getFieldDefinitionForKey($groupKey);
-            if ($definition === null) {
+            if ($definition === null || $this->getValueAdapterForKey($definition) === null) {
                 continue;
             }
 
@@ -771,8 +787,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 continue;
             }
 
-            $valueDefinition = $this->getValueDefinition($definition);
-            $adapter = $this->getFieldDefinitionService()->getFieldDefinitionAdapter($valueDefinition);
+            $adapter = $this->getValueAdapterForKey($definition);
 
             $keyName = $this->normalizeNameSegment($key->getName(), 'key', $key->getKeyId(), true);
 
@@ -781,7 +796,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             }
 
             if ($adapter === null) {
-                $this->reportKeyWithoutAdapter($key, $valueDefinition);
+                $this->reportKeyWithoutAdapter($key, $this->getValueDefinition($definition));
 
                 continue;
             }
@@ -807,6 +822,26 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         }
 
         return $groupMapping;
+    }
+
+    /**
+     * The field definition adapter of the key's value type, which is the last condition of "this key
+     * is indexed" and therefore has to be asked by all three paths: a key whose resolved value
+     * definition has no adapter declares no mapping node {@see self::getMappingForGroupConfig()},
+     * writes no document entry {@see self::normalizeGroupValues()} and emits no inherited field path
+     * {@see self::getKeyMappingForInheritance()} - neither for the key nor for any of its variant
+     * siblings, since the sibling is indexed as the same type the bare entry is.
+     *
+     * Asked before the key's name segment is reserved, so a key the index cannot type does not shadow
+     * a later key of the same normalized name that it can, which is the ordering
+     * {@see self::isTakenNameSegment()} relies on to drop the same entry in all three.
+     *
+     * The diagnostic is not raised here: it belongs to the mapping path alone, which runs once per
+     * index update, and only to the key that survived its own name check there.
+     */
+    private function getValueAdapterForKey(Data $definition): ?AdapterInterface
+    {
+        return $this->getFieldDefinitionService()->getFieldDefinitionAdapter($this->getValueDefinition($definition));
     }
 
     /** A multiValue key is indexed as the type it wraps. */

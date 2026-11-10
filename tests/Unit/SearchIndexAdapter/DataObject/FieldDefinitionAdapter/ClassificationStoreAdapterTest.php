@@ -1134,6 +1134,74 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
+     * The resolved value adapter gates all three paths, not the mapping alone: a key the index cannot
+     * type emits no inherited field path either - neither for the bare entry nor for the siblings its
+     * variants would otherwise contribute - so an "_inherited_fields" entry never names a document path
+     * that the mapping and the document agree does not exist. The type is read through the multiValue
+     * wrapper, which is the definition the mapping gates on.
+     */
+    public function testAKeyWithNoAdapterProducesNoInheritedFieldPathForItselfOrItsSiblings(): void
+    {
+        $wrapped = $this->createMultiValue([self::METRIC, self::IMPERIAL], true);
+        $wrapped->setDelegate(new Checkbox());
+
+        $adapter = $this->createConfiguredAdapter(
+            [],
+            keyDefinition: static fn (KeyGroupRelation $relation): Data => $relation->getKeyId() === self::KEY_ID
+                ? $wrapped
+                : new Input(),
+            fieldDefinitionService: $this->createServiceWithoutAdapterForCheckbox()
+        );
+
+        $keyMapping = (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyMappingForInheritance'))
+            ->invoke($adapter, $this->createKeysWithNoAdapterForTheFirst());
+
+        $this->assertSame([self::OTHER_KEY_ID], array_keys($keyMapping));
+        $this->assertSame(self::OTHER_KEY_NAME, $keyMapping[self::OTHER_KEY_ID]['name']);
+        $this->assertSame([], $keyMapping[self::OTHER_KEY_ID]['variants']);
+    }
+
+    /**
+     * Such a key does not reserve its name segment either. "Size." and "Size" normalize to the same
+     * segment, so the key the index cannot type has to drop out of the document the way it drops out of
+     * the mapping: were it merely left valueless, the segment it reserved would cost the later key the
+     * document entry the mapping declares for it.
+     */
+    public function testAKeyWithNoAdapterDoesNotReserveItsNameSegmentForTheDocument(): void
+    {
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [
+            $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME . '.'),
+            $this->createRelation(self::OTHER_KEY_ID, self::GROUP_ID, self::KEY_NAME),
+        ];
+        $keyDefinition = $this->createDefinitionPerKeyId(self::KEY_ID);
+        $service = $this->createServiceWithoutAdapterForCheckbox();
+
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => self::LANGUAGE_NODE],
+            $this->getMappingForRelations(
+                $fieldDefinition,
+                self::LANGUAGES,
+                $relations,
+                null,
+                $keyDefinition,
+                $service
+            )
+        );
+
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => [self::KEY_NAME => self::OTHER_KEY_ID]],
+            $this->getDocumentValues(
+                $fieldDefinition,
+                self::LANGUAGES,
+                $relations,
+                keyDefinition: $keyDefinition,
+                fieldDefinitionService: $service
+            )
+        );
+    }
+
+    /**
      * A key of type X declares what a class field of type X declares, advanced relation details included.
      */
     public function testRelationKeysDeclareExactlyTheMappingOfTheSameTypeOnAClassField(): void
@@ -1444,6 +1512,21 @@ final class ClassificationStoreAdapterTest extends Unit
     private function createDefinitionPerKey(): callable
     {
         return static fn (KeyGroupRelation $relation): Data => $relation->getKeyId() === self::KEY_ID
+            ? new Checkbox()
+            : new Input();
+    }
+
+    /**
+     * The definition of a key by id, answered for both shapes the resolver is asked with: the mapping
+     * and inheritance paths hand it the group relation, the document path the key configuration the
+     * definition cache holds. The named key is a checkbox, which
+     * {@see self::createServiceWithoutAdapterForCheckbox()} has no adapter for; every other is an input.
+     */
+    private function createDefinitionPerKeyId(int $checkboxKeyId): callable
+    {
+        return static fn (object $config): Data => (
+            $config instanceof KeyGroupRelation ? $config->getKeyId() : $config->getId()
+        ) === $checkboxKeyId
             ? new Checkbox()
             : new Input();
     }
