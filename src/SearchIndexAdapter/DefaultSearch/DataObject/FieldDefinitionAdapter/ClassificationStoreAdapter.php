@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch
 use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\ClassificationStore\KeyEntrySlot;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
@@ -253,35 +254,54 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         foreach ($this->getMappingForInheritance($dataObject, $classificationStore) as $groupId => $group) {
             foreach ($group['keys'] as $keyId => $groupKey) {
                 foreach ($this->getEntryVariants($groupKey) as $entryName => $variant) {
-                    $paths = $this->getInheritancePathsForKey(
-                        $key,
-                        $group['name'],
-                        $entryName,
-                        $keyId,
-                        $languages
+                    $slot = new KeyEntrySlot(
+                        definition: $groupKey['definition'],
+                        storeKey: $key,
+                        groupId: $groupId,
+                        keyId: $keyId,
+                        variant: $variant,
+                        multiValue: $groupKey['multiValue'],
                     );
+                    $paths = $this->getInheritancePathsForKey($key, $group['name'], $entryName, $keyId, $languages);
 
-                    foreach ($paths as $lang => $path) {
-                        $originId = $this->getKeyValueFromElement(
-                            $groupKey['definition'],
-                            $dataObject,
-                            $key,
-                            $groupId,
-                            $keyId,
-                            $lang,
-                            $variant,
-                            $groupKey['multiValue']
-                        );
-
-                        if ($originId !== null && $originId !== $objectId) {
-                            $result[$path] = ['originId' => $originId];
-                        }
-                    }
+                    $result = array_replace(
+                        $result,
+                        $this->getInheritedPathsForEntry($slot, $dataObject, $objectId, $paths)
+                    );
                 }
             }
         }
 
         return $result;
+    }
+
+    /**
+     * The inherited paths of one entry: the path of every language node the entry is written under
+     * whose value this element does not hold itself, pointing at the ancestor that does.
+     *
+     * @param array<string, string> $paths language => the inherited field path built for it
+     *
+     * @return array<string, array{originId: int}>
+     *
+     * @throws Exception
+     */
+    private function getInheritedPathsForEntry(
+        KeyEntrySlot $slot,
+        Concrete $dataObject,
+        int $objectId,
+        array $paths
+    ): array {
+        $inherited = [];
+
+        foreach ($paths as $language => $path) {
+            $originId = $this->getKeyValueFromElement($slot, $dataObject, $language);
+
+            if ($originId !== null && $originId !== $objectId) {
+                $inherited[$path] = ['originId' => $originId];
+            }
+        }
+
+        return $inherited;
     }
 
     /**
@@ -324,34 +344,11 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * a `multiValue` entry against the whole list the bare entry carries rather than against
      * position 0 alone.
      *
-     * @param string|null $variant the declared variant of the sibling, null for the bare entry
-     * @param bool $multiValue whether the key's declaration permits a list, which is what decides
-     *                         whether the bare entry is read as one
-     *
      * @throws Exception
      */
-    private function getKeyValueFromElement(
-        Data $definition,
-        Concrete $dataObject,
-        string $storeKey,
-        int $groupId,
-        int $groupKeyId,
-        string $language,
-        ?string $variant = null,
-        bool $multiValue = false
-    ): ?int {
-        $holdsEntry = $this->holdsEntry(
-            $definition,
-            $dataObject,
-            $storeKey,
-            $groupId,
-            $groupKeyId,
-            $language,
-            $variant,
-            $multiValue
-        );
-
-        if ($holdsEntry) {
+    private function getKeyValueFromElement(KeyEntrySlot $slot, Concrete $dataObject, string $language): ?int
+    {
+        if ($this->holdsEntry($slot, $dataObject, $language)) {
             return $dataObject->getId();
         }
 
@@ -360,16 +357,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             return $dataObject->getId();
         }
 
-        return $this->getKeyValueFromElement(
-            $definition,
-            $parent,
-            $storeKey,
-            $groupId,
-            $groupKeyId,
-            $language,
-            $variant,
-            $multiValue
-        );
+        return $this->getKeyValueFromElement($slot, $parent, $language);
     }
 
     /**
@@ -385,26 +373,24 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      *
      * @throws Exception
      */
-    private function holdsEntry(
-        Data $definition,
-        Concrete $dataObject,
-        string $storeKey,
-        int $groupId,
-        int $groupKeyId,
-        string $language,
-        ?string $variant,
-        bool $multiValue
-    ): bool {
-        $store = $dataObject->get($storeKey);
+    private function holdsEntry(KeyEntrySlot $slot, Concrete $dataObject, string $language): bool
+    {
+        $store = $dataObject->get($slot->getStoreKey());
+        $definition = $slot->getDefinition();
 
-        if ($variant === null && !$multiValue) {
+        if ($slot->getVariant() === null && !$slot->isMultiValue()) {
             return !$definition->isEmpty(
-                $store->getLocalizedKeyValue($groupId, $groupKeyId, $language, true, true)
+                $store->getLocalizedKeyValue($slot->getGroupId(), $slot->getKeyId(), $language, true, true)
             );
         }
 
         try {
-            $values = $store->getKeyValues($groupId, $groupKeyId, $language, $variant);
+            $values = $store->getKeyValues(
+                $slot->getGroupId(),
+                $slot->getKeyId(),
+                $language,
+                $slot->getVariant()
+            );
         } catch (Exception) {
             return false;
         }

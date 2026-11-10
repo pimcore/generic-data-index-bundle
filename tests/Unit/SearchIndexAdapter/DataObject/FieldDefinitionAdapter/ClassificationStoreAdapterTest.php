@@ -20,6 +20,7 @@ use Exception;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ClientType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\ClassificationStore\KeyEntrySlot;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\AdvancedManyToManyRelationAdapter;
@@ -914,14 +915,16 @@ final class ClassificationStoreAdapterTest extends Unit
 
         $origin = fn (?string $variant, bool $multiValue = false): ?int => $method->invoke(
             $this->createConfiguredAdapter([]),
-            $definition,
+            new KeyEntrySlot(
+                definition: $definition,
+                storeKey: self::FIELD_NAME,
+                groupId: self::GROUP_ID,
+                keyId: self::KEY_ID,
+                variant: $variant,
+                multiValue: $multiValue,
+            ),
             $child,
-            self::FIELD_NAME,
-            self::GROUP_ID,
-            self::KEY_ID,
-            self::DEFAULT_LANGUAGE,
-            $variant,
-            $multiValue
+            self::DEFAULT_LANGUAGE
         );
 
         $this->assertSame(1, $origin(null));
@@ -936,14 +939,16 @@ final class ClassificationStoreAdapterTest extends Unit
             10,
             $method->invoke(
                 $this->createConfiguredAdapter([]),
-                $this->createMultiValue(multiValue: true),
+                new KeyEntrySlot(
+                    definition: $this->createMultiValue(multiValue: true),
+                    storeKey: self::FIELD_NAME,
+                    groupId: self::GROUP_ID,
+                    keyId: self::KEY_ID,
+                    variant: null,
+                    multiValue: true,
+                ),
                 $listChild,
-                self::FIELD_NAME,
-                self::GROUP_ID,
-                self::KEY_ID,
-                self::DEFAULT_LANGUAGE,
-                null,
-                true
+                self::DEFAULT_LANGUAGE
             )
         );
     }
@@ -973,14 +978,16 @@ final class ClassificationStoreAdapterTest extends Unit
             10,
             (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyValueFromElement'))->invoke(
                 $this->createConfiguredAdapter([], logger: $logger),
-                $this->createMultiValue([self::METRIC]),
+                new KeyEntrySlot(
+                    definition: $this->createMultiValue([self::METRIC]),
+                    storeKey: self::FIELD_NAME,
+                    groupId: self::GROUP_ID,
+                    keyId: self::KEY_ID,
+                    variant: self::METRIC,
+                    multiValue: false,
+                ),
                 $refusing(1, $refusing(10)),
-                self::FIELD_NAME,
-                self::GROUP_ID,
-                self::KEY_ID,
-                self::DEFAULT_LANGUAGE,
-                self::METRIC,
-                false
+                self::DEFAULT_LANGUAGE
             )
         );
         $this->assertSame([], $logger->records);
