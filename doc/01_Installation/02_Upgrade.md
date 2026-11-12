@@ -139,9 +139,7 @@ description: Version-specific upgrade instructions and breaking changes for the 
   store whose engine cannot hold what a key declares (`variants` or `multiValue: true`), that key declares and
   publishes nothing — neither its siblings nor its own field — and is reported once per key as a warning. A key of a relation type declares the fields its class-field
   counterpart does: three per language node for a relation, and for an advanced relation eight plus one per
-  configured column. On a store whose engine can hold them, at ETIM proportions the field count stays at 471,399 for
-  `multiValue`, becomes 942,798 with one variant on every key, and becomes 471,435 when one localized key is a
-  relation. Declaring or removing a variant, or changing the store's engine, changes the class mapping, so apply it
+  configured column. Declaring or removing a variant, or changing the store's engine, changes the class mapping, so apply it
   with `generic-data-index:deployment:reindex` or `generic-data-index:update:index`.
 - [Indexing] Existing indices already contain language and key nodes that dynamic mapping created with a guessed type,
   and the update declares the real types over them. For a text key this is accepted in place: the type stays `text`,
