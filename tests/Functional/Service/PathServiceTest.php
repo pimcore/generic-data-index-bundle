@@ -12,7 +12,11 @@
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Functional\Service;
 
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\PathService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\Asset\AssetSearchServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AdapterServiceInterface;
+use Pimcore\SearchClient\SearchClientInterface;
 use Pimcore\Tests\Support\Util\TestHelper;
 
 class PathServiceTest extends \Codeception\Test\Unit
@@ -91,5 +95,74 @@ class PathServiceTest extends \Codeception\Test\Unit
         $searchResultItem = $searchService->byId($childPage->getId());
 
         $this->assertEquals('/renamed-page/child-page', $searchResultItem->getFullPath());
+    }
+
+    /**
+     * Regression test for PEES-2039: a thumbnail indexed as frontend URL (configured frontend prefix and
+     * urlencoded path) must be rewritten as well when its folder is renamed, not only the plain path.
+     */
+    public function testAssetThumbnailPathRewriteWithFrontendPrefix()
+    {
+        $folder = TestHelper::createAssetFolder();
+        $folder->setKey('thumb folder')->save();
+        $prefixedAsset = TestHelper::createImageAsset();
+        $prefixedAsset->setParent($folder)->setKey('prefixed-asset')->save();
+        $plainAsset = TestHelper::createImageAsset();
+        $plainAsset->setParent($folder)->setKey('plain-asset')->save();
+
+        /** @var SearchClientInterface $client */
+        $client = $this->tester->getIndexSearchClient();
+        $indexName = $this->tester->getIndexName(IndexName::ASSET->value);
+
+        $this->setIndexedThumbnail(
+            $client,
+            $indexName,
+            $prefixedAsset->getId(),
+            '/cdn-prefix/thumb%20folder/' . $prefixedAsset->getId() . '/image-thumb__preview/prefixed-asset.jpg'
+        );
+        $this->setIndexedThumbnail(
+            $client,
+            $indexName,
+            $plainAsset->getId(),
+            '/thumb folder/' . $plainAsset->getId() . '/image-thumb__preview/plain-asset.jpg'
+        );
+
+        $pathService = new PathService(
+            $client,
+            $this->tester->grabService(AdapterServiceInterface::class),
+            ['source' => '', 'thumbnail' => '/cdn-prefix', 'thumbnail_deferred' => ''],
+        );
+
+        // rename without saving, so only the path service under test rewrites the children
+        $folder->setKey('renamed thumb folder');
+        $pathService->rewriteChildrenIndexPaths($folder);
+
+        $this->assertSame(
+            '/cdn-prefix/renamed%20thumb%20folder/' . $prefixedAsset->getId() . '/image-thumb__preview/prefixed-asset.jpg',
+            $this->getIndexedThumbnail($client, $indexName, $prefixedAsset->getId())
+        );
+        $this->assertSame(
+            '/renamed thumb folder/' . $plainAsset->getId() . '/image-thumb__preview/plain-asset.jpg',
+            $this->getIndexedThumbnail($client, $indexName, $plainAsset->getId())
+        );
+    }
+
+    private function setIndexedThumbnail(
+        SearchClientInterface $client,
+        string $indexName,
+        int $id,
+        string $thumbnail
+    ): void {
+        $client->update([
+            'index' => $indexName,
+            'id' => $id,
+            'refresh' => true,
+            'body' => ['doc' => ['system_fields' => ['thumbnail' => $thumbnail]]],
+        ]);
+    }
+
+    private function getIndexedThumbnail(SearchClientInterface $client, string $indexName, int $id): ?string
+    {
+        return $client->get(['index' => $indexName, 'id' => $id])['_source']['system_fields']['thumbnail'] ?? null;
     }
 }
