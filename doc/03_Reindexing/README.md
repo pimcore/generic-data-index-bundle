@@ -44,7 +44,7 @@ only that field until the rebuild depends on `index_service.reindex_settings.map
 | Field collection definition changed | Yes: mapping of every class using it | No | `deployment:reindex` |
 | Object brick fields changed | Yes: mapping of every class using it | No | `deployment:reindex` |
 | Object brick assigned to or removed from a class | Yes: mapping | Yes (Pimcore saves the class) | None |
-| Classification store group or key added, renamed, retyped or removed | Yes: mapping of every class with that store | No | `deployment:reindex` |
+| Classification store group or key added, renamed, retyped or removed, or the store's engine changed | Yes: mapping of every class with that store | No | `deployment:reindex` |
 | Valid languages added or removed in the system settings (admin UI or Studio) | Yes: every index, every element | Yes | None |
 | Only the language order changed in the system settings | Not needed, but a full reindex runs anyway | Yes | None (avoid on large installations) |
 | Valid languages changed in config files (usual in production) | Yes: classes with localized fields and the asset index | No | `deployment:reindex --all` |
@@ -393,7 +393,7 @@ checksum and therefore finds the classes affected indirectly.
 | Field collection | Any field change (add, remove, rename, type, nested table or block config) | Manual | Every class with a field collections field allowing it |
 | Object brick | Field change (add, remove, rename, type, localized fields inside the brick) | Manual | Every class with an object bricks field allowing it |
 | Object brick | Brick added to or removed from a class's allowed types, or brick deleted | Automatic (Pimcore saves the class) | The classes whose assignment changed |
-| Classification store | Group added, renamed or removed; key added, renamed, removed or type changed; key moved between groups; a key's localization flag or index-exclusion flag changed | Manual | Every class with a classification store field using that store |
+| Classification store | Group added, renamed or removed; key added, renamed, removed or type changed; key moved between groups; a key's localization flag or index-exclusion flag changed; the store's engine changed | Manual | Every class with a classification store field using that store |
 
 Why these changes are not detected: a field collection save only fires `FieldcollectionDefinitionEvents` and
 updates the database tables of the classes using it; an object brick save saves a class only when its class

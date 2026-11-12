@@ -323,6 +323,66 @@ class ClassificationStoreMappingTest extends Unit
         $this->deleteKeyWithAssignment($variantKeyConfig);
     }
 
+    /**
+     * A store on the EAV engine cannot hold a variant, so the key declaring one is dropped from the group
+     * mapping altogether: neither the bare name nor the sibling is offered, as no filter on them could match.
+     * This runs the real engine resolver, which no stubbed unit test does.
+     */
+    public function testAVariantKeyOnAnEngineThatCannotHoldItIsNotDeclared(): void
+    {
+        $this->storeConfig->setEngine('eav');
+        $this->storeConfig->save();
+
+        $variantKeyConfig = $this->createVariantKeyWithAssignment();
+        $this->recreateClassIndex($this->classDefinition);
+
+        $declaredKeys = array_keys(
+            $this->getGroupMapping(self::CLASS_NAME)[MappingProperty::NOT_LOCALIZED_KEY][self::PROPERTIES]
+        );
+        $this->assertContains(self::KEY_NAME, $declaredKeys);
+        $this->assertNotContains(self::VARIANT_KEY_NAME, $declaredKeys);
+        $this->assertNotContains(self::VARIANT_KEY_NAME . '_' . self::VARIANT_NAME, $declaredKeys);
+
+        $this->deleteKeyWithAssignment($variantKeyConfig);
+    }
+
+    /**
+     * A variant value the parent holds is carried by the child's document as well: the document pass
+     * reads through the store with inheritance on, so a child holding none is filterable by the
+     * sibling name like the parent.
+     */
+    public function testAVariantValueIsInheritedByAChildObject(): void
+    {
+        $variantKeyConfig = $this->createVariantKeyWithAssignment();
+        $this->classDefinition->setAllowInherit(true);
+        $this->classDefinition->save();
+        $this->recreateClassIndex($this->classDefinition);
+
+        $parent = $this->createObjectWithVariantValue($variantKeyConfig, self::VARIANT_VALUE, true);
+        $className = 'Pimcore\\Model\\DataObject\\' . ucfirst(self::CLASS_NAME);
+        /** @var Concrete $child */
+        $child = new $className();
+        $child->setParent($parent);
+        $child->setKey(uniqid('cs-variant-child-'));
+        $child->setPublished(true);
+        $child->get(self::FIELD_NAME)->setActiveGroups([$this->groupConfig->getId() => true]);
+        $child->save();
+        $this->tester->flushIndex();
+
+        $siblingName = self::VARIANT_KEY_NAME . '_' . self::VARIANT_NAME;
+        $this->assertEqualsCanonicalizing(
+            [$parent->getId(), $child->getId()],
+            $this->filterByStore(
+                new IntegerFilter($siblingName, self::VARIANT_VALUE, false),
+                MappingProperty::NOT_LOCALIZED_KEY
+            )
+        );
+
+        $this->deleteKeyWithAssignment($variantKeyConfig);
+        $this->classDefinition->setAllowInherit(false);
+        $this->classDefinition->save();
+    }
+
     public function testAValueInANonDefaultLanguageIsFilterable(): void
     {
         $language = $this->getValidLanguages()[0];
@@ -743,6 +803,8 @@ class ClassificationStoreMappingTest extends Unit
     {
         $this->storeConfig = new StoreConfig();
         $this->storeConfig->setName('gdiClassificationStoreMapping');
+        // a store without an engine resolves to EAV, which holds neither variants nor lists
+        $this->storeConfig->setEngine('document');
         $this->storeConfig->save();
 
         $this->groupConfig = $this->createGroup(self::GROUP_NAME);

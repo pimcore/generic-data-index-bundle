@@ -27,12 +27,15 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataO
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\ClassificationStoreAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\RelationAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\IndexMappingService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\EngineCapabilityServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
+use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\AdvancedManyToManyRelation;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox;
@@ -43,13 +46,16 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyRelation;
 use Pimcore\Model\DataObject\ClassDefinition\Data\MultiValue;
 use Pimcore\Model\DataObject\Classificationstore as ClassificationstoreModel;
 use Pimcore\Model\DataObject\Classificationstore\DefinitionCache;
+use Pimcore\Model\DataObject\Classificationstore\Engine\EngineFeature;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
 use Pimcore\Model\DataObject\Classificationstore\KeyConfig;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
 use Pimcore\Model\DataObject\Classificationstore\LocalizationResolver;
+use Pimcore\Model\DataObject\Classificationstore\Service as ClassificationstoreService;
 use Pimcore\Model\DataObject\Concrete;
 use Psr\Log\AbstractLogger;
 use ReflectionMethod;
+use ReflectionProperty;
 
 /**
  * @internal
@@ -92,6 +98,8 @@ final class ClassificationStoreAdapterTest extends Unit
 
     private const KEY_MAPPING = ['type' => 'keyword'];
 
+    private const NORMALIZES_TO_NULL = 'normalizes to null';
+
     private const PROPERTIES = 'properties';
 
     private const LANGUAGE_NODE = [self::PROPERTIES => [self::KEY_NAME => self::KEY_MAPPING]];
@@ -109,6 +117,7 @@ final class ClassificationStoreAdapterTest extends Unit
     protected function _after(): void
     {
         DefinitionCache::clear(null);
+        (new ReflectionProperty(ClassificationstoreService::class, 'definitionsCache'))->setValue(null, []);
     }
 
     public function testExceptionIsThrownWhenWrongFieldDefinition()
@@ -904,6 +913,7 @@ final class ClassificationStoreAdapterTest extends Unit
     public function testASiblingTakesItsInheritanceOriginFromItsOwnVariantSlot(): void
     {
         $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyValueFromElement');
+        $this->registerKey(self::KEY_ID, null);
         $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL]);
 
         $parent = $this->createObjectWithStore(10, [self::METRIC => [0 => 'parent metric']]);
@@ -955,8 +965,169 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
+     * A key no object in the chain holds has no origin, so the inheritance walk reports no path for it
+     * while the document carries no entry there either: the two agree in both directions.
+     */
+    public function testAKeyNoObjectInTheChainHoldsHasNoInheritanceOrigin(): void
+    {
+        $parent = $this->createObjectWithStore(10, []);
+        $child = $this->createObjectWithStore(1, [], '', $parent);
+
+        $this->assertNull(
+            (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyValueFromElement'))->invoke(
+                $this->createConfiguredAdapter([]),
+                new KeyEntrySlot(
+                    definition: $this->createMultiValue(multiValue: true),
+                    storeKey: self::FIELD_NAME,
+                    groupId: self::GROUP_ID,
+                    keyId: self::KEY_ID,
+                    variant: null,
+                    multiValue: true,
+                ),
+                $child,
+                self::DEFAULT_LANGUAGE
+            )
+        );
+    }
+
+    /**
+     * Run against real core stores, not a stubbed read: core resolves slot inheritance in
+     * getKeyValues() while inherited values are on, which is how the document pass runs, so a child
+     * holding no list carries its nearest ancestor's whole list and one holding its own carries only that.
+     */
+    public function testAChildDocumentCarriesTheInheritedListUnlessItHoldsItsOwn(): void
+    {
+        $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)];
+        $definition = $this->createMultiValue(multiValue: true);
+        $this->registerCoreMultiValueKey($definition);
+        $inheritedValues = AbstractObject::getGetInheritedValues();
+        AbstractObject::setGetInheritedValues(true);
+
+        try {
+            $document = fn (array $own): array => $this->getDocumentValues(
+                $this->createFieldDefinition(false),
+                self::LANGUAGES,
+                $relations,
+                keyDefinition: $definition,
+                store: $this->createChildStoreWithParentList($own, ['a', 'b'])
+            );
+
+            $this->assertSame([self::DEFAULT_LANGUAGE => [self::KEY_NAME => ['a', 'b']]], $document([]));
+            $this->assertSame([self::DEFAULT_LANGUAGE => [self::KEY_NAME => ['c']]], $document(['c']));
+        } finally {
+            AbstractObject::setGetInheritedValues($inheritedValues);
+        }
+    }
+
+    /**
+     * One fixture, both predictors: for a key declaring a variant and a list, every path the inheritance
+     * walk reports as inherited is a path the document written for the same object carries a value at.
+     * The stores answer as core does - an own read with inherited values off, which is how the walk
+     * asks, and the nearest holder's slot with them on, which is how the document is written.
+     */
+    public function testEveryInheritedPathOfAVariantAndListKeyIsCarriedByTheDocument(): void
+    {
+        $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)];
+        $definition = $this->createMultiValue([self::METRIC], true);
+        $parentSlots = [self::DEFAULT_LANGUAGE => [0 => 'p0', 1 => 'p1'], self::METRIC => [0 => 'pm']];
+        $childSlots = [self::DEFAULT_LANGUAGE => [0 => 'c0']];
+
+        $makeStore = fn (array $chain): ClassificationstoreModel => $this->makeEmpty(ClassificationstoreModel::class, [
+            'getKeyValues' => static function (int $group, int $keyId, ?string $language, ?string $variant) use ($chain): array {
+                $variant ??= self::DEFAULT_LANGUAGE;
+                $candidates = AbstractObject::doGetInheritedValues() ? $chain : [$chain[0]];
+                foreach ($candidates as $slots) {
+                    if (($slots[$variant] ?? []) !== []) {
+                        return $slots[$variant];
+                    }
+                }
+
+                return [];
+            },
+        ]);
+        $parent = $this->makeEmpty(Concrete::class, [
+            'getId' => 10,
+            'getNextParentForInheritance' => null,
+            'get' => $makeStore([$parentSlots]),
+        ]);
+        $child = $this->makeEmpty(Concrete::class, [
+            'getId' => 1,
+            'getNextParentForInheritance' => $parent,
+            'get' => $makeStore([$childSlots, $parentSlots]),
+        ]);
+
+        $adapter = $this->createConfiguredAdapter([], keyDefinition: $definition);
+        $keyMapping = (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyMappingForInheritance'))
+            ->invoke($adapter, $relations)[self::KEY_ID];
+        $entryVariants = new ReflectionMethod(ClassificationStoreAdapter::class, 'getEntryVariants');
+        $inheritedPaths = new ReflectionMethod(ClassificationStoreAdapter::class, 'getInheritedPathsForEntry');
+
+        $previous = AbstractObject::getGetInheritedValues();
+
+        try {
+            AbstractObject::setGetInheritedValues(false);
+            $inherited = [];
+            foreach ($entryVariants->invoke($adapter, $keyMapping) as $entryName => $variant) {
+                $inherited += $inheritedPaths->invoke(
+                    $adapter,
+                    new KeyEntrySlot(
+                        definition: $keyMapping['definition'],
+                        storeKey: self::FIELD_NAME,
+                        groupId: self::GROUP_ID,
+                        keyId: self::KEY_ID,
+                        variant: $variant,
+                        multiValue: $keyMapping['multiValue'],
+                    ),
+                    $child,
+                    1,
+                    [self::DEFAULT_LANGUAGE => $entryName]
+                );
+            }
+
+            AbstractObject::setGetInheritedValues(true);
+            $document = $this->getDocumentValues(
+                $this->createFieldDefinition(false),
+                self::LANGUAGES,
+                $relations,
+                keyDefinition: $definition,
+                store: $child->get(self::FIELD_NAME)
+            );
+        } finally {
+            AbstractObject::setGetInheritedValues($previous);
+        }
+
+        $this->assertSame([self::KEY_NAME . '_' . self::METRIC], array_keys($inherited));
+        foreach (array_keys($inherited) as $path) {
+            $this->assertArrayHasKey($path, $document[self::DEFAULT_LANGUAGE]);
+        }
+        $this->assertSame(['c0'], $document[self::DEFAULT_LANGUAGE][self::KEY_NAME]);
+    }
+
+    /**
+     * Core's answer to the premise the adapter relies on: a variant slot is inherited by a child that
+     * holds none, from the same walk the default variant takes, so the document needs no resolution
+     * of its own.
+     */
+    public function testACoreStoreResolvesAVariantSlotFromItsAncestor(): void
+    {
+        $inheritedValues = AbstractObject::getGetInheritedValues();
+        AbstractObject::setGetInheritedValues(true);
+
+        try {
+            $this->registerKey(self::KEY_ID, null);
+            $this->registerCoreMultiValueKey($this->createMultiValue([self::METRIC], true));
+            $slot = [self::GROUP_ID => [self::KEY_ID => [self::DEFAULT_LANGUAGE => [self::METRIC => [0 => 'm']]]]];
+            $child = $this->createChildStoreWithParentSlots([], $slot);
+
+            $this->assertSame($slot, $child->getQualifiedItems());
+        } finally {
+            AbstractObject::setGetInheritedValues($inheritedValues);
+        }
+    }
+
+    /**
      * A store whose engine cannot address variants refuses the read. The sibling then holds nothing
-     * anywhere on the chain, which is the verdict an empty chain already gets - the topmost ancestor -
+     * anywhere on the chain, which is the verdict an empty chain already gets - no origin at all -
      * and the walk adds no log line of its own: the write path reports that slot of this object in the
      * same index run, so repeating it per ancestor would multiply one configuration mistake by the
      * depth of the tree.
@@ -975,8 +1146,7 @@ final class ClassificationStoreAdapterTest extends Unit
             ]),
         ]);
 
-        $this->assertSame(
-            10,
+        $this->assertNull(
             (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyValueFromElement'))->invoke(
                 $this->createConfiguredAdapter([], logger: $logger),
                 new KeyEntrySlot(
@@ -1324,6 +1494,209 @@ final class ClassificationStoreAdapterTest extends Unit
         );
     }
 
+    /**
+     * A list keeps the positions it is stored at: the hole is a null, not a later value moved up, and
+     * a value that normalizes to null holds its own position the same way.
+     */
+    public function testAMultiValueKeyWritesItsStoredPositionsWithHolesAsNull(): void
+    {
+        $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)];
+        $multiValue = $this->createMultiValue(multiValue: true);
+
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => [self::KEY_NAME => ['first', null, 'third']]],
+            $this->getQualifiedDocumentValues($multiValue, $relations, [0 => 'first', 2 => 'third'])
+        );
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => [self::KEY_NAME => ['first', null, 'third']]],
+            $this->getQualifiedDocumentValues(
+                $multiValue,
+                $relations,
+                [2 => 'third', 1 => self::NORMALIZES_TO_NULL, 0 => 'first'],
+                $this->createNullingFieldDefinitionService()
+            )
+        );
+    }
+
+    /**
+     * A slot whose values all normalize to null writes no entry, as a slot holding none does.
+     */
+    public function testASlotWhoseValuesAllNormalizeToNullWritesNoEntry(): void
+    {
+        $this->assertSame(
+            [],
+            $this->getQualifiedDocumentValues(
+                $this->createMultiValue(multiValue: true),
+                [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)],
+                [0 => self::NORMALIZES_TO_NULL, 1 => self::NORMALIZES_TO_NULL],
+                $this->createNullingFieldDefinitionService()
+            )
+        );
+    }
+
+    /**
+     * Per declaration: variants need Variants, multiValue needs MultiValue, both need both, and a
+     * multiValue key declaring neither is declared on every engine.
+     */
+    public function testAKeyTheEngineCannotHoldDeclaresNoMappingNode(): void
+    {
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)];
+        $declaring = [
+            'variants only' => $this->createMultiValue([self::METRIC]),
+            'multiValue only' => $this->createMultiValue(multiValue: true),
+            'both' => $this->createMultiValue([self::METRIC], true),
+        ];
+
+        foreach ($declaring as $case => $definition) {
+            $this->assertSame(
+                [],
+                $this->getMappingForRelations(
+                    $fieldDefinition,
+                    self::LANGUAGES,
+                    $relations,
+                    null,
+                    $definition,
+                    engineCapabilityService: $this->createEngineCapabilityService(
+                        [EngineFeature::Variants, EngineFeature::MultiValue]
+                    )
+                ),
+                $case
+            );
+        }
+
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => self::LANGUAGE_NODE],
+            $this->getMappingForRelations(
+                $fieldDefinition,
+                self::LANGUAGES,
+                $relations,
+                null,
+                $this->createMultiValue(),
+                engineCapabilityService: $this->createEngineCapabilityService(
+                    [EngineFeature::Variants, EngineFeature::MultiValue]
+                )
+            )
+        );
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => [self::PROPERTIES => [
+                self::KEY_NAME => self::KEY_MAPPING,
+                self::KEY_NAME . '_' . self::METRIC => self::KEY_MAPPING,
+            ]]],
+            $this->getMappingForRelations(
+                $fieldDefinition,
+                self::LANGUAGES,
+                $relations,
+                null,
+                $declaring['variants only'],
+                engineCapabilityService: $this->createEngineCapabilityService([EngineFeature::MultiValue])
+            )
+        );
+    }
+
+    /**
+     * The gate is asked before the name segment is reserved, on all three paths: "Size." is refused
+     * and "Size" still gets the entry the mapping declares for it.
+     */
+    public function testAKeyTheEngineCannotHoldDoesNotReserveItsNameSegmentOnAnyPath(): void
+    {
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [
+            $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME . '.'),
+            $this->createRelation(self::OTHER_KEY_ID, self::GROUP_ID, self::KEY_NAME),
+        ];
+        $keyDefinition = fn (object $config): Data => (
+            $config instanceof KeyGroupRelation ? $config->getKeyId() : $config->getId()
+        ) === self::KEY_ID
+            ? $this->createMultiValue([self::METRIC, self::IMPERIAL], true)
+            : new Input();
+        $refusing = $this->createEngineCapabilityService([EngineFeature::Variants, EngineFeature::MultiValue]);
+
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => self::LANGUAGE_NODE],
+            $this->getMappingForRelations(
+                $fieldDefinition,
+                self::LANGUAGES,
+                $relations,
+                null,
+                $keyDefinition,
+                engineCapabilityService: $refusing
+            )
+        );
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => [self::KEY_NAME => self::OTHER_KEY_ID]],
+            $this->getDocumentValues(
+                $fieldDefinition,
+                self::LANGUAGES,
+                $relations,
+                keyDefinition: $keyDefinition,
+                engineCapabilityService: $refusing
+            )
+        );
+
+        $keyMapping = (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyMappingForInheritance'))
+            ->invoke(
+                $this->createConfiguredAdapter(
+                    [],
+                    $fieldDefinition,
+                    keyDefinition: $keyDefinition,
+                    engineCapabilityService: $refusing
+                ),
+                $relations
+            );
+        $this->assertSame([self::OTHER_KEY_ID], array_keys($keyMapping));
+        $this->assertSame(self::KEY_NAME, $keyMapping[self::OTHER_KEY_ID]['name']);
+    }
+
+    /**
+     * Reported once from the mapping path, naming store, group, key and the missing capability; the
+     * document path and the inheritance walk log nothing, and neither does the per slot read warning.
+     */
+    public function testTheEngineRefusalIsReportedOncePerKeyFromTheMappingPathOnly(): void
+    {
+        $logger = $this->createCollectingLogger();
+        $fieldDefinition = $this->createFieldDefinition(true);
+        $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, true)];
+        $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL], true);
+        $refusing = $this->createEngineCapabilityService([EngineFeature::Variants]);
+
+        $this->getMappingForRelations(
+            $fieldDefinition,
+            ['de', 'en', 'fr'],
+            $relations,
+            $logger,
+            $definition,
+            engineCapabilityService: $refusing
+        );
+
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('warning', $logger->records[0]['level']);
+        foreach ([self::STORE_ID, self::KEY_ID, self::KEY_NAME, self::GROUP_ID, EngineFeature::Variants->name] as $expected) {
+            $this->assertStringContainsString((string) $expected, $logger->records[0]['message']);
+        }
+
+        $this->getDocumentValues(
+            $fieldDefinition,
+            ['de', 'en', 'fr'],
+            $relations,
+            keyDefinition: $definition,
+            logger: $logger,
+            engineCapabilityService: $refusing
+        );
+        (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyMappingForInheritance'))->invoke(
+            $this->createConfiguredAdapter(
+                [],
+                $fieldDefinition,
+                $logger,
+                keyDefinition: $definition,
+                engineCapabilityService: $refusing
+            ),
+            $relations
+        );
+
+        $this->assertCount(1, $logger->records);
+    }
+
     public function testEachDeclaredVariantIsASiblingPropertyUnderTheNodesOfTheKey(): void
     {
         $fieldDefinition = $this->createFieldDefinition(false);
@@ -1508,8 +1881,12 @@ final class ClassificationStoreAdapterTest extends Unit
      * @param array<int, mixed> $values
      * @param KeyGroupRelation[] $relations
      */
-    private function getQualifiedDocumentValues(MultiValue $definition, array $relations, array $values): array
-    {
+    private function getQualifiedDocumentValues(
+        MultiValue $definition,
+        array $relations,
+        array $values,
+        ?FieldDefinitionServiceInterface $fieldDefinitionService = null
+    ): array {
         return $this->getDocumentValues(
             $this->createFieldDefinition(false),
             self::LANGUAGES,
@@ -1520,8 +1897,88 @@ final class ClassificationStoreAdapterTest extends Unit
                 'getLocalizedKeyValue' => static function (): never {
                     throw new Exception('a multiValue key is read through getKeyValues');
                 },
-            ])
+            ]),
+            fieldDefinitionService: $fieldDefinitionService
         );
+    }
+
+    /**
+     * Core's own definition of the key, which getKeyValues() reads its list shape from: seeded into
+     * core's definition memo because resolving it from JSON needs a booted container.
+     */
+    private function registerCoreMultiValueKey(MultiValue $definition): void
+    {
+        (new ReflectionProperty(ClassificationstoreService::class, 'definitionsCache'))
+            ->setValue(null, [self::KEY_ID => $definition]);
+    }
+
+    /**
+     * A real core store holding the given qualified slots: set on the property, as the setter binds the
+     * items through a booted container.
+     *
+     * @param array<int, mixed> $variantItems
+     */
+    private function createRealStoreHolding(array $variantItems): ClassificationstoreModel
+    {
+        $store = new ClassificationstoreModel();
+        $store->setFieldname(self::FIELD_NAME);
+        (new ReflectionProperty(ClassificationstoreModel::class, 'variantItems'))->setValue($store, $variantItems);
+
+        return $store;
+    }
+
+    /**
+     * A real core store of a child object whose parent holds the given list, the child the given own list.
+     *
+     * @param array<int, mixed> $own
+     * @param array<int, mixed> $parentList
+     */
+    private function createChildStoreWithParentList(array $own, array $parentList): ClassificationstoreModel
+    {
+        $slots = static fn (array $list): array => $list === []
+            ? []
+            : [self::GROUP_ID => [self::KEY_ID => [self::DEFAULT_LANGUAGE => [self::DEFAULT_LANGUAGE => $list]]]];
+
+        return $this->createChildStoreWithParentSlots($slots($own), $slots($parentList));
+    }
+
+    /**
+     * @param array<int, mixed> $own the qualified slots of the child
+     * @param array<int, mixed> $parentSlots the qualified slots of the parent
+     */
+    private function createChildStoreWithParentSlots(array $own, array $parentSlots): ClassificationstoreModel
+    {
+        $class = (new ClassDefinition())->setAllowInherit(true);
+        $parentStore = $this->createRealStoreHolding($parentSlots);
+        $parent = $this->makeEmpty(Concrete::class, [
+            'getId' => 10,
+            'getClass' => $class,
+            'getNextParentForInheritance' => null,
+            '__call' => static fn (string $method): ClassificationstoreModel => $parentStore,
+        ]);
+        $parentStore->setObject($parent);
+
+        $childStore = $this->createRealStoreHolding($own);
+        $child = $this->makeEmpty(Concrete::class, [
+            'getId' => 11,
+            'getClass' => $class,
+            'getNextParentForInheritance' => $parent,
+        ]);
+        $childStore->setObject($child);
+
+        return $childStore;
+    }
+
+    private function createNullingFieldDefinitionService(): FieldDefinitionServiceInterface
+    {
+        return $this->makeEmpty(FieldDefinitionServiceInterface::class, [
+            'getFieldDefinitionAdapter' => $this->makeEmpty(AdapterInterface::class, [
+                'getIndexMapping' => self::KEY_MAPPING,
+            ]),
+            'normalizeValue' => static fn (?Data $fieldDefinition, mixed $value): mixed => $value === self::NORMALIZES_TO_NULL
+                ? null
+                : $value,
+        ]);
     }
 
     /**
@@ -1700,14 +2157,16 @@ final class ClassificationStoreAdapterTest extends Unit
         array $relations,
         ?AbstractLogger $logger = null,
         mixed $keyDefinition = null,
-        ?FieldDefinitionServiceInterface $fieldDefinitionService = null
+        ?FieldDefinitionServiceInterface $fieldDefinitionService = null,
+        ?EngineCapabilityServiceInterface $engineCapabilityService = null
     ): array {
         $adapter = $this->createConfiguredAdapter(
             $validLanguages,
             $fieldDefinition,
             $logger,
             keyDefinition: $keyDefinition,
-            fieldDefinitionService: $fieldDefinitionService
+            fieldDefinitionService: $fieldDefinitionService,
+            engineCapabilityService: $engineCapabilityService
         );
 
         return (new ReflectionMethod(ClassificationStoreAdapter::class, 'getMappingForGroupConfig'))
@@ -1730,14 +2189,16 @@ final class ClassificationStoreAdapterTest extends Unit
         ?ClassificationstoreModel $store = null,
         mixed $keyDefinition = null,
         ?AbstractLogger $logger = null,
-        ?FieldDefinitionServiceInterface $fieldDefinitionService = null
+        ?FieldDefinitionServiceInterface $fieldDefinitionService = null,
+        ?EngineCapabilityServiceInterface $engineCapabilityService = null
     ): array {
         $adapter = $this->createConfiguredAdapter(
             $validLanguages,
             $fieldDefinition,
             $logger,
             keyDefinition: $keyDefinition,
-            fieldDefinitionService: $fieldDefinitionService
+            fieldDefinitionService: $fieldDefinitionService,
+            engineCapabilityService: $engineCapabilityService
         );
 
         $store ??= $this->makeEmpty(ClassificationstoreModel::class, [
@@ -1837,7 +2298,8 @@ final class ClassificationStoreAdapterTest extends Unit
         ?AbstractLogger $logger = null,
         ?RuntimeCacheResolverInterface $runtimeCacheResolver = null,
         mixed $keyDefinition = null,
-        ?FieldDefinitionServiceInterface $fieldDefinitionService = null
+        ?FieldDefinitionServiceInterface $fieldDefinitionService = null,
+        ?EngineCapabilityServiceInterface $engineCapabilityService = null
     ): ClassificationStoreAdapter {
         $adapter = new ClassificationStoreAdapter(
             $this->makeEmpty(SearchIndexConfigServiceInterface::class),
@@ -1855,6 +2317,7 @@ final class ClassificationStoreAdapterTest extends Unit
             'getValidLanguages' => $validLanguages,
         ]));
         $adapter->setKeyLocaleService($this->createKeyLocaleService());
+        $adapter->setEngineCapabilityService($engineCapabilityService ?? $this->createEngineCapabilityService());
         $adapter->setFieldDefinition($fieldDefinition ?? new Classificationstore());
         $adapter->setLogger($logger ?? $this->createCollectingLogger());
         $adapter->setRuntimeCacheResolver(
@@ -1887,6 +2350,16 @@ final class ClassificationStoreAdapterTest extends Unit
     private function createKeyLocaleService(): KeyLocaleServiceInterface
     {
         return new KeyLocaleService(new LocalizationResolver($this->makeEmpty(Connection::class)));
+    }
+
+    /**
+     * @param EngineFeature[] $refused the capabilities the engine behind the store lacks
+     */
+    private function createEngineCapabilityService(array $refused = []): EngineCapabilityServiceInterface
+    {
+        return $this->makeEmpty(EngineCapabilityServiceInterface::class, [
+            'supports' => static fn (?int $storeId, EngineFeature $feature): bool => !in_array($feature, $refused, true),
+        ]);
     }
 
     private function getMappedGroupIds(Classificationstore $fieldDefinition, array $groupIds): array

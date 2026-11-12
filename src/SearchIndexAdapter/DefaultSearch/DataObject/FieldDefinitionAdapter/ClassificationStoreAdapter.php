@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\Attribu
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\ClassificationStore\KeyEntrySlot;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\EngineCapabilityServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -29,6 +30,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\EncryptedField;
 use Pimcore\Model\DataObject\ClassDefinition\Data\MultiValue;
 use Pimcore\Model\DataObject\Classificationstore as ClassificationstoreModel;
 use Pimcore\Model\DataObject\Classificationstore\DefinitionCache;
+use Pimcore\Model\DataObject\Classificationstore\Engine\EngineFeature;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig\Listing as GroupListing;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
@@ -54,6 +56,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
     private KeyLocaleServiceInterface $keyLocaleService;
 
+    private EngineCapabilityServiceInterface $engineCapabilityService;
+
     #[Required]
     public function setClassificationService(ServiceResolverInterface $serviceResolver): void
     {
@@ -70,6 +74,12 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     public function setKeyLocaleService(KeyLocaleServiceInterface $keyLocaleService): void
     {
         $this->keyLocaleService = $keyLocaleService;
+    }
+
+    #[Required]
+    public function setEngineCapabilityService(EngineCapabilityServiceInterface $engineCapabilityService): void
+    {
+        $this->engineCapabilityService = $engineCapabilityService;
     }
 
     /**
@@ -191,7 +201,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * valueless by {@see self::normalizeKeyValue()}: the value would be dropped either way, but a
      * reserved segment would cost a later key of the same normalized name the document entry the
      * mapping declares for it. Asked in the order the mapping asks it - name, then value adapter, then
-     * collision - of the definition the relation resolves to, which is the one the mapping gates on. A
+     * the engine capability, then collision - of the definition the relation resolves to, which is the one the mapping gates on. A
      * relation that resolves to no definition at all keeps today's behaviour: the value path reads its
      * own definition from the definition cache, so that key is not what this guard is about.
      *
@@ -212,6 +222,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
         if ($keyName === null
             || ($definition !== null && $this->getValueAdapterForKey($definition) === null)
+            || $this->getMissingEngineFeature($definition) !== null
             || $this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId())
         ) {
             return null;
@@ -366,7 +377,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * The nearest ancestor holding the slot this entry is written from, which is the slot the entry
      * is written from and no other: a sibling's provenance is resolved against its own variant, and
      * a `multiValue` entry against the whole list the bare entry carries rather than against
-     * position 0 alone.
+     * position 0 alone. Null when no object in the chain holds it: the document writes no value there
+     * either, so no inherited path is reported for it.
      *
      * @throws Exception
      */
@@ -378,7 +390,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
         $parent = $dataObject->getNextParentForInheritance();
         if ($parent === null) {
-            return $dataObject->getId();
+            return null;
         }
 
         return $this->getKeyValueFromElement($slot, $parent, $language);
@@ -388,24 +400,26 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * Whether the given element's own store holds a value for the entry. The qualified reader is
      * asked only for an entry that is written from it - a key with neither a variant nor a list is
      * read the way it is read today - and a slot it refuses answers that the element holds nothing,
-     * which is what {@see self::getNormalizedValues()} indexes for the same slot.
+     * which is what {@see self::getNormalizedValues()} indexes for the same slot. "Holds a value" is
+     * decided by the same predicate the document is written with - the value normalizes to something
+     * other than null - so a falsy-but-present value (0, '0', false) is held here exactly where the
+     * document carries it.
      *
-     * The refusal is not logged here: a store whose engine cannot address variants raises it for
-     * every variant of every such key, and the write path above already reports that slot of this
-     * object in the same index run. Reporting it again per ancestor of the inheritance walk would
-     * multiply one configuration mistake by the depth of the tree without naming anything new.
+     * The refusal is not logged here: a key the engine cannot hold never reaches this walk, as the
+     * engine capability gate drops it first and the mapping path reports it once per key. A refusal that
+     * still arrives, from an engine that answers the gate and the read differently, would be repeated
+     * per ancestor of the inheritance walk without naming anything new.
      *
      * @throws Exception
      */
     private function holdsEntry(KeyEntrySlot $slot, Concrete $dataObject, string $language): bool
     {
         $store = $dataObject->get($slot->getStoreKey());
-        $definition = $slot->getDefinition();
-
         if ($slot->getVariant() === null && !$slot->isMultiValue()) {
-            return !$definition->isEmpty(
+            return $this->normalizeKeyValue(
+                $slot->getKeyId(),
                 $store->getLocalizedKeyValue($slot->getGroupId(), $slot->getKeyId(), $language, true, true)
-            );
+            ) !== null;
         }
 
         try {
@@ -420,7 +434,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         }
 
         foreach ($values as $value) {
-            if (!$definition->isEmpty($value)) {
+            if ($this->normalizeKeyValue($slot->getKeyId(), $value) !== null) {
                 return true;
             }
         }
@@ -709,7 +723,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * A key the index cannot type contributes nothing here either: the resolved value adapter is the
      * condition the mapping gates the key on, so asking it here is what keeps an inherited path from
      * naming a document path that neither the mapping nor the document has
-     * {@see self::getValueAdapterForKey()}.
+     * {@see self::getValueAdapterForKey()}. So does a key whose declaration the store's engine cannot
+     * hold {@see self::getMissingEngineFeature()}.
      *
      * @param KeyGroupRelation[] $keys
      *
@@ -727,7 +742,10 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             }
 
             $definition = $this->getFieldDefinitionForKey($groupKey);
-            if ($definition === null || $this->getValueAdapterForKey($definition) === null) {
+            if ($definition === null
+                || $this->getValueAdapterForKey($definition) === null
+                || $this->getMissingEngineFeature($definition) !== null
+            ) {
                 continue;
             }
 
@@ -848,6 +866,13 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             return null;
         }
 
+        $missingFeature = $this->getMissingEngineFeature($definition);
+        if ($missingFeature !== null) {
+            $this->reportKeyWithoutEngineSupport($key, $missingFeature);
+
+            return null;
+        }
+
         if ($this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId(), true)) {
             return null;
         }
@@ -877,6 +902,46 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     private function getValueAdapterForKey(Data $definition): ?AdapterInterface
     {
         return $this->getFieldDefinitionService()->getFieldDefinitionAdapter($this->getValueDefinition($definition));
+    }
+
+    /**
+     * The capability a key's declaration needs and the engine behind the store lacks, null for a key
+     * the engine can hold: a key declaring `variants` needs Variants, one declaring `multiValue` needs
+     * MultiValue, and one declaring neither needs nothing, so it is unaffected on every engine. The
+     * second condition of "this key is indexed" every path asks, right after the value adapter, so the
+     * mapping, the document and the inheritance walk drop the same keys. The diagnostic is not raised
+     * here: it belongs to the mapping path alone.
+     */
+    private function getMissingEngineFeature(?Data $definition): ?EngineFeature
+    {
+        if (!$definition instanceof MultiValue) {
+            return null;
+        }
+
+        $required = [];
+        if ($definition->getVariantNames() !== []) {
+            $required[] = EngineFeature::Variants;
+        }
+        if ($definition->isMultiValue()) {
+            $required[] = EngineFeature::MultiValue;
+        }
+
+        $storeId = $this->getConfiguredStoreId();
+        foreach ($required as $feature) {
+            if (!$this->engineCapabilityService->supports($storeId, $feature)) {
+                return $feature;
+            }
+        }
+
+        return null;
+    }
+
+    /** Null for a field definition that carries no store: the property is typed with no default. */
+    private function getConfiguredStoreId(): ?int
+    {
+        $fieldDefinition = $this->getClassificationStoreDefinition();
+
+        return isset($fieldDefinition->storeId) ? $fieldDefinition->getStoreId() : null;
     }
 
     /** A multiValue key is indexed as the type it wraps. */
@@ -980,6 +1045,20 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         ));
     }
 
+    /** Logged, not thrown: IndexMappingService would drop the whole field on an exception. */
+    private function reportKeyWithoutEngineSupport(KeyGroupRelation $key, EngineFeature $missingFeature): void
+    {
+        $this->logger->warning(sprintf(
+            'Classification store %s: key %d "%s" of group %s is declared with a capability the engine of the ' .
+            'store lacks (%s). The key is not indexed.',
+            $this->getConfiguredStoreId() ?? 'default',
+            $key->getKeyId(),
+            $key->getName(),
+            $this->isHydratedRelationProperty($key, 'groupId') ? (string) $key->getGroupId() : 'unknown',
+            $missingFeature->name
+        ));
+    }
+
     private function getFieldDefinitionForKey(KeyGroupRelation $key): ?Data
     {
         try {
@@ -1080,11 +1159,13 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             return null;
         }
 
-        return $this->normalizeKeyValue($key, $value);
+        return $this->normalizeKeyValue($key->getKeyId(), $value);
     }
 
     /**
-     * The normalized values of one (language, variant) slot in position order, null when empty.
+     * The normalized values of one (language, variant) slot at their stored positions, null when empty.
+     * A position the slot holds nothing at, or whose value normalizes to null, stays in the list as null
+     * up to the last position that holds a value, so no later value moves up.
      *
      * @return array<int, mixed>|null
      */
@@ -1108,22 +1189,29 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             return null;
         }
 
-        ksort($values);
-
         $normalized = [];
-        foreach ($values as $value) {
-            $normalizedValue = $this->normalizeKeyValue($key, $value);
+        foreach ($values as $position => $value) {
+            $normalizedValue = $this->normalizeKeyValue($key->getKeyId(), $value);
             if ($normalizedValue !== null) {
-                $normalized[] = $normalizedValue;
+                $normalized[(int) $position] = $normalizedValue;
             }
         }
 
-        return $normalized === [] ? null : $normalized;
+        if ($normalized === []) {
+            return null;
+        }
+
+        $list = [];
+        for ($position = 0; $position <= max(array_keys($normalized)); $position++) {
+            $list[] = $normalized[$position] ?? null;
+        }
+
+        return $list;
     }
 
-    private function normalizeKeyValue(KeyGroupRelation $key, mixed $value): mixed
+    private function normalizeKeyValue(int $keyId, mixed $value): mixed
     {
-        $keyConfig = DefinitionCache::get($key->getKeyId());
+        $keyConfig = DefinitionCache::get($keyId);
         if ($keyConfig === null) {
             return null;
         }
