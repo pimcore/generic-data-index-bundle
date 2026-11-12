@@ -57,6 +57,18 @@ interface IndexHandlerInterface
     ): MappingUpdateResult;
 
     /**
+     * Applies the mapping in place, like {@see updateMapping()}, but reports the outcome. A class-definition
+     * mapping that drops a property of the live index takes the copy of {@see reindexMappingWithResult()}.
+     *
+     * @throws Exception
+     * @throws ReindexFailedException
+     */
+    public function updateMappingWithResult(
+        ?ClassDefinition $context = null,
+        ?array $mappingProperties = null
+    ): MappingUpdateResult;
+
+    /**
      * Fields of the live index whose mapping differs from the current mapping, classified into
      * kept and stripped as the next copy would handle them. Empty when the index does not exist.
      *

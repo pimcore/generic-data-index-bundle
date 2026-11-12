@@ -27,6 +27,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\Index
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Model\DataObject\ClassDefinition;
 use Psr\Log\NullLogger;
 use Symfony\Component\Lock\LockFactory;
 use Symfony\Component\Lock\Store\InMemoryStore;
@@ -38,6 +39,10 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 final class AbstractIndexHandlerTest extends Unit
 {
     private const ALIAS_NAME = 'test_alias';
+
+    private const STANDARD_FIELDS = 'standard_fields';
+
+    private const PROPERTIES = 'properties';
 
     /**
      * An interrupted reindex can leave the alias missing while indexing traffic
@@ -294,6 +299,118 @@ final class AbstractIndexHandlerTest extends Unit
 
         $this->assertTrue($result->isRecreated());
         $this->assertTrue($result->requiresRebuild());
+    }
+
+    public function testAnAdditiveClassMappingIsAppliedInPlaceByEveryClassEntryPoint(): void
+    {
+        $withResult = $this->createClassHandler(['a'], ['a', 'b'], putMappingCalls: 1);
+        $result = $withResult->updateMappingWithResult(new ClassDefinition());
+
+        $this->assertFalse($result->requiresRebuild());
+        $this->assertTrue($result->isMappingApplied());
+
+        $this->createClassHandler(['a'], ['a', 'b'], putMappingCalls: 1)->updateMapping(new ClassDefinition());
+    }
+
+    public function testAClassMappingThatDropsALivePropertyTakesTheCopyOnEveryClassEntryPoint(): void
+    {
+        $result = $this->createClassHandler(['a', 'b'], ['a'], putMappingCalls: 0, copyCalls: 1)
+            ->updateMappingWithResult(new ClassDefinition());
+        $this->assertTrue($result->isMappingApplied());
+
+        $this->createClassHandler(['a', 'b'], ['a'], putMappingCalls: 0, copyCalls: 1)
+            ->updateMapping(new ClassDefinition());
+    }
+
+    /**
+     * Asset, document and folder indices are updated with a null context and keep applying a removal in place.
+     */
+    public function testAMappingWithoutAClassDefinitionAppliesARemovalInPlace(): void
+    {
+        $this->createClassHandler(['a', 'b'], ['a'], putMappingCalls: 1)->updateMapping();
+        $this->createClassHandler(['a', 'b'], ['a'], putMappingCalls: 1)->updateMappingWithResult();
+    }
+
+    public function testRemovingAWorkflowPlaceDoesNotMakeAClassMappingCopy(): void
+    {
+        $places = ['system_fields' => [self::PROPERTIES => ['workflowPlaces' => [self::PROPERTIES => ['p' => []]]]]];
+        $handler = $this->createClassHandler([], [], putMappingCalls: 1, live: $places, new: ['system_fields' => []]);
+
+        $handler->updateMappingWithResult(new ClassDefinition());
+    }
+
+    /**
+     * The documents of an inheriting class carry standard_fields._inherited_fields, which no mapping declares.
+     */
+    public function testTheUndeclaredInheritedFieldsDoNotMakeAnAdditiveClassMappingCopy(): void
+    {
+        $live = $this->properties(['a']);
+        $live[self::STANDARD_FIELDS][self::PROPERTIES]['_inherited_fields'] = [
+            self::PROPERTIES => ['a' => [self::PROPERTIES => ['originId' => ['type' => 'long']]]],
+        ];
+        $handler = $this->createClassHandler([], [], putMappingCalls: 1, live: $live, new: $this->properties(['a', 'b']));
+
+        $handler->updateMappingWithResult(new ClassDefinition());
+    }
+
+    public function testAKeyTypeChangeTheEngineRefusesStillFallsBackToTheCopy(): void
+    {
+        $service = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => true,
+            'getCurrentIndexVersion' => '',
+            'getMapping' => $this->liveMapping(['a']),
+            'putMapping' => Expected::once(static function (): never {
+                throw new Exception('mapper_parsing_exception');
+            }),
+            'reindexWithoutFields' => Expected::once(new ReindexOutcome(ReindexResult::SUCCESS)),
+        ]);
+        $handler = $this->createHandlerWithService($service, $this->properties(['a']));
+        $handler->setLogger(new NullLogger());
+
+        $handler->updateMappingWithResult(new ClassDefinition());
+    }
+
+    private function createClassHandler(
+        array $liveFields,
+        array $newFields,
+        int $putMappingCalls,
+        int $copyCalls = 0,
+        ?array $live = null,
+        ?array $new = null
+    ): AbstractIndexHandler {
+        $service = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => true,
+            'getCurrentIndexVersion' => '',
+            'getMapping' => $live === null
+                ? $this->liveMapping($liveFields)
+                : [self::ALIAS_NAME . '-odd' => ['mappings' => [self::PROPERTIES => $live]]],
+            'putMapping' => Expected::exactly($putMappingCalls, []),
+            'reindexWithoutFields' => Expected::exactly($copyCalls, new ReindexOutcome(ReindexResult::SUCCESS)),
+        ]);
+        $handler = $this->createHandlerWithService($service, $new ?? $this->properties($newFields));
+        $handler->setLogger(new NullLogger());
+
+        return $handler;
+    }
+
+    /**
+     * @param string[] $fields
+     */
+    private function liveMapping(array $fields): array
+    {
+        return [self::ALIAS_NAME . '-odd' => ['mappings' => [self::PROPERTIES => $this->properties($fields)]]];
+    }
+
+    /**
+     * @param string[] $fields
+     */
+    private function properties(array $fields): array
+    {
+        return [
+            self::STANDARD_FIELDS => [
+                self::PROPERTIES => array_fill_keys($fields, ['type' => 'keyword']),
+            ],
+        ];
     }
 
     private function createHandler(bool $indexSquatsAliasName, array &$deletedIndices): AbstractIndexHandler

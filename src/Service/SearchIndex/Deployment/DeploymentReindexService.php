@@ -169,7 +169,8 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
         $result = $this->classDefinitionReindexService->reindexClassDefinitionMapping(
             $classDefinition,
             !$plan->isIndexMissing(),
-            true
+            true,
+            $plan->isSettingsChanged()
         );
         if ($result?->isMappingApplied() === true) {
             return true;

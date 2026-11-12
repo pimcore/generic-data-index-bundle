@@ -129,6 +129,13 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             $this->createIndex($context, $aliasName);
         }
 
+        // A class-definition mapping that drops a live property cannot go in place: putMapping keeps the property.
+        if (!$forceCreateIndex && $this->mappingRemovesLiveProperty($context, $mappingProperties)) {
+            $this->doReindexMapping($context, $mappingProperties, $reindexDepth + 1);
+
+            return;
+        }
+
         //updating mapping without recreating index
         try {
             $this->doUpdateMapping($context);
@@ -137,6 +144,79 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             //try recreating index — ReindexFailedException propagates to the caller.
             $this->doReindexMapping($context, $mappingProperties, $reindexDepth + 1, $e);
         }
+    }
+
+    /**
+     * The mapping is applied in place unless a class-definition mapping drops a property of the live index, which
+     * takes the copy; other indices and a handler overriding reindexMapping() keep their behaviour.
+     *
+     * @internal returns a model that is not part of the public API
+     *
+     * @throws Exception
+     */
+    public function updateMappingWithResult(
+        ?ClassDefinition $context = null,
+        ?array $mappingProperties = null
+    ): MappingUpdateResult {
+        return $this->underIndexLock(
+            $this->getAliasIndexName($context),
+            fn () => $this->doUpdateMappingWithResult($context, $mappingProperties)
+        );
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function doUpdateMappingWithResult(
+        ?ClassDefinition $context,
+        ?array $mappingProperties
+    ): MappingUpdateResult {
+        if ($this->isReindexMappingOverridden()
+            || !$this->searchIndexService->existsAlias($this->getAliasIndexName($context))
+            || $this->mappingRemovesLiveProperty($context, $mappingProperties)
+        ) {
+            return $this->doReindexMappingWithResult($context, $mappingProperties);
+        }
+
+        try {
+            $this->doUpdateMapping($context);
+        } catch (Exception $e) {
+            $this->logger->info($e);
+
+            // putMapping refused the change (a type change, say): the copy handles it as it always did.
+            return $this->doReindexMapping($context, $mappingProperties, 1, $e);
+        }
+
+        return new MappingUpdateResult();
+    }
+
+    /**
+     * Whether the live index holds a property the new mapping of a class definition no longer has. The
+     * workflow places and the inherited
+     * field values are left out: the first depend on the configured workflows, the second are written into the
+     * documents of an inheriting class without the mapping declaring them, so neither is the class's to remove.
+     *
+     * @throws JsonException
+     */
+    private function mappingRemovesLiveProperty(mixed $context, ?array $mappingProperties): bool
+    {
+        $alias = $this->getAliasIndexName($context);
+        if (!$context instanceof ClassDefinition || !$this->searchIndexService->existsAlias($alias)) {
+            return false;
+        }
+
+        $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
+        $undeclared = [
+            [FieldCategory::SYSTEM_FIELDS->value, SystemField::WORKFLOW_PLACES->value],
+            [FieldCategory::STANDARD_FIELDS->value, FieldCategory::INHERITED_FIELDS->value],
+        ];
+        foreach ($this->getIndexCopyService()->diff($alias, $mappingProperties)->getRemovedPathSegments() as $segments) {
+            if (!in_array(array_slice($segments, 0, 2), $undeclared, true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
