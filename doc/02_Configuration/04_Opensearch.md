@@ -46,7 +46,7 @@ This causes incorrect indices and missing aliases.
 Disable this in your OpenSearch configuration:
 
 ```
-action.auto_create_index=false
+action.auto_create_index: false
 ```
 
 See [#165](https://github.com/pimcore/generic-data-index-bundle/issues/165) and
