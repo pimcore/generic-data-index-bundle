@@ -38,6 +38,7 @@ services:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\PathService
         arguments:
             $client: "@generic-data-index.search-client"
+            $frontendPrefixes: "@=parameter('pimcore.config')['assets']['frontend_prefixes']"
 
     Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\ElementLockServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\ElementLockService
