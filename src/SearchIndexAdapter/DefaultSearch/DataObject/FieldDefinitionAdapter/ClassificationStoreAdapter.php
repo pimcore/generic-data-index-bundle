@@ -201,9 +201,10 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * valueless by {@see self::normalizeKeyValue()}: the value would be dropped either way, but a
      * reserved segment would cost a later key of the same normalized name the document entry the
      * mapping declares for it. Asked in the order the mapping asks it - name, then value adapter, then
-     * the engine capability, then collision - of the definition the relation resolves to, which is the one the mapping gates on. A
-     * relation that resolves to no definition at all keeps today's behaviour: the value path reads its
-     * own definition from the definition cache, so that key is not what this guard is about.
+     * the engine capability, then collision - of the definition the relation resolves to, which is the
+     * one the mapping gates on. A relation that resolves to no definition at all keeps today's
+     * behaviour: the value path reads its own definition from the definition cache, so that key is not
+     * what this guard is about.
      *
      * @param array<string, bool> $usedKeyNames the segments the earlier keys of this group reserved
      *
