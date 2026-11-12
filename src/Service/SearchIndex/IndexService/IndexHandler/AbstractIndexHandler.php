@@ -210,7 +210,9 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             [FieldCategory::SYSTEM_FIELDS->value, SystemField::WORKFLOW_PLACES->value],
             [FieldCategory::STANDARD_FIELDS->value, FieldCategory::INHERITED_FIELDS->value],
         ];
-        foreach ($this->getIndexCopyService()->diff($alias, $mappingProperties)->getRemovedPathSegments() as $segments) {
+        $removedPathSegments = $this->getIndexCopyService()->diff($alias, $mappingProperties)
+            ->getRemovedPathSegments();
+        foreach ($removedPathSegments as $segments) {
             if (!in_array(array_slice($segments, 0, 2), $undeclared, true)) {
                 return true;
             }
