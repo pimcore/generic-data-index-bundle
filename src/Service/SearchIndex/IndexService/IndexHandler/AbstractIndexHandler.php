@@ -210,9 +210,12 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
             [FieldCategory::SYSTEM_FIELDS->value, SystemField::WORKFLOW_PLACES->value],
             [FieldCategory::STANDARD_FIELDS->value, FieldCategory::INHERITED_FIELDS->value],
         ];
-        $removedPathSegments = $this->getIndexCopyService()->diff($alias, $mappingProperties)
-            ->getRemovedPathSegments();
-        foreach ($removedPathSegments as $segments) {
+        $diff = $this->getIndexCopyService()->diff($alias, $mappingProperties);
+        if ($diff->isLiveMappingUnreadable()) {
+            // Nothing was compared: fail closed, so a removal cannot slip through an in-place update.
+            return true;
+        }
+        foreach ($diff->getRemovedPathSegments() as $segments) {
             if (!in_array(array_slice($segments, 0, 2), $undeclared, true)) {
                 return true;
             }

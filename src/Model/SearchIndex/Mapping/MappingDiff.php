@@ -33,11 +33,15 @@ final readonly class MappingDiff
     /**
      * @param MappingFieldChange[] $changes
      * @param string[][] $removedPathSegments fields of the live mapping the new mapping no longer has
+     * @param bool $liveMappingUnreadable the live mapping could not be read, so the diff is unknown, not empty
      *
      * @throws InvalidArgumentException
      */
-    public function __construct(array $changes, array $removedPathSegments = [])
-    {
+    public function __construct(
+        array $changes,
+        array $removedPathSegments = [],
+        private bool $liveMappingUnreadable = false
+    ) {
         foreach ($removedPathSegments as $segments) {
             if ($segments === []) {
                 throw new InvalidArgumentException('A removed field path needs at least one segment');
@@ -68,6 +72,14 @@ final readonly class MappingDiff
     public function getRemovedPathSegments(): array
     {
         return $this->removedPathSegments;
+    }
+
+    /**
+     * Whether the live mapping could not be read: the other getters are then empty because nothing was compared.
+     */
+    public function isLiveMappingUnreadable(): bool
+    {
+        return $this->liveMappingUnreadable;
     }
 
     public function isEmpty(): bool
