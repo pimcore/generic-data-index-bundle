@@ -153,11 +153,15 @@ class PathServiceTest extends \Codeception\Test\Unit
         int $id,
         string $thumbnail
     ): void {
-        $client->update([
-            'index' => $indexName,
+        $document = $client->get(['index' => $indexName, 'id' => $id]);
+        $source = $document['_source'];
+        $source['system_fields']['thumbnail'] = $thumbnail;
+
+        $client->index([
+            'index' => $document['_index'],
             'id' => $id,
             'refresh' => true,
-            'body' => ['doc' => ['system_fields' => ['thumbnail' => $thumbnail]]],
+            'body' => $source,
         ]);
     }
 
