@@ -1697,6 +1697,37 @@ final class ClassificationStoreAdapterTest extends Unit
         $this->assertCount(1, $logger->records);
     }
 
+    /**
+     * getIndexMapping() asks once per group, so a key assigned to several groups is refused once per
+     * assignment: every assignment declares nothing, the key is reported once.
+     */
+    public function testAKeyAssignedToSeveralGroupsIsReportedOnceAndDroppedFromEveryGroup(): void
+    {
+        $logger = $this->createCollectingLogger();
+        $fieldDefinition = $this->createFieldDefinition(true);
+        $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL], true);
+        $adapter = $this->createConfiguredAdapter(
+            ['de', 'en'],
+            $fieldDefinition,
+            $logger,
+            keyDefinition: $definition,
+            engineCapabilityService: $this->createEngineCapabilityService([EngineFeature::Variants])
+        );
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'getMappingForGroupConfig');
+        $languages = $this->getDeclarableLanguages($adapter);
+
+        foreach ([self::GROUP_ID, self::GROUP_ID + 1] as $groupId) {
+            $mapping = $method->invoke(
+                $adapter,
+                [$this->createRelation(self::KEY_ID, $groupId, self::KEY_NAME, true)],
+                $languages
+            );
+            $this->assertSame([], array_filter($mapping, static fn (array $node): bool => $node !== []));
+        }
+
+        $this->assertCount(1, $logger->records);
+    }
+
     public function testEachDeclaredVariantIsASiblingPropertyUnderTheNodesOfTheKey(): void
     {
         $fieldDefinition = $this->createFieldDefinition(false);

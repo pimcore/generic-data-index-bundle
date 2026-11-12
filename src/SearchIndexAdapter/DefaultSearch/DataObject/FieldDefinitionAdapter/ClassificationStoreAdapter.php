@@ -58,6 +58,14 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
     private EngineCapabilityServiceInterface $engineCapabilityService;
 
+    /**
+     * Keys whose engine refusal this mapping build has already reported, by key id. A key assigned to
+     * several groups is refused once per assignment but is one key; reset at the start of every build.
+     *
+     * @var array<int, true>
+     */
+    private array $reportedEngineRefusals = [];
+
     #[Required]
     public function setClassificationService(ServiceResolverInterface $serviceResolver): void
     {
@@ -90,6 +98,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $classificationStore = $this->getClassificationStoreDefinition();
         $validLanguages = $this->getValidLanguages();
         $mapping = [];
+        $this->reportedEngineRefusals = [];
 
         $groups = $this->filterAllowedGroups(
             $this->getClassificationStoreGroups($classificationStore->getStoreId()),
@@ -1049,6 +1058,12 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     /** Logged, not thrown: IndexMappingService would drop the whole field on an exception. */
     private function reportKeyWithoutEngineSupport(KeyGroupRelation $key, EngineFeature $missingFeature): void
     {
+        // every assignment of the key is still dropped by the caller; only the diagnostic is once per key
+        if (isset($this->reportedEngineRefusals[$key->getKeyId()])) {
+            return;
+        }
+        $this->reportedEngineRefusals[$key->getKeyId()] = true;
+
         $this->logger->warning(sprintf(
             'Classification store %s: key %d "%s" of group %s is declared with a capability the engine of the ' .
             'store lacks (%s). The key is not indexed.',
