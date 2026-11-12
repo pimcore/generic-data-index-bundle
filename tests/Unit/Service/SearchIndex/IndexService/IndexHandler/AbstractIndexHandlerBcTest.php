@@ -174,6 +174,7 @@ final class AbstractIndexHandlerBcTest extends Unit
             $this->makeEmpty(IndexRebuildObligationServiceInterface::class),
             new IndexLock(new LockFactory(new InMemoryStore()), 1, 1),
             $this->makeEmpty(SearchIndexConfigServiceInterface::class, ['getIndexName' => 'pimcore_test']),
+            $this->makeEmpty(SearchIndexServiceInterface::class, ['existsAlias' => true]),
         );
         $classDefinition = new ClassDefinition();
         $classDefinition->setId('TEST');

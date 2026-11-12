@@ -37,6 +37,9 @@ description: Version-specific upgrade instructions and breaking changes for the 
   it) and a quarter of that. `AbstractIndexHandler` and the three index handlers take an `IndexLockInterface` as
   their last constructor argument; constructing them without it is deprecated and leaves the mapping updates of
   that handler unlocked.
+- [Indexing] `deployment:reindex` and a class save create the index of a class that has a stored mapping checksum but no
+  index (before, the run skipped the class and failed on the missing index). `ClassDefinitionReindexService` takes a
+  `SearchIndexServiceInterface` as an additional constructor argument.
 - [Indexing] Fixed: deleting a class definition no longer leaves the delete queue entries of its objects behind.
   They were dispatched again every 24 hours and failed each time with `index_not_found_exception`, blocking the
   other elements of their batch. The entries are now removed together with the class index, and a bulk deletion
