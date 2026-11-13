@@ -87,9 +87,10 @@ and the retries described below apply to `copy`.
 | Index recreation | The live index is deleted and created again empty with the new mapping. With `recreate`, runs whenever the odd/even copy fails on old values that don't fit; with `copy`, only as the last resort when the copy still fails after the retries. `update:index -r` always recreates. | None: the index is empty until the rebuild has filled it | Empty or incomplete until the rebuild has finished |
 | Rebuild from the database | The affected elements are added to the index queue; messenger workers load each one from the database and replace its document. | Database | Values update as the index queue is processed |
 
-The bundle creates indices with the engine defaults for `dynamic`, `coerce` and `ignore_malformed`, except for the
-nested root of a classification store field, which is declared with `dynamic: false` since 2026.4.0: a group, language
-or key that is not declared stays in `_source` and is not indexed. During an odd/even copy this means:
+The bundle creates indices with the engine defaults for `dynamic`, `coerce` and `ignore_malformed`, except for two
+nodes of a class-definition index, both declared with `dynamic: false` since 2026.4.0: the `standard_fields` root and
+the nested root of a classification store field. A class field, group, language or key that is not declared stays in
+`_source` and is not indexed. During an odd/even copy this means:
 
 With `copy`, the bundle compares the live mapping with the new mapping before the copy and sorts every changed field:
 
@@ -129,9 +130,12 @@ copy this means:
 - Text copied into a number, date or boolean field doesn't fit: with `copy`, a class or custom field is stripped;
   with `recreate`, the copy fails and the index is recreated.
 - Fields that are no longer in the mapping are re-mapped dynamically and stay in the mapping until the index is
-  recreated with `update:index -r` — except below a classification store's nested root, where `dynamic: false` keeps
-  them out of the mapping and out of the index altogether. If their values don't fit the re-mapped type (for example
-  "2026-01-01" in one document and "abc" in the next), all removed class and custom fields are left out of the copy.
+  recreated with `update:index -r` — except under the `standard_fields` root of a class-definition index and below a
+  classification store's nested root, where `dynamic: false` keeps them out of the mapping and out of the index
+  altogether. A class field removed from the definition is therefore gone from the mapping after the copy its removal
+  triggered, rather than being re-created from the copied documents. If the values of a field that is re-mapped
+  don't fit the re-mapped type (for example "2026-01-01" in one document and "abc" in the next), all removed class
+  and custom fields are left out of the copy.
 
 Whenever fields were stripped, or the index had to be created empty, the bundle adds all elements of that index to the
 index queue, even if the trigger doesn't rebuild otherwise. After a copy that stripped fields, search keeps working during this and

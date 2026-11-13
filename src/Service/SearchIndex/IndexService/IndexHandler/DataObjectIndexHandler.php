@@ -97,15 +97,25 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
         return $mappingProperties;
     }
 
+    /**
+     * The class definition's own fields, declared with "dynamic: false": a field removed from the
+     * definition is still held by the copied documents, and the engine would map it again from
+     * them - so the field would survive the very copy its removal triggered, keep matching
+     * searches, and read as a removal on every later mapping change. Undeclared values stay in
+     * _source, which is where the inherited field origins are read from.
+     */
     private function getStandardFieldsMapping(?ClassDefinition $classDefinition): array
     {
         if ($classDefinition === null) {
             return [];
         }
 
-        return $this->indexMappingService->getMappingForFieldDefinitions(
-            $classDefinition->getFieldDefinitions()
-        );
+        return [
+            'dynamic' => false,
+            ...$this->indexMappingService->getMappingForFieldDefinitions(
+                $classDefinition->getFieldDefinitions()
+            ),
+        ];
     }
 
     private function fireEventAndGetCustomFieldsMapping(?ClassDefinition $classDefinition, array $customFields): array

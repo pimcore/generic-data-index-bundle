@@ -139,6 +139,10 @@ description: Version-specific upgrade instructions and breaking changes for the 
   definition) now copies the index into the other `-odd`/`-even` index, because an in-place update would leave the
   removed field mapped; an additive change is applied in place, whatever undeclared fields the live index has picked
   up. Asset, document and folder indices are unchanged.
+- [Indexing] The `standard_fields` root of a class-definition index is now declared with `dynamic: false`, so a field
+  removed from the class definition is gone from the mapping after that copy instead of being re-created from the
+  copied documents and matching searches until someone recreates the index. The mapping checksum of every class
+  changes, so the mandatory reindex above copies every class index once.
 - [Indexing] Changed: a classification store key is now indexed exactly as a class field of its type is, and the
   type is no longer silently skipped when the indexer does not recognise it — it is reported as an error naming the
   store, group, key and type, and that key is not indexed. One type is exempt: an `encryptedField` key is still

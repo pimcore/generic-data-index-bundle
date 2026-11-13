@@ -14,7 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex;
 
 use Codeception\Test\Unit;
-use Generator;
+use IteratorAggregate;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\EngineCapabilityService;
 use Pimcore\Model\DataObject\Classificationstore\Engine\EngineFeature;
 use Pimcore\Model\DataObject\Classificationstore\Engine\EngineInterface;
@@ -22,6 +22,7 @@ use Pimcore\Model\DataObject\Classificationstore\Engine\EngineResolver;
 use Pimcore\Model\DataObject\Exception\ClassificationStoreEngineNotAvailableException;
 use Pimcore\Model\DataObject\Exception\UnknownClassificationStoreEngineException;
 use Throwable;
+use Traversable;
 
 /**
  * The resolver is final, so the failure is raised where it really originates: while the registered
@@ -57,12 +58,22 @@ final class EngineCapabilityServiceTest extends Unit
         $this->assertFalse($service->supports(null, EngineFeature::MultiValue));
     }
 
+    /**
+     * The registered engines reach the resolver as a tagged iterator, which is traversed afresh on
+     * every enumeration - so the failure has to be raised again for the second call, not once.
+     */
     private function createService(Throwable $failure): EngineCapabilityService
     {
-        $engines = (static function () use ($failure): Generator {
-            throw $failure;
-            yield;
-        })();
+        $engines = new class($failure) implements IteratorAggregate {
+            public function __construct(private readonly Throwable $failure)
+            {
+            }
+
+            public function getIterator(): Traversable
+            {
+                throw $this->failure;
+            }
+        };
 
         return new EngineCapabilityService(new EngineResolver($engines));
     }
