@@ -191,10 +191,13 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     }
 
     /**
-     * Whether the live index holds a property the new mapping of a class definition no longer has. The
-     * workflow places and the inherited
-     * field values are left out: the first depend on the configured workflows, the second are written into the
-     * documents of an inheriting class without the mapping declaring them, so neither is the class's to remove.
+     * Whether the live index holds a class field the new mapping of a class definition no longer has. Only
+     * standard_fields is the class's own surface: system_fields belongs to the bundle, custom_fields to
+     * whichever bundle declared it, and neither category carries a dynamic key, so a field written into the
+     * documents but declared by no config — the checksum, or the lock state once an object is locked — reads
+     * as a removal forever and would otherwise take the copy on every mapping change. The inherited field
+     * values are written into the documents of an inheriting class without the mapping declaring them, so
+     * they are left out the same way.
      *
      * @throws JsonException
      */
@@ -206,19 +209,30 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         }
 
         $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
-        $undeclared = [
-            [FieldCategory::SYSTEM_FIELDS->value, SystemField::WORKFLOW_PLACES->value],
-            [FieldCategory::STANDARD_FIELDS->value, FieldCategory::INHERITED_FIELDS->value],
-        ];
         $diff = $this->getIndexCopyService()->diff($alias, $mappingProperties);
         if ($diff->isLiveMappingUnreadable()) {
             // Nothing was compared: fail closed, so a removal cannot slip through an in-place update.
+            $this->logger->debug(sprintf(
+                'Copying index "%s": the live mapping of class "%s" could not be read',
+                $alias,
+                $context->getName()
+            ));
+
             return true;
         }
         foreach ($diff->getRemovedPathSegments() as $segments) {
-            if (!in_array(array_slice($segments, 0, 2), $undeclared, true)) {
-                return true;
+            if ($segments[0] !== FieldCategory::STANDARD_FIELDS->value
+                || ($segments[1] ?? null) === FieldCategory::INHERITED_FIELDS->value) {
+                continue;
             }
+            $this->logger->debug(sprintf(
+                'Copying index "%s": the new mapping of class "%s" no longer has %s',
+                $alias,
+                $context->getName(),
+                implode('.', $segments)
+            ));
+
+            return true;
         }
 
         return false;

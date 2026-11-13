@@ -135,9 +135,10 @@ description: Version-specific upgrade instructions and breaking changes for the 
   filters, `UpdateIndexDataEvent` / `ExtractMappingEvent` listeners and `ClassificationStoreFilter` callers: its
   `$group` argument and the field name of its sub-modifier are now identifiers, and the name of an entity that has an
   identifier returns an empty result.
-- [Indexing] A class mapping update that removes a field (a variant, key or group, or a class field) now copies the
-  index into the other `-odd`/`-even` index, because an in-place update would leave the removed field mapped; an
-  additive change is applied in place. Asset, document and folder indices are unchanged.
+- [Indexing] A class mapping update that removes a class field (a variant, key or group, or a field of the class
+  definition) now copies the index into the other `-odd`/`-even` index, because an in-place update would leave the
+  removed field mapped; an additive change is applied in place, whatever undeclared fields the live index has picked
+  up. Asset, document and folder indices are unchanged.
 - [Indexing] Changed: a classification store key is now indexed exactly as a class field of its type is, and the
   type is no longer silently skipped when the indexer does not recognise it — it is reported as an error naming the
   store, group, key and type, and that key is not indexed. One type is exempt: an `encryptedField` key is still
