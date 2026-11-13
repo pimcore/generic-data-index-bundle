@@ -128,6 +128,16 @@ description: Version-specific upgrade instructions and breaking changes for the 
   one localized and one non-localized key needs the language for the first and `default` for the second.
   `Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface::getLocaleForKey()` answers the node of a key id
   with the resolution the mapping and the document use themselves, for callers that do not already know it.
+- [Indexing] Behavior change: classification store groups and keys are indexed under their identifiers instead of
+  their names, so renaming one no longer moves an indexed path and two same-named keys no longer collide. Run
+  `pimcore:classificationstore:backfill-identifiers` and then `generic-data-index:deployment:reindex` (one reindex,
+  mandatory); an entity still without an identifier stays indexed under its name. Update PQL queries, saved
+  filters, `UpdateIndexDataEvent` / `ExtractMappingEvent` listeners and `ClassificationStoreFilter` callers: its
+  `$group` argument and the field name of its sub-modifier are now identifiers, and the name of an entity that has an
+  identifier returns an empty result.
+- [Indexing] A class mapping update that removes a field (a variant, key or group, or a class field) now copies the
+  index into the other `-odd`/`-even` index, because an in-place update would leave the removed field mapped; an
+  additive change is applied in place. Asset, document and folder indices are unchanged.
 - [Indexing] Changed: a classification store key is now indexed exactly as a class field of its type is, and the
   type is no longer silently skipped when the indexer does not recognise it — it is reported as an error naming the
   store, group, key and type, and that key is not indexed. One type is exempt: an `encryptedField` key is still

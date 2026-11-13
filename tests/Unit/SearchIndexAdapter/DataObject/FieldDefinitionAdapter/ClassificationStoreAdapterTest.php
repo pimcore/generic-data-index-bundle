@@ -114,6 +114,12 @@ final class ClassificationStoreAdapterTest extends Unit
 
     private const ETIM_LANGUAGES = 17;
 
+    private const SAME_AS_NAME = 'same as the name';
+
+    private const KEY_IDENTIFIER = '01KEYIDENT';
+
+    private const OTHER_KEY_IDENTIFIER = '01OTHERKEY';
+
     protected function _after(): void
     {
         DefinitionCache::clear(null);
@@ -275,6 +281,139 @@ final class ClassificationStoreAdapterTest extends Unit
         $this->assertCount(1, $logger->records);
         $this->assertSame('warning', $logger->records[0]['level']);
         $this->assertStringContainsString('consists only of dots', $logger->records[0]['message']);
+    }
+
+    public function testAKeyIsDeclaredWrittenAndInheritedUnderItsIdentifierNotItsName(): void
+    {
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER)];
+        $variants = $this->createMultiValue([self::METRIC]);
+
+        $mapping = $this->getMappingForRelations($fieldDefinition, self::LANGUAGES, $relations, null, $variants);
+        $document = $this->getDocumentValues($fieldDefinition, self::LANGUAGES, $relations);
+        $inherited = $this->getKeyMappingForInheritance($relations);
+
+        $this->assertSame(
+            [self::KEY_IDENTIFIER, self::KEY_IDENTIFIER . '_' . self::METRIC],
+            array_keys($mapping[self::DEFAULT_LANGUAGE][self::PROPERTIES])
+        );
+        $this->assertSame([self::DEFAULT_LANGUAGE => [self::KEY_IDENTIFIER => self::KEY_ID]], $document);
+        $this->assertSame(self::KEY_IDENTIFIER, $inherited[self::KEY_ID]['name']);
+    }
+
+    /**
+     * Two keys of one name are two entities with two identifiers, so none is dropped on any of the three
+     * paths and nothing is reported.
+     */
+    public function testTwoKeysOfTheSameNameAreBothIndexedUnderTheirIdentifiers(): void
+    {
+        $logger = $this->createCollectingLogger();
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [
+            $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER),
+            $this->createRelation(self::OTHER_KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::OTHER_KEY_IDENTIFIER),
+        ];
+
+        $mapping = $this->getMappingForRelations($fieldDefinition, self::LANGUAGES, $relations, $logger);
+        $document = $this->getDocumentValues($fieldDefinition, self::LANGUAGES, $relations, logger: $logger);
+
+        $this->assertSame(
+            [self::KEY_IDENTIFIER, self::OTHER_KEY_IDENTIFIER],
+            array_keys($mapping[self::DEFAULT_LANGUAGE][self::PROPERTIES])
+        );
+        $this->assertSame(
+            [self::KEY_IDENTIFIER => self::KEY_ID, self::OTHER_KEY_IDENTIFIER => self::OTHER_KEY_ID],
+            $document[self::DEFAULT_LANGUAGE]
+        );
+        $this->assertSame(
+            [self::KEY_ID, self::OTHER_KEY_ID],
+            array_keys($this->getKeyMappingForInheritance($relations))
+        );
+        $this->assertSame([], $logger->records);
+    }
+
+    /**
+     * An identifier is addressed untouched; the name of a key without one is the fallback and keeps both
+     * the normalization and the first-wins collision rule, which are reported from the mapping path only.
+     */
+    public function testAKeyWithoutAnIdentifierIsAddressedByItsNameAndReportedOnceFromTheMappingPathOnly(): void
+    {
+        $logger = $this->createCollectingLogger();
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [
+            $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_NAME),
+            $this->createRelation(self::OTHER_KEY_ID, self::GROUP_ID, self::KEY_NAME . '.', null, null),
+        ];
+
+        $mapping = $this->getMappingForRelations($fieldDefinition, self::LANGUAGES, $relations, $logger);
+
+        $this->assertSame([self::KEY_NAME], array_keys($mapping[self::DEFAULT_LANGUAGE][self::PROPERTIES]));
+        $this->assertCount(3, $logger->records);
+        $this->assertStringContainsString('has no identifier', $logger->records[0]['message']);
+        $this->assertStringContainsString('already', $logger->records[2]['message']);
+
+        $this->getDocumentValues($fieldDefinition, self::LANGUAGES, $relations, logger: $logger);
+        $this->getKeyMappingForInheritance($relations);
+        $this->assertCount(3, $logger->records, 'the document and inheritance paths stay silent');
+    }
+
+    /**
+     * The name fallback of a key listed first reserves its segment, so a later key whose identifier equals it
+     * is dropped by the mapping, the document and the inheritance path alike.
+     */
+    public function testAnIdentifierCannotTakeASegmentAnIdentifierlessKeyTookByNameFirst(): void
+    {
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [
+            $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, null),
+            $this->createRelation(self::OTHER_KEY_ID, self::GROUP_ID, 'Other', null, self::KEY_NAME),
+        ];
+
+        $mapping = $this->getMappingForRelations($fieldDefinition, self::LANGUAGES, $relations);
+        $document = $this->getDocumentValues($fieldDefinition, self::LANGUAGES, $relations);
+
+        $this->assertSame([self::KEY_NAME], array_keys($mapping[self::DEFAULT_LANGUAGE][self::PROPERTIES]));
+        $this->assertSame([self::KEY_ID], array_keys($this->getKeyMappingForInheritance($relations)));
+        $this->assertCount(1, $document);
+    }
+
+    public function testAKeyThatIsNotIndexedIsNotReportedAsIndexedByItsName(): void
+    {
+        $logger = $this->createCollectingLogger();
+        $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, null)];
+
+        $this->getMappingForRelations(
+            $this->createFieldDefinition(false),
+            self::LANGUAGES,
+            $relations,
+            $logger,
+            static fn (): Data => new EncryptedField(),
+            $this->createServiceWithoutAdapterForUnindexableTypes()
+        );
+
+        foreach ($logger->records as $record) {
+            $this->assertStringNotContainsString('has no identifier', $record['message']);
+        }
+    }
+
+    public function testAVariantNameIsStillNormalizedUnderAnIdentifier(): void
+    {
+        $logger = $this->createCollectingLogger();
+
+        $mapping = $this->getMappingForRelations(
+            $this->createFieldDefinition(false),
+            self::LANGUAGES,
+            [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER)],
+            $logger,
+            $this->createMultiValue(['me..tric'])
+        );
+
+        $this->assertSame(
+            [self::KEY_IDENTIFIER, self::KEY_IDENTIFIER . '_me.tric'],
+            array_keys($mapping[self::DEFAULT_LANGUAGE][self::PROPERTIES])
+        );
+        $this->assertCount(1, $logger->records);
+        $this->assertSame('info', $logger->records[0]['level']);
     }
 
     /**
@@ -485,8 +624,10 @@ final class ClassificationStoreAdapterTest extends Unit
         );
 
         $this->assertSame([self::DEFAULT_LANGUAGE, 'de', 'en', 'fr'], array_keys($mapping));
-        $this->assertCount(1, $logger->records);
-        $this->assertSame('info', $logger->records[0]['level']);
+        // the missing identifier and the normalized name, each once
+        $this->assertCount(2, $logger->records);
+        $this->assertSame('warning', $logger->records[0]['level']);
+        $this->assertSame('info', $logger->records[1]['level']);
     }
 
     /**
@@ -2241,6 +2382,17 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
+     * @param KeyGroupRelation[] $relations
+     */
+    private function getKeyMappingForInheritance(array $relations): array
+    {
+        $adapter = $this->createConfiguredAdapter(self::LANGUAGES, $this->createFieldDefinition(false));
+
+        return (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyMappingForInheritance'))
+            ->invoke($adapter, $relations);
+    }
+
+    /**
      * @return string[]
      */
     private function getDeclarableLanguages(ClassificationStoreAdapter $adapter): array
@@ -2288,9 +2440,10 @@ final class ClassificationStoreAdapterTest extends Unit
         int $keyId,
         int $groupId,
         string $name,
-        ?bool $localized = null
+        ?bool $localized = null,
+        ?string $identifier = self::SAME_AS_NAME
     ): KeyGroupRelation {
-        $this->registerKey($keyId, $localized);
+        $this->registerKey($keyId, $localized, $identifier === self::SAME_AS_NAME ? $this->getNameAsIdentifier($name) : $identifier);
 
         $relation = new KeyGroupRelation();
         $relation->setKeyId($keyId);
@@ -2301,10 +2454,19 @@ final class ClassificationStoreAdapterTest extends Unit
         return $relation;
     }
 
-    private function registerKey(int $keyId, ?bool $localized): void
+    /** A name that is no valid identifier (a dotted one) stays a key without one, addressed by its name. */
+    private function getNameAsIdentifier(string $name): ?string
+    {
+        return preg_match('/\A[A-Za-z0-9][A-Za-z0-9_-]*\z/', $name) === 1 ? $name : null;
+    }
+
+    private function registerKey(int $keyId, ?bool $localized, ?string $identifier = null): void
     {
         $keyConfig = (new KeyConfig())->setId($keyId);
         $keyConfig->setLocalized($localized);
+        if ($identifier !== null) {
+            $keyConfig->setIdentifier($identifier);
+        }
 
         DefinitionCache::put($keyConfig);
     }

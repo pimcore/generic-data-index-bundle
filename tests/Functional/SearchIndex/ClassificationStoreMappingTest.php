@@ -22,6 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Modifier\Filter\FieldType
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -32,6 +33,7 @@ use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
 use Pimcore\Model\DataObject\Classificationstore\KeyConfig;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
 use Pimcore\Model\DataObject\Classificationstore\StoreConfig;
+use Pimcore\Model\DataObject\Classificationstore\SubGroupConfig;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Data\MultiValue as MultiValueEntry;
 use Pimcore\Tests\Support\Util\TestHelper;
@@ -53,6 +55,16 @@ class ClassificationStoreMappingTest extends Unit
     private const GROUP_NAME = 'Specifications';
 
     private const SECOND_GROUP_NAME = 'Dimensions';
+
+    private const GROUP_IDENTIFIER = 'gdiCsGroupSpec';
+
+    private const SECOND_GROUP_IDENTIFIER = 'gdiCsGroupDim';
+
+    private const TWIN_KEY_NAME = 'Twin';
+
+    private const TWIN_KEY_IDENTIFIERS = ['gdiCsTwinA', 'gdiCsTwinB'];
+
+    private const TWIN_VALUES = [11, 12];
 
     private const KEY_NAME = 'Size';
 
@@ -159,7 +171,7 @@ class ClassificationStoreMappingTest extends Unit
         $this->assertArrayHasKey('dynamic', $fieldMapping);
         $this->assertFalse(filter_var($fieldMapping['dynamic'], FILTER_VALIDATE_BOOLEAN));
 
-        $groupMapping = $fieldMapping[self::PROPERTIES][self::GROUP_NAME][self::PROPERTIES];
+        $groupMapping = $fieldMapping[self::PROPERTIES][self::GROUP_IDENTIFIER][self::PROPERTIES];
 
         // The engine does not promise an order for the properties of a mapping response.
         $this->assertEqualsCanonicalizing($this->getDeclaredLanguages(), array_keys($groupMapping));
@@ -279,7 +291,7 @@ class ClassificationStoreMappingTest extends Unit
     {
         $groupMappings = $this->getStoreFieldMapping()[self::PROPERTIES];
 
-        foreach ([self::GROUP_NAME, self::SECOND_GROUP_NAME] as $groupName) {
+        foreach ([self::GROUP_IDENTIFIER, self::SECOND_GROUP_IDENTIFIER] as $groupName) {
             $declaredKeys = array_keys(
                 $groupMappings[$groupName][self::PROPERTIES][MappingProperty::NOT_LOCALIZED_KEY][self::PROPERTIES]
             );
@@ -606,6 +618,85 @@ class ClassificationStoreMappingTest extends Unit
     }
 
     /**
+     * Renaming a group or a key moves no indexed path: the paths are the identifiers, so the class mapping
+     * checksum is unchanged, nothing is queued and the filter keeps finding the element without a reindex.
+     */
+    public function testRenamingAGroupOrAKeyNeedsNoReindex(): void
+    {
+        $language = $this->getValidLanguages()[0];
+        $object = $this->createObjectWithStoreValue($language, self::CLASS_NAME);
+        $this->assertSame([$object->getId()], $this->filterByKey(self::KEY_NAME, self::KEY_VALUE, $language));
+        $this->tester->clearQueue();
+
+        $this->groupConfig->setName('Renamed group');
+        $this->groupConfig->save();
+        $this->keyConfig->setName('Renamed key');
+        $this->keyConfig->save();
+
+        /** @var ClassDefinitionReindexServiceInterface $reindexService */
+        $reindexService = $this->tester->grabService(ClassDefinitionReindexServiceInterface::class);
+        $this->assertFalse($reindexService->isMappingChanged($this->classDefinition));
+        $this->assertSame(0, $this->tester->countQueuedDataObjects([$object->getId()]));
+        $this->assertSame([$object->getId()], $this->filterByKey(self::KEY_NAME, self::KEY_VALUE, $language));
+    }
+
+    /**
+     * Two keys of one name in different sub groups of one group are two entities with two identifiers: both
+     * are declared, both are written, and no sub group is a segment of the path.
+     */
+    public function testTwoKeysOfTheSameNameInDifferentSubGroupsAreBothIndexed(): void
+    {
+        $subGroups = [];
+        $twins = [];
+        foreach (self::TWIN_KEY_IDENTIFIERS as $position => $identifier) {
+            $subGroup = new SubGroupConfig();
+            $subGroup->setStoreId($this->storeConfig->getId());
+            $subGroup->setName('twinSubGroup' . $position);
+            $subGroup->save();
+            $subGroups[] = $subGroup;
+
+            $twin = $this->createKeyWithAssignment(self::TWIN_KEY_NAME, false, identifier: $identifier);
+            $relation = KeyGroupRelation::getByGroupAndKeyId($this->groupConfig->getId(), $twin->getId());
+            $relation->setSubGroup($subGroup->getIdentifier());
+            $relation->save();
+            $twins[] = $twin;
+        }
+
+        try {
+            $this->recreateClassIndex($this->classDefinition);
+            $object = $this->createObjectWithStoreValue($this->getValidLanguages()[0], self::CLASS_NAME);
+            $store = $object->get(self::FIELD_NAME);
+            foreach ($twins as $position => $twin) {
+                $store->setLocalizedKeyValue(
+                    $this->groupConfig->getId(),
+                    $twin->getId(),
+                    self::TWIN_VALUES[$position],
+                    MappingProperty::NOT_LOCALIZED_KEY
+                );
+            }
+            $object->save();
+            $this->tester->flushIndex();
+
+            $declared = array_keys(
+                $this->getGroupMapping(self::CLASS_NAME)[MappingProperty::NOT_LOCALIZED_KEY][self::PROPERTIES]
+            );
+            $source = $this->getGroupSource($object, self::CLASS_NAME)[MappingProperty::NOT_LOCALIZED_KEY];
+            foreach (self::TWIN_KEY_IDENTIFIERS as $position => $identifier) {
+                $this->assertContains($identifier, $declared);
+                $this->assertEquals(self::TWIN_VALUES[$position], $source[$identifier]);
+            }
+            $this->assertNotContains(self::TWIN_KEY_NAME, $declared);
+        } finally {
+            foreach ($twins as $twin) {
+                $this->deleteKeyWithAssignment($twin);
+            }
+            foreach ($subGroups as $subGroup) {
+                $subGroup->delete();
+            }
+        }
+    }
+
+    /**
      * @return int[]
      */
     private function filterByKey(string $keyName, int $value, string $locale): array
@@ -675,7 +766,7 @@ class ClassificationStoreMappingTest extends Unit
             ->createDataObjectSearch()
             ->addModifier(new ClassificationStoreFilter(
                 self::FIELD_NAME,
-                self::GROUP_NAME,
+                self::GROUP_IDENTIFIER,
                 $subModifier,
                 $locale
             ));
@@ -709,7 +800,7 @@ class ClassificationStoreMappingTest extends Unit
      */
     private function getGroupMapping(string $className): array
     {
-        return $this->getStoreFieldMapping($className)[self::PROPERTIES][self::GROUP_NAME][self::PROPERTIES];
+        return $this->getStoreFieldMapping($className)[self::PROPERTIES][self::GROUP_IDENTIFIER][self::PROPERTIES];
     }
 
     /**
@@ -720,7 +811,7 @@ class ClassificationStoreMappingTest extends Unit
         $indexName = $this->tester->getIndexName($className, true);
         $source = $this->tester->checkIndexEntry($object->getId(), $indexName)['_source'];
 
-        return $source[FieldCategory::STANDARD_FIELDS->value][self::FIELD_NAME][self::GROUP_NAME];
+        return $source[FieldCategory::STANDARD_FIELDS->value][self::FIELD_NAME][self::GROUP_IDENTIFIER];
     }
 
     /**
@@ -807,8 +898,8 @@ class ClassificationStoreMappingTest extends Unit
         $this->storeConfig->setEngine('document');
         $this->storeConfig->save();
 
-        $this->groupConfig = $this->createGroup(self::GROUP_NAME);
-        $this->secondGroupConfig = $this->createGroup(self::SECOND_GROUP_NAME);
+        $this->groupConfig = $this->createGroup(self::GROUP_NAME, self::GROUP_IDENTIFIER);
+        $this->secondGroupConfig = $this->createGroup(self::SECOND_GROUP_NAME, self::SECOND_GROUP_IDENTIFIER);
 
         $this->keyConfig = $this->createKeyWithAssignment(self::KEY_NAME);
         $this->nonLocalizedKeyConfig = $this->createKeyWithAssignment(self::NON_LOCALIZED_KEY_NAME, false);
@@ -833,6 +924,8 @@ class ClassificationStoreMappingTest extends Unit
         $keyConfig = new KeyConfig();
         $keyConfig->setStoreId($this->storeConfig->getId());
         $keyConfig->setName(self::VARIANT_KEY_NAME);
+        // the keys of this fixture are addressed by an identifier equal to their name, the groups are not
+        $keyConfig->setIdentifier(self::VARIANT_KEY_NAME);
         $keyConfig->setType('multiValue');
         $keyConfig->setDefinition((string) json_encode([
             'fieldtype' => 'multiValue',
@@ -881,11 +974,12 @@ class ClassificationStoreMappingTest extends Unit
         return $object;
     }
 
-    private function createGroup(string $name): GroupConfig
+    private function createGroup(string $name, string $identifier): GroupConfig
     {
         $groupConfig = new GroupConfig();
         $groupConfig->setStoreId($this->storeConfig->getId());
         $groupConfig->setName($name);
+        $groupConfig->setIdentifier($identifier);
         $groupConfig->save();
 
         return $groupConfig;
@@ -899,7 +993,8 @@ class ClassificationStoreMappingTest extends Unit
         string $name,
         ?bool $localized = null,
         bool $indexed = true,
-        string $type = self::KEY_TYPE
+        string $type = self::KEY_TYPE,
+        ?string $identifier = null
     ): KeyConfig {
         $definition = [
             'fieldtype' => $type,
@@ -917,6 +1012,8 @@ class ClassificationStoreMappingTest extends Unit
         $keyConfig = new KeyConfig();
         $keyConfig->setStoreId($this->storeConfig->getId());
         $keyConfig->setName($name);
+        // the keys of this fixture are addressed by an identifier equal to their name, the groups are not
+        $keyConfig->setIdentifier($identifier ?? $name);
         $keyConfig->setType($type);
         $keyConfig->setDefinition($keyDefinition);
         $keyConfig->setLocalized($localized);

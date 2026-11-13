@@ -57,6 +57,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         ClassDefinition $classDefinition,
         bool $skipIfClassNotChanged = false,
         bool $enqueueItems = false,
+        bool $forceCopy = false,
     ): ?MappingUpdateResult {
         try {
             // The checksum is compared and stored under the lock of the index. A second update of the same class
@@ -64,7 +65,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
             // the mapping current, so it skips the copy instead of copying the index again.
             return $this->indexLock->run(
                 $this->getAliasIndexName($classDefinition),
-                fn () => $this->updateMapping($classDefinition, $skipIfClassNotChanged, $enqueueItems)
+                fn () => $this->updateMapping($classDefinition, $skipIfClassNotChanged, $enqueueItems, $forceCopy)
             );
         } catch (Exception $exception) {
             throw new ClassDefinitionIndexUpdateFailedException(
@@ -80,11 +81,12 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
     private function updateMapping(
         ClassDefinition $classDefinition,
         bool $skipIfClassNotChanged,
-        bool $enqueueItems
+        bool $enqueueItems,
+        bool $forceCopy
     ): ?MappingUpdateResult {
         $target = IndexStateTarget::forClassDefinition($classDefinition);
         $rebuildOwed = $this->rebuildObligationService->isOwed($target);
-        $result = $this->reindexMapping($classDefinition, $skipIfClassNotChanged);
+        $result = $this->reindexMapping($classDefinition, $skipIfClassNotChanged, $forceCopy);
         if ($rebuildOwed) {
             // An earlier run changed the index and failed before queuing its rebuild. The mapping is
             // current now, so this run's copy (if any) reports nothing that would queue it again.
@@ -140,7 +142,8 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
      */
     private function reindexMapping(
         ClassDefinition $classDefinition,
-        bool $skipIfClassNotChanged
+        bool $skipIfClassNotChanged,
+        bool $forceCopy
     ): ?MappingUpdateResult {
         $mappingProperties = $this->dataObjectIndexHandler->getMappingProperties($classDefinition);
         $currentCheckSum = $this->dataObjectIndexHandler->getClassMappingCheckSum($mappingProperties);
@@ -194,8 +197,13 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         // Recorded before the live index changes; settled once the rebuild the update may need is queued.
         $this->rebuildObligationService->owe(IndexStateTarget::forClassDefinition($classDefinition));
 
-        return $this->dataObjectIndexHandler
-            ->reindexMappingWithResult(
+        // The copy is forced where new index settings have to be applied; otherwise an additive change goes in place.
+        return $forceCopy
+            ? $this->dataObjectIndexHandler->reindexMappingWithResult(
+                context: $classDefinition,
+                mappingProperties: $mappingProperties
+            )
+            : $this->dataObjectIndexHandler->updateMappingWithResult(
                 context: $classDefinition,
                 mappingProperties: $mappingProperties
             );

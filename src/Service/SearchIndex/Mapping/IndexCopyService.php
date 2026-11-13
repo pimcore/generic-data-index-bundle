@@ -65,7 +65,7 @@ final readonly class IndexCopyService implements IndexCopyServiceInterface
                 ['exception' => $e]
             );
 
-            return new MappingDiff([]);
+            return new MappingDiff([], [], true);
         }
 
         // The engine answers an alias with {"<concrete index>": {"mappings": {"properties": ...}}}.

@@ -53,6 +53,8 @@ final class ClassificationStoreCheckSumTest extends Unit
 
     private const KEY_NAME = 'Size';
 
+    private const KEY_IDENTIFIER = '01KEYIDENT';
+
     protected function _after(): void
     {
         DefinitionCache::clear(null);
@@ -123,6 +125,7 @@ final class ClassificationStoreCheckSumTest extends Unit
     {
         $keyConfig = (new KeyConfig())->setId(self::KEY_ID);
         $keyConfig->setLocalized($keyLocalized);
+        $keyConfig->setIdentifier(self::KEY_IDENTIFIER);
         DefinitionCache::put($keyConfig);
 
         $relation = new KeyGroupRelation();
