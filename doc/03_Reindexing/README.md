@@ -82,14 +82,15 @@ and the retries described below apply to `copy`.
 
 | Mechanism | What happens in the search engine | Data source | Search during the run |
 | --- | --- | --- | --- |
-| In-place mapping update | `PUT _mapping` on the live index. Adds new fields only: removed fields stay mapped, a type change is rejected and triggers an odd/even copy instead. A class-definition index is the exception for a removal: it takes the odd/even copy, the other indices are unchanged. Index settings are not applied. | Existing documents, unchanged | Unaffected |
+| In-place mapping update | `PUT _mapping` on the live index. Adds new fields only: removed fields stay mapped, a type change is rejected and triggers an odd/even copy instead. A class-definition index is the exception for the removal of a class field (anything under `standard_fields`): it takes the odd/even copy, the other indices are unchanged. Index settings are not applied. | Existing documents, unchanged | Unaffected |
 | Odd/even copy | The engine copies all documents into the other `-odd`/`-even` index, created with the current mapping and the current `index_settings` (`_reindex`), then the alias is switched and the old index deleted. With `copy`, fields whose old values don't fit the new type are left out of the copy and the other changed fields are kept, so the documents are never emptied; with `recreate`, the documents are copied as they are. [Index Management](../02_Configuration/03_Index_Management.md#why--odd-and--even-suffixes) and the `generic-data-index:reindex` command call this *native reindexing*. | Existing documents, copied | Unaffected: reads go to the old index until the switch |
 | Index recreation | The live index is deleted and created again empty with the new mapping. With `recreate`, runs whenever the odd/even copy fails on old values that don't fit; with `copy`, only as the last resort when the copy still fails after the retries. `update:index -r` always recreates. | None: the index is empty until the rebuild has filled it | Empty or incomplete until the rebuild has finished |
 | Rebuild from the database | The affected elements are added to the index queue; messenger workers load each one from the database and replace its document. | Database | Values update as the index queue is processed |
 
-The bundle creates indices with the engine defaults for `dynamic`, `coerce` and `ignore_malformed`, except for the
-nested root of a classification store field, which is declared with `dynamic: false` since 2026.4.0: a group, language
-or key that is not declared stays in `_source` and is not indexed. During an odd/even copy this means:
+The bundle creates indices with the engine defaults for `dynamic`, `coerce` and `ignore_malformed`, except for two
+nodes of a class-definition index, both declared with `dynamic: false` since 2026.4.0: the `standard_fields` root and
+the nested root of a classification store field. A class field, group, language or key that is not declared stays in
+`_source` and is not indexed. During an odd/even copy this means:
 
 With `copy`, the bundle compares the live mapping with the new mapping before the copy and sorts every changed field:
 
@@ -129,9 +130,12 @@ copy this means:
 - Text copied into a number, date or boolean field doesn't fit: with `copy`, a class or custom field is stripped;
   with `recreate`, the copy fails and the index is recreated.
 - Fields that are no longer in the mapping are re-mapped dynamically and stay in the mapping until the index is
-  recreated with `update:index -r` — except below a classification store's nested root, where `dynamic: false` keeps
-  them out of the mapping and out of the index altogether. If their values don't fit the re-mapped type (for example
-  "2026-01-01" in one document and "abc" in the next), all removed class and custom fields are left out of the copy.
+  recreated with `update:index -r` — except under the `standard_fields` root of a class-definition index and below a
+  classification store's nested root, where `dynamic: false` keeps them out of the mapping and out of the index
+  altogether. A class field removed from the definition is therefore gone from the mapping after the copy its removal
+  triggered, rather than being re-created from the copied documents. If the values of a field that is re-mapped
+  don't fit the re-mapped type (for example "2026-01-01" in one document and "abc" in the next), all removed class
+  and custom fields are left out of the copy.
 
 Whenever fields were stripped, or the index had to be created empty, the bundle adds all elements of that index to the
 index queue, even if the trigger doesn't rebuild otherwise. After a copy that stripped fields, search keeps working during this and
@@ -196,10 +200,10 @@ flowchart TB
 
 | Trigger | In-place | Odd/even copy | Index recreation | Rebuild from the database | Applies new `index_settings`? |
 | --- | --- | --- | --- | --- | --- |
-| Class save (admin UI, Studio, `classes-rebuild`) | If the mapping checksum changed and no field was removed | If the mapping checksum changed and a field was removed | Last resort | That class | Only if reindexed |
-| `deployment:reindex` without options | Classes with a changed or missing checksum, unless a field was removed or settings changed | Classes with a removed field or changed settings | Last resort | Those classes | Only for those classes |
+| Class save (admin UI, Studio, `classes-rebuild`) | If the mapping checksum changed and no class field was removed | If the mapping checksum changed and a class field was removed | Last resort | That class | Only if reindexed |
+| `deployment:reindex` without options | Classes with a changed or missing checksum, unless a class field was removed or settings changed | Classes with a removed class field or changed settings | Last resort | Those classes | Only for those classes |
 | `deployment:reindex --all` (or an index option) | — | Indices with a changed mapping or changed settings | Last resort | Indices with a changed mapping or data version | Yes |
-| `update:index` (`-c`, `-a`) | Always, except a class index that lost a field | If `PUT _mapping` is rejected, or a class index lost a field | Last resort | Everything in scope | No |
+| `update:index` (`-c`, `-a`) | Always, except a class index that lost a class field | If `PUT _mapping` is rejected, or a class index lost a class field | Last resort | Everything in scope | No |
 | `update:index -r` | — | — | Always | Everything in scope | Yes |
 | `generic-data-index:reindex` | — | Every class, asset and document index, forced | Last resort (`copy`) | Only for indices with stripped fields or a recreated index | Yes; search keeps working, writes during the copy are lost (see [Other Index Changes](../02_Configuration/03_Index_Management.md#other-index-changes)) |
 

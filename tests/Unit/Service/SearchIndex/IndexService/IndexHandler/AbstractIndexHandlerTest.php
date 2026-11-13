@@ -42,6 +42,10 @@ final class AbstractIndexHandlerTest extends Unit
 
     private const STANDARD_FIELDS = 'standard_fields';
 
+    private const SYSTEM_FIELDS = 'system_fields';
+
+    private const CUSTOM_FIELDS = 'custom_fields';
+
     private const PROPERTIES = 'properties';
 
     /**
@@ -340,6 +344,62 @@ final class AbstractIndexHandlerTest extends Unit
     }
 
     /**
+     * The indexer writes system_fields.checksum into every document and system_fields.locked into the
+     * documents of a locked object; the mapping of no class declares either.
+     */
+    public function testARemovedSystemFieldDoesNotMakeAClassMappingCopy(): void
+    {
+        $live = $this->properties(['a']);
+        $live[self::SYSTEM_FIELDS] = [self::PROPERTIES => [
+            'id' => ['type' => 'long'],
+            'checksum' => ['type' => 'long'],
+            'locked' => ['type' => 'keyword'],
+        ]];
+        $new = $this->properties(['a', 'b']);
+        $new[self::SYSTEM_FIELDS] = [self::PROPERTIES => ['id' => ['type' => 'long']]];
+        $handler = $this->createClassHandler([], [], putMappingCalls: 1, live: $live, new: $new);
+
+        $handler->updateMappingWithResult(new ClassDefinition());
+    }
+
+    /**
+     * custom_fields is the surface of whichever bundle declared it: descoping one of its fields is not a
+     * removal the class definition made.
+     */
+    public function testARemovedCustomFieldDoesNotMakeAClassMappingCopy(): void
+    {
+        $live = $this->properties(['a']);
+        $live[self::CUSTOM_FIELDS] = [self::PROPERTIES => ['emb_description' => ['type' => 'knn_vector']]];
+        $new = $this->properties(['a']);
+        $new[self::CUSTOM_FIELDS] = [self::PROPERTIES => []];
+        $handler = $this->createClassHandler([], [], putMappingCalls: 1, live: $live, new: $new);
+
+        $handler->updateMappingWithResult(new ClassDefinition());
+    }
+
+    /**
+     * A classification store key is mapped at standard_fields.<field>.<group>.<language>.<key>, so dropping a
+     * group from the field's store configuration removes part of the class's own surface.
+     */
+    public function testRemovingAClassificationStoreGroupMakesAClassMappingCopy(): void
+    {
+        $live = $this->properties(['a']);
+        $live[self::STANDARD_FIELDS][self::PROPERTIES]['technicalAttributes'] = [
+            self::PROPERTIES => [
+                'group1455' => $this->classificationStoreGroup('width'),
+                'group1456' => $this->classificationStoreGroup('depth'),
+            ],
+        ];
+        $new = $this->properties(['a']);
+        $new[self::STANDARD_FIELDS][self::PROPERTIES]['technicalAttributes'] = [
+            self::PROPERTIES => ['group1455' => $this->classificationStoreGroup('width')],
+        ];
+        $handler = $this->createClassHandler([], [], putMappingCalls: 0, copyCalls: 1, live: $live, new: $new);
+
+        $handler->updateMappingWithResult(new ClassDefinition());
+    }
+
+    /**
      * The documents of an inheriting class carry standard_fields._inherited_fields, which no mapping declares.
      */
     public function testTheUndeclaredInheritedFieldsDoNotMakeAnAdditiveClassMappingCopy(): void
@@ -399,6 +459,11 @@ final class AbstractIndexHandlerTest extends Unit
     private function liveMapping(array $fields): array
     {
         return [self::ALIAS_NAME . '-odd' => ['mappings' => [self::PROPERTIES => $this->properties($fields)]]];
+    }
+
+    private function classificationStoreGroup(string $key): array
+    {
+        return [self::PROPERTIES => ['default' => [self::PROPERTIES => [$key => ['type' => 'keyword']]]]];
     }
 
     /**

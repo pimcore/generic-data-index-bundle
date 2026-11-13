@@ -25,6 +25,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPro
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
+use Pimcore\Cache\RuntimeCache;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore as ClassificationstoreField;
 use Pimcore\Model\DataObject\ClassDefinition\Layout\Panel;
@@ -366,8 +367,7 @@ class ClassificationStoreMappingTest extends Unit
     public function testAVariantValueIsInheritedByAChildObject(): void
     {
         $variantKeyConfig = $this->createVariantKeyWithAssignment();
-        $this->classDefinition->setAllowInherit(true);
-        $this->classDefinition->save();
+        $this->setAllowInherit(true);
         $this->recreateClassIndex($this->classDefinition);
 
         $parent = $this->createObjectWithVariantValue($variantKeyConfig, self::VARIANT_VALUE, true);
@@ -391,8 +391,7 @@ class ClassificationStoreMappingTest extends Unit
         );
 
         $this->deleteKeyWithAssignment($variantKeyConfig);
-        $this->classDefinition->setAllowInherit(false);
-        $this->classDefinition->save();
+        $this->setAllowInherit(false);
     }
 
     public function testAValueInANonDefaultLanguageIsFilterable(): void
@@ -506,6 +505,8 @@ class ClassificationStoreMappingTest extends Unit
         $language = $this->getValidLanguages()[0];
         $localizedObject = $this->createObjectWithStoreValue($language, self::CLASS_NAME);
         $nonLocalizedObject = $this->createObjectWithStoreValue($language, self::NON_LOCALIZED_CLASS_NAME);
+        // the key is not localized in this class, so it is read from the non-localized node alone
+        $this->setKeyValue($nonLocalizedObject, $this->keyConfig, self::KEY_VALUE);
 
         // the non-localized class holds this key's value under "default", and declares no node for $language
         $nonLocalizedSource = $this->getGroupSource($nonLocalizedObject, self::NON_LOCALIZED_CLASS_NAME);
@@ -879,11 +880,30 @@ class ClassificationStoreMappingTest extends Unit
      */
     private function setTextKeyValue(Concrete $object): void
     {
+        $this->setKeyValue($object, $this->textKeyConfig, self::TEXT_KEY_VALUE);
+    }
+
+    /**
+     * The runtime cache still holds the definition the objects are loaded with, so the saved flag
+     * has to be put there as well; a command in a new process would read the saved definition.
+     */
+    private function setAllowInherit(bool $allowInherit): void
+    {
+        $this->classDefinition->setAllowInherit($allowInherit);
+        $this->classDefinition->save();
+        RuntimeCache::set('class_' . $this->classDefinition->getId(), $this->classDefinition);
+    }
+
+    /**
+     * Writes one key's value under the non-localized node.
+     */
+    private function setKeyValue(Concrete $object, KeyConfig $keyConfig, mixed $value): void
+    {
         $store = $object->get(self::FIELD_NAME);
         $store->setLocalizedKeyValue(
             $this->groupConfig->getId(),
-            $this->textKeyConfig->getId(),
-            self::TEXT_KEY_VALUE,
+            $keyConfig->getId(),
+            $value,
             MappingProperty::NOT_LOCALIZED_KEY
         );
         $object->save();
@@ -1057,6 +1077,8 @@ class ClassificationStoreMappingTest extends Unit
     {
         $field = new ClassificationstoreField();
         $field->setName(self::FIELD_NAME);
+        // getTitle() of this data type returns string without the base class's '' fallback.
+        $field->setTitle(self::FIELD_NAME);
         $field->setStoreId($this->storeConfig->getId());
         $field->setLocalized($localized);
 
