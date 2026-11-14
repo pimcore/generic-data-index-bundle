@@ -59,7 +59,10 @@ class ImageSerializationHandler extends AbstractHandler
     private function getThumbnail(Image $image): ?string
     {
         try {
-            return $image->getThumbnail(Image\Thumbnail\Config::getPreviewConfig())->getPath();
+            // index the plain thumbnail path, independent of whether this runs inside a frontend
+            // request (frontend prefix + urlencoded path) or not, see PathService::getScriptSource()
+            return $image->getThumbnail(Image\Thumbnail\Config::getPreviewConfig())
+                ->getPath(['frontend' => false]);
         } catch (Throwable $e) {
             $this->logger->error('Thumbnail generation failed for image asset: ' .
                 $image->getId() .

@@ -29,9 +29,13 @@ final class PathService implements PathServiceInterface
 {
     use LoggerAwareTrait;
 
+    /**
+     * @param array<string, string|null> $frontendPrefixes pimcore.assets.frontend_prefixes
+     */
     public function __construct(
         private readonly SearchClientInterface $client,
         private readonly AdapterServiceInterface $typeAdapterService,
+        private readonly array $frontendPrefixes = [],
     ) {
     }
 
@@ -113,6 +117,7 @@ final class PathService implements PathServiceInterface
                         // the equivalently-encoded path so the script can match/replace that form too.
                         'currentPathEncoded' => $this->encodePathSegments($currentPath) . '/',
                         'newPathEncoded' => $this->encodePathSegments($newPath) . '/',
+                        'thumbnailPrefixes' => $this->getThumbnailPathPrefixes(),
                         'now' => date('c'),
                     ],
                 ],
@@ -129,9 +134,42 @@ final class PathService implements PathServiceInterface
         $this->client->updateByQuery($query);
     }
 
+    /**
+     * rewriteThumbnailPath() rewrites the moved path inside a thumbnail URL. The URL can start with a
+     * cache buster and with one of the configured frontend prefixes, followed by the plain or the
+     * urlencoded path (frontend URLs are built via urlencode_ignore_slash()).
+     */
     private function getScriptSource(): string
     {
-        return 'String currentPath = "";
+        return 'String rewriteThumbnailPath(String thumbnail, Map p) {
+                    String cacheBuster = "";
+                    String rest = thumbnail;
+                    if(rest.startsWith("/cache-buster-")) {
+                        int slashPos = rest.indexOf("/", 1);
+                        if(slashPos > 0) {
+                            cacheBuster = rest.substring(0, slashPos);
+                            rest = rest.substring(slashPos);
+                        }
+                    }
+
+                    for(def prefix : p.thumbnailPrefixes) {
+                        if(!rest.startsWith(prefix)) {
+                            continue;
+                        }
+                        String path = rest.substring(prefix.length());
+                        if(path.startsWith(p.currentPathEncoded)) {
+                            return cacheBuster + prefix + p.newPathEncoded
+                                + path.substring(p.currentPathEncoded.length());
+                        }
+                        if(path.startsWith(p.currentPath)) {
+                            return cacheBuster + prefix + p.newPath + path.substring(p.currentPath.length());
+                        }
+                    }
+
+                    return thumbnail;
+                }
+
+                String currentPath = "";
                 if(ctx._source.system_fields.path.length() >= params.currentPath.length()) {
                    currentPath = ctx._source.system_fields.path.substring(0,params.currentPath.length());
                 }
@@ -142,18 +180,11 @@ final class PathService implements PathServiceInterface
                     String subFullPath = ctx._source.system_fields.fullPath.substring(params.currentPath.length());
                     ctx._source.system_fields.fullPath = params.newPath + subFullPath;
 
-                    if(ctx._source.system_fields.thumbnail != null && 
-                       ctx._source.system_fields.thumbnail.length() >= params.currentPath.length()) {
-                        String thumbnailPrefix = ctx._source.system_fields.thumbnail.substring(
-                            0, 
-                            params.currentPath.length()
+                    if(ctx._source.system_fields.thumbnail instanceof String) {
+                        ctx._source.system_fields.thumbnail = rewriteThumbnailPath(
+                            ctx._source.system_fields.thumbnail,
+                            params
                         );
-                        if(thumbnailPrefix == params.currentPath) {
-                            String thumbnailSubPath = ctx._source.system_fields.thumbnail.substring(
-                                params.currentPath.length()
-                            );
-                            ctx._source.system_fields.thumbnail = params.newPath + thumbnailSubPath;
-                        }   
                     }
 
                     if(ctx._source.containsKey("custom_fields") && 
@@ -164,29 +195,8 @@ final class PathService implements PathServiceInterface
                        ctx._source.custom_fields.PortalEngineBundle.system_fields instanceof Map &&
                        ctx._source.custom_fields.PortalEngineBundle.system_fields.containsKey("thumbnail")) {
                         def customFields = ctx._source.custom_fields.PortalEngineBundle.system_fields;
-                        if(customFields.thumbnail != null && customFields.thumbnail instanceof String) {
-                            String thumb = customFields.thumbnail;
-                            String prefix = "";
-                            int pathStart = 0;
-                            
-                            if(thumb.startsWith("/cache-buster-")) {
-                                int slashPos = thumb.indexOf("/", 1);
-                                if(slashPos > 0) {
-                                    prefix = thumb.substring(0, slashPos);
-                                    pathStart = slashPos;
-                                }
-                            }
-                            
-                            String thumbPath = thumb.substring(pathStart);
-
-                            if(thumbPath.startsWith(params.currentPathEncoded) || thumbPath.startsWith(params.currentPath)) {
-                                boolean matchedEncoded = thumbPath.startsWith(params.currentPathEncoded);
-                                String matchedPath = matchedEncoded ? params.currentPathEncoded : params.currentPath;
-                                String remainingPath = thumbPath.substring(matchedPath.length());
-                                String replacementPath = matchedEncoded ? params.newPathEncoded : params.newPath;
-                                customFields.thumbnail = prefix + replacementPath + remainingPath;
-                            }
-
+                        if(customFields.thumbnail instanceof String) {
+                            customFields.thumbnail = rewriteThumbnailPath(customFields.thumbnail, params);
                         }
                     }
 
@@ -204,6 +214,24 @@ final class PathService implements PathServiceInterface
                 }
                 ctx._source.system_fields.modificationDate = params.now;
                 ctx._source.system_fields.checksum = 0';
+    }
+
+    /**
+     * Prefixes a thumbnail URL can start with: the configured frontend prefixes, longest first so that a
+     * prefix is never cut short by a shorter one, and the empty prefix for plain paths last.
+     *
+     * @return list<string>
+     */
+    private function getThumbnailPathPrefixes(): array
+    {
+        $prefixes = array_values(array_unique(array_filter(
+            $this->frontendPrefixes,
+            static fn (?string $prefix): bool => $prefix !== null && $prefix !== ''
+        )));
+        usort($prefixes, static fn (string $a, string $b): int => strlen($b) <=> strlen($a));
+        $prefixes[] = '';
+
+        return $prefixes;
     }
 
     /**
