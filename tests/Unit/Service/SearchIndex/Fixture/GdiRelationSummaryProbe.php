@@ -51,6 +51,17 @@ final class GdiRelationSummaryProbeWithOverriddenGetter extends GdiRelationSumma
 /**
  * @internal
  */
+final class GdiRelationSummaryProbeWithOverriddenGet extends GdiRelationSummaryProbe
+{
+    public function get(string $fieldName, ?string $language = null): mixed
+    {
+        return parent::get($fieldName, $language);
+    }
+}
+
+/**
+ * @internal
+ */
 final class GdiRelationSummaryProbeWithHook extends Concrete implements PreGetValueHookInterface
 {
     public function getRelated(): array

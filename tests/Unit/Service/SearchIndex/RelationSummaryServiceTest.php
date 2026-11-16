@@ -22,6 +22,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToOneRelation;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\GdiRelationSummaryProbe;
 use Pimcore\Model\DataObject\GdiRelationSummaryProbeWithHook;
+use Pimcore\Model\DataObject\GdiRelationSummaryProbeWithOverriddenGet;
 use Pimcore\Model\DataObject\GdiRelationSummaryProbeWithOverriddenGetter;
 
 require_once __DIR__ . '/Fixture/GdiRelationSummaryProbe.php';
@@ -137,6 +138,22 @@ final class RelationSummaryServiceTest extends Unit
     public function testAnOverriddenGetterIsUsed(): void
     {
         $object = new GdiRelationSummaryProbeWithOverriddenGetter();
+        $object->setId(10);
+        $object->setClassName('GdiRelationSummaryProbe');
+
+        $this->assertNull(
+            (new RelationSummaryService())->getRelationSummaries(
+                $object,
+                $this->makeEmpty(ManyToManyObjectRelation::class, ['loadRelationSummaries' => Expected::never()]),
+                'related',
+                true
+            )
+        );
+    }
+
+    public function testAnOverriddenGetIsUsed(): void
+    {
+        $object = new GdiRelationSummaryProbeWithOverriddenGet();
         $object->setId(10);
         $object->setClassName('GdiRelationSummaryProbe');
 

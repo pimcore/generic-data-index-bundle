@@ -408,9 +408,11 @@ final class DataObjectNormalizerTest extends Unit
                     return [$key => ['originId' => 2]];
                 }
             ),
+            'normalizeValue' => fn ($fieldDefinition, $value) => $value,
         ]);
+        // read once for the inheritance origin and reused as the value
         $relationSummaryService = $this->makeEmpty(RelationSummaryServiceInterface::class, [
-            'getRelationSummaries' => Expected::exactly(2, $summaries),
+            'getRelationSummaries' => Expected::once($summaries),
         ]);
 
         $result = $this->createNormalizer(
@@ -422,5 +424,6 @@ final class DataObjectNormalizerTest extends Unit
             ['related' => ['originId' => 2]],
             $result[FieldCategory::STANDARD_FIELDS->value][FieldCategory::INHERITED_FIELDS->value]
         );
+        $this->assertSame($summaries, $result[FieldCategory::STANDARD_FIELDS->value]['related']);
     }
 }
