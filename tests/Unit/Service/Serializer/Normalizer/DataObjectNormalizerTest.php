@@ -21,16 +21,20 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectNormalizerException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\RelationSummaries;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\RelationSummaryAdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolverInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedValueQueryStoreServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\RelationSummaryServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\Normalizer\DataObjectNormalizer;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Pimcore\Model\DataObject\ClassDefinition\Data\CalculatedValue;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
+use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyObjectRelation;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Localizedfield;
 
@@ -227,6 +231,7 @@ final class DataObjectNormalizerTest extends Unit
         ?DependencyServiceInterface $dependencyService = null,
         CalculatedFieldsIndexMode $calculatedFieldsIndexMode = CalculatedFieldsIndexMode::LIVE,
         ?CalculatedValueQueryStoreServiceInterface $calculatedValueQueryStoreService = null,
+        ?RelationSummaryServiceInterface $relationSummaryService = null,
     ): DataObjectNormalizer {
         return new DataObjectNormalizer(
             $fieldDefinitionService ?? $this->makeEmpty(FieldDefinitionServiceInterface::class),
@@ -237,6 +242,7 @@ final class DataObjectNormalizerTest extends Unit
                 ['getMode' => $calculatedFieldsIndexMode]
             ),
             $calculatedValueQueryStoreService ?? $this->makeEmpty(CalculatedValueQueryStoreServiceInterface::class),
+            $relationSummaryService ?? $this->makeEmpty(RelationSummaryServiceInterface::class),
         );
     }
 
@@ -320,5 +326,104 @@ final class DataObjectNormalizerTest extends Unit
         );
 
         $normalizer->normalize($dataObject);
+    }
+
+    /**
+     * Only type and id of related elements end up in the index, so relation fields must be read
+     * from the relation rows instead of loading every related element through the getter.
+     */
+    public function testRelationSummariesAreIndexedWithoutCallingTheGetter(): void
+    {
+        $summaries = new RelationSummaries(1, [['id' => 7, 'type' => 'object']]);
+        $dataObject = $this->createConcreteObjectMock(
+            $this->createClassDefinition(['related' => (new ManyToManyObjectRelation())->setName('related')]),
+            ['get' => Expected::never()]
+        );
+
+        $fieldDefinitionService = $this->makeEmpty(FieldDefinitionServiceInterface::class, [
+            'getFieldDefinitionAdapter' => $this->makeEmpty(RelationSummaryAdapterInterface::class),
+            'normalizeValue' => fn ($fieldDefinition, $value) => $value,
+        ]);
+        $relationSummaryService = $this->makeEmpty(RelationSummaryServiceInterface::class, [
+            'getRelationSummaries' => Expected::once($summaries),
+        ]);
+
+        $result = $this->createNormalizer(
+            fieldDefinitionService: $fieldDefinitionService,
+            relationSummaryService: $relationSummaryService,
+        )->normalize($dataObject);
+
+        $this->assertSame($summaries, $result[FieldCategory::STANDARD_FIELDS->value]['related']);
+    }
+
+    public function testFieldsWithoutRelationSummariesAreReadThroughTheGetter(): void
+    {
+        $dataObject = $this->createConcreteObjectMock(
+            $this->createClassDefinition(['related' => (new ManyToManyObjectRelation())->setName('related')]),
+            ['get' => Expected::once([])]
+        );
+
+        $fieldDefinitionService = $this->makeEmpty(FieldDefinitionServiceInterface::class, [
+            'getFieldDefinitionAdapter' => $this->makeEmpty(RelationSummaryAdapterInterface::class),
+        ]);
+        $relationSummaryService = $this->makeEmpty(RelationSummaryServiceInterface::class, [
+            'getRelationSummaries' => Expected::once(null),
+        ]);
+
+        $this->createNormalizer(
+            fieldDefinitionService: $fieldDefinitionService,
+            relationSummaryService: $relationSummaryService,
+        )->normalize($dataObject);
+    }
+
+    public function testRelationSummariesAreOnlyUsedWhenTheAdapterSupportsThem(): void
+    {
+        $dataObject = $this->createConcreteObjectMock(
+            $this->createClassDefinition(['related' => (new ManyToManyObjectRelation())->setName('related')]),
+            ['get' => Expected::once([])]
+        );
+
+        $relationSummaryService = $this->makeEmpty(RelationSummaryServiceInterface::class, [
+            'getRelationSummaries' => Expected::never(),
+        ]);
+
+        $this->createNormalizer(relationSummaryService: $relationSummaryService)->normalize($dataObject);
+    }
+
+    public function testInheritanceOfRelationFieldsIsResolvedFromRelationSummaries(): void
+    {
+        $summaries = new RelationSummaries(2, [['id' => 7, 'type' => 'object']]);
+        $classDefinition = $this->createClassDefinition([
+            'related' => (new ManyToManyObjectRelation())->setName('related'),
+        ]);
+        $classDefinition->setAllowInherit(true);
+        $dataObject = $this->createConcreteObjectMock($classDefinition, ['get' => Expected::never()]);
+
+        $fieldDefinitionService = $this->makeEmpty(FieldDefinitionServiceInterface::class, [
+            'getFieldDefinitionAdapter' => $this->makeEmpty(RelationSummaryAdapterInterface::class),
+            'getInheritedFieldData' => Expected::once(
+                function ($fieldDefinition, $object, $key, $value) use ($summaries) {
+                    $this->assertSame($summaries, $value);
+
+                    return [$key => ['originId' => 2]];
+                }
+            ),
+            'normalizeValue' => fn ($fieldDefinition, $value) => $value,
+        ]);
+        // read once for the inheritance origin and reused as the value
+        $relationSummaryService = $this->makeEmpty(RelationSummaryServiceInterface::class, [
+            'getRelationSummaries' => Expected::once($summaries),
+        ]);
+
+        $result = $this->createNormalizer(
+            fieldDefinitionService: $fieldDefinitionService,
+            relationSummaryService: $relationSummaryService,
+        )->normalize($dataObject);
+
+        $this->assertSame(
+            ['related' => ['originId' => 2]],
+            $result[FieldCategory::STANDARD_FIELDS->value][FieldCategory::INHERITED_FIELDS->value]
+        );
+        $this->assertSame($summaries, $result[FieldCategory::STANDARD_FIELDS->value]['related']);
     }
 }
