@@ -127,6 +127,7 @@ final class ClassificationStoreCheckSumTest extends Unit
     private function getGroupMapping(bool $keyLocalized, ?MultiValue $definition = null): array
     {
         $keyConfig = (new KeyConfig())->setId(self::KEY_ID);
+        $keyConfig->setName(self::KEY_NAME);
         $keyConfig->setLocalized($keyLocalized);
         $keyConfig->setIdentifier(self::KEY_IDENTIFIER);
         DefinitionCache::put($keyConfig);
@@ -167,9 +168,12 @@ final class ClassificationStoreCheckSumTest extends Unit
         $adapter->setEngineCapabilityService(
             $this->makeEmpty(EngineCapabilityServiceInterface::class, ['supports' => true])
         );
+        // the segment service resolves the key the fixture registered, as it does in an index update
         $adapter->setIndexSegmentService(new IndexSegmentService(
             $this->makeEmpty(GroupConfigResolverInterface::class),
-            $this->makeEmpty(KeyConfigResolverInterface::class)
+            $this->makeEmpty(KeyConfigResolverInterface::class, [
+                'getById' => static fn (int $id): ?KeyConfig => DefinitionCache::get($id),
+            ])
         ));
         // nothing memoized, so each build resolves the index flag of the key from its definition again
         $adapter->setRuntimeCacheResolver($this->makeEmpty(RuntimeCacheResolverInterface::class, [

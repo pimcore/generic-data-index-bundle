@@ -68,6 +68,11 @@ final readonly class IndexSegmentService implements IndexSegmentServiceInterface
      */
     public function normalizeSegment(string $name): ?string
     {
+        // the all-dot case with the dots left out: nothing is left to address either
+        if ($name === '') {
+            return null;
+        }
+
         if (!str_contains($name, self::PATH_SEPARATOR)) {
             return $name;
         }

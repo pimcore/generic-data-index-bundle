@@ -98,7 +98,27 @@ final class IndexSegmentServiceTest extends Unit
         $service = $this->createService(null, null);
 
         $this->assertSame('Rims', $service->normalizeSegment('Rims'));
-        $this->assertSame('', $service->normalizeSegment(''));
+    }
+
+    /**
+     * An empty name is the all-dot case with the dots left out: nothing is left to address, so it
+     * has no segment either. An empty string would otherwise name a key_ sibling the index never
+     * writes, and a group node the mapping never declares.
+     */
+    public function testAnEmptyNameHasNoSegment(): void
+    {
+        $service = $this->createService($this->createGroup(null, ''), $this->createKey(null, ''));
+
+        $this->assertNull($service->normalizeSegment(''));
+        $this->assertNull($service->getGroupSegment(self::GROUP_ID));
+        $this->assertNull($service->getKeySegment(self::KEY_ID));
+    }
+
+    public function testAnEmptyVariantNameAddressesNoSibling(): void
+    {
+        $service = $this->createService(null, $this->createKey(self::IDENTIFIER, 'Rim material'));
+
+        $this->assertNull($service->getKeySegment(self::KEY_ID, ''));
     }
 
     private function createService(?GroupConfig $group, ?KeyConfig $key): IndexSegmentService
