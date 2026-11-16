@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\Classificatio
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\EngineCapabilityServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -57,6 +58,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     private KeyLocaleServiceInterface $keyLocaleService;
 
     private EngineCapabilityServiceInterface $engineCapabilityService;
+
+    private IndexSegmentServiceInterface $indexSegmentService;
 
     /**
      * Keys whose engine refusal this mapping build has already reported, by key id. A key assigned to
@@ -96,6 +99,12 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     public function setEngineCapabilityService(EngineCapabilityServiceInterface $engineCapabilityService): void
     {
         $this->engineCapabilityService = $engineCapabilityService;
+    }
+
+    #[Required]
+    public function setIndexSegmentService(IndexSegmentServiceInterface $indexSegmentService): void
+    {
+        $this->indexSegmentService = $indexSegmentService;
     }
 
     /**
@@ -555,13 +564,11 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * store group or key name may carry a leading, trailing or doubled dot, and a single such name makes
      * the whole bulk request fail, so no element of the index gets updated at all.
      *
-     * Empty components are therefore dropped: ".A" and "A." become "A", "A..B" becomes "A.B". A name that
-     * contributes no empty component is returned unchanged, so nothing that indexes today is affected. A
-     * name consisting only of dots has nothing left and is skipped.
-     *
-     * Diagnostics are reported only from the mapping paths, which run once per index update. The document
-     * paths run per element and per locale and would otherwise repeat the same line for every object in
-     * the index.
+     * The rule itself belongs to {@see IndexSegmentServiceInterface} and is not restated here, so what a
+     * filter addresses and what the index writes cannot drift apart. This method is the diagnostics
+     * around it, and they are reported only from the mapping paths, which run once per index update. The
+     * document paths run per element and per locale and would otherwise repeat the same line for every
+     * object in the index.
      */
     private function normalizeNameSegment(
         string $name,
@@ -569,17 +576,13 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         int|string|null $id,
         bool $reportDiagnostics = false
     ): ?string {
-        if (!str_contains($name, '.')) {
-            return $name;
-        }
-
-        $normalized = implode('.', array_filter(explode('.', $name), static fn (string $part): bool => $part !== ''));
+        $normalized = $this->indexSegmentService->normalizeSegment($name);
 
         if ($normalized === $name) {
             return $normalized;
         }
 
-        if ($normalized === '') {
+        if ($normalized === null) {
             if ($reportDiagnostics) {
                 $this->logger->warning(sprintf(
                     'Skipping classification store %s %s: its name "%s" consists only of dots, ' .

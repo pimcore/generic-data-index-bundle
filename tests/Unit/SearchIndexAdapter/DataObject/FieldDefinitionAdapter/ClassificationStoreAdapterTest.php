@@ -28,11 +28,15 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataO
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\RelationAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\IndexMappingService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\EngineCapabilityServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
+use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\GroupConfigResolverInterface;
+use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\KeyConfigResolverInterface;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -2510,6 +2514,7 @@ final class ClassificationStoreAdapterTest extends Unit
             'getValidLanguages' => $validLanguages,
         ]));
         $adapter->setKeyLocaleService($this->createKeyLocaleService());
+        $adapter->setIndexSegmentService($this->createIndexSegmentService());
         $adapter->setEngineCapabilityService($engineCapabilityService ?? $this->createEngineCapabilityService());
         $adapter->setFieldDefinition($fieldDefinition ?? new Classificationstore());
         $adapter->setLogger($logger ?? $this->createCollectingLogger());
@@ -2546,6 +2551,19 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
+     * The real service too: the rule under test is the segment the adapter writes, which a stubbed
+     * answer would replace with the test's own. Only its lookups are stubbed - the adapter asks it
+     * for the normalization alone and resolves the identifiers itself.
+     */
+    private function createIndexSegmentService(): IndexSegmentServiceInterface
+    {
+        return new IndexSegmentService(
+            $this->makeEmpty(GroupConfigResolverInterface::class),
+            $this->makeEmpty(KeyConfigResolverInterface::class)
+        );
+    }
+
+    /**
      * @param EngineFeature[] $refused the capabilities the engine behind the store lacks
      */
     private function createEngineCapabilityService(array $refused = []): EngineCapabilityServiceInterface
@@ -2570,10 +2588,13 @@ final class ClassificationStoreAdapterTest extends Unit
 
     private function createAdapter(): ClassificationStoreAdapter
     {
-        return new ClassificationStoreAdapter(
+        $adapter = new ClassificationStoreAdapter(
             $this->makeEmpty(SearchIndexConfigServiceInterface::class),
             $this->makeEmpty(FieldDefinitionServiceInterface::class)
         );
+        $adapter->setIndexSegmentService($this->createIndexSegmentService());
+
+        return $adapter;
     }
 
     private function createCollectingLogger(): AbstractLogger
