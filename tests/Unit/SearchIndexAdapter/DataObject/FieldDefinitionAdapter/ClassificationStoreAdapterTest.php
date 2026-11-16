@@ -28,11 +28,15 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataO
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\RelationAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\IndexMappingService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\EngineCapabilityServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
+use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\GroupConfigResolverInterface;
+use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\KeyConfigResolverInterface;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\AbstractObject;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -120,8 +124,18 @@ final class ClassificationStoreAdapterTest extends Unit
 
     private const OTHER_KEY_IDENTIFIER = '01OTHERKEY';
 
+    private const GROUP_IDENTIFIER = '01GROUPIDENT';
+
+    /**
+     * The group configurations of the case, which is what the segment service resolves a group id in.
+     *
+     * @var array<int, GroupConfig>
+     */
+    private array $groups = [];
+
     protected function _after(): void
     {
+        $this->groups = [];
         DefinitionCache::clear(null);
         (new ReflectionProperty(ClassificationstoreService::class, 'definitionsCache'))->setValue(null, []);
     }
@@ -375,6 +389,51 @@ final class ClassificationStoreAdapterTest extends Unit
         $this->assertSame([self::KEY_NAME], array_keys($mapping[self::DEFAULT_LANGUAGE][self::PROPERTIES]));
         $this->assertSame([self::KEY_ID], array_keys($this->getKeyMappingForInheritance($relations)));
         $this->assertCount(1, $document);
+    }
+
+    /**
+     * The group side of the same rule: the segment is the one the service answers, and the name
+     * fallback of a group without an identifier is reported from the mapping path alone - the
+     * document path walks the active groups of every element.
+     */
+    public function testAGroupIsAddressedByItsIdentifierAndItsNameFallbackIsReportedFromTheMappingPathOnly(): void
+    {
+        $logger = $this->createCollectingLogger();
+        $adapter = $this->createConfiguredAdapter([], null, $logger);
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'getGroupSegment');
+
+        $identified = $this->registerGroup(self::GROUP_ID, self::GROUP_NAME, self::GROUP_IDENTIFIER);
+        $named = $this->registerGroup(self::OTHER_GROUP_ID, self::GROUP_NAME . '.', null);
+
+        $this->assertSame(self::GROUP_IDENTIFIER, $method->invoke($adapter, $identified, true));
+        $this->assertSame([], $logger->records, 'a group carrying an identifier is reported on neither count');
+
+        $this->assertSame(self::GROUP_NAME, $method->invoke($adapter, $named, true));
+        $this->assertCount(2, $logger->records);
+        $this->assertStringContainsString('has no identifier', $logger->records[0]['message']);
+        $this->assertSame('info', $logger->records[1]['level']);
+
+        // a build of its own, so it is the silence of the document path and not the once-per-build memo
+        $this->assertSame(
+            self::GROUP_NAME,
+            $method->invoke($this->createConfiguredAdapter([], null, $logger), $named)
+        );
+        $this->assertCount(2, $logger->records, 'the document path stays silent');
+    }
+
+    public function testAGroupWhoseNameLeavesNoSegmentIsSkippedWithAWarning(): void
+    {
+        $logger = $this->createCollectingLogger();
+
+        $this->assertNull(
+            (new ReflectionMethod(ClassificationStoreAdapter::class, 'getGroupSegment'))->invoke(
+                $this->createConfiguredAdapter([], null, $logger),
+                $this->registerGroup(self::GROUP_ID, '..', null),
+                true
+            )
+        );
+        $this->assertCount(2, $logger->records);
+        $this->assertStringContainsString('consists only of dots', $logger->records[1]['message']);
     }
 
     public function testAKeyThatIsNotIndexedIsNotReportedAsIndexedByItsName(): void
@@ -2443,7 +2502,12 @@ final class ClassificationStoreAdapterTest extends Unit
         ?bool $localized = null,
         ?string $identifier = self::SAME_AS_NAME
     ): KeyGroupRelation {
-        $this->registerKey($keyId, $localized, $identifier === self::SAME_AS_NAME ? $this->getNameAsIdentifier($name) : $identifier);
+        $this->registerKey(
+            $keyId,
+            $localized,
+            $identifier === self::SAME_AS_NAME ? $this->getNameAsIdentifier($name) : $identifier,
+            $name
+        );
 
         $relation = new KeyGroupRelation();
         $relation->setKeyId($keyId);
@@ -2460,9 +2524,29 @@ final class ClassificationStoreAdapterTest extends Unit
         return preg_match('/\A[A-Za-z0-9][A-Za-z0-9_-]*\z/', $name) === 1 ? $name : null;
     }
 
-    private function registerKey(int $keyId, ?bool $localized, ?string $identifier = null): void
+    private function registerGroup(int $groupId, string $name, ?string $identifier): GroupConfig
     {
+        $group = (new GroupConfig())->setId($groupId)->setName($name);
+        if ($identifier !== null) {
+            $group->setIdentifier($identifier);
+        }
+        $this->groups[$groupId] = $group;
+
+        return $group;
+    }
+
+    /**
+     * The key configuration carries the name the relation listing hands over, because the listing
+     * reads both from the keys table: the name fallback of the segment is the same either way.
+     */
+    private function registerKey(
+        int $keyId,
+        ?bool $localized,
+        ?string $identifier = null,
+        string $name = self::KEY_NAME
+    ): void {
         $keyConfig = (new KeyConfig())->setId($keyId);
+        $keyConfig->setName($name);
         $keyConfig->setLocalized($localized);
         if ($identifier !== null) {
             $keyConfig->setIdentifier($identifier);
@@ -2510,6 +2594,7 @@ final class ClassificationStoreAdapterTest extends Unit
             'getValidLanguages' => $validLanguages,
         ]));
         $adapter->setKeyLocaleService($this->createKeyLocaleService());
+        $adapter->setIndexSegmentService($this->createIndexSegmentService());
         $adapter->setEngineCapabilityService($engineCapabilityService ?? $this->createEngineCapabilityService());
         $adapter->setFieldDefinition($fieldDefinition ?? new Classificationstore());
         $adapter->setLogger($logger ?? $this->createCollectingLogger());
@@ -2546,6 +2631,23 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
+     * The real service too: the rule under test is the segment the adapter writes, which a stubbed
+     * answer would replace with the test's own. Only its lookups are stubbed, and they answer from
+     * the same registries the fixture puts the group and key configurations in.
+     */
+    private function createIndexSegmentService(): IndexSegmentServiceInterface
+    {
+        return new IndexSegmentService(
+            $this->makeEmpty(GroupConfigResolverInterface::class, [
+                'getById' => fn (int $id): ?GroupConfig => $this->groups[$id] ?? null,
+            ]),
+            $this->makeEmpty(KeyConfigResolverInterface::class, [
+                'getById' => static fn (int $id): ?KeyConfig => DefinitionCache::get($id),
+            ])
+        );
+    }
+
+    /**
      * @param EngineFeature[] $refused the capabilities the engine behind the store lacks
      */
     private function createEngineCapabilityService(array $refused = []): EngineCapabilityServiceInterface
@@ -2570,10 +2672,13 @@ final class ClassificationStoreAdapterTest extends Unit
 
     private function createAdapter(): ClassificationStoreAdapter
     {
-        return new ClassificationStoreAdapter(
+        $adapter = new ClassificationStoreAdapter(
             $this->makeEmpty(SearchIndexConfigServiceInterface::class),
             $this->makeEmpty(FieldDefinitionServiceInterface::class)
         );
+        $adapter->setIndexSegmentService($this->createIndexSegmentService());
+
+        return $adapter;
     }
 
     private function createCollectingLogger(): AbstractLogger

@@ -21,12 +21,15 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataO
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\EngineCapabilityServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AbstractIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
+use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\GroupConfigResolverInterface;
+use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\KeyConfigResolverInterface;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
@@ -124,6 +127,7 @@ final class ClassificationStoreCheckSumTest extends Unit
     private function getGroupMapping(bool $keyLocalized, ?MultiValue $definition = null): array
     {
         $keyConfig = (new KeyConfig())->setId(self::KEY_ID);
+        $keyConfig->setName(self::KEY_NAME);
         $keyConfig->setLocalized($keyLocalized);
         $keyConfig->setIdentifier(self::KEY_IDENTIFIER);
         DefinitionCache::put($keyConfig);
@@ -164,6 +168,13 @@ final class ClassificationStoreCheckSumTest extends Unit
         $adapter->setEngineCapabilityService(
             $this->makeEmpty(EngineCapabilityServiceInterface::class, ['supports' => true])
         );
+        // the segment service resolves the key the fixture registered, as it does in an index update
+        $adapter->setIndexSegmentService(new IndexSegmentService(
+            $this->makeEmpty(GroupConfigResolverInterface::class),
+            $this->makeEmpty(KeyConfigResolverInterface::class, [
+                'getById' => static fn (int $id): ?KeyConfig => DefinitionCache::get($id),
+            ])
+        ));
         // nothing memoized, so each build resolves the index flag of the key from its definition again
         $adapter->setRuntimeCacheResolver($this->makeEmpty(RuntimeCacheResolverInterface::class, [
             'isRegistered' => false,

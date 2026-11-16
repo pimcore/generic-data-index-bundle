@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\Classificatio
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\EngineCapabilityServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -57,6 +58,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     private KeyLocaleServiceInterface $keyLocaleService;
 
     private EngineCapabilityServiceInterface $engineCapabilityService;
+
+    private IndexSegmentServiceInterface $indexSegmentService;
 
     /**
      * Keys whose engine refusal this mapping build has already reported, by key id. A key assigned to
@@ -98,6 +101,12 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $this->engineCapabilityService = $engineCapabilityService;
     }
 
+    #[Required]
+    public function setIndexSegmentService(IndexSegmentServiceInterface $indexSegmentService): void
+    {
+        $this->indexSegmentService = $indexSegmentService;
+    }
+
     /**
      * @throws InvalidArgumentException
      */
@@ -114,9 +123,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             $classificationStore
         );
         foreach ($groups as $group) {
-            $groupIdentifier = $group->getIdentifier();
-            $groupName = $groupIdentifier
-                ?? $this->getNameFallbackSegment($group->getName(), 'group', $group->getId(), true);
+            $groupName = $this->getGroupSegment($group, true);
             if ($groupName === null
                 || $this->isTakenNameSegment($mapping, $groupName, $group->getName(), 'group', $group->getId(), true)
             ) {
@@ -159,8 +166,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $resultItems = [];
 
         foreach ($this->getActiveGroups($value) as $groupId => $groupConfig) {
-            $groupIdentifier = $groupConfig->getIdentifier();
-            $groupName = $groupIdentifier ?? $this->getNameFallbackSegment($groupConfig->getName(), 'group', $groupId);
+            $groupName = $this->getGroupSegment($groupConfig);
             if ($groupName === null
                 || $this->isTakenNameSegment($resultItems, $groupName, $groupConfig->getName(), 'group', $groupId)
             ) {
@@ -240,8 +246,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         }
 
         $definition = $this->getFieldDefinitionForKey($key);
-        $keyIdentifier = $this->getKeyIdentifier($key);
-        $keyName = $keyIdentifier ?? $this->getNameFallbackSegment($key->getName(), 'key', $key->getKeyId());
+        $keyName = $this->getKeySegment($key);
 
         if ($keyName === null
             || ($definition !== null && $this->getValueAdapterForKey($definition) === null)
@@ -256,7 +261,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
         return [
             'name' => $keyName,
-            'variants' => $this->getVariantSiblingNames($usedKeyNames, $keyName, $definition, $key),
+            'variants' => $this->getVariantSiblingNames($usedKeyNames, $definition, $key),
             'multiValue' => $definition instanceof MultiValue && $definition->isMultiValue(),
         ];
     }
@@ -516,17 +521,53 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
-     * The identifier is a dot-free segment that cannot collide, so it needs neither normalizing nor a
-     * collision check; the name of an entity without one is the fallback, reported once per entity from
-     * the mapping path alone.
+     * The segment a group is indexed under, answered by the service that owns the rule, with the
+     * diagnostics of the mapping path wrapped around its answer.
      */
-    private function getNameFallbackSegment(
-        string $name,
-        string $type,
-        int $id,
-        bool $reportDiagnostics = false
-    ): ?string {
-        if ($reportDiagnostics && !isset($this->reportedMissingIdentifiers[$type][$id])) {
+    private function getGroupSegment(GroupConfig $group, bool $reportDiagnostics = false): ?string
+    {
+        $segment = $this->indexSegmentService->getGroupSegment($group->getId());
+
+        if ($reportDiagnostics && $group->getIdentifier() === null) {
+            $this->reportNameFallback($segment, $group->getName(), 'group', $group->getId());
+        }
+
+        return $segment;
+    }
+
+    /**
+     * The segment a key is indexed under, from the same service and with the same diagnostics. The
+     * caller has asked {@see self::isIndexedKey()} first, so the key id is known to be set.
+     */
+    private function getKeySegment(KeyGroupRelation $key, bool $reportDiagnostics = false): ?string
+    {
+        $segment = $this->indexSegmentService->getKeySegment($key->getKeyId());
+
+        if ($reportDiagnostics && !$this->keyHasIdentifier($key)) {
+            $this->reportNameFallback($segment, $key->getName(), 'key', $key->getKeyId());
+        }
+
+        return $segment;
+    }
+
+    /**
+     * Whether the key configuration carries an identifier - the question the diagnostic below is
+     * about, not which segment the key is indexed under. The relation listing carries no identifier,
+     * so it is read from the key configuration by key id, and only from the mapping path.
+     */
+    private function keyHasIdentifier(KeyGroupRelation $key): bool
+    {
+        return DefinitionCache::get($key->getKeyId())?->getIdentifier() !== null;
+    }
+
+    /**
+     * The diagnostics of an entity the index addresses by its name: that it has no identifier, once
+     * per entity and per build, and what the normalization did to the name. An identifier is a
+     * dot-free segment that cannot collide, so an entity carrying one is reported on neither count.
+     */
+    private function reportNameFallback(?string $segment, string $name, string $type, int $id): void
+    {
+        if (!isset($this->reportedMissingIdentifiers[$type][$id])) {
             $this->reportedMissingIdentifiers[$type][$id] = true;
             $this->logger->warning(sprintf(
                 'Classification store %s %d "%s" has no identifier and is indexed by its name. ' .
@@ -537,31 +578,20 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             ));
         }
 
-        return $this->normalizeNameSegment($name, $type, $id, $reportDiagnostics);
+        $this->reportNameSegment($segment, $name, $type, $id);
     }
 
     /**
-     * The relation listing carries no identifier, so it is read from the key configuration by key id; the
-     * caller has asked {@see self::isIndexedKey()} first, so the key id is known to be set.
-     */
-    private function getKeyIdentifier(KeyGroupRelation $key): ?string
-    {
-        return DefinitionCache::get($key->getKeyId())?->getIdentifier();
-    }
-
-    /**
-     * The search index splits a field path on dots, so a name segment must not add an empty component:
-     * "object field starting or ending with a [.] makes object resolution ambiguous". A classification
-     * store group or key name may carry a leading, trailing or doubled dot, and a single such name makes
-     * the whole bulk request fail, so no element of the index gets updated at all.
+     * The segment of a name the service is not asked about by id - a declared variant name. The search
+     * index splits a field path on dots, so a name segment must not add an empty component: "object
+     * field starting or ending with a [.] makes object resolution ambiguous", and a single such name
+     * makes the whole bulk request fail, so no element of the index gets updated at all.
      *
-     * Empty components are therefore dropped: ".A" and "A." become "A", "A..B" becomes "A.B". A name that
-     * contributes no empty component is returned unchanged, so nothing that indexes today is affected. A
-     * name consisting only of dots has nothing left and is skipped.
-     *
-     * Diagnostics are reported only from the mapping paths, which run once per index update. The document
-     * paths run per element and per locale and would otherwise repeat the same line for every object in
-     * the index.
+     * The rule itself belongs to {@see IndexSegmentServiceInterface} and is not restated here, so what a
+     * filter addresses and what the index writes cannot drift apart. This method is the diagnostics
+     * around it, and they are reported only from the mapping paths, which run once per index update. The
+     * document paths run per element and per locale and would otherwise repeat the same line for every
+     * object in the index.
      */
     private function normalizeNameSegment(
         string $name,
@@ -569,42 +599,42 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         int|string|null $id,
         bool $reportDiagnostics = false
     ): ?string {
-        if (!str_contains($name, '.')) {
-            return $name;
-        }
-
-        $normalized = implode('.', array_filter(explode('.', $name), static fn (string $part): bool => $part !== ''));
-
-        if ($normalized === $name) {
-            return $normalized;
-        }
-
-        if ($normalized === '') {
-            if ($reportDiagnostics) {
-                $this->logger->warning(sprintf(
-                    'Skipping classification store %s %s: its name "%s" consists only of dots, ' .
-                    'which cannot be used as a search index field name.',
-                    $type,
-                    (string) $id,
-                    $name
-                ));
-            }
-
-            return null;
-        }
+        $normalized = $this->indexSegmentService->normalizeSegment($name);
 
         if ($reportDiagnostics) {
-            $this->logger->info(sprintf(
-                'Classification store %s %s is indexed as "%s": its name "%s" would add an empty component ' .
-                'to the field path, which the search index does not allow.',
-                $type,
-                (string) $id,
-                $normalized,
-                $name
-            ));
+            $this->reportNameSegment($normalized, $name, $type, $id);
         }
 
         return $normalized;
+    }
+
+    /** What the normalization did to a name, for the callers that report it. */
+    private function reportNameSegment(?string $segment, string $name, string $type, int|string|null $id): void
+    {
+        if ($segment === $name) {
+            return;
+        }
+
+        if ($segment === null) {
+            $this->logger->warning(sprintf(
+                'Skipping classification store %s %s: its name "%s" consists only of dots, ' .
+                'which cannot be used as a search index field name.',
+                $type,
+                (string) $id,
+                $name
+            ));
+
+            return;
+        }
+
+        $this->logger->info(sprintf(
+            'Classification store %s %s is indexed as "%s": its name "%s" would add an empty component ' .
+            'to the field path, which the search index does not allow.',
+            $type,
+            (string) $id,
+            $segment,
+            $name
+        ));
     }
 
     /**
@@ -754,9 +784,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 continue;
             }
 
-            $groupIdentifier = $group->getIdentifier();
-            $groupName = $groupIdentifier
-                ?? $this->getNameFallbackSegment($group->getName(), 'group', $group->getId());
+            $groupName = $this->getGroupSegment($group);
             if ($groupName === null
                 || $this->isTakenNameSegment($usedGroupNames, $groupName, $group->getName(), 'group', $group->getId())
             ) {
@@ -809,8 +837,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             }
 
             $keyId = $groupKey->getKeyId();
-            $keyIdentifier = $this->getKeyIdentifier($groupKey);
-            $keyName = $keyIdentifier ?? $this->getNameFallbackSegment($groupKey->getName(), 'key', $keyId);
+            $keyName = $this->getKeySegment($groupKey);
             if ($keyName === null
                 || $this->isTakenNameSegment($usedKeyNames, $keyName, $groupKey->getName(), 'key', $keyId)
             ) {
@@ -819,7 +846,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
             $usedKeyNames[$keyName] = true;
 
-            $variantNames = $this->getVariantSiblingNames($usedKeyNames, $keyName, $definition, $groupKey);
+            $variantNames = $this->getVariantSiblingNames($usedKeyNames, $definition, $groupKey);
             foreach ($variantNames as $siblingName) {
                 $usedKeyNames[$siblingName] = true;
             }
@@ -929,8 +956,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         }
 
         // the name fallback is resolved, and reported, only for a key that is going to be declared
-        $keyName = $this->getKeyIdentifier($key)
-            ?? $this->getNameFallbackSegment($key->getName(), 'key', $key->getKeyId(), true);
+        $keyName = $this->getKeySegment($key, true);
         if ($keyName === null
             || $this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId(), true)
         ) {
@@ -939,7 +965,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
         // the bare name is reserved before the siblings are named, so no sibling can take it
         $usedKeyNames[$keyName] = true;
-        $variantNames = $this->getVariantSiblingNames($usedKeyNames, $keyName, $definition, $key, true);
+        $variantNames = $this->getVariantSiblingNames($usedKeyNames, $definition, $key, true);
 
         return array_fill_keys([$keyName, ...array_values($variantNames)], $adapter->getIndexMapping());
     }
@@ -1028,7 +1054,6 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      */
     private function getVariantSiblingNames(
         array $usedKeyNames,
-        string $keyName,
         ?Data $definition,
         KeyGroupRelation $key,
         bool $reportDiagnostics = false
@@ -1040,12 +1065,15 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $siblingNames = [];
 
         foreach ($definition->getVariantNames() as $variantName) {
+            // the variant name is reported here, the sibling it belongs to is composed by the service
             $variantSegment = $this->normalizeNameSegment($variantName, 'variant', $variantName, $reportDiagnostics);
-            if ($variantSegment === null) {
+            $siblingName = $variantSegment === null
+                ? null
+                : $this->indexSegmentService->getKeySegment($key->getKeyId(), $variantName);
+            if ($siblingName === null) {
                 continue;
             }
 
-            $siblingName = $keyName . '_' . $variantSegment;
             if ($this->isTakenNameSegment(
                 $usedKeyNames,
                 $siblingName,
