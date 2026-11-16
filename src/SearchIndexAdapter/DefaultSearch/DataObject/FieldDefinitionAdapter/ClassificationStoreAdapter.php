@@ -986,8 +986,9 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * The capability a key's declaration needs and the engine behind the store lacks, null for a key
      * the engine can hold: a key declaring `variants` needs Variants, and one declaring none needs
      * nothing, so it is unaffected on every engine. The second condition of "this key is indexed"
-     * every path asks, right after the value adapter, so the mapping, the document and the inheritance walk drop the same keys. The diagnostic is not raised
-     * here: it belongs to the mapping path alone.
+     * every path asks, right after the value adapter, so the mapping, the document and the
+     * inheritance walk drop the same keys. The diagnostic is not raised here: it belongs to the
+     * mapping path alone.
      */
     private function getMissingEngineFeature(?Data $definition): ?EngineFeature
     {
