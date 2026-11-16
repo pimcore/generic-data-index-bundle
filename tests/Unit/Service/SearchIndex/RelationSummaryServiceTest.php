@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex;
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\RelationSummaryService;
+use Pimcore\Model\DataObject\ClassDefinition\Data\LightweightRelationLoadingInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyObjectRelation;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToOneRelation;
 use Pimcore\Model\DataObject\Concrete;
@@ -30,6 +31,13 @@ require_once __DIR__ . '/Fixture/GdiRelationSummaryProbe.php';
  */
 final class RelationSummaryServiceTest extends Unit
 {
+    protected function _before(): void
+    {
+        if (!interface_exists(LightweightRelationLoadingInterface::class)) {
+            $this->markTestSkipped('LightweightRelationLoadingInterface requires pimcore/pimcore 2026.3.3 or later');
+        }
+    }
+
     public function testReadsTheRelationsOfTheObjectWithoutTheGetter(): void
     {
         $object = $this->createProbe(10);
