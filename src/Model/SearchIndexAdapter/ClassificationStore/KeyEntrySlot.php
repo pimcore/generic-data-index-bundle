@@ -30,8 +30,6 @@ final class KeyEntrySlot
      * @param Data $definition the key's resolved field definition, which decides what counts as empty
      * @param string $storeKey the name of the classification store field on the class
      * @param string|null $variant the declared variant of a sibling entry, null for the bare entry
-     * @param bool $multiValue whether the key's declaration permits a list, which is what decides
-     *                         whether the bare entry is read as one
      */
     public function __construct(
         private readonly Data $definition,
@@ -39,7 +37,6 @@ final class KeyEntrySlot
         private readonly int $groupId,
         private readonly int $keyId,
         private readonly ?string $variant,
-        private readonly bool $multiValue,
     ) {
     }
 
@@ -66,10 +63,5 @@ final class KeyEntrySlot
     public function getVariant(): ?string
     {
         return $this->variant;
-    }
-
-    public function isMultiValue(): bool
-    {
-        return $this->multiValue;
     }
 }

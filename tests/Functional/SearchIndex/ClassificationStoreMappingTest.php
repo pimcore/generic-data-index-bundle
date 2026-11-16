@@ -952,7 +952,6 @@ class ClassificationStoreMappingTest extends Unit
             'name' => self::VARIANT_KEY_NAME,
             'title' => self::VARIANT_KEY_NAME,
             'variants' => [['name' => self::VARIANT_NAME]],
-            'multiValue' => false,
             'delegateDatatype' => self::KEY_TYPE,
             'delegate' => [
                 'fieldtype' => self::KEY_TYPE,
