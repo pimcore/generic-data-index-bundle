@@ -14,12 +14,16 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\DataObject\FieldDefinitionAdapter;
 
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\RelationSummaries;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\RelationAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Model\Asset\Image;
+use Pimcore\Model\DataObject\ClassDefinition\Data;
+use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyObjectRelation;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToManyRelation;
 use Pimcore\Model\DataObject\ClassDefinition\Data\ManyToOneRelation;
+use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\Document\Page;
 
 /**
@@ -96,5 +100,56 @@ final class RelationAdapterTest extends Unit
             'asset' => [1],
             'document' => [],
         ], $adapter->normalize($image));
+    }
+
+    public function testNormalizeRelationSummaries()
+    {
+        $adapter = $this->createAdapter(new ManyToManyRelation());
+
+        $this->assertSame([
+            'object' => [3],
+            'asset' => [1, 4],
+            'document' => [5],
+        ], $adapter->normalize(new RelationSummaries(10, [
+            ['id' => 1, 'type' => 'asset'],
+            ['id' => 3, 'type' => 'object'],
+            ['id' => 5, 'type' => 'document'],
+            ['id' => 4, 'type' => 'asset'],
+        ])));
+    }
+
+    public function testOwnRelationSummariesAreNotInherited()
+    {
+        $adapter = $this->createAdapter((new ManyToManyObjectRelation())->setName('related'));
+
+        $this->assertSame([], $adapter->getInheritedData(
+            $this->makeEmpty(Concrete::class, ['getId' => 10]),
+            10,
+            new RelationSummaries(10, []),
+            'related'
+        ));
+    }
+
+    public function testRelationSummariesOfAnAncestorAreInherited()
+    {
+        $adapter = $this->createAdapter((new ManyToManyObjectRelation())->setName('related'));
+
+        $this->assertSame(['related' => ['originId' => 2]], $adapter->getInheritedData(
+            $this->makeEmpty(Concrete::class, ['getId' => 10]),
+            10,
+            new RelationSummaries(2, [['id' => 7, 'type' => 'object']]),
+            'related'
+        ));
+    }
+
+    private function createAdapter(Data $fieldDefinition): RelationAdapter
+    {
+        $adapter = new RelationAdapter(
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
+            $this->makeEmpty(FieldDefinitionServiceInterface::class)
+        );
+        $adapter->setFieldDefinition($fieldDefinition);
+
+        return $adapter;
     }
 }

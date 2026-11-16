@@ -54,6 +54,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedValueQueryStoreServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedValueQueryStoreService
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\RelationSummaryServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\RelationSummaryService
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService
 
