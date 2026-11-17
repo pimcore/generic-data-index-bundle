@@ -7,7 +7,9 @@ description: Configure Elasticsearch as the search engine for the Generic Data I
 
 :::info
 
-Requires Elasticsearch >= 8.12.2
+Requires Elasticsearch >= 8.12.2 (8.x or 9.x). The `elasticsearch/elasticsearch` client major must match the
+server major: Elasticsearch 9 needs `pimcore/elasticsearch-client` >= 2026.4 with the 9.x client — see the
+[Pimcore Elasticsearch Client](https://github.com/pimcore/elasticsearch-client) upgrade notes.
 
 :::
 
