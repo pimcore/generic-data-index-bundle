@@ -60,6 +60,7 @@ use Pimcore\Model\DataObject\Classificationstore\LocalizationResolver;
 use Pimcore\Model\DataObject\Classificationstore\Service as ClassificationstoreService;
 use Pimcore\Model\DataObject\Concrete;
 use Psr\Log\AbstractLogger;
+use ReflectionClass;
 use ReflectionMethod;
 use ReflectionProperty;
 
@@ -980,6 +981,67 @@ final class ClassificationStoreAdapterTest extends Unit
             [],
             $method->invoke($adapter, [$unhydrated], $languages),
             'the cached "true" must not declare a key the second group cannot resolve'
+        );
+    }
+
+    /**
+     * A key assigned to several groups is resolved once per build, not once per assignment. What a key
+     * declares - the value definition, the adapter of its value type, the segment it is declared under
+     * and the composed node - is about the KEY: the only thing a group assignment can change is
+     * {@see KeyGroupRelation::OVERRIDABLE_PROPERTIES}, and none of those three is declared in a mapping.
+     *
+     * A store whose keys are shared between groups pays for the repetition twice - once in the
+     * resolution, which memoizes a definition per (group, key) in
+     * {@see ClassificationstoreService::$definitionsCache}, and once in the node, which is copied into
+     * every group instead of being shared with it. On a 5,640-group ETIM store (76,625 assignments of
+     * 17,377 keys) resolving once per key took the build's own memory from 148 MiB to 70 MiB and left
+     * the mapping byte for byte identical.
+     *
+     * Two groups, one key, one adapter - which is what getIndexMapping() does for the whole store.
+     */
+    public function testAKeyAssignedToSeveralGroupsIsResolvedOnlyOnce(): void
+    {
+        $resolutions = 0;
+        $adapter = $this->createConfiguredAdapter([], $this->createFieldDefinition(false));
+        $adapter->setClassificationService($this->makeEmpty(ServiceResolverInterface::class, [
+            'getFieldDefinitionFromKeyConfig' => function () use (&$resolutions): Data {
+                ++$resolutions;
+
+                return new Input();
+            },
+        ]));
+
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'getMappingForGroupConfig');
+        $languages = $this->getDeclarableLanguages($adapter);
+
+        $first = $method->invoke(
+            $adapter,
+            [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)],
+            $languages
+        );
+        $second = $method->invoke(
+            $adapter,
+            [$this->createRelation(self::KEY_ID, self::OTHER_GROUP_ID, self::KEY_NAME)],
+            $languages
+        );
+
+        $this->assertSame(1, $resolutions, 'the second assignment of the key must not resolve it again');
+        $this->assertSame([self::DEFAULT_LANGUAGE => self::LANGUAGE_NODE], $first);
+        $this->assertSame($first, $second, 'both groups declare the same node');
+    }
+
+    /**
+     * The closed list the memo above rests on. A mapping node is built from the effective definition of
+     * an assignment, so it is the same under every assignment of a key only as long as an override
+     * cannot reach anything a node declares: an option list and a unit list are value domains, and no
+     * value type declares either as a field. If core ever widens this list, this is the line that says
+     * the premise has to be re-checked rather than the mapping silently differing per group.
+     */
+    public function testOnlyValueDomainsCanBeOverriddenPerAssignment(): void
+    {
+        $this->assertSame(
+            ['options', 'defaultUnit', 'validUnits'],
+            (new ReflectionClass(KeyGroupRelation::class))->getConstant('OVERRIDABLE_PROPERTIES')
         );
     }
 

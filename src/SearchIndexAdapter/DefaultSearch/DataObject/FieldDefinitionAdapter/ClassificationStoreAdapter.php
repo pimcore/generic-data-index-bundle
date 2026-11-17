@@ -79,6 +79,16 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      */
     private array $reportedMissingIdentifiers = [];
 
+    /**
+     * What each key declares in the mapping, by key id, for the build that is running; null for a key
+     * that declares nothing. See {@see self::getKeyDeclaration()} for why one entry answers for every
+     * assignment of the key. Reset at the start of every build, so a definition edited between two
+     * builds is read again.
+     *
+     * @var array<int, array{keyName: string, variants: array<string, string>, node: array}|null>
+     */
+    private array $keyDeclarations = [];
+
     #[Required]
     public function setClassificationService(ServiceResolverInterface $serviceResolver): void
     {
@@ -125,6 +135,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $mapping = [];
         $this->reportedEngineRefusals = [];
         $this->reportedMissingIdentifiers = [];
+        $this->keyDeclarations = [];
 
         $groups = $this->filterAllowedGroups(
             $this->getClassificationStoreGroups($classificationStore->getStoreId()),
@@ -141,6 +152,11 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             $keys = $this->getClassificationStoreKeysFromGroup($group);
             $mapping[$groupName]['properties'] = $this->getMappingForGroupConfig($keys, $validLanguages);
         }
+
+        // build-scoped: the nodes it holds are the ones the mapping carries, and the caller is about
+        // to own them - keeping the memo would keep a second reference to all of them for the life
+        // of the process
+        $this->keyDeclarations = [];
 
         return $this->getNestedRootMapping($mapping);
     }
@@ -933,6 +949,65 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             return null;
         }
 
+        $declaration = $this->getKeyDeclaration($key);
+        if ($declaration === null) {
+            return null;
+        }
+
+        $keyName = $declaration['keyName'];
+        if ($this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId(), true)) {
+            return null;
+        }
+
+        // the bare name is reserved before the siblings are named, so no sibling can take it
+        $usedKeyNames[$keyName] = true;
+        $variantNames = $this->filterTakenSiblings($usedKeyNames, $declaration['variants'], $key, true);
+
+        return array_fill_keys([$keyName, ...array_values($variantNames)], $declaration['node']);
+    }
+
+    /**
+     * What a key declares in the mapping, memoized by key id: the node, the segment it is declared
+     * under and the sibling candidates of its variants - everything that is about the KEY and not
+     * about the group the assignment is in.
+     *
+     * A key assigned to several groups declares the same node in each of them. The only thing a group
+     * assignment can change about the definition a node is built from is
+     * {@see KeyGroupRelation::OVERRIDABLE_PROPERTIES} - the option subset, the default unit and the
+     * valid units - and no value type declares any of them in its mapping: an option list is a value
+     * domain, not a field, and the unit of a quantity value is indexed as `unitId` whatever the valid
+     * units are. What the node does depend on - the type and, for a `multiValue`, the variant names -
+     * comes from the key's own definition and is the same under every assignment.
+     *
+     * Resolving it once per key rather than once per assignment is also what keeps the node SHARED
+     * between the groups: the array is handed to every assignment of the key, and PHP refcounts it
+     * instead of copying it, so a key in 20 groups costs one node rather than 20.
+     *
+     * Only a key that is going to be declared is resolved, and the diagnostics of the resolution are
+     * raised on its first assignment, which is where they were raised before: the three reports they
+     * go through deduplicate by key id anyway.
+     *
+     * @return array{keyName: string, variants: array<string, string>, node: array}|null
+     *
+     * @throws InvalidArgumentException
+     */
+    private function getKeyDeclaration(KeyGroupRelation $key): ?array
+    {
+        $keyId = $key->getKeyId();
+        if (array_key_exists($keyId, $this->keyDeclarations)) {
+            return $this->keyDeclarations[$keyId];
+        }
+
+        return $this->keyDeclarations[$keyId] = $this->resolveKeyDeclaration($key);
+    }
+
+    /**
+     * @return array{keyName: string, variants: array<string, string>, node: array}|null
+     *
+     * @throws InvalidArgumentException
+     */
+    private function resolveKeyDeclaration(KeyGroupRelation $key): ?array
+    {
         $definition = $this->getFieldDefinitionForKey($key);
         if ($definition === null) {
             return null;
@@ -958,17 +1033,15 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
         // the name fallback is resolved, and reported, only for a key that is going to be declared
         $keyName = $this->getKeySegment($key, true);
-        if ($keyName === null
-            || $this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId(), true)
-        ) {
+        if ($keyName === null) {
             return null;
         }
 
-        // the bare name is reserved before the siblings are named, so no sibling can take it
-        $usedKeyNames[$keyName] = true;
-        $variantNames = $this->getVariantSiblingNames($usedKeyNames, $definition, $key, true);
-
-        return array_fill_keys([$keyName, ...array_values($variantNames)], $adapter->getIndexMapping());
+        return [
+            'keyName' => $keyName,
+            'variants' => $this->getVariantSiblingCandidates($definition, $key, true),
+            'node' => $adapter->getIndexMapping(),
+        ];
     }
 
     /**
@@ -1046,11 +1119,30 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         KeyGroupRelation $key,
         bool $reportDiagnostics = false
     ): array {
+        return $this->filterTakenSiblings(
+            $usedKeyNames,
+            $this->getVariantSiblingCandidates($definition, $key, $reportDiagnostics),
+            $key,
+            $reportDiagnostics
+        );
+    }
+
+    /**
+     * The sibling name of every declared variant, before any of them is checked against a group: the
+     * part of the sibling naming that is about the key alone, so it can be resolved once per key.
+     *
+     * @return array<string, string> declared variant name => sibling name
+     */
+    private function getVariantSiblingCandidates(
+        ?Data $definition,
+        KeyGroupRelation $key,
+        bool $reportDiagnostics = false
+    ): array {
         if (!$definition instanceof MultiValue) {
             return [];
         }
 
-        $siblingNames = [];
+        $candidates = [];
 
         foreach ($definition->getVariantNames() as $variantName) {
             // the variant name is reported here, the sibling it belongs to is composed by the service
@@ -1062,6 +1154,29 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 continue;
             }
 
+            $candidates[$variantName] = $siblingName;
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * The sibling candidates a group has room for; a name already taken there is skipped, first wins.
+     *
+     * @param array<string, bool> $usedKeyNames
+     * @param array<string, string> $candidates declared variant name => sibling name
+     *
+     * @return array<string, string> declared variant name => sibling name
+     */
+    private function filterTakenSiblings(
+        array $usedKeyNames,
+        array $candidates,
+        KeyGroupRelation $key,
+        bool $reportDiagnostics = false
+    ): array {
+        $siblingNames = [];
+
+        foreach ($candidates as $variantName => $siblingName) {
             if ($this->isTakenNameSegment(
                 $usedKeyNames,
                 $siblingName,
