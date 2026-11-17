@@ -48,6 +48,7 @@ services:
             $environment: '%kernel.environment%'
             $debug: '%kernel.debug%'
             $logger: '@?monolog.logger.pimcore_generic_data_index'
+            $bulkSender: '@Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkSenderInterface'
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentReplayerInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\DocumentReplayer
