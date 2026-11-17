@@ -126,6 +126,110 @@ final class AbstractIndexHandlerFieldLimitTest extends Unit
     }
 
     /**
+     * The mapping the preflight counted is the mapping the engine is sent. An in-place update re-extracting it
+     * would send a mapping nobody counted: the caller-supplied one passes the count and the extracted one,
+     * which is what reaches putMapping, does not.
+     */
+    public function testTheInPlaceUpdateSendsTheMappingTheLimitWasCheckedOn(): void
+    {
+        $sentProperties = null;
+        $handler = $this->createHandlerWithLiveIndex(
+            limit: 10,
+            extractedProperties: $this->mappingWithFieldCount(40),
+            sentProperties: $sentProperties
+        );
+
+        $suppliedProperties = $this->mappingWithFieldCount(2);
+
+        $handler->updateMappingWithResult(null, $suppliedProperties);
+
+        $this->assertSame(
+            $suppliedProperties,
+            $sentProperties,
+            'putMapping must be sent the mapping the field count was decided on, not a freshly extracted one'
+        );
+    }
+
+    /**
+     * A handler whose alias is attached to a live index, so the mapping goes in place, and whose putMapping
+     * records the properties it was sent.
+     *
+     * @param array<string, mixed> $extractedProperties
+     * @param array<string, mixed>|null $sentProperties
+     */
+    private function createHandlerWithLiveIndex(
+        int $limit,
+        array $extractedProperties,
+        ?array &$sentProperties
+    ): AbstractIndexHandler {
+        $search = $this->makeEmpty(SearchIndexServiceInterface::class, [
+            'existsAlias' => true,
+            'existsIndex' => true,
+            'getCurrentIndexVersion' => 'odd',
+            'getMapping' => [],
+            'putMapping' => static function (array $params) use (&$sentProperties): array {
+                $sentProperties = $params['body'][self::PROPERTIES] ?? null;
+
+                return [];
+            },
+        ]);
+
+        $config = $this->makeEmpty(SearchIndexConfigServiceInterface::class, [
+            'getIndexSettings' => ['index' => ['mapping' => ['total_fields' => ['limit' => $limit]]]],
+        ]);
+
+        $handler = new class(
+            $search,
+            $config,
+            $this->makeEmpty(EventDispatcherInterface::class),
+            $this->makeEmpty(IndexMappingServiceInterface::class),
+            new IndexCopyService(
+                $search,
+                new MappingDiffService(),
+                new NullLogger(),
+                MappingChangeStrategy::COPY->value
+            ),
+            new IndexLock(new LockFactory(new InMemoryStore()), 1, 1),
+            new TotalFieldsLimitGuard($config),
+            $extractedProperties
+        ) extends AbstractIndexHandler {
+            public function __construct(
+                SearchIndexServiceInterface $searchIndexService,
+                SearchIndexConfigServiceInterface $searchIndexConfigService,
+                EventDispatcherInterface $eventDispatcher,
+                IndexMappingServiceInterface $indexMappingService,
+                IndexCopyService $indexCopyService,
+                IndexLock $indexLock,
+                TotalFieldsLimitGuard $totalFieldsLimitGuard,
+                private readonly array $properties
+            ) {
+                parent::__construct(
+                    $searchIndexService,
+                    $searchIndexConfigService,
+                    $eventDispatcher,
+                    $indexMappingService,
+                    $indexCopyService,
+                    $indexLock,
+                    $totalFieldsLimitGuard
+                );
+            }
+
+            protected function extractMappingProperties(mixed $context = null): array
+            {
+                return $this->properties;
+            }
+
+            protected function getAliasIndexName(mixed $context = null): string
+            {
+                return 'test_alias';
+            }
+        };
+        $handler->setLogger(new NullLogger());
+
+        return $handler;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function mappingWithFieldCount(int $leaves): array

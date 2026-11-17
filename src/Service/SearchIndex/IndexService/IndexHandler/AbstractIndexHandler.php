@@ -140,7 +140,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
 
         //updating mapping without recreating index
         try {
-            $this->doUpdateMapping($context);
+            $this->doUpdateMapping($context, $mappingProperties);
         } catch (Exception $e) {
             $this->logger->info($e);
             //try recreating index — ReindexFailedException propagates to the caller.
@@ -183,7 +183,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         }
 
         try {
-            $this->doUpdateMapping($context);
+            $this->doUpdateMapping($context, $mappingProperties);
         } catch (Exception $e) {
             $this->logger->info($e);
 
@@ -490,11 +490,16 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     abstract protected function getAliasIndexName(mixed $context = null): string;
 
     /**
+     * The mapping the field count was decided on is the mapping the engine is sent; re-extracting it here would
+     * send one nobody counted, and would drop a mapping the caller handed in.
+     *
+     * @param array<string, mixed>|null $mappingProperties
+     *
      * @throws JsonException
      */
-    private function doUpdateMapping(mixed $context): void
+    private function doUpdateMapping(mixed $context, ?array $mappingProperties = null): void
     {
-        $mappingProperties = $this->extractMappingProperties($context);
+        $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
         $body = [
             '_source' => ['enabled' => true],
         ];
