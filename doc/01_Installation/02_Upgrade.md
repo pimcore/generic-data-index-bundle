@@ -150,11 +150,10 @@ description: Version-specific upgrade instructions and breaking changes for the 
   type is no longer silently skipped when the indexer does not recognise it — it is reported as an error naming the
   store, group, key and type, and that key is not indexed. One type is exempt: an `encryptedField` key is still
   skipped without the error, because an encrypted value is deliberately not indexed. A `multiValue` key publishes a
-  JSON array in its own field, with each value at its stored position and a position holding none as `null` up to the last
-  position that holds a value (a key holding one value at position 0 publishes a one-element array), and adds no field. A declared variant publishes a sibling field
+  single value in its own field, and adds no field. A declared variant publishes a sibling field
   named `<key>_<variant>`, filterable by passing that name to `ClassificationStoreFilter` like any key, and
   multiplies the key's declared fields by one plus the number of variants per language node it is declared in. On a
-  store whose engine cannot hold what a key declares (`variants` or `multiValue: true`), that key declares and
+  store whose engine cannot hold what a key declares (`variants`), that key declares and
   publishes nothing — neither its siblings nor its own field — and is reported once per key as a warning. A key of a relation type declares the fields its class-field
   counterpart does: three per language node for a relation, and for an advanced relation eight plus one per
   configured column. Declaring or removing a variant, or changing the store's engine, changes the class mapping, so apply it

@@ -235,7 +235,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      *
      * @param array<string, bool> $usedKeyNames the segments the earlier keys of this group reserved
      *
-     * @return array{name: string, variants: array<string, string>, multiValue: bool}|null
+     * @return array{name: string, variants: array<string, string>}|null
      *
      * @throws InvalidArgumentException
      */
@@ -262,14 +262,14 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         return [
             'name' => $keyName,
             'variants' => $this->getVariantSiblingNames($usedKeyNames, $definition, $key),
-            'multiValue' => $definition instanceof MultiValue && $definition->isMultiValue(),
         ];
     }
 
     /**
-     * The bare entry keeps the default variant, each declared variant gets a sibling entry.
+     * The bare entry keeps the default variant, each declared variant gets a sibling entry holding
+     * that variant's one value.
      *
-     * @param array{name: string, variants: array<string, string>, multiValue: bool} $entryNames
+     * @param array{name: string, variants: array<string, string>} $entryNames
      */
     private function getEntriesForKey(
         ClassificationstoreModel $value,
@@ -279,12 +279,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         array $entryNames
     ): array {
         $entries = [];
-        $multiValue = $entryNames['multiValue'];
 
-        $bareValue = $multiValue
-            ? $this->getNormalizedValues($value, $groupId, $key, $language, null)
-            : $this->getNormalizedValue($value, $groupId, $key, $language);
-
+        $bareValue = $this->getNormalizedValue($value, $groupId, $key, $language);
         if ($bareValue !== null) {
             $entries[$entryNames['name']] = $bareValue;
         }
@@ -293,7 +289,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             $variantValues = $this->getNormalizedValues($value, $groupId, $key, $language, (string) $variantName);
 
             if ($variantValues !== null) {
-                $entries[$siblingName] = $multiValue ? $variantValues : $variantValues[0];
+                $entries[$siblingName] = $variantValues[0];
             }
         }
 
@@ -323,7 +319,6 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                         groupId: $groupId,
                         keyId: $keyId,
                         variant: $variant,
-                        multiValue: $groupKey['multiValue'],
                     );
                     $paths = $this->getInheritancePathsForKey($key, $group['name'], $entryName, $keyId, $languages);
 
@@ -403,9 +398,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
     /**
      * The nearest ancestor holding the slot this entry is written from, which is the slot the entry
-     * is written from and no other: a sibling's provenance is resolved against its own variant, and
-     * a `multiValue` entry against the whole list the bare entry carries rather than against
-     * position 0 alone. Null when no object in the chain holds it: the document writes no value there
+     * is written from and no other: a sibling's provenance is resolved against its own variant.
+     * Null when no object in the chain holds it: the document writes no value there
      * either, so no inherited path is reported for it.
      *
      * @throws Exception
@@ -426,8 +420,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
     /**
      * Whether the given element's own store holds a value for the entry. The qualified reader is
-     * asked only for an entry that is written from it - a key with neither a variant nor a list is
-     * read the way it is read today - and a slot it refuses answers that the element holds nothing,
+     * asked only for an entry that is written from it - the bare entry is read the way it is read
+     * today - and a slot it refuses answers that the element holds nothing,
      * which is what {@see self::getNormalizedValues()} indexes for the same slot. "Holds a value" is
      * decided by the same predicate the document is written with - the value normalizes to something
      * other than null - so a falsy-but-present value (0, '0', false) is held here exactly where the
@@ -443,7 +437,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     private function holdsEntry(KeyEntrySlot $slot, Concrete $dataObject, string $language): bool
     {
         $store = $dataObject->get($slot->getStoreKey());
-        if ($slot->getVariant() === null && !$slot->isMultiValue()) {
+        if ($slot->getVariant() === null) {
             return $this->normalizeKeyValue(
                 $slot->getKeyId(),
                 $store->getLocalizedKeyValue($slot->getGroupId(), $slot->getKeyId(), $language, true, true)
@@ -815,8 +809,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      *
      * @param KeyGroupRelation[] $keys
      *
-     * @return array<int, array{name: string, definition: Data, multiValue: bool,
-     *                          variants: array<string, string>}>
+     * @return array<int, array{name: string, definition: Data, variants: array<string, string>}>
      */
     private function getKeyMappingForInheritance(array $keys): array
     {
@@ -854,7 +847,6 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             $keyMapping[$keyId] = [
                 'name' => $keyName,
                 'definition' => $definition,
-                'multiValue' => $definition instanceof MultiValue && $definition->isMultiValue(),
                 'variants' => $variantNames,
             ];
         }
@@ -992,34 +984,21 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
     /**
      * The capability a key's declaration needs and the engine behind the store lacks, null for a key
-     * the engine can hold: a key declaring `variants` needs Variants, one declaring `multiValue` needs
-     * MultiValue, and one declaring neither needs nothing, so it is unaffected on every engine. The
-     * second condition of "this key is indexed" every path asks, right after the value adapter, so the
-     * mapping, the document and the inheritance walk drop the same keys. The diagnostic is not raised
-     * here: it belongs to the mapping path alone.
+     * the engine can hold: a key declaring `variants` needs Variants, and one declaring none needs
+     * nothing, so it is unaffected on every engine. The second condition of "this key is indexed"
+     * every path asks, right after the value adapter, so the mapping, the document and the
+     * inheritance walk drop the same keys. The diagnostic is not raised here: it belongs to the
+     * mapping path alone.
      */
     private function getMissingEngineFeature(?Data $definition): ?EngineFeature
     {
-        if (!$definition instanceof MultiValue) {
+        if (!$definition instanceof MultiValue || $definition->getVariantNames() === []) {
             return null;
         }
 
-        $required = [];
-        if ($definition->getVariantNames() !== []) {
-            $required[] = EngineFeature::Variants;
-        }
-        if ($definition->isMultiValue()) {
-            $required[] = EngineFeature::MultiValue;
-        }
-
-        $storeId = $this->getConfiguredStoreId();
-        foreach ($required as $feature) {
-            if (!$this->engineCapabilityService->supports($storeId, $feature)) {
-                return $feature;
-            }
-        }
-
-        return null;
+        return $this->engineCapabilityService->supports($this->getConfiguredStoreId(), EngineFeature::Variants)
+            ? null
+            : EngineFeature::Variants;
     }
 
     /** Null for a field definition that carries no store: the property is typed with no default. */

@@ -1065,14 +1065,14 @@ final class ClassificationStoreAdapterTest extends Unit
 
         $adapter = $this->createConfiguredAdapter(
             [],
-            keyDefinition: $this->createMultiValue([self::METRIC, self::IMPERIAL], true)
+            keyDefinition: $this->createMultiValue([self::METRIC, self::IMPERIAL])
         );
         $keyMapping = $method->invoke(
             $adapter,
             [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)]
         );
 
-        $this->assertTrue($keyMapping[self::KEY_ID]['multiValue']);
+        $this->assertArrayNotHasKey('multiValue', $keyMapping[self::KEY_ID]);
         $this->assertSame(
             [
                 self::KEY_NAME => null,
@@ -1107,8 +1107,7 @@ final class ClassificationStoreAdapterTest extends Unit
     /**
      * The provenance of a sibling is resolved against the sibling's own slot: a variant the child does
      * not hold and a parent does is attributed to the parent, instead of the whole key taking the
-     * verdict of position 0 of its default variant. A `multiValue` entry is resolved against the whole
-     * list the bare entry carries, so a parent holding only a higher position is found as well.
+     * verdict of its default variant.
      */
     public function testASiblingTakesItsInheritanceOriginFromItsOwnVariantSlot(): void
     {
@@ -1124,7 +1123,7 @@ final class ClassificationStoreAdapterTest extends Unit
             $parent
         );
 
-        $origin = fn (?string $variant, bool $multiValue = false): ?int => $method->invoke(
+        $origin = fn (?string $variant): ?int => $method->invoke(
             $this->createConfiguredAdapter([]),
             new KeyEntrySlot(
                 definition: $definition,
@@ -1132,7 +1131,6 @@ final class ClassificationStoreAdapterTest extends Unit
                 groupId: self::GROUP_ID,
                 keyId: self::KEY_ID,
                 variant: $variant,
-                multiValue: $multiValue,
             ),
             $child,
             self::DEFAULT_LANGUAGE
@@ -1141,27 +1139,6 @@ final class ClassificationStoreAdapterTest extends Unit
         $this->assertSame(1, $origin(null));
         $this->assertSame(10, $origin(self::METRIC));
         $this->assertSame(1, $origin(self::IMPERIAL));
-
-        // a list the child does not hold at all and the parent holds above position 0
-        $listParent = $this->createObjectWithStore(10, [self::DEFAULT_LANGUAGE => [1 => 'second']]);
-        $listChild = $this->createObjectWithStore(1, [], '', $listParent);
-
-        $this->assertSame(
-            10,
-            $method->invoke(
-                $this->createConfiguredAdapter([]),
-                new KeyEntrySlot(
-                    definition: $this->createMultiValue(multiValue: true),
-                    storeKey: self::FIELD_NAME,
-                    groupId: self::GROUP_ID,
-                    keyId: self::KEY_ID,
-                    variant: null,
-                    multiValue: true,
-                ),
-                $listChild,
-                self::DEFAULT_LANGUAGE
-            )
-        );
     }
 
     /**
@@ -1177,12 +1154,11 @@ final class ClassificationStoreAdapterTest extends Unit
             (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyValueFromElement'))->invoke(
                 $this->createConfiguredAdapter([]),
                 new KeyEntrySlot(
-                    definition: $this->createMultiValue(multiValue: true),
+                    definition: $this->createMultiValue([self::METRIC]),
                     storeKey: self::FIELD_NAME,
                     groupId: self::GROUP_ID,
                     keyId: self::KEY_ID,
-                    variant: null,
-                    multiValue: true,
+                    variant: self::METRIC,
                 ),
                 $child,
                 self::DEFAULT_LANGUAGE
@@ -1191,59 +1167,34 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
-     * Run against real core stores, not a stubbed read: core resolves slot inheritance in
-     * getKeyValues() while inherited values are on, which is how the document pass runs, so a child
-     * holding no list carries its nearest ancestor's whole list and one holding its own carries only that.
-     */
-    public function testAChildDocumentCarriesTheInheritedListUnlessItHoldsItsOwn(): void
-    {
-        $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)];
-        $definition = $this->createMultiValue(multiValue: true);
-        $this->registerCoreMultiValueKey($definition);
-        $inheritedValues = AbstractObject::getGetInheritedValues();
-        AbstractObject::setGetInheritedValues(true);
-
-        try {
-            $document = fn (array $own): array => $this->getDocumentValues(
-                $this->createFieldDefinition(false),
-                self::LANGUAGES,
-                $relations,
-                keyDefinition: $definition,
-                store: $this->createChildStoreWithParentList($own, ['a', 'b'])
-            );
-
-            $this->assertSame([self::DEFAULT_LANGUAGE => [self::KEY_NAME => ['a', 'b']]], $document([]));
-            $this->assertSame([self::DEFAULT_LANGUAGE => [self::KEY_NAME => ['c']]], $document(['c']));
-        } finally {
-            AbstractObject::setGetInheritedValues($inheritedValues);
-        }
-    }
-
-    /**
-     * One fixture, both predictors: for a key declaring a variant and a list, every path the inheritance
-     * walk reports as inherited is a path the document written for the same object carries a value at.
+     * One fixture, both predictors: for a key declaring a variant, every path the inheritance walk
+     * reports as inherited is a path the document written for the same object carries a value at.
      * The stores answer as core does - an own read with inherited values off, which is how the walk
      * asks, and the nearest holder's slot with them on, which is how the document is written.
      */
-    public function testEveryInheritedPathOfAVariantAndListKeyIsCarriedByTheDocument(): void
+    public function testEveryInheritedPathOfAVariantKeyIsCarriedByTheDocument(): void
     {
         $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)];
-        $definition = $this->createMultiValue([self::METRIC], true);
-        $parentSlots = [self::DEFAULT_LANGUAGE => [0 => 'p0', 1 => 'p1'], self::METRIC => [0 => 'pm']];
+        $definition = $this->createMultiValue([self::METRIC]);
+        $parentSlots = [self::DEFAULT_LANGUAGE => [0 => 'p0'], self::METRIC => [0 => 'pm']];
         $childSlots = [self::DEFAULT_LANGUAGE => [0 => 'c0']];
 
-        $makeStore = fn (array $chain): ClassificationstoreModel => $this->makeEmpty(ClassificationstoreModel::class, [
-            'getKeyValues' => static function (int $group, int $keyId, ?string $language, ?string $variant) use ($chain): array {
-                $variant ??= self::DEFAULT_LANGUAGE;
-                $candidates = AbstractObject::doGetInheritedValues() ? $chain : [$chain[0]];
-                foreach ($candidates as $slots) {
-                    if (($slots[$variant] ?? []) !== []) {
-                        return $slots[$variant];
-                    }
+        $nearest = static function (array $chain, string $variant): array {
+            $candidates = AbstractObject::doGetInheritedValues() ? $chain : [$chain[0]];
+            foreach ($candidates as $slots) {
+                if (($slots[$variant] ?? []) !== []) {
+                    return $slots[$variant];
                 }
+            }
 
-                return [];
-            },
+            return [];
+        };
+        $makeStore = fn (array $chain): ClassificationstoreModel => $this->makeEmpty(ClassificationstoreModel::class, [
+            'getKeyValues' => static fn (int $group, int $keyId, ?string $language, ?string $variant): array
+                => $nearest($chain, $variant ?? self::DEFAULT_LANGUAGE),
+            // the bare entry is read through the resolving reader, which answers the default variant
+            'getLocalizedKeyValue' => static fn (mixed ...$arguments): mixed
+                => $nearest($chain, self::DEFAULT_LANGUAGE)[0] ?? null,
         ]);
         $parent = $this->makeEmpty(Concrete::class, [
             'getId' => 10,
@@ -1276,7 +1227,6 @@ final class ClassificationStoreAdapterTest extends Unit
                         groupId: self::GROUP_ID,
                         keyId: self::KEY_ID,
                         variant: $variant,
-                        multiValue: $keyMapping['multiValue'],
                     ),
                     $child,
                     1,
@@ -1300,7 +1250,8 @@ final class ClassificationStoreAdapterTest extends Unit
         foreach (array_keys($inherited) as $path) {
             $this->assertArrayHasKey($path, $document[self::DEFAULT_LANGUAGE]);
         }
-        $this->assertSame(['c0'], $document[self::DEFAULT_LANGUAGE][self::KEY_NAME]);
+        $this->assertSame('c0', $document[self::DEFAULT_LANGUAGE][self::KEY_NAME]);
+        $this->assertSame('pm', $document[self::DEFAULT_LANGUAGE][self::KEY_NAME . '_' . self::METRIC]);
     }
 
     /**
@@ -1315,7 +1266,7 @@ final class ClassificationStoreAdapterTest extends Unit
 
         try {
             $this->registerKey(self::KEY_ID, null);
-            $this->registerCoreMultiValueKey($this->createMultiValue([self::METRIC], true));
+            $this->registerCoreMultiValueKey($this->createMultiValue([self::METRIC]));
             $slot = [self::GROUP_ID => [self::KEY_ID => [self::DEFAULT_LANGUAGE => [self::METRIC => [0 => 'm']]]]];
             $child = $this->createChildStoreWithParentSlots([], $slot);
 
@@ -1355,7 +1306,6 @@ final class ClassificationStoreAdapterTest extends Unit
                     groupId: self::GROUP_ID,
                     keyId: self::KEY_ID,
                     variant: self::METRIC,
-                    multiValue: false,
                 ),
                 $refusing(1, $refusing(10)),
                 self::DEFAULT_LANGUAGE
@@ -1481,7 +1431,7 @@ final class ClassificationStoreAdapterTest extends Unit
     public function testAMultiValueKeyWrappingAnEncryptedFieldIsSkippedWithoutAnErrorToo(): void
     {
         $logger = $this->createCollectingLogger();
-        $wrapped = $this->createMultiValue([self::METRIC, self::IMPERIAL], true);
+        $wrapped = $this->createMultiValue([self::METRIC, self::IMPERIAL]);
         $wrapped->setDelegate(new EncryptedField());
 
         $mapping = $this->getMappingForRelations(
@@ -1581,7 +1531,7 @@ final class ClassificationStoreAdapterTest extends Unit
      */
     public function testAKeyWithNoAdapterProducesNoInheritedFieldPathForItselfOrItsSiblings(): void
     {
-        $wrapped = $this->createMultiValue([self::METRIC, self::IMPERIAL], true);
+        $wrapped = $this->createMultiValue([self::METRIC, self::IMPERIAL]);
         $wrapped->setDelegate(new Checkbox());
 
         $adapter = $this->createConfiguredAdapter(
@@ -1669,102 +1619,49 @@ final class ClassificationStoreAdapterTest extends Unit
         }
     }
 
-    public function testAMultiValueKeyDeclaresNoLeafOfItsOwnAndWritesAListInPositionOrder(): void
-    {
-        $fieldDefinition = $this->createFieldDefinition(false);
-        $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)];
-        $multiValue = $this->createMultiValue(multiValue: true);
-
-        $this->assertSame(
-            $this->getMappingForRelations($fieldDefinition, self::LANGUAGES, $relations),
-            $this->getMappingForRelations($fieldDefinition, self::LANGUAGES, $relations, null, $multiValue)
-        );
-
-        $this->assertSame(
-            [self::DEFAULT_LANGUAGE => [self::KEY_NAME => ['first', 'second', 'third']]],
-            $this->getQualifiedDocumentValues(
-                $multiValue,
-                $relations,
-                [2 => 'third', 0 => 'first', 1 => 'second']
-            )
-        );
-        $this->assertSame(
-            [self::DEFAULT_LANGUAGE => [self::KEY_NAME => ['only']]],
-            $this->getQualifiedDocumentValues($multiValue, $relations, [0 => 'only'])
-        );
-    }
-
     /**
-     * A list keeps the positions it is stored at: the hole is a null, not a later value moved up, and
-     * a value that normalizes to null holds its own position the same way.
+     * A variant slot whose value normalizes to null writes no entry, as a slot holding none does.
      */
-    public function testAMultiValueKeyWritesItsStoredPositionsWithHolesAsNull(): void
-    {
-        $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)];
-        $multiValue = $this->createMultiValue(multiValue: true);
-
-        $this->assertSame(
-            [self::DEFAULT_LANGUAGE => [self::KEY_NAME => ['first', null, 'third']]],
-            $this->getQualifiedDocumentValues($multiValue, $relations, [0 => 'first', 2 => 'third'])
-        );
-        $this->assertSame(
-            [self::DEFAULT_LANGUAGE => [self::KEY_NAME => ['first', null, 'third']]],
-            $this->getQualifiedDocumentValues(
-                $multiValue,
-                $relations,
-                [2 => 'third', 1 => self::NORMALIZES_TO_NULL, 0 => 'first'],
-                $this->createNullingFieldDefinitionService()
-            )
-        );
-    }
-
-    /**
-     * A slot whose values all normalize to null writes no entry, as a slot holding none does.
-     */
-    public function testASlotWhoseValuesAllNormalizeToNullWritesNoEntry(): void
+    public function testASlotWhoseValueNormalizesToNullWritesNoEntry(): void
     {
         $this->assertSame(
             [],
             $this->getQualifiedDocumentValues(
-                $this->createMultiValue(multiValue: true),
+                $this->createMultiValue([self::METRIC]),
                 [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)],
-                [0 => self::NORMALIZES_TO_NULL, 1 => self::NORMALIZES_TO_NULL],
+                [0 => self::NORMALIZES_TO_NULL],
                 $this->createNullingFieldDefinitionService()
             )
         );
     }
 
     /**
-     * Per declaration: variants need Variants, multiValue needs MultiValue, both need both, and a
-     * multiValue key declaring neither is declared on every engine.
+     * A key declaring variants needs Variants and nothing else, and a multiValue key declaring none
+     * is declared on every engine.
      */
     public function testAKeyTheEngineCannotHoldDeclaresNoMappingNode(): void
     {
         $fieldDefinition = $this->createFieldDefinition(false);
         $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)];
-        $declaring = [
-            'variants only' => $this->createMultiValue([self::METRIC]),
-            'multiValue only' => $this->createMultiValue(multiValue: true),
-            'both' => $this->createMultiValue([self::METRIC], true),
-        ];
+        $variants = $this->createMultiValue([self::METRIC]);
+        $refusingEverything = $this->createEngineCapabilityService(EngineFeature::cases());
+        // every capability but Variants refused, so no other one is asked for
+        $onlyVariants = $this->createEngineCapabilityService(array_values(array_filter(
+            EngineFeature::cases(),
+            static fn (EngineFeature $feature): bool => $feature !== EngineFeature::Variants
+        )));
 
-        foreach ($declaring as $case => $definition) {
-            $this->assertSame(
-                [],
-                $this->getMappingForRelations(
-                    $fieldDefinition,
-                    self::LANGUAGES,
-                    $relations,
-                    null,
-                    $definition,
-                    engineCapabilityService: $this->createEngineCapabilityService(
-                        [EngineFeature::Variants, EngineFeature::MultiValue]
-                    )
-                ),
-                $case
-            );
-        }
-
+        $this->assertSame(
+            [],
+            $this->getMappingForRelations(
+                $fieldDefinition,
+                self::LANGUAGES,
+                $relations,
+                null,
+                $variants,
+                engineCapabilityService: $refusingEverything
+            )
+        );
         $this->assertSame(
             [self::DEFAULT_LANGUAGE => self::LANGUAGE_NODE],
             $this->getMappingForRelations(
@@ -1773,9 +1670,7 @@ final class ClassificationStoreAdapterTest extends Unit
                 $relations,
                 null,
                 $this->createMultiValue(),
-                engineCapabilityService: $this->createEngineCapabilityService(
-                    [EngineFeature::Variants, EngineFeature::MultiValue]
-                )
+                engineCapabilityService: $refusingEverything
             )
         );
         $this->assertSame(
@@ -1788,8 +1683,8 @@ final class ClassificationStoreAdapterTest extends Unit
                 self::LANGUAGES,
                 $relations,
                 null,
-                $declaring['variants only'],
-                engineCapabilityService: $this->createEngineCapabilityService([EngineFeature::MultiValue])
+                $variants,
+                engineCapabilityService: $onlyVariants
             )
         );
     }
@@ -1808,9 +1703,9 @@ final class ClassificationStoreAdapterTest extends Unit
         $keyDefinition = fn (object $config): Data => (
             $config instanceof KeyGroupRelation ? $config->getKeyId() : $config->getId()
         ) === self::KEY_ID
-            ? $this->createMultiValue([self::METRIC, self::IMPERIAL], true)
+            ? $this->createMultiValue([self::METRIC, self::IMPERIAL])
             : new Input();
-        $refusing = $this->createEngineCapabilityService([EngineFeature::Variants, EngineFeature::MultiValue]);
+        $refusing = $this->createEngineCapabilityService([EngineFeature::Variants]);
 
         $this->assertSame(
             [self::DEFAULT_LANGUAGE => self::LANGUAGE_NODE],
@@ -1857,7 +1752,7 @@ final class ClassificationStoreAdapterTest extends Unit
         $logger = $this->createCollectingLogger();
         $fieldDefinition = $this->createFieldDefinition(true);
         $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, true)];
-        $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL], true);
+        $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL]);
         $refusing = $this->createEngineCapabilityService([EngineFeature::Variants]);
 
         $this->getMappingForRelations(
@@ -1905,7 +1800,7 @@ final class ClassificationStoreAdapterTest extends Unit
     {
         $logger = $this->createCollectingLogger();
         $fieldDefinition = $this->createFieldDefinition(true);
-        $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL], true);
+        $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL]);
         $adapter = $this->createConfiguredAdapter(
             ['de', 'en'],
             $fieldDefinition,
@@ -2016,31 +1911,29 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
-     * A key that declares both carries a list in every slot it holds: the sibling of a declared
-     * variant is an array of that variant's positions in position order, independent of the bare
-     * entry's list, where a key without `multiValue` writes the one value its sibling permits. A
-     * declared variant the store holds nothing for writes no sibling entry at all.
+     * A key holds one value per declared variant: the bare entry carries the default variant's value
+     * and the sibling of a declared variant that variant's value, neither of them a list. A declared
+     * variant the store holds nothing for writes no sibling entry at all.
      */
-    public function testASiblingOfAMultiValueKeyCarriesItsOwnListInPositionOrder(): void
+    public function testASiblingCarriesTheOneValueOfItsVariant(): void
     {
         $slots = [
-            self::DEFAULT_LANGUAGE => [1 => 'default second', 0 => 'default first'],
-            self::METRIC => [2 => 'metric third', 0 => 'metric first', 1 => 'metric second'],
+            self::METRIC => [0 => 'metric'],
             self::IMPERIAL => [],
         ];
 
         $this->assertSame(
             [
                 self::DEFAULT_LANGUAGE => [
-                    self::KEY_NAME => ['default first', 'default second'],
-                    self::KEY_NAME . '_' . self::METRIC => ['metric first', 'metric second', 'metric third'],
+                    self::KEY_NAME => 'default',
+                    self::KEY_NAME . '_' . self::METRIC => 'metric',
                 ],
             ],
             $this->getDocumentValues(
                 $this->createFieldDefinition(false),
                 self::LANGUAGES,
                 [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)],
-                keyDefinition: $this->createMultiValue([self::METRIC, self::IMPERIAL], true),
+                keyDefinition: $this->createMultiValue([self::METRIC, self::IMPERIAL]),
                 store: $this->makeEmpty(ClassificationstoreModel::class, [
                     'getKeyValues' => static fn (
                         int $group,
@@ -2048,16 +1941,14 @@ final class ClassificationStoreAdapterTest extends Unit
                         ?string $language,
                         ?string $variant
                     ): array => $slots[$variant ?? self::DEFAULT_LANGUAGE] ?? [],
-                    'getLocalizedKeyValue' => static function (): never {
-                        throw new Exception('a multiValue key is read through getKeyValues');
-                    },
+                    'getLocalizedKeyValue' => 'default',
                 ])
             )
         );
     }
 
     /**
-     * Pins today's shape: without variants or multiValue the entry is the one value, read the way it
+     * Pins today's shape: without variants the entry is the one value, read the way it
      * is read today, and the qualified reader is never asked.
      */
     public function testAKeyWithoutQualifiersWritesASingleNonArrayEntry(): void
@@ -2093,7 +1984,7 @@ final class ClassificationStoreAdapterTest extends Unit
             => $this->countDeclaredFieldsOfKeys($languages, false, [self::KEY_ID => $localized], $definition, $service);
 
         $baseline = $localizedKeys * $count(true) + $otherKeys * $count(false);
-        $multiValue = $this->createMultiValue(multiValue: true);
+        $multiValue = $this->createMultiValue();
         $withMultiValue = $localizedKeys * $count(true, $multiValue) + $otherKeys * $count(false, $multiValue);
         $variants = $this->createMultiValue([self::METRIC]);
         $withVariants = $localizedKeys * $count(true, $variants) + $otherKeys * $count(false, $variants);
@@ -2125,16 +2016,15 @@ final class ClassificationStoreAdapterTest extends Unit
             keyDefinition: $definition,
             store: $this->makeEmpty(ClassificationstoreModel::class, [
                 'getKeyValues' => $values,
-                'getLocalizedKeyValue' => static function (): never {
-                    throw new Exception('a multiValue key is read through getKeyValues');
-                },
+                // the default variant holds nothing, so only the qualified slots are written
+                'getLocalizedKeyValue' => null,
             ]),
             fieldDefinitionService: $fieldDefinitionService
         );
     }
 
     /**
-     * Core's own definition of the key, which getKeyValues() reads its list shape from: seeded into
+     * Core's own definition of the key, which getKeyValues() reads its declaration from: seeded into
      * core's definition memo because resolving it from JSON needs a booted container.
      */
     private function registerCoreMultiValueKey(MultiValue $definition): void
@@ -2156,21 +2046,6 @@ final class ClassificationStoreAdapterTest extends Unit
         (new ReflectionProperty(ClassificationstoreModel::class, 'variantItems'))->setValue($store, $variantItems);
 
         return $store;
-    }
-
-    /**
-     * A real core store of a child object whose parent holds the given list, the child the given own list.
-     *
-     * @param array<int, mixed> $own
-     * @param array<int, mixed> $parentList
-     */
-    private function createChildStoreWithParentList(array $own, array $parentList): ClassificationstoreModel
-    {
-        $slots = static fn (array $list): array => $list === []
-            ? []
-            : [self::GROUP_ID => [self::KEY_ID => [self::DEFAULT_LANGUAGE => [self::DEFAULT_LANGUAGE => $list]]]];
-
-        return $this->createChildStoreWithParentSlots($slots($own), $slots($parentList));
     }
 
     /**
@@ -2245,11 +2120,10 @@ final class ClassificationStoreAdapterTest extends Unit
     /**
      * @param string[] $variants
      */
-    private function createMultiValue(array $variants = [], bool $multiValue = false): MultiValue
+    private function createMultiValue(array $variants = []): MultiValue
     {
         $definition = new MultiValue();
         $definition->setVariants($variants);
-        $definition->setMultiValue($multiValue);
         $definition->setDelegate(new Input());
 
         return $definition;

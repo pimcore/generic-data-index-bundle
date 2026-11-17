@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\I
 
 use Codeception\Test\Unit;
 use Doctrine\DBAL\Connection;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\ClassificationStoreAdapter;
@@ -35,6 +36,7 @@ use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Input;
 use Pimcore\Model\DataObject\ClassDefinition\Data\MultiValue;
 use Pimcore\Model\DataObject\Classificationstore\DefinitionCache;
+use Pimcore\Model\DataObject\Classificationstore\Engine\EngineFeature;
 use Pimcore\Model\DataObject\Classificationstore\KeyConfig;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
 use Pimcore\Model\DataObject\Classificationstore\LocalizationResolver;
@@ -113,6 +115,39 @@ final class ClassificationStoreCheckSumTest extends Unit
     }
 
     /**
+     * Removing the repeating mode leaves the mapping of a multiValue key declaring variants as it was
+     * declared before, on either engine, so no class checksum moves and no class is rebuilt for it.
+     * The expected properties are the bare entry plus one sibling per variant, of the key's own type.
+     */
+    public function testAMultiValueKeyDeclaringVariantsKeepsItsClassMappingCheckSumOnEveryEngine(): void
+    {
+        $indexHandler = $this->getIndexHandler();
+        $declaredBefore = [
+            MappingProperty::NOT_LOCALIZED_KEY => [
+                'properties' => [
+                    self::KEY_IDENTIFIER => ['type' => 'keyword'],
+                    self::KEY_IDENTIFIER . '_metric' => ['type' => 'keyword'],
+                ],
+            ],
+        ];
+        $engines = [
+            'document' => static fn (?int $storeId, EngineFeature $feature): bool => true,
+            // the EAV engine holds variants and nothing more
+            'eav' => static fn (?int $storeId, EngineFeature $feature): bool => $feature === EngineFeature::Variants,
+        ];
+
+        foreach ($engines as $engine => $supports) {
+            $this->assertSame(
+                $indexHandler->getClassMappingCheckSum($declaredBefore),
+                $indexHandler->getClassMappingCheckSum(
+                    $this->getGroupMapping(false, $this->createMultiValue(['metric']), $supports)
+                ),
+                $engine
+            );
+        }
+    }
+
+    /**
      * @param string[] $variants
      */
     private function createMultiValue(array $variants): MultiValue
@@ -124,8 +159,15 @@ final class ClassificationStoreCheckSumTest extends Unit
         return $definition;
     }
 
-    private function getGroupMapping(bool $keyLocalized, ?MultiValue $definition = null): array
-    {
+    /**
+     * @param (callable(?int, EngineFeature): bool)|null $engineSupports what the store's engine holds,
+     *                                                                   everything when null
+     */
+    private function getGroupMapping(
+        bool $keyLocalized,
+        ?MultiValue $definition = null,
+        ?callable $engineSupports = null
+    ): array {
         $keyConfig = (new KeyConfig())->setId(self::KEY_ID);
         $keyConfig->setName(self::KEY_NAME);
         $keyConfig->setLocalized($keyLocalized);
@@ -138,7 +180,7 @@ final class ClassificationStoreCheckSumTest extends Unit
         $relation->setName(self::KEY_NAME);
         $relation->setDefinition((string) json_encode(['fieldtype' => 'input', 'name' => self::KEY_NAME]));
 
-        $adapter = $this->getClassificationStoreAdapter($definition);
+        $adapter = $this->getClassificationStoreAdapter($definition, $engineSupports);
         $languages = (new ReflectionMethod(ClassificationStoreAdapter::class, 'getValidLanguages'))
             ->invoke($adapter);
 
@@ -146,8 +188,10 @@ final class ClassificationStoreCheckSumTest extends Unit
             ->invoke($adapter, [$relation], $languages);
     }
 
-    private function getClassificationStoreAdapter(?MultiValue $definition = null): ClassificationStoreAdapter
-    {
+    private function getClassificationStoreAdapter(
+        ?MultiValue $definition = null,
+        ?callable $engineSupports = null
+    ): ClassificationStoreAdapter {
         $adapter = new ClassificationStoreAdapter(
             $this->makeEmpty(SearchIndexConfigServiceInterface::class),
             $this->makeEmpty(FieldDefinitionServiceInterface::class, [
@@ -166,7 +210,7 @@ final class ClassificationStoreCheckSumTest extends Unit
             new KeyLocaleService(new LocalizationResolver($this->makeEmpty(Connection::class)))
         );
         $adapter->setEngineCapabilityService(
-            $this->makeEmpty(EngineCapabilityServiceInterface::class, ['supports' => true])
+            $this->makeEmpty(EngineCapabilityServiceInterface::class, ['supports' => $engineSupports ?? true])
         );
         // the segment service resolves the key the fixture registered, as it does in an index update
         $adapter->setIndexSegmentService(new IndexSegmentService(
