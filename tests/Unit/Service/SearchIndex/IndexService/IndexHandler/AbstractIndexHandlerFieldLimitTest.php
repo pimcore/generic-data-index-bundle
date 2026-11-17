@@ -16,14 +16,14 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Service\SearchIndex\I
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\TotalFieldsLimitExceededException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\TotalFieldsLimitException;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AbstractIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLock;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingFieldCountService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitGuard;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Psr\Log\NullLogger;
 use Symfony\Component\Lock\LockFactory;
@@ -60,12 +60,12 @@ final class AbstractIndexHandlerFieldLimitTest extends Unit
 
         try {
             $handler->updateMapping(forceCreateIndex: true);
-        } catch (TotalFieldsLimitExceededException $e) {
+        } catch (TotalFieldsLimitException $e) {
             $thrown = $e;
         }
 
         $this->assertInstanceOf(
-            TotalFieldsLimitExceededException::class,
+            TotalFieldsLimitException::class,
             $thrown,
             'A mapping over the configured total fields limit must be refused, not sent to the engine'
         );
@@ -83,7 +83,7 @@ final class AbstractIndexHandlerFieldLimitTest extends Unit
 
         try {
             $handler->updateMapping(forceCreateIndex: true);
-        } catch (TotalFieldsLimitExceededException $e) {
+        } catch (TotalFieldsLimitException $e) {
             $message = $e->getMessage();
         }
 
@@ -198,7 +198,7 @@ final class AbstractIndexHandlerFieldLimitTest extends Unit
                 MappingChangeStrategy::COPY->value
             ),
             new IndexLock(new LockFactory(new InMemoryStore()), 1, 1),
-            new MappingFieldCountService(),
+            new TotalFieldsLimitGuard($config),
             $mappingProperties
         ) extends AbstractIndexHandler {
             public function __construct(
@@ -208,7 +208,7 @@ final class AbstractIndexHandlerFieldLimitTest extends Unit
                 IndexMappingServiceInterface $indexMappingService,
                 IndexCopyService $indexCopyService,
                 IndexLock $indexLock,
-                MappingFieldCountService $mappingFieldCountService,
+                TotalFieldsLimitGuard $totalFieldsLimitGuard,
                 private readonly array $properties
             ) {
                 parent::__construct(
@@ -218,7 +218,7 @@ final class AbstractIndexHandlerFieldLimitTest extends Unit
                     $indexMappingService,
                     $indexCopyService,
                     $indexLock,
-                    $mappingFieldCountService
+                    $totalFieldsLimitGuard
                 );
             }
 

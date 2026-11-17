@@ -19,42 +19,27 @@ use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
-use Pimcore\Bundle\GenericDataIndexBundle\Exception\TotalFieldsLimitExceededException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\TotalFieldsLimitException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingFieldCountService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingFieldCountServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitMessageService;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitMessageServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitGuardInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\LegacyIndexHandlerSupportTrait;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\DataObject\ClassDefinition;
-use Psr\Log\NullLogger;
-use ReflectionMethod;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 abstract class AbstractIndexHandler implements IndexHandlerInterface
 {
+    use LegacyIndexHandlerSupportTrait;
     use LoggerAwareTrait;
 
     private const MAX_REINDEX_ATTEMPTS = 3;
-
-    /** Created on first use for subclasses that call the constructor with the four arguments of 2026.3.2. */
-    private ?IndexCopyServiceInterface $defaultIndexCopyService = null;
-
-    /** Created on first use: the counter is stateless, so a subclass not passing one costs nothing. */
-    private ?MappingFieldCountServiceInterface $defaultFieldCountService = null;
-
-    private ?TotalFieldsLimitMessageServiceInterface $defaultLimitMessageService = null;
-
-    private ?bool $reindexMappingOverridden = null;
 
     private bool $runningReindexMappingOverride = false;
 
@@ -65,8 +50,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         protected readonly IndexMappingServiceInterface $indexMappingService,
         private readonly ?IndexCopyServiceInterface $indexCopyService = null,
         private readonly ?IndexLockInterface $indexLock = null,
-        private readonly ?MappingFieldCountServiceInterface $mappingFieldCountService = null,
-        private readonly ?TotalFieldsLimitMessageServiceInterface $limitMessageService = null,
+        private readonly ?TotalFieldsLimitGuardInterface $totalFieldsLimitGuard = null,
     ) {
         if ($indexCopyService === null) {
             trigger_deprecation(
@@ -191,7 +175,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?ClassDefinition $context,
         ?array $mappingProperties
     ): MappingUpdateResult {
-        if ($this->isReindexMappingOverridden()
+        if ($this->isReindexMappingOverridden(self::class)
             || !$this->searchIndexService->existsAlias($this->getAliasIndexName($context))
             || $this->mappingRemovesLiveProperty($context, $mappingProperties)
         ) {
@@ -302,7 +286,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?array $mappingProperties
     ): MappingUpdateResult {
         // An override that delegates back to this method runs the copy itself instead of calling the override again.
-        if ($this->isReindexMappingOverridden() && !$this->runningReindexMappingOverride) {
+        if ($this->isReindexMappingOverridden(self::class) && !$this->runningReindexMappingOverride) {
             $this->runningReindexMappingOverride = true;
 
             try {
@@ -441,16 +425,6 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         return $normalizedValue;
     }
 
-    private function isReindexMappingOverridden(): bool
-    {
-        if ($this->reindexMappingOverridden === null) {
-            $declaringClass = (new ReflectionMethod($this, 'reindexMapping'))->getDeclaringClass()->getName();
-            $this->reindexMappingOverridden = $declaringClass !== self::class;
-        }
-
-        return $this->reindexMappingOverridden;
-    }
-
     /**
      * Every mapping update of an index runs under the lock of its alias, so two processes never copy or recreate
      * the same index at the same time; the second one waits. The retries of an update and the recreation as the
@@ -473,82 +447,42 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     }
 
     /**
-     * Refuses a mapping declaring more fields than the index allows, before the engine is asked for it, and
-     * returns the mapping properties the refusal was decided on so they are extracted once.
-     *
-     * The engine's own check cannot be relied on: it runs after the mapping has been parsed into the heap of the
-     * cluster manager, so a mapping far enough over the limit kills that node instead of answering with an error
-     * (measured: a ~755,000 field classification store mapping on a 1 GB heap died in ObjectMapper$TypeParser).
-     * Counted in the unit the engine checks, see {@see MappingFieldCountServiceInterface::countFields()}.
+     * Refuses a mapping the index cannot hold before the engine is asked for it, see
+     * {@see TotalFieldsLimitGuardInterface}, and returns the mapping properties the refusal was decided on so
+     * that they are extracted once and the engine is sent the very mapping that was counted.
      *
      * @param array<string, mixed>|null $mappingProperties
      *
      * @return array<string, mixed>
      *
-     * @throws TotalFieldsLimitExceededException
+     * @throws TotalFieldsLimitException
      */
     private function assertFieldCountWithinLimit(mixed $context, ?array $mappingProperties): array
     {
         $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
 
-        $limit = $this->getConfiguredTotalFieldsLimit();
-        if ($limit === null) {
-            return $mappingProperties;
-        }
-
-        $countedFields = $this->getMappingFieldCountService()->countFields($mappingProperties);
-        if ($countedFields <= $limit) {
-            return $mappingProperties;
-        }
-
-        throw new TotalFieldsLimitExceededException(
-            $this->getLimitMessageService()->forFieldCount(
-                $this->getAliasIndexName($context),
-                $countedFields,
-                $limit,
-                $this->getMappingFieldCountService()->getLargestContributor($mappingProperties)
-            )
+        $this->getTotalFieldsLimitGuard()->assertWithinLimit(
+            $this->getAliasIndexName($context),
+            $mappingProperties
         );
+
+        return $mappingProperties;
     }
 
-    /** Null when the configuration names no limit: then the engine is the only one who can refuse. */
-    private function getConfiguredTotalFieldsLimit(): ?int
+    private function getTotalFieldsLimitGuard(): TotalFieldsLimitGuardInterface
     {
-        $limit = $this->searchIndexConfigService->getIndexSettings()['index']['mapping']['total_fields']['limit']
-            ?? null;
-
-        return is_numeric($limit) ? (int) $limit : null;
-    }
-
-    private function getMappingFieldCountService(): MappingFieldCountServiceInterface
-    {
-        return $this->mappingFieldCountService
-            ?? $this->defaultFieldCountService
-            ??= new MappingFieldCountService();
-    }
-
-    private function getLimitMessageService(): TotalFieldsLimitMessageServiceInterface
-    {
-        return $this->limitMessageService
-            ?? $this->defaultLimitMessageService
-            ??= new TotalFieldsLimitMessageService();
+        return $this->totalFieldsLimitGuard
+            ?? $this->legacyTotalFieldsLimitGuard($this->searchIndexConfigService);
     }
 
     private function getIndexCopyService(): IndexCopyServiceInterface
     {
-        if ($this->indexCopyService !== null) {
-            return $this->indexCopyService;
-        }
-        if ($this->defaultIndexCopyService === null) {
-            $this->defaultIndexCopyService = new IndexCopyService(
-                searchIndexService: $this->searchIndexService,
-                mappingDiffService: new MappingDiffService(),
-                pimcoreGenericDataIndexLogger: $this->logger ?? new NullLogger(),
-                indexLock: $this->indexLock
+        return $this->indexCopyService
+            ?? $this->legacyIndexCopyService(
+                $this->searchIndexService,
+                $this->indexLock,
+                $this->logger ?? null
             );
-        }
-
-        return $this->defaultIndexCopyService;
     }
 
     abstract protected function extractMappingProperties(mixed $context = null): array;

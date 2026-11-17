@@ -22,7 +22,6 @@ use RuntimeException;
  *
  * @internal
  */
-final class TotalFieldsLimitExceededException extends RuntimeException implements
-    GenericDataIndexBundleExceptionInterface
+final class TotalFieldsLimitException extends RuntimeException implements GenericDataIndexBundleExceptionInterface
 {
 }

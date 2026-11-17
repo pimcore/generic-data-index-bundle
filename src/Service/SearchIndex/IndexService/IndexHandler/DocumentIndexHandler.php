@@ -24,8 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasSe
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DocumentTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingFieldCountServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitMessageServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitGuardInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
@@ -46,8 +45,7 @@ final class DocumentIndexHandler extends AbstractIndexHandler
         private readonly WorkflowPlaceServiceInterface $workflowPlaceService,
         IndexCopyServiceInterface $indexCopyService,
         ?IndexLockInterface $indexLock = null,
-        ?MappingFieldCountServiceInterface $mappingFieldCountService = null,
-        ?TotalFieldsLimitMessageServiceInterface $totalFieldsLimitMessageService = null,
+        ?TotalFieldsLimitGuardInterface $totalFieldsLimitGuard = null,
     ) {
         parent::__construct(
             $searchIndexService,
@@ -56,8 +54,7 @@ final class DocumentIndexHandler extends AbstractIndexHandler
             $indexMappingService,
             $indexCopyService,
             $indexLock,
-            $mappingFieldCountService,
-            $totalFieldsLimitMessageService
+            $totalFieldsLimitGuard
         );
     }
 

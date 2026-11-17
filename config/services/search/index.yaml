@@ -40,6 +40,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitMessageServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitMessageService
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitGuardInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitGuard
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexEntityService
 
