@@ -111,16 +111,25 @@ final class ClassificationStoreAdapterTest extends Unit
 
     private const KEYWORD = 'keyword';
 
+    private const SORT = 'sort';
+
+    private const ANALYZED_NGRAM = 'analyzed_ngram';
+
+    private const ANALYZED = 'analyzed';
+
+    /** The multi-fields a store key keeps, in the order the mapping declares them. */
+    private const REACHABLE_SUB_FIELDS = [self::ANALYZED_NGRAM, self::KEYWORD, self::SORT];
+
     /** The analysed multi-fields config/pimcore/config.yaml declares for every text field. */
     private const ANALYZER_ATTRIBUTES = [
         'text' => [
             self::FIELDS => [
-                'analyzed_ngram' => [
+                self::ANALYZED_NGRAM => [
                     'type' => 'text',
                     'analyzer' => 'generic_data_index_ngram_analyzer',
                     'search_analyzer' => 'generic_data_index_whitespace_analyzer',
                 ],
-                'analyzed' => [
+                self::ANALYZED => [
                     'type' => 'text',
                     'analyzer' => 'standard',
                     'search_analyzer' => 'generic_data_index_whitespace_analyzer',
@@ -2579,20 +2588,40 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
-     * A store key is addressed only inside a `nested` query, which cannot be a top-level
-     * `simple_query_string` - the one query naming `analyzed` and `analyzed_ngram` - so a text key
-     * declares neither, nor the `sort` multi-field no store sort path composes. The `keyword`
-     * multi-field every store filter addresses, and the text field it hangs off, stay.
+     * A store key keeps every multi-field a query reaches and drops `analyzed`, whose matches the
+     * `text` root it hangs off carries too. The top-level full-text search cannot read any of them,
+     * because a store key is only read inside its `nested` wrapper, but a sub-modifier of
+     * ClassificationStoreFilter is built inside that wrapper and does reach them.
      */
-    public function testATextStoreKeyDeclaresOnlyTheKeywordMultiField(): void
+    public function testATextStoreKeyDropsOnlyTheAnalyzedMultiField(): void
     {
         $keyMapping = $this->getTextKeyMapping();
 
         $this->assertSame(AttributeType::TEXT->value, $keyMapping['type']);
-        $this->assertSame([self::KEYWORD], array_keys($keyMapping[self::FIELDS]));
+        $this->assertSame(self::REACHABLE_SUB_FIELDS, array_keys($keyMapping[self::FIELDS]));
         $this->assertSame(
             ['type' => AttributeType::KEYWORD->value, 'ignore_above' => 1024],
             $keyMapping[self::FIELDS][self::KEYWORD]
+        );
+    }
+
+    /**
+     * The `sort` multi-field stays declared, because a missing-value filter addressing a path that
+     * ends in it is answered on the mapping rather than ruled out - MappedFieldPathService reads
+     * "fields" for exactly that, and ClassificationStoreMappingTest pins the behaviour live. Dropping
+     * it turned that filter into match_none.
+     */
+    public function testATextStoreKeyKeepsTheSortMultiFieldAMissingValueFilterIsAnsweredOn(): void
+    {
+        $keyMapping = $this->getTextKeyMapping();
+
+        $this->assertSame(
+            [
+                'type' => AttributeType::KEYWORD->value,
+                'ignore_above' => 8191,
+                'normalizer' => 'generic_data_index_sort_truncate_normalizer',
+            ],
+            $keyMapping[self::FIELDS][self::SORT]
         );
     }
 
@@ -2608,7 +2637,7 @@ final class ClassificationStoreAdapterTest extends Unit
             ->getIndexMapping();
 
         $this->assertSame(
-            ['analyzed_ngram', 'analyzed', self::KEYWORD, 'sort'],
+            [self::ANALYZED_NGRAM, self::ANALYZED, self::KEYWORD, self::SORT],
             array_keys($classFieldMapping[self::FIELDS])
         );
         $this->assertNotSame($classFieldMapping, $this->getTextKeyMapping());
@@ -2616,7 +2645,7 @@ final class ClassificationStoreAdapterTest extends Unit
 
     /**
      * A value type that nests - a `table` key declares one text column per configured column - is
-     * trimmed at every depth, because a sub-field below the key is as unreachable as one on it.
+     * trimmed at every depth, because a sub-field below the key is read the same way as one on it.
      */
     public function testTheTrimReachesAMultiFieldNestedBelowTheKey(): void
     {
@@ -2631,7 +2660,7 @@ final class ClassificationStoreAdapterTest extends Unit
         $keyMapping = $this->getTextKeyMapping($this->createServiceReturningMapping($nested));
 
         $this->assertSame(
-            [self::KEYWORD],
+            self::REACHABLE_SUB_FIELDS,
             array_keys($keyMapping[self::PROPERTIES]['column1'][self::FIELDS])
         );
         $this->assertSame(AttributeType::NESTED->value, $keyMapping['type']);

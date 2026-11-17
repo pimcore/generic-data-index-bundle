@@ -55,6 +55,15 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
     private const FIELDS = 'fields';
 
+    /**
+     * The multi-fields of a store key a query reaches: `keyword` is what every store filter and PQL
+     * field name resolution address, `sort` is an address a missing-value filter is answered on
+     * {@see \Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\MappedFieldPathService},
+     * and `analyzed_ngram` is the only substring-capable field a full-text sub-modifier can read
+     * inside the nested wrapper.
+     */
+    private const REACHABLE_SUB_FIELDS = ['keyword' => true, 'sort' => true, 'analyzed_ngram' => true];
+
     private ServiceResolverInterface $classificationService;
 
     private LanguageServiceInterface $languageService;
@@ -971,20 +980,17 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
-     * The value type's mapping with every multi-field but `keyword` removed, at any depth it nests.
+     * The value type's mapping with the `analyzed` multi-field removed, at any depth it nests.
      *
-     * A store key lives under a `type: nested` root {@see self::getNestedRootMapping()}, which the
-     * top-level `simple_query_string` naming `analyzed` and `analyzed_ngram` cannot reach into, and no
-     * path composes a sort address for a store key. `keyword` is the one sub-field a store filter
-     * addresses, so keeping it and the field it hangs off leaves every query path unchanged.
+     * A store key is read only inside its `nested` wrapper, so the top-level full-text search cannot
+     * reach its multi-fields. The sub-modifier route can, and {@see self::REACHABLE_SUB_FIELDS} is
+     * what it addresses. `analyzed` is the one multi-field whose matches the `text` root it hangs off
+     * also carries, so it is the only one dropped.
      */
     private function withQueryableSubFieldsOnly(array $mapping): array
     {
         if (isset($mapping[self::FIELDS])) {
-            $mapping[self::FIELDS] = array_intersect_key(
-                $mapping[self::FIELDS],
-                [AttributeType::KEYWORD->value => true]
-            );
+            $mapping[self::FIELDS] = array_intersect_key($mapping[self::FIELDS], self::REACHABLE_SUB_FIELDS);
 
             if ($mapping[self::FIELDS] === []) {
                 unset($mapping[self::FIELDS]);
