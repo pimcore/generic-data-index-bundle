@@ -34,7 +34,7 @@ use Symfony\Component\Process\Process;
  *
  * @internal
  */
-final class WorkerPoolBulkDispatcher
+final class WorkerPoolBulkDispatcher implements BulkDispatcherInterface
 {
     private const MAX_QUEUED_PER_WORKER = 2;
 
