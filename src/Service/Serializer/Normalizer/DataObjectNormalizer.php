@@ -219,7 +219,7 @@ final class DataObjectNormalizer implements NormalizerInterface
 
             return $result;
         } catch (Exception $e) {
-            throw new DataObjectNormalizerException($e->getMessage());
+            throw new DataObjectNormalizerException($e->getMessage(), 0, $e);
         } finally {
             AbstractObject::setGetInheritedValues($inheritedValuesBackup);
             Localizedfield::setGetFallbackValues($fallbackLanguagesBackup);

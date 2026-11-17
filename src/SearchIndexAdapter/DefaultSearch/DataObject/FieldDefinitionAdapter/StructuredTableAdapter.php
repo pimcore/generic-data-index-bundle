@@ -70,8 +70,18 @@ final class StructuredTableAdapter extends AbstractAdapter
 
         $returnValue = [];
 
+        // StructuredTable::normalize() answers null for anything that is not a StructuredTable
+        // instance, which a classification store key holding no value is.
         $rows = $fieldDefinition->normalize($value);
+        if (!is_array($rows)) {
+            return null;
+        }
+
         foreach ($rows as $rowKey => $columns) {
+            if (!is_array($columns)) {
+                continue;
+            }
+
             foreach ($columns as $colKey => $colValue) {
                 if ($colKey !== '' && $rowKey !== '') {
                     $returnValue[$rowKey][$colKey] = $colValue;
