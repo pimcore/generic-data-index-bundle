@@ -17,6 +17,7 @@ use ArrayObject;
 use Codeception\Test\Unit;
 use Doctrine\DBAL\Connection;
 use Exception;
+use Generator;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ClientType;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
@@ -32,6 +33,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStor
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\StoreConfigReaderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\StaticResolverBundle\Lib\Cache\RuntimeCacheResolverInterface;
@@ -133,9 +135,17 @@ final class ClassificationStoreAdapterTest extends Unit
      */
     private array $groups = [];
 
+    /**
+     * The key assignments of the case by group id, which is what the store config reader answers with.
+     *
+     * @var array<int, KeyGroupRelation[]>
+     */
+    private array $relations = [];
+
     protected function _after(): void
     {
         $this->groups = [];
+        $this->relations = [];
         DefinitionCache::clear(null);
         (new ReflectionProperty(ClassificationstoreService::class, 'definitionsCache'))->setValue(null, []);
     }
@@ -2000,6 +2010,27 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
+     * The public mapping build reads the groups and their key assignments from the store config reader, which
+     * every other case here bypasses by invoking the group mapping with relations of its own. Without it the
+     * adapter would hit an uninitialized collaborator a long way from the cause.
+     */
+    public function testTheMappingBuildReadsItsGroupsAndKeysFromTheStoreConfigReader(): void
+    {
+        $this->registerGroup(self::GROUP_ID, self::GROUP_NAME, self::GROUP_IDENTIFIER);
+        $relation = $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME);
+
+        $adapter = $this->createConfiguredAdapter(self::LANGUAGES, $this->createFieldDefinition(false));
+
+        $mapping = $adapter->getIndexMapping();
+
+        $this->assertSame(
+            $this->getMappingForRelations($this->createFieldDefinition(false), self::LANGUAGES, [$relation]),
+            $mapping[self::PROPERTIES][self::GROUP_IDENTIFIER][self::PROPERTIES] ?? null,
+            'The group the reader hands over must declare the keys the reader hands over for it'
+        );
+    }
+
+    /**
      * @param array<int, mixed> $values
      * @param KeyGroupRelation[] $relations
      */
@@ -2388,6 +2419,7 @@ final class ClassificationStoreAdapterTest extends Unit
         $relation->setGroupId($groupId);
         $relation->setName($name);
         $relation->setDefinition((string) json_encode(['fieldtype' => 'input', 'name' => $name]));
+        $this->relations[$groupId][] = $relation;
 
         return $relation;
     }
@@ -2469,6 +2501,7 @@ final class ClassificationStoreAdapterTest extends Unit
         ]));
         $adapter->setKeyLocaleService($this->createKeyLocaleService());
         $adapter->setIndexSegmentService($this->createIndexSegmentService());
+        $adapter->setStoreConfigReader($this->createStoreConfigReader());
         $adapter->setEngineCapabilityService($engineCapabilityService ?? $this->createEngineCapabilityService());
         $adapter->setFieldDefinition($fieldDefinition ?? new Classificationstore());
         $adapter->setLogger($logger ?? $this->createCollectingLogger());
@@ -2492,6 +2525,19 @@ final class ClassificationStoreAdapterTest extends Unit
             'save' => static function (mixed $data, string $id) use ($entries): void {
                 $entries[$id] = $data;
             },
+        ]);
+    }
+
+    /**
+     * Only its queries are stubbed, and they answer from the same registries the fixture puts the group
+     * configurations and the key assignments in, as the segment service does.
+     */
+    private function createStoreConfigReader(): StoreConfigReaderInterface
+    {
+        return $this->makeEmpty(StoreConfigReaderInterface::class, [
+            'getGroups' => fn (int $storeId): Generator => yield from array_values($this->groups),
+            'getAllGroups' => fn (int $storeId): array => array_values($this->groups),
+            'getKeyRelations' => fn (int $groupId): array => $this->relations[$groupId] ?? [],
         ]);
     }
 
