@@ -30,11 +30,27 @@ final class BulkDispatcherFactory
         private readonly string $environment,
         private readonly bool $debug,
         private readonly ?LoggerInterface $logger = null,
+        private readonly ?BulkSenderInterface $bulkSender = null,
     ) {
     }
 
-    public function create(): WorkerPoolBulkDispatcher
+    /**
+     * The worker pool, or - for a process whose descriptors a pipe can no longer be selected on,
+     * see {@see SubprocessPipeSupport} - the in-process dispatcher, which is slower but is the
+     * difference between a slow import and an import that hangs with nothing to show for it.
+     */
+    public function create(): BulkDispatcherInterface
     {
+        if ($this->bulkSender !== null && !SubprocessPipeSupport::pipesAreUsable()) {
+            $this->logger?->warning(
+                'Replaying the snapshot in this process: it holds too many open files for a pipe to a '
+                . 'worker process to be usable (stream_select() is limited to 1024 descriptors). The import '
+                . 'runs one bulk request at a time instead of ' . $this->workers . '.'
+            );
+
+            return new InProcessBulkDispatcher($this->bulkSender, $this->logger);
+        }
+
         return new WorkerPoolBulkDispatcher($this->workerCommand(), $this->workers, $this->logger);
     }
 

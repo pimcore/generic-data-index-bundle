@@ -75,6 +75,11 @@ fixed batch sizes:
   as 1, 8 workers 3.4 times; beyond that the node rejected requests. Unsent bulk bodies occupy
   roughly `2 × import_workers × bulk_bytes` in the system temp directory, plus one short action
   line per document; a single document larger than `bulk_bytes` forms a chunk of its own size.
+- A pipe to a worker process is driven by `stream_select()`, which fails outright on a descriptor
+  numbered at or above the 1024 PHP is built with. An import started from a process that already
+  holds about a thousand open files - a long-running worker, or a test suite - therefore sends the
+  bulk bodies from the importing process itself, one request at a time, and says so with a warning.
+  The import is slower; it is not a hang, which is what the worker pool would do there.
 
 The budget is a target rather than a guarantee, because the search engine cannot be asked for "at
 most N bytes": a page whose documents are larger than everything seen before is only corrected

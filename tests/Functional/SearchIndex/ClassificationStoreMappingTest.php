@@ -343,10 +343,13 @@ class ClassificationStoreMappingTest extends Unit
      */
     public function testAVariantKeyOnAnEngineThatCannotHoldItIsNotDeclared(): void
     {
+        // The key is declared while the store's engine still offers MultiValue: core refuses to declare
+        // one on an EAV store, so a key can only be in this state by the store moving under it.
+        $variantKeyConfig = $this->createVariantKeyWithAssignment();
+
         $this->storeConfig->setEngine('eav');
         $this->storeConfig->save();
 
-        $variantKeyConfig = $this->createVariantKeyWithAssignment();
         $this->recreateClassIndex($this->classDefinition);
 
         $declaredKeys = array_keys(
