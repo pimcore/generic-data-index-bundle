@@ -330,6 +330,83 @@ final class IndexLockTest extends Unit
         $this->fail('A lock taken over during the wait for a nested lock must stop the update');
     }
 
+    /**
+     * A PHP fatal error - the OOM a large classification store mapping produced - does not run "finally", so the
+     * lock was left held for its full TTL: 75.6 minutes with the shipped reindex settings, during which every
+     * further mapping update of that index waits with one NOTICE to show for it. A shutdown release is the one
+     * hook a fatal still runs.
+     */
+    public function testAFatalDuringTheOperationReleasesTheLockThroughTheShutdownHook(): void
+    {
+        $store = new RecordingLockStore();
+        $registered = [];
+        $lock = new IndexLock(
+            new LockFactory($store),
+            1,
+            1,
+            static function (callable $release) use (&$registered): void {
+                $registered[] = $release;
+            }
+        );
+
+        $lock->run(self::ALIAS, function () use ($store, &$registered): void {
+            $this->assertCount(1, $registered, 'A shutdown release must be registered while a lock is held');
+            $this->assertSame([self::RESOURCE], $store->getHeldResources());
+
+            // what a fatal error leaves of the operation: no "finally", only the shutdown functions
+            ($registered[0])();
+
+            $this->assertSame(
+                [],
+                $store->getHeldResources(),
+                'The lock of an index whose mapping update died must not stay held for its TTL'
+            );
+        });
+    }
+
+    public function testTheShutdownHookReleasesNothingAfterANormalEnd(): void
+    {
+        $store = new RecordingLockStore();
+        $registered = [];
+        $lock = new IndexLock(
+            new LockFactory($store),
+            1,
+            1,
+            static function (callable $release) use (&$registered): void {
+                $registered[] = $release;
+            }
+        );
+
+        $lock->run(self::ALIAS, static function (): void {
+        });
+
+        $deletesAfterRun = $store->getDeletes();
+        ($registered[0])();
+
+        $this->assertSame($deletesAfterRun, $store->getDeletes(), 'Nothing is left to release after a clean run');
+    }
+
+    public function testTheShutdownReleaseIsRegisteredOnlyOnce(): void
+    {
+        $store = new RecordingLockStore();
+        $registrations = 0;
+        $lock = new IndexLock(
+            new LockFactory($store),
+            1,
+            1,
+            static function (callable $release) use (&$registrations): void {
+                ++$registrations;
+            }
+        );
+
+        $lock->run(self::ALIAS, static function (): void {
+        });
+        $lock->run(self::ALIAS, static function (): void {
+        });
+
+        $this->assertSame(1, $registrations, 'A worker process must not pile up a shutdown function per update');
+    }
+
     private function createIndexLock(RecordingLockStore $store): IndexLock
     {
         return new IndexLock(new LockFactory($store), 1, 1);
