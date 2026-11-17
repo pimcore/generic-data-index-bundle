@@ -998,7 +998,9 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             return $this->keyDeclarations[$keyId];
         }
 
-        return $this->keyDeclarations[$keyId] = $this->resolveKeyDeclaration($key);
+        $this->keyDeclarations[$keyId] = $this->resolveKeyDeclaration($key);
+
+        return $this->keyDeclarations[$keyId];
     }
 
     /**
