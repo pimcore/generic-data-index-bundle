@@ -386,14 +386,11 @@ does that on its own.
 :::
 
 What counts against the limit is not only the leaf fields: the engine counts the leaves **plus** the
-object and nested nodes **plus** the sub-fields of a multi-field. A classification store mapping is
-roughly 2.3 times its leaf count in that unit.
+object and nested nodes **plus** the sub-fields of a multi-field.
 
-Raising the limit is supported, and it is not free. The mapping of every index lives in the cluster
-state, which every node holds and which is read on each mapping lookup. Measured on OpenSearch 2.19.3
-with one 193,222-field index: the cluster state grew from 0.57 MB to 13.70 MB (24x) and reading it from
-52 ms to 285 ms, while `GET /<index>/_mapping` went from 26 ms to 940 ms. Bounding the mapped group set
-is therefore the remedy; the limit is the escape hatch.
+Raising the limit is supported, and it is not free: the mapping of every index lives in the cluster
+state, which every node holds and which is read on each mapping lookup, so a larger mapping makes that
+state bigger and its lookups slower.
 
 A mapping over the configured limit is refused by this bundle before the engine is asked for it, naming
 the field count and the column it comes from. The engine's own check runs only after it has parsed the
