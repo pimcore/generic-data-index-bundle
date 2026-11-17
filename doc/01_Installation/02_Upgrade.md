@@ -166,6 +166,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
   odd/even twin and swaps the alias — expensive on a large index, but not destructive, because the existing values
   parse into the declared types. Apply the new mapping with `bin/console generic-data-index:update:index`; add `-r` to
   build the affected indices from scratch instead, which is also what removes the nodes dynamic mapping created.
+- [Indexing] A text-typed Classification Store key no longer declares the `analyzed`, `analyzed_ngram` and `sort`
+  sub-fields: a store key is only reachable inside a `nested` query, which global full-text search and sorting do not
+  build, so nothing could read them. The `keyword` sub-field every store filter uses is unchanged, the mapping of a
+  text field outside a store is unchanged, and no filter result changes. The mapping of classes with such a key does
+  change, so run `generic-data-index:deployment:reindex` after the update to apply it.
 
 ### Workflow places: run `update:index` right after the deployment
 

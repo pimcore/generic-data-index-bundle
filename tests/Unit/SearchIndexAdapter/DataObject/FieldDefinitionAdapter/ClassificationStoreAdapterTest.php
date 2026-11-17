@@ -26,6 +26,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDef
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\AdvancedManyToManyRelationAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\ClassificationStoreAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\RelationAdapter;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\TextKeywordAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\IndexMappingService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\EngineCapabilityServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentService;
@@ -105,6 +106,28 @@ final class ClassificationStoreAdapterTest extends Unit
     private const NORMALIZES_TO_NULL = 'normalizes to null';
 
     private const PROPERTIES = 'properties';
+
+    private const FIELDS = 'fields';
+
+    private const KEYWORD = 'keyword';
+
+    /** The analysed multi-fields config/pimcore/config.yaml declares for every text field. */
+    private const ANALYZER_ATTRIBUTES = [
+        'text' => [
+            self::FIELDS => [
+                'analyzed_ngram' => [
+                    'type' => 'text',
+                    'analyzer' => 'generic_data_index_ngram_analyzer',
+                    'search_analyzer' => 'generic_data_index_whitespace_analyzer',
+                ],
+                'analyzed' => [
+                    'type' => 'text',
+                    'analyzer' => 'standard',
+                    'search_analyzer' => 'generic_data_index_whitespace_analyzer',
+                ],
+            ],
+        ],
+    ];
 
     private const LANGUAGE_NODE = [self::PROPERTIES => [self::KEY_NAME => self::KEY_MAPPING]];
 
@@ -2553,6 +2576,148 @@ final class ClassificationStoreAdapterTest extends Unit
         $adapter->setIndexSegmentService($this->createIndexSegmentService());
 
         return $adapter;
+    }
+
+    /**
+     * A store key is addressed only inside a `nested` query, which cannot be a top-level
+     * `simple_query_string` - the one query naming `analyzed` and `analyzed_ngram` - so a text key
+     * declares neither, nor the `sort` multi-field no store sort path composes. The `keyword`
+     * multi-field every store filter addresses, and the text field it hangs off, stay.
+     */
+    public function testATextStoreKeyDeclaresOnlyTheKeywordMultiField(): void
+    {
+        $keyMapping = $this->getTextKeyMapping();
+
+        $this->assertSame(AttributeType::TEXT->value, $keyMapping['type']);
+        $this->assertSame([self::KEYWORD], array_keys($keyMapping[self::FIELDS]));
+        $this->assertSame(
+            ['type' => AttributeType::KEYWORD->value, 'ignore_above' => 1024],
+            $keyMapping[self::FIELDS][self::KEYWORD]
+        );
+    }
+
+    /**
+     * The trim is scoped to store keys: `getMappingForTextKeyword()` is shared with every ordinary
+     * text field, which keeps all four multi-fields. Asserted against the same service instance the
+     * store mapping above was built from, so the two cannot drift apart.
+     */
+    public function testAnOrdinaryTextFieldKeepsTheAnalysedAndSortMultiFields(): void
+    {
+        $classFieldMapping = $this->createServiceWithTextKeywordAdapter()
+            ->getFieldDefinitionAdapter(new Input())
+            ->getIndexMapping();
+
+        $this->assertSame(
+            ['analyzed_ngram', 'analyzed', self::KEYWORD, 'sort'],
+            array_keys($classFieldMapping[self::FIELDS])
+        );
+        $this->assertNotSame($classFieldMapping, $this->getTextKeyMapping());
+    }
+
+    /**
+     * A value type that nests - a `table` key declares one text column per configured column - is
+     * trimmed at every depth, because a sub-field below the key is as unreachable as one on it.
+     */
+    public function testTheTrimReachesAMultiFieldNestedBelowTheKey(): void
+    {
+        $nested = [
+            'type' => AttributeType::NESTED->value,
+            self::PROPERTIES => [
+                'column1' => $this->createIndexMappingService()
+                    ->getMappingForTextKeyword(self::ANALYZER_ATTRIBUTES),
+            ],
+        ];
+
+        $keyMapping = $this->getTextKeyMapping($this->createServiceReturningMapping($nested));
+
+        $this->assertSame(
+            [self::KEYWORD],
+            array_keys($keyMapping[self::PROPERTIES]['column1'][self::FIELDS])
+        );
+        $this->assertSame(AttributeType::NESTED->value, $keyMapping['type']);
+    }
+
+    /**
+     * A value type declaring no multi-field at all is passed through unchanged, so the trim cannot
+     * be what a boolean, numeric, date or object-shaped key regresses on.
+     */
+    public function testAKeyTypeWithoutMultiFieldsIsDeclaredUnchanged(): void
+    {
+        $objectShaped = [
+            self::PROPERTIES => [
+                'value' => ['type' => AttributeType::DOUBLE->value],
+                'unitId' => ['type' => AttributeType::TEXT->value],
+            ],
+        ];
+
+        foreach ([['type' => AttributeType::BOOLEAN->value], $objectShaped] as $mapping) {
+            $this->assertSame(
+                $mapping,
+                $this->getTextKeyMapping($this->createServiceReturningMapping($mapping))
+            );
+        }
+    }
+
+    /**
+     * The mapping one key declares, built through the real text keyword adapter unless another
+     * mapping is given.
+     */
+    private function getTextKeyMapping(?FieldDefinitionServiceInterface $service = null): array
+    {
+        $mapping = $this->getMappingForRelations(
+            $this->createFieldDefinition(false),
+            self::LANGUAGES,
+            [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)],
+            null,
+            new Input(),
+            $service ?? $this->createServiceWithTextKeywordAdapter()
+        );
+
+        return $mapping[self::DEFAULT_LANGUAGE][self::PROPERTIES][self::KEY_NAME];
+    }
+
+    private function createServiceWithTextKeywordAdapter(): FieldDefinitionServiceInterface
+    {
+        $configService = $this->makeEmpty(SearchIndexConfigServiceInterface::class, [
+            'getSearchAnalyzerAttributes' => self::ANALYZER_ATTRIBUTES,
+            'getClientType' => ClientType::OPEN_SEARCH->value,
+        ]);
+        $indexMappingService = $this->createIndexMappingService();
+        $adapterService = $this->makeEmpty(FieldDefinitionServiceInterface::class);
+
+        return $this->makeEmpty(FieldDefinitionServiceInterface::class, [
+            'getFieldDefinitionAdapter' => static function (Data $definition) use (
+                $configService,
+                $adapterService,
+                $indexMappingService
+            ): AdapterInterface {
+                $adapter = new TextKeywordAdapter($configService, $adapterService, $indexMappingService);
+                $adapter->setFieldDefinition($definition);
+
+                return $adapter;
+            },
+            'normalizeValue' => static fn (?Data $fieldDefinition, mixed $value): mixed => $value,
+        ]);
+    }
+
+    private function createServiceReturningMapping(array $mapping): FieldDefinitionServiceInterface
+    {
+        return $this->makeEmpty(FieldDefinitionServiceInterface::class, [
+            'getFieldDefinitionAdapter' => $this->makeEmpty(AdapterInterface::class, [
+                'getIndexMapping' => $mapping,
+            ]),
+            'normalizeValue' => static fn (?Data $fieldDefinition, mixed $value): mixed => $value,
+        ]);
+    }
+
+    private function createIndexMappingService(): IndexMappingService
+    {
+        return new IndexMappingService(
+            $this->makeEmpty(FieldDefinitionServiceInterface::class),
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class, [
+                'getClientType' => ClientType::OPEN_SEARCH->value,
+            ])
+        );
     }
 
     private function createCollectingLogger(): AbstractLogger

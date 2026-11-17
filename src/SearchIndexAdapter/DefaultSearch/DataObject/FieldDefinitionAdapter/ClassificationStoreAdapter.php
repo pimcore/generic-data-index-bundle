@@ -51,6 +51,10 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
     private const CACHE_KEY_INDEXED = 'gdi_cs_key_indexed_%d';
 
+    private const PROPERTIES = 'properties';
+
+    private const FIELDS = 'fields';
+
     private ServiceResolverInterface $classificationService;
 
     private LanguageServiceInterface $languageService;
@@ -131,7 +135,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             }
 
             $keys = $this->getClassificationStoreKeysFromGroup($group);
-            $mapping[$groupName]['properties'] = $this->getMappingForGroupConfig($keys, $validLanguages);
+            $mapping[$groupName][self::PROPERTIES] = $this->getMappingForGroupConfig($keys, $validLanguages);
         }
 
         return $this->getNestedRootMapping($mapping);
@@ -147,7 +151,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         return [
             'type' => AttributeType::NESTED,
             'dynamic' => false,
-            'properties' => $groupMapping,
+            self::PROPERTIES => $groupMapping,
         ];
     }
 
@@ -896,7 +900,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
             $usedKeyNames += array_fill_keys(array_keys($keyMappings), true);
 
             foreach ($this->getLanguagesForKey($key->getKeyId(), $validLanguages) as $language) {
-                $groupMapping[$language]['properties'] = ($groupMapping[$language]['properties'] ?? []) + $keyMappings;
+                $groupMapping[$language][self::PROPERTIES] = ($groupMapping[$language][self::PROPERTIES] ?? [])
+                    + $keyMappings;
             }
         }
 
@@ -959,7 +964,40 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         $usedKeyNames[$keyName] = true;
         $variantNames = $this->getVariantSiblingNames($usedKeyNames, $definition, $key, true);
 
-        return array_fill_keys([$keyName, ...array_values($variantNames)], $adapter->getIndexMapping());
+        return array_fill_keys(
+            [$keyName, ...array_values($variantNames)],
+            $this->withQueryableSubFieldsOnly($adapter->getIndexMapping())
+        );
+    }
+
+    /**
+     * The value type's mapping with every multi-field but `keyword` removed, at any depth it nests.
+     *
+     * A store key lives under a `type: nested` root {@see self::getNestedRootMapping()}, which the
+     * top-level `simple_query_string` naming `analyzed` and `analyzed_ngram` cannot reach into, and no
+     * path composes a sort address for a store key. `keyword` is the one sub-field a store filter
+     * addresses, so keeping it and the field it hangs off leaves every query path unchanged.
+     */
+    private function withQueryableSubFieldsOnly(array $mapping): array
+    {
+        if (isset($mapping[self::FIELDS])) {
+            $mapping[self::FIELDS] = array_intersect_key(
+                $mapping[self::FIELDS],
+                [AttributeType::KEYWORD->value => true]
+            );
+
+            if ($mapping[self::FIELDS] === []) {
+                unset($mapping[self::FIELDS]);
+            }
+        }
+
+        foreach ($mapping[self::PROPERTIES] ?? [] as $name => $property) {
+            if (is_array($property)) {
+                $mapping[self::PROPERTIES][$name] = $this->withQueryableSubFieldsOnly($property);
+            }
+        }
+
+        return $mapping;
     }
 
     /**
