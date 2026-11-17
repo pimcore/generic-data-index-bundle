@@ -167,6 +167,19 @@ description: Version-specific upgrade instructions and breaking changes for the 
   parse into the declared types. Apply the new mapping with `bin/console generic-data-index:update:index`; add `-r` to
   build the affected indices from scratch instead, which is also what removes the nodes dynamic mapping created.
 
+### Index recreation no longer empties an index on a refused mapping
+
+- [Indexing] An index recreation (`update:index -r`, and the last resort of a failing copy) builds the other
+  `-odd`/`-even` index with the new mapping first and moves the alias onto it, instead of deleting the live index
+  before the mapping has been accepted. A mapping the engine refuses now fails the command and leaves the index with
+  its documents and its alias; before, it left an empty index behind the alias. The index name behind an alias
+  therefore flips between the `-odd` and `-even` suffix on every recreation.
+- [Indexing] A mapping declaring more fields than
+  `pimcore_generic_data_index.index_service.index_settings.index.mapping.total_fields.limit` allows is refused before
+  the engine is asked for it, naming the field count and the column it comes from. Raise the limit for a mapping that
+  is meant to be that large, see
+  [Total Fields Limit](../02_Configuration/03_Index_Management.md#total-fields-limit).
+
 ### Workflow places: run `update:index` right after the deployment
 
 - [Indexing] Places of workflows using the `state_table` marking store are indexed in the new system field

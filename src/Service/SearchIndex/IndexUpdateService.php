@@ -80,7 +80,7 @@ final class IndexUpdateService implements IndexUpdateServiceInterface
     {
         $mappingProperties = $this->dataObjectIndexHandler->getMappingProperties($classDefinition);
 
-        // With forceCreateIndex, the handler deletes and recreates the index under the lock of the index.
+        // With forceCreateIndex, the handler rebuilds the index under the lock of the index.
         $this
             ->dataObjectIndexHandler
             ->updateMapping(
