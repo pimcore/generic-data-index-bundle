@@ -2539,7 +2539,8 @@ final class ClassificationStoreAdapterTest extends Unit
         );
 
         $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'filterAllowedGroups');
-        $result = $method->invoke($this->createAdapter(), $groups, $fieldDefinition);
+        // the filter streams the groups, so that a store of thousands of them is not hydrated at once
+        $result = iterator_to_array($method->invoke($this->createAdapter(), $groups, $fieldDefinition));
 
         return array_values(array_map(static fn (GroupConfig $group): int => $group->getId(), $result));
     }

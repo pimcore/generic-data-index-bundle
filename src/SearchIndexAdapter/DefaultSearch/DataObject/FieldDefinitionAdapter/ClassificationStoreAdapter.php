@@ -14,6 +14,7 @@ declare(strict_types=1);
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter;
 
 use Exception;
+use Generator;
 use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\ClassificationStore\KeyEntrySlot;
@@ -22,6 +23,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterI
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\EngineCapabilityServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\StoreConfigReaderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
@@ -33,9 +35,7 @@ use Pimcore\Model\DataObject\Classificationstore as ClassificationstoreModel;
 use Pimcore\Model\DataObject\Classificationstore\DefinitionCache;
 use Pimcore\Model\DataObject\Classificationstore\Engine\EngineFeature;
 use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
-use Pimcore\Model\DataObject\Classificationstore\GroupConfig\Listing as GroupListing;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
-use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation\Listing as KeyGroupRelationListing;
 use Pimcore\Model\DataObject\Concrete;
 use ReflectionProperty;
 use Symfony\Contracts\Service\Attribute\Required;
@@ -60,6 +60,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     private EngineCapabilityServiceInterface $engineCapabilityService;
 
     private IndexSegmentServiceInterface $indexSegmentService;
+
+    private StoreConfigReaderInterface $storeConfigReader;
 
     /**
      * Keys whose engine refusal this mapping build has already reported, by key id. A key assigned to
@@ -105,6 +107,12 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     public function setIndexSegmentService(IndexSegmentServiceInterface $indexSegmentService): void
     {
         $this->indexSegmentService = $indexSegmentService;
+    }
+
+    #[Required]
+    public function setStoreConfigReader(StoreConfigReaderInterface $storeConfigReader): void
+    {
+        $this->storeConfigReader = $storeConfigReader;
     }
 
     /**
@@ -764,7 +772,8 @@ final class ClassificationStoreAdapter extends AbstractAdapter
         Classificationstore $classificationStore
     ): array {
         $mapping = [];
-        $groups = $this->getClassificationStoreGroups($classificationStore->getStoreId());
+        // one query, not pages: this runs for every indexed element
+        $groups = $this->storeConfigReader->getAllGroups($classificationStore->getStoreId());
         $activeGroups = $this->getElementActiveGroups($dataObject, $classificationStore);
 
         if (empty($activeGroups)) {
@@ -877,12 +886,12 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * under the non-localized node and a localized one under each valid language as well, so a group
      * holding keys of differing flag declares a different key set per node.
      *
-     * @param KeyGroupRelation[] $groupConfigs
+     * @param iterable<KeyGroupRelation> $groupConfigs
      * @param string[] $validLanguages
      *
      * @throws InvalidArgumentException
      */
-    private function getMappingForGroupConfig(array $groupConfigs, array $validLanguages): array
+    private function getMappingForGroupConfig(iterable $groupConfigs, array $validLanguages): array
     {
         $groupMapping = [];
         $usedKeyNames = [];
@@ -1156,14 +1165,13 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
-     * @return GroupConfig[]
+     * The groups of the store in pages, so that a store of thousands of groups is never hydrated at once.
+     *
+     * @return Generator<int, GroupConfig>
      */
-    private function getClassificationStoreGroups(int $id): array
+    private function getClassificationStoreGroups(int $id): Generator
     {
-        $listing = new GroupListing();
-        $listing->setCondition('storeId = :storeId', ['storeId' => $id]);
-
-        return $listing->getList();
+        return $this->storeConfigReader->getGroups($id);
     }
 
     /**
@@ -1178,22 +1186,21 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * dynamic mapping created there until the index is built from scratch. A key marked as not indexed on
      * its own definition is the exclusion that does reach the document, see {@see self::isIndexedKey()}.
      *
-     * @param GroupConfig[] $groups
+     * @param iterable<GroupConfig> $groups
      *
-     * @return GroupConfig[]
+     * @return Generator<int, GroupConfig>
      */
-    private function filterAllowedGroups(array $groups, Classificationstore $classificationStore): array
+    private function filterAllowedGroups(iterable $groups, Classificationstore $classificationStore): Generator
     {
-        if (!isset($classificationStore->allowedGroupIds) || $classificationStore->getAllowedGroupIds() === []) {
-            return $groups;
+        $restricted = isset($classificationStore->allowedGroupIds)
+            && $classificationStore->getAllowedGroupIds() !== [];
+        $allowedGroupIds = $restricted ? array_map('intval', $classificationStore->getAllowedGroupIds()) : [];
+
+        foreach ($groups as $group) {
+            if (!$restricted || in_array($group->getId(), $allowedGroupIds, true)) {
+                yield $group;
+            }
         }
-
-        $allowedGroupIds = array_map('intval', $classificationStore->getAllowedGroupIds());
-
-        return array_filter(
-            $groups,
-            static fn (GroupConfig $group): bool => in_array($group->getId(), $allowedGroupIds, true)
-        );
     }
 
     /**
@@ -1201,10 +1208,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      */
     private function getClassificationStoreKeysFromGroup(GroupConfig $groupConfig): array
     {
-        $listing = new KeyGroupRelationListing();
-        $listing->addConditionParam('groupId = ?', $groupConfig->getId());
-
-        return $listing->getList();
+        return $this->storeConfigReader->getKeyRelations((int) $groupConfig->getId());
     }
 
     private function getNormalizedValue(
