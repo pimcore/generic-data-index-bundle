@@ -2625,7 +2625,12 @@ final class ClassificationStoreAdapterTest extends Unit
             ]),
             $this->makeEmpty(KeyConfigResolverInterface::class, [
                 'getById' => static fn (int $id): ?KeyConfig => DefinitionCache::get($id),
-            ])
+            ]),
+            // only getGroupEntries() reads these, and the adapter does not ask it anything
+            $this->makeEmpty(StoreConfigReaderInterface::class),
+            $this->makeEmpty(ServiceResolverInterface::class),
+            $this->makeEmpty(FieldDefinitionServiceInterface::class),
+            $this->makeEmpty(EngineCapabilityServiceInterface::class)
         );
     }
 
