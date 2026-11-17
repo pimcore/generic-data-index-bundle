@@ -19,6 +19,7 @@ use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\TotalFieldsLimitExceededException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
@@ -28,6 +29,10 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\Index
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingFieldCountService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingFieldCountServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitMessageService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitMessageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\DataObject\ClassDefinition;
@@ -44,6 +49,11 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     /** Created on first use for subclasses that call the constructor with the four arguments of 2026.3.2. */
     private ?IndexCopyServiceInterface $defaultIndexCopyService = null;
 
+    /** Created on first use: the counter is stateless, so a subclass not passing one costs nothing. */
+    private ?MappingFieldCountServiceInterface $defaultFieldCountService = null;
+
+    private ?TotalFieldsLimitMessageServiceInterface $defaultLimitMessageService = null;
+
     private ?bool $reindexMappingOverridden = null;
 
     private bool $runningReindexMappingOverride = false;
@@ -55,6 +65,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         protected readonly IndexMappingServiceInterface $indexMappingService,
         private readonly ?IndexCopyServiceInterface $indexCopyService = null,
         private readonly ?IndexLockInterface $indexLock = null,
+        private readonly ?MappingFieldCountServiceInterface $mappingFieldCountService = null,
+        private readonly ?TotalFieldsLimitMessageServiceInterface $limitMessageService = null,
     ) {
         if ($indexCopyService === null) {
             trigger_deprecation(
@@ -86,6 +98,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         bool $forceCreateIndex = false,
         ?array $mappingProperties = null
     ): void {
+        $mappingProperties = $this->assertFieldCountWithinLimit($context, $mappingProperties);
+
         $this->underIndexLock(
             $this->getAliasIndexName($context),
             fn () => $this->doUpdateMappingFull($context, $forceCreateIndex, $mappingProperties, 0)
@@ -104,6 +118,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         int $reindexDepth
     ): void {
         $aliasName = $this->getAliasIndexName($context);
+        $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
 
         if ($forceCreateIndex || !$this->searchIndexService->existsAlias($aliasName)) {
             // Recover from corrupted state: both -even and -odd may exist without an alias
@@ -126,7 +141,10 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                 }
             }
 
-            $this->createIndex($context, $aliasName);
+            // The index carries its mapping from the create request on, so a mapping the engine refuses leaves
+            // no index - and no alias - behind. The putMapping below then applies it to an index that already
+            // has it, which is what keeps the retry and escalation of a refused in-place update unchanged.
+            $this->createIndex($context, $aliasName, $mappingProperties);
         }
 
         // A class-definition mapping that drops a live property cannot go in place: putMapping keeps the property.
@@ -158,6 +176,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): MappingUpdateResult {
+        $mappingProperties = $this->assertFieldCountWithinLimit($context, $mappingProperties);
+
         return $this->underIndexLock(
             $this->getAliasIndexName($context),
             fn () => $this->doUpdateMappingWithResult($context, $mappingProperties)
@@ -246,6 +266,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): void {
+        $mappingProperties = $this->assertFieldCountWithinLimit($context, $mappingProperties);
+
         $this->underIndexLock(
             $this->getAliasIndexName($context),
             fn () => $this->doReindexMapping($context, $mappingProperties, 0)
@@ -264,6 +286,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): MappingUpdateResult {
+        $mappingProperties = $this->assertFieldCountWithinLimit($context, $mappingProperties);
+
         return $this->underIndexLock(
             $this->getAliasIndexName($context),
             fn () => $this->doReindexMappingWithResult($context, $mappingProperties)
@@ -448,6 +472,68 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         $this->indexLock?->refresh($aliasName);
     }
 
+    /**
+     * Refuses a mapping declaring more fields than the index allows, before the engine is asked for it, and
+     * returns the mapping properties the refusal was decided on so they are extracted once.
+     *
+     * The engine's own check cannot be relied on: it runs after the mapping has been parsed into the heap of the
+     * cluster manager, so a mapping far enough over the limit kills that node instead of answering with an error
+     * (measured: a ~755,000 field classification store mapping on a 1 GB heap died in ObjectMapper$TypeParser).
+     * Counted in the unit the engine checks, see {@see MappingFieldCountServiceInterface::countFields()}.
+     *
+     * @param array<string, mixed>|null $mappingProperties
+     *
+     * @return array<string, mixed>
+     *
+     * @throws TotalFieldsLimitExceededException
+     */
+    private function assertFieldCountWithinLimit(mixed $context, ?array $mappingProperties): array
+    {
+        $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
+
+        $limit = $this->getConfiguredTotalFieldsLimit();
+        if ($limit === null) {
+            return $mappingProperties;
+        }
+
+        $countedFields = $this->getMappingFieldCountService()->countFields($mappingProperties);
+        if ($countedFields <= $limit) {
+            return $mappingProperties;
+        }
+
+        throw new TotalFieldsLimitExceededException(
+            $this->getLimitMessageService()->forFieldCount(
+                $this->getAliasIndexName($context),
+                $countedFields,
+                $limit,
+                $this->getMappingFieldCountService()->getLargestContributor($mappingProperties)
+            )
+        );
+    }
+
+    /** Null when the configuration names no limit: then the engine is the only one who can refuse. */
+    private function getConfiguredTotalFieldsLimit(): ?int
+    {
+        $limit = $this->searchIndexConfigService->getIndexSettings()['index']['mapping']['total_fields']['limit']
+            ?? null;
+
+        return is_numeric($limit) ? (int) $limit : null;
+    }
+
+    private function getMappingFieldCountService(): MappingFieldCountServiceInterface
+    {
+        return $this->mappingFieldCountService
+            ?? $this->defaultFieldCountService
+            ??= new MappingFieldCountService();
+    }
+
+    private function getLimitMessageService(): TotalFieldsLimitMessageServiceInterface
+    {
+        return $this->limitMessageService
+            ?? $this->defaultLimitMessageService
+            ??= new TotalFieldsLimitMessageService();
+    }
+
     private function getIndexCopyService(): IndexCopyServiceInterface
     {
         if ($this->indexCopyService !== null) {
@@ -490,17 +576,44 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
     }
 
-    protected function createIndex(mixed $context, string $aliasName): void
+    /**
+     * Creates the index of the alias with the given mapping.
+     *
+     * A live index behind the alias is not touched until the replacement stands: it is built under the other
+     * version name and the alias is moved onto it in one engine request. Deleting first is what turned a
+     * refused mapping into the reported cascade - the live index was emptied, kept its aliases, and the
+     * objects written into it afterwards got a dynamic mapping without "system_fields.fullPath.sort", so the
+     * tree sort dropped them from an otherwise successful search.
+     *
+     * @param array<string, mixed>|null $mappingProperties
+     */
+    protected function createIndex(mixed $context, string $aliasName, ?array $mappingProperties = null): void
     {
-        $fullIndexName = $this->getCurrentFullIndexName($context);
+        $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
+        $liveIndexName = $this->getCurrentFullIndexName($context);
+        $replacesLiveIndex = $this->searchIndexService->existsAlias($aliasName, $liveIndexName);
 
-        $this
-            ->searchIndexService
-            ->createIndex($fullIndexName)
-            ->addAlias($aliasName, $fullIndexName)
-        ;
+        $newIndexName = $replacesLiveIndex ? $this->getStandbyFullIndexName($liveIndexName) : $liveIndexName;
+
+        $this->searchIndexService->createIndex($newIndexName, $mappingProperties);
+
+        if ($replacesLiveIndex) {
+            $this->searchIndexService->switchIndexAlias($aliasName, $newIndexName);
+        } else {
+            $this->searchIndexService->addAlias($aliasName, $newIndexName);
+        }
 
         $this->createGlobalIndexAliases($context);
+    }
+
+    /** The other index of the odd/even family, the one the alias does not point at. */
+    private function getStandbyFullIndexName(string $liveIndexName): string
+    {
+        return str_ends_with($liveIndexName, '-' . DefaultSearchService::INDEX_VERSION_EVEN)
+            ? substr($liveIndexName, 0, -strlen(DefaultSearchService::INDEX_VERSION_EVEN))
+                . DefaultSearchService::INDEX_VERSION_ODD
+            : substr($liveIndexName, 0, -strlen(DefaultSearchService::INDEX_VERSION_ODD))
+                . DefaultSearchService::INDEX_VERSION_EVEN;
     }
 
     protected function createGlobalIndexAliases(mixed $context = null): void

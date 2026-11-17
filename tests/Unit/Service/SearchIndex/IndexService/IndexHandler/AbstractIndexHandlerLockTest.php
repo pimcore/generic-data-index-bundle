@@ -105,7 +105,8 @@ final class AbstractIndexHandlerLockTest extends Unit
 
         $handler->reindexMapping();
 
-        $this->assertSame(['test_alias-odd' => [self::RESOURCE]], $heldDuringRecreation);
+        // the recreation builds the standby version, so the live "-odd" index survives a refused mapping
+        $this->assertSame(['test_alias-even' => [self::RESOURCE]], $heldDuringRecreation);
         $this->assertSame(1, $store->getSaves(), 'the copy and the recreation share one lock');
         $this->assertSame(3, $store->getRefreshes(), 'refreshed on acquire, before the copy and before the recreation');
         $this->assertSame([], $store->getHeldResources());
