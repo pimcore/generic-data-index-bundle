@@ -56,6 +56,10 @@ final class AbstractIndexHandlerRecreateSafetyTest extends Unit
     /** What the engine of this test accepts; the configured limit is far above it. */
     private const ENGINE_LIMIT = 10;
 
+    private const STANDARD_FIELDS = 'standard_fields';
+
+    private const PROPERTIES = 'properties';
+
     /** @var array<string, int> index name => document count */
     private array $indices = [];
 
@@ -135,7 +139,7 @@ final class AbstractIndexHandlerRecreateSafetyTest extends Unit
             $properties['key' . $i] = ['type' => 'keyword'];
         }
 
-        return ['standard_fields' => ['dynamic' => false, 'properties' => $properties]];
+        return [self::STANDARD_FIELDS => ['dynamic' => false, self::PROPERTIES => $properties]];
     }
 
     /**
@@ -145,7 +149,7 @@ final class AbstractIndexHandlerRecreateSafetyTest extends Unit
     private function createEngine(): SearchIndexServiceInterface
     {
         $refuse = static function (?array $mappings): void {
-            if (count($mappings['standard_fields']['properties'] ?? []) > self::ENGINE_LIMIT) {
+            if (count($mappings[self::STANDARD_FIELDS][self::PROPERTIES] ?? []) > self::ENGINE_LIMIT) {
                 throw new Exception(
                     sprintf('Limit of total fields [%d] has been exceeded', self::ENGINE_LIMIT)
                 );
@@ -198,7 +202,7 @@ final class AbstractIndexHandlerRecreateSafetyTest extends Unit
                 }
             },
             'putMapping' => static function (array $params) use ($refuse): array {
-                $refuse(['standard_fields' => $params['body']['properties']['standard_fields'] ?? []]);
+                $refuse([self::STANDARD_FIELDS => $params['body'][self::PROPERTIES][self::STANDARD_FIELDS] ?? []]);
 
                 return [];
             },

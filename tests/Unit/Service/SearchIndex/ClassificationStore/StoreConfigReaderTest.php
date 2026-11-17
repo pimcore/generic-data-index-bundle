@@ -40,6 +40,10 @@ final class StoreConfigReaderTest extends Unit
 
     private const PAGE_SIZE = 200;
 
+    private const LIMIT = 'limit';
+
+    private const OFFSET = 'offset';
+
     /** @var list<array{limit: int|null, offset: int|null}> */
     private array $groupPages = [];
 
@@ -69,9 +73,9 @@ final class StoreConfigReaderTest extends Unit
         $this->assertSame(range(1, 450), $ids, 'In the order of the pages, without a gap or a repetition');
         $this->assertSame(
             [
-                ['limit' => self::PAGE_SIZE, 'offset' => 0],
-                ['limit' => self::PAGE_SIZE, 'offset' => self::PAGE_SIZE],
-                ['limit' => self::PAGE_SIZE, 'offset' => 2 * self::PAGE_SIZE],
+                [self::LIMIT => self::PAGE_SIZE, self::OFFSET => 0],
+                [self::LIMIT => self::PAGE_SIZE, self::OFFSET => self::PAGE_SIZE],
+                [self::LIMIT => self::PAGE_SIZE, self::OFFSET => 2 * self::PAGE_SIZE],
             ],
             $this->groupPages,
             'One query per page, and no further query after a page shorter than its limit'
@@ -112,7 +116,7 @@ final class StoreConfigReaderTest extends Unit
 
         $this->assertCount(121, $relations);
         $this->assertSame(
-            [['limit' => null, 'offset' => null]],
+            [[self::LIMIT => null, self::OFFSET => null]],
             $this->relationPages,
             'The assignments of one group are bounded by the group, so they are read unpaged'
         );
@@ -160,7 +164,7 @@ final class StoreConfigReaderTest extends Unit
                 return $listing;
             },
             'getList' => function () use (&$limit, &$offset, $groupCount): array {
-                $this->groupPages[] = ['limit' => $limit, 'offset' => $offset];
+                $this->groupPages[] = [self::LIMIT => $limit, self::OFFSET => $offset];
                 $from = ($offset ?? 0) + 1;
                 $to = min($groupCount, ($offset ?? 0) + ($limit ?? $groupCount));
                 $groups = [];
@@ -196,7 +200,7 @@ final class StoreConfigReaderTest extends Unit
                 return $listing;
             },
             'getList' => function () use (&$limit, &$offset, $relationCount): array {
-                $this->relationPages[] = ['limit' => $limit, 'offset' => $offset];
+                $this->relationPages[] = [self::LIMIT => $limit, self::OFFSET => $offset];
                 $relations = [];
                 for ($i = 0; $i < $relationCount; $i++) {
                     $relations[] = (new KeyGroupRelation())->setKeyId($i + 1);

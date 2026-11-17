@@ -33,6 +33,16 @@ final class MappingFieldCountServiceTest extends Unit
 
     private const STANDARD_FIELDS = 'standard_fields';
 
+    private const TYPE = 'type';
+
+    private const TEXT = 'text';
+
+    private const DOUBLE = 'double';
+
+    private const NESTED = 'nested';
+
+    private const DYNAMIC = 'dynamic';
+
     public function testFlatLeavesAreCountedOnce(): void
     {
         $this->assertSame(10, $this->service()->countFields($this->leaves(10)));
@@ -52,8 +62,8 @@ final class MappingFieldCountServiceTest extends Unit
     {
         $mapping = [
             'store' => [
-                'type' => 'nested',
-                'dynamic' => false,
+                self::TYPE => self::NESTED,
+                self::DYNAMIC => false,
                 self::PROPERTIES => $this->leaves(9),
             ],
         ];
@@ -67,9 +77,9 @@ final class MappingFieldCountServiceTest extends Unit
         $mapping = [];
         for ($i = 0; $i < 5; $i++) {
             $mapping['text' . $i] = [
-                'type' => 'text',
+                self::TYPE => self::TEXT,
                 self::FIELDS => [
-                    self::KEYWORD => ['type' => self::KEYWORD],
+                    self::KEYWORD => [self::TYPE => self::KEYWORD],
                 ],
             ];
         }
@@ -86,29 +96,29 @@ final class MappingFieldCountServiceTest extends Unit
     {
         $mapping = [
             'technicalAttributes' => [
-                'type' => 'nested',
-                'dynamic' => false,
+                self::TYPE => self::NESTED,
+                self::DYNAMIC => false,
                 self::PROPERTIES => [
                     'GROUP1' => [
                         self::PROPERTIES => [
                             'default' => [
                                 self::PROPERTIES => [
-                                    'numericKey' => ['type' => 'double'],
+                                    'numericKey' => [self::TYPE => self::DOUBLE],
                                     'selectKey' => [
-                                        'type' => 'text',
+                                        self::TYPE => self::TEXT,
                                         self::FIELDS => [
-                                            'analyzed' => ['type' => 'text'],
-                                            'analyzed_ngram' => ['type' => 'text'],
-                                            self::KEYWORD => ['type' => self::KEYWORD],
-                                            'sort' => ['type' => self::KEYWORD],
+                                            'analyzed' => [self::TYPE => self::TEXT],
+                                            'analyzed_ngram' => [self::TYPE => self::TEXT],
+                                            self::KEYWORD => [self::TYPE => self::KEYWORD],
+                                            'sort' => [self::TYPE => self::KEYWORD],
                                         ],
                                     ],
-                                    'booleanKey' => ['type' => 'boolean'],
+                                    'booleanKey' => [self::TYPE => 'boolean'],
                                     'rangeKey' => [
                                         self::PROPERTIES => [
-                                            'value' => ['type' => 'double'],
-                                            'minimum' => ['type' => 'double'],
-                                            'maximum' => ['type' => 'double'],
+                                            'value' => [self::TYPE => self::DOUBLE],
+                                            'minimum' => [self::TYPE => self::DOUBLE],
+                                            'maximum' => [self::TYPE => self::DOUBLE],
                                         ],
                                     ],
                                 ],
@@ -127,11 +137,11 @@ final class MappingFieldCountServiceTest extends Unit
         $mapping = [
             'system_fields' => [self::PROPERTIES => $this->leaves(3)],
             self::STANDARD_FIELDS => [
-                'dynamic' => false,
+                self::DYNAMIC => false,
                 self::PROPERTIES => [
-                    'name' => ['type' => self::KEYWORD],
+                    'name' => [self::TYPE => self::KEYWORD],
                     'technicalAttributes' => [
-                        'type' => 'nested',
+                        self::TYPE => self::NESTED,
                         self::PROPERTIES => $this->leaves(40),
                     ],
                 ],
@@ -158,7 +168,7 @@ final class MappingFieldCountServiceTest extends Unit
     {
         $leaves = [];
         for ($i = 0; $i < $count; $i++) {
-            $leaves['leaf' . $i] = ['type' => self::KEYWORD];
+            $leaves['leaf' . $i] = [self::TYPE => self::KEYWORD];
         }
 
         return $leaves;

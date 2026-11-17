@@ -22,6 +22,10 @@ final class MappingFieldCountService implements MappingFieldCountServiceInterfac
 
     private const SUB_FIELDS = 'fields';
 
+    private const RESULT_PATH = 'path';
+
+    private const RESULT_FIELD_COUNT = 'fields';
+
     public function countFields(array $properties): int
     {
         $count = 0;
@@ -38,8 +42,8 @@ final class MappingFieldCountService implements MappingFieldCountServiceInterfac
     {
         $largest = null;
         foreach ($this->getContributors($properties) as $path => $fields) {
-            if ($largest === null || $fields > $largest['fields']) {
-                $largest = ['path' => (string) $path, 'fields' => $fields];
+            if ($largest === null || $fields > $largest[self::RESULT_FIELD_COUNT]) {
+                $largest = [self::RESULT_PATH => (string) $path, self::RESULT_FIELD_COUNT => $fields];
             }
         }
 

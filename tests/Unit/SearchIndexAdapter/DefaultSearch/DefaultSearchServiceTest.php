@@ -35,6 +35,11 @@ use stdClass;
  */
 final class DefaultSearchServiceTest extends Unit
 {
+    private const EXISTS_INDEX = 'existsIndex';
+
+    private const CREATE_INDEX = 'createIndex';
+
+
     public function testGetCountReturnsCountFromResult(): void
     {
         $service = $this->createService(
@@ -124,8 +129,8 @@ final class DefaultSearchServiceTest extends Unit
 
         $service = $this->createService(
             client: $this->makeEmpty(SearchClientInterface::class, [
-                'existsIndex' => false,
-                'createIndex' => Expected::once(function (array $params) use (&$capturedBody): array {
+                self::EXISTS_INDEX => false,
+                self::CREATE_INDEX => Expected::once(function (array $params) use (&$capturedBody): array {
                     $capturedBody = $params['body'];
 
                     return [];
@@ -154,8 +159,8 @@ final class DefaultSearchServiceTest extends Unit
 
         $service = $this->createService(
             client: $this->makeEmpty(SearchClientInterface::class, [
-                'existsIndex' => false,
-                'createIndex' => Expected::once(function (array $params) use (&$capturedBody): array {
+                self::EXISTS_INDEX => false,
+                self::CREATE_INDEX => Expected::once(function (array $params) use (&$capturedBody): array {
                     $capturedBody = $params['body'];
 
                     return [];
@@ -394,8 +399,8 @@ final class DefaultSearchServiceTest extends Unit
     {
         $service = $this->createService(
             client: $this->makeEmpty(SearchClientInterface::class, [
-                'existsIndex' => false,
-                'createIndex' => static function (): array {
+                self::EXISTS_INDEX => false,
+                self::CREATE_INDEX => static function (): array {
                     throw new Exception(
                         '{"error":{"root_cause":[{"type":"illegal_argument_exception",'
                         . '"reason":"Limit of total fields [100000] has been exceeded"}]},"status":400}'
@@ -433,8 +438,8 @@ final class DefaultSearchServiceTest extends Unit
         $cause = new Exception('cluster_block_exception');
         $service = $this->createService(
             client: $this->makeEmpty(SearchClientInterface::class, [
-                'existsIndex' => false,
-                'createIndex' => static function () use ($cause): array {
+                self::EXISTS_INDEX => false,
+                self::CREATE_INDEX => static function () use ($cause): array {
                     throw $cause;
                 },
             ])
