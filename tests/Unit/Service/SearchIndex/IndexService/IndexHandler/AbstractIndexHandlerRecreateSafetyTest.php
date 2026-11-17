@@ -130,6 +130,43 @@ final class AbstractIndexHandlerRecreateSafetyTest extends Unit
     }
 
     /**
+     * Moving the alias is a second engine request, so it can fail on its own after the standby index stands.
+     * The live index is still the one the alias names, and it still has its documents.
+     */
+    public function testAFailedAliasSwitchLeavesTheAliasOnTheLiveIndex(): void
+    {
+        $handler = $this->createHandler($this->mappingWithLeaves(2), $this->failingAliasSwitch());
+
+        $thrown = null;
+
+        try {
+            $handler->updateMapping(context: null, forceCreateIndex: true);
+        } catch (Exception $e) {
+            $thrown = $e;
+        }
+
+        $this->assertNotNull($thrown, 'A failing alias switch must fail the update loudly');
+        $this->assertSame(
+            self::LIVE_INDEX,
+            $this->aliases[self::ALIAS] ?? null,
+            'The alias must stay on the live index when it could not be moved'
+        );
+        $this->assertSame(
+            self::LIVE_DOCUMENTS,
+            $this->indices[self::LIVE_INDEX] ?? null,
+            'The live index must keep its documents when the alias could not be moved'
+        );
+    }
+
+    /** The engine refusing to move the alias, for its own reason, after the standby index was created. */
+    private function failingAliasSwitch(): callable
+    {
+        return static function (string $aliasName, string $newIndexName): never {
+            throw new Exception(sprintf('could not move alias "%s" to "%s"', $aliasName, $newIndexName));
+        };
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function mappingWithLeaves(int $leaves): array
@@ -146,7 +183,7 @@ final class AbstractIndexHandlerRecreateSafetyTest extends Unit
      * An engine holding its indices and aliases in memory, refusing a mapping of more than ENGINE_LIMIT fields
      * exactly where OpenSearch refuses one: in the create request and in the mapping update.
      */
-    private function createEngine(): SearchIndexServiceInterface
+    private function createEngine(?callable $switchIndexAlias = null): SearchIndexServiceInterface
     {
         $refuse = static function (?array $mappings): void {
             if (count($mappings[self::STANDARD_FIELDS][self::PROPERTIES] ?? []) > self::ENGINE_LIMIT) {
@@ -193,7 +230,7 @@ final class AbstractIndexHandlerRecreateSafetyTest extends Unit
 
                 return [];
             },
-            'switchIndexAlias' => function (string $aliasName, string $newIndexName): void {
+            'switchIndexAlias' => $switchIndexAlias ?? function (string $aliasName, string $newIndexName): void {
                 $this->aliases[$aliasName] = $newIndexName;
                 foreach ([self::LIVE_INDEX, self::STANDBY_INDEX] as $candidate) {
                     if ($candidate !== $newIndexName) {
@@ -215,9 +252,11 @@ final class AbstractIndexHandlerRecreateSafetyTest extends Unit
     /**
      * @param array<string, mixed> $mappingProperties
      */
-    private function createHandler(array $mappingProperties): AbstractIndexHandler
-    {
-        $engine = $this->createEngine();
+    private function createHandler(
+        array $mappingProperties,
+        ?callable $switchIndexAlias = null
+    ): AbstractIndexHandler {
+        $engine = $this->createEngine($switchIndexAlias);
         $config = $this->makeEmpty(SearchIndexConfigServiceInterface::class, [
             'getIndexSettings' => ['index' => ['mapping' => ['total_fields' => ['limit' => 1000000]]]],
         ]);
