@@ -43,10 +43,17 @@ final class IndexLock implements IndexLockInterface
     /** @var array<string, LockInterface> the locks this process holds, by alias name */
     private array $held = [];
 
+    private bool $shutdownReleaseRegistered = false;
+
+    /**
+     * @param (callable(callable(): void): void)|null $shutdownRegistrar registers the release a PHP fatal still
+     *                                                                  runs; the default is the PHP function
+     */
     public function __construct(
         private readonly LockFactory $lockFactory,
         private readonly int $reindexMaxPolls,
         private readonly int $reindexPollIntervalSeconds,
+        private readonly mixed $shutdownRegistrar = null,
     ) {
         if (!isset($this->logger)) {
             $this->logger = new NullLogger();
@@ -59,6 +66,7 @@ final class IndexLock implements IndexLockInterface
             return $operation();
         }
 
+        $this->registerShutdownRelease();
         $lock = $this->acquire($aliasName);
         $this->held[$aliasName] = $lock;
 
@@ -84,6 +92,39 @@ final class IndexLock implements IndexLockInterface
             $this->refreshOne($aliasName, $named);
         }
         $this->refreshHeld(except: $aliasName);
+    }
+
+    /**
+     * A PHP fatal error - the memory exhaustion a very large mapping produces - does not run "finally", so the
+     * locks this process holds would be left held until their TTL runs out, 75.6 minutes with the shipped
+     * reindex settings, and every further mapping update of those indices waits that out. A shutdown function
+     * is the one hook a fatal still runs; after a clean run there is nothing left to release.
+     */
+    private function registerShutdownRelease(): void
+    {
+        if ($this->shutdownReleaseRegistered) {
+            return;
+        }
+        $this->shutdownReleaseRegistered = true;
+
+        $release = function (): void {
+            foreach ($this->held as $aliasName => $lock) {
+                unset($this->held[$aliasName]);
+                $this->logger->warning(sprintf(
+                    'Releasing the lock of "%s": the mapping update holding it ended without releasing it',
+                    $aliasName
+                ));
+                $this->release($aliasName, $lock);
+            }
+        };
+
+        if (is_callable($this->shutdownRegistrar)) {
+            ($this->shutdownRegistrar)($release);
+
+            return;
+        }
+
+        register_shutdown_function($release);
     }
 
     /**

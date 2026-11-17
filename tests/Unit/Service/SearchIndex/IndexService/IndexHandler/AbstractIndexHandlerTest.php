@@ -215,6 +215,9 @@ final class AbstractIndexHandlerTest extends Unit
      * A forced index recreation is the designed recovery for mapping changes that
      * cannot be applied to the existing documents via reindex — reported by the
      * adapter as MAPPING_INCOMPATIBLE, never inferred from an exception.
+     *
+     * The recreation builds the standby version of the index — the alias here points at "-odd" — so that a
+     * mapping the engine refuses cannot destroy the index the alias still names.
      */
     public function testReindexMappingRecreatesIndexWhenMappingIsIncompatible(): void
     {
@@ -241,9 +244,9 @@ final class AbstractIndexHandlerTest extends Unit
         $handler->reindexMapping();
 
         $this->assertContains(
-            self::ALIAS_NAME . '-odd',
+            self::ALIAS_NAME . '-even',
             $createdIndices,
-            'The index must be recreated when the mapping is incompatible'
+            'The index must be recreated when the mapping is incompatible, under the standby version name'
         );
     }
 

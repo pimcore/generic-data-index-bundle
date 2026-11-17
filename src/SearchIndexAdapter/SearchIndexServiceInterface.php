@@ -17,6 +17,8 @@ use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ReindexResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\DocumentCountFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexCreationFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexOutcome;
@@ -61,9 +63,22 @@ interface SearchIndexServiceInterface
      */
     public function reindexWithoutFields(string $indexName, array $mapping, array $stripPaths): ReindexOutcome;
 
+    /**
+     * Creates the index with the given mapping, so that a mapping the engine refuses leaves no index behind.
+     *
+     * @throws IndexCreationFailedException when the engine refuses the index or its mapping
+     */
     public function createIndex(string $indexName, ?array $mappings = null): self;
 
     public function addAlias(string $aliasName, string $indexName): array;
+
+    /**
+     * Moves the alias onto the given index of its own odd/even family in one engine request and removes the
+     * other version of the family, so that no moment exists in which the alias names no index.
+     *
+     * @throws SwitchIndexAliasException
+     */
+    public function switchIndexAlias(string $aliasName, string $newIndexName): void;
 
     public function existsAlias(string $aliasName, ?string $indexName = null): bool;
 

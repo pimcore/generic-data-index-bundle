@@ -16,6 +16,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\SearchIndexAdapter\De
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
 use Exception;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexCreationFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\FieldExpansionFallback;
@@ -34,6 +35,11 @@ use stdClass;
  */
 final class DefaultSearchServiceTest extends Unit
 {
+    private const EXISTS_INDEX = 'existsIndex';
+
+    private const CREATE_INDEX = 'createIndex';
+
+
     public function testGetCountReturnsCountFromResult(): void
     {
         $service = $this->createService(
@@ -123,8 +129,8 @@ final class DefaultSearchServiceTest extends Unit
 
         $service = $this->createService(
             client: $this->makeEmpty(SearchClientInterface::class, [
-                'existsIndex' => false,
-                'createIndex' => Expected::once(function (array $params) use (&$capturedBody): array {
+                self::EXISTS_INDEX => false,
+                self::CREATE_INDEX => Expected::once(function (array $params) use (&$capturedBody): array {
                     $capturedBody = $params['body'];
 
                     return [];
@@ -153,8 +159,8 @@ final class DefaultSearchServiceTest extends Unit
 
         $service = $this->createService(
             client: $this->makeEmpty(SearchClientInterface::class, [
-                'existsIndex' => false,
-                'createIndex' => Expected::once(function (array $params) use (&$capturedBody): array {
+                self::EXISTS_INDEX => false,
+                self::CREATE_INDEX => Expected::once(function (array $params) use (&$capturedBody): array {
                     $capturedBody = $params['body'];
 
                     return [];
@@ -382,6 +388,75 @@ final class DefaultSearchServiceTest extends Unit
             FieldExpansionFallback::FIELDS,
             $bodies[1]['query']['bool']['filter']['simple_query_string']['fields']
         );
+    }
+
+    /**
+     * createIndex() used to log the engine's refusal and return, so the caller went on to attach an alias to an
+     * index that does not exist and the actionable explanation of an exceeded total fields limit - which the
+     * bulk path has had since platform-version#504 - never reached anybody on the creation path.
+     */
+    public function testARefusedIndexCreationCarriesTheTotalFieldsGuidance(): void
+    {
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                self::EXISTS_INDEX => false,
+                self::CREATE_INDEX => static function (): array {
+                    throw new Exception(
+                        '{"error":{"root_cause":[{"type":"illegal_argument_exception",'
+                        . '"reason":"Limit of total fields [100000] has been exceeded"}]},"status":400}'
+                    );
+                },
+            ])
+        );
+
+        $message = null;
+
+        try {
+            $service->createIndex('pimcore_data-object_accessorypart-even', ['my_field' => ['type' => 'keyword']]);
+        } catch (IndexCreationFailedException $e) {
+            $message = $e->getMessage();
+        }
+
+        $this->assertNotNull($message, 'A refused index creation must be thrown, not only logged');
+        $this->assertStringStartsWith(
+            'Limit of total fields exceeded for index pimcore_data-object_accessorypart-even [100000]',
+            $message
+        );
+        $this->assertStringContainsString('allowed groups', $message);
+        $this->assertStringContainsString(
+            'pimcore_generic_data_index.index_service.index_settings.index.mapping.total_fields.limit',
+            $message
+        );
+        $this->assertStringContainsString(
+            'generic-data-index:update:index --class-definition-id=<id> -r',
+            $message
+        );
+    }
+
+    public function testAnyOtherRefusedIndexCreationIsThrownWithItsOwnCause(): void
+    {
+        $cause = new Exception('cluster_block_exception');
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                self::EXISTS_INDEX => false,
+                self::CREATE_INDEX => static function () use ($cause): array {
+                    throw $cause;
+                },
+            ])
+        );
+
+        $thrown = null;
+
+        try {
+            $service->createIndex('test_index');
+        } catch (IndexCreationFailedException $e) {
+            $thrown = $e;
+        }
+
+        $this->assertNotNull($thrown, 'Any refused index creation must be thrown');
+        $this->assertStringNotContainsString('total_fields', $thrown->getMessage());
+        $this->assertStringContainsString('cluster_block_exception', $thrown->getMessage());
+        $this->assertSame($cause, $thrown->getPrevious(), 'The engine failure stays available as the cause');
     }
 
     private function createService(

@@ -23,6 +23,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasSe
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\AssetTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitGuardInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
@@ -44,6 +45,7 @@ final class AssetIndexHandler extends AbstractIndexHandler
         private readonly WorkflowPlaceServiceInterface $workflowPlaceService,
         IndexCopyServiceInterface $indexCopyService,
         ?IndexLockInterface $indexLock = null,
+        ?TotalFieldsLimitGuardInterface $totalFieldsLimitGuard = null,
     ) {
         parent::__construct(
             $searchIndexService,
@@ -51,7 +53,8 @@ final class AssetIndexHandler extends AbstractIndexHandler
             $eventDispatcher,
             $indexMappingService,
             $indexCopyService,
-            $indexLock
+            $indexLock,
+            $totalFieldsLimitGuard
         );
     }
 

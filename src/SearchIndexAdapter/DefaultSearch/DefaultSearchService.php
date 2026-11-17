@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\DocumentCountF
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexTimeoutException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\SearchFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\IndexCreationFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\SwitchIndexAliasException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\Debug\SearchInformation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
@@ -33,6 +34,8 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Searc
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\SearchRequestExecutorInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexAliasServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitMessageService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitMessageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\SearchClient\SearchClientInterface;
@@ -97,6 +100,8 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         private readonly int $reindexPollIntervalSeconds,
         private readonly SearchRequestExecutorInterface $searchRequestExecutor,
         private readonly SearchBodyProcessorPipeline $searchBodyProcessorPipeline = new SearchBodyProcessorPipeline(),
+        private readonly TotalFieldsLimitMessageServiceInterface $totalFieldsLimitMessageService =
+            new TotalFieldsLimitMessageService(),
     ) {
         if (!isset($this->logger)) {
             $this->logger = new NullLogger();
@@ -276,7 +281,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             return $this->abandonFailedCopy($oldIndexName, $newIndexName, $failures);
         }
 
-        $this->switchIndexAliasAndCleanup($indexName, $oldIndexName, $newIndexName);
+        $this->switchIndexAliasAndCleanup($indexName, $newIndexName);
 
         return new ReindexOutcome(ReindexResult::SUCCESS);
     }
@@ -831,6 +836,13 @@ final class DefaultSearchService implements SearchIndexServiceInterface
         return $response;
     }
 
+    /**
+     * A refused create is thrown, not logged: the caller has to know that the index does not exist before it
+     * attaches an alias to it or lets indexing traffic write into it. An exceeded total fields limit arrives
+     * with the guidance that names the configuration key and the allowed-groups remedy.
+     *
+     * @throws IndexCreationFailedException
+     */
     public function createIndex(string $indexName, ?array $mappings = null): DefaultSearchService
     {
         $this->deleteIndex($indexName, true);
@@ -839,9 +851,21 @@ final class DefaultSearchService implements SearchIndexServiceInterface
             $this->doCreateIndex($indexName, $mappings);
         } catch (Exception $e) {
             $this->logger->error($e);
+
+            throw new IndexCreationFailedException(
+                $this->totalFieldsLimitMessageService->forThrowable($e, $indexName)
+                . sprintf('Creating index "%s" failed: %s', $indexName, $e->getMessage()),
+                0,
+                $e
+            );
         }
 
         return $this;
+    }
+
+    public function switchIndexAlias(string $aliasName, string $newIndexName): void
+    {
+        $this->switchIndexAliasAndCleanup($aliasName, $newIndexName);
     }
 
     /**
@@ -1056,7 +1080,7 @@ final class DefaultSearchService implements SearchIndexServiceInterface
     /**
      * @throws SwitchIndexAliasException
      */
-    private function switchIndexAliasAndCleanup(string $aliasName, string $oldIndexName, string $newIndexName): void
+    private function switchIndexAliasAndCleanup(string $aliasName, string $newIndexName): void
     {
         $params['body'] = [
             'actions' => [

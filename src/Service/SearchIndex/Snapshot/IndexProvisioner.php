@@ -57,7 +57,7 @@ final class IndexProvisioner implements IndexProvisionerInterface
         } else {
             $this->indexStateService->invalidateMapping($this->getIndexStateTarget($target));
         }
-        // With forceCreateIndex, the handler deletes and recreates the index under the lock of the index.
+        // With forceCreateIndex, the handler rebuilds the index under the lock of the index.
         $mappingProperties = $handler->getMappingProperties($context);
         $handler->updateMapping(context: $context, forceCreateIndex: true, mappingProperties: $mappingProperties);
     }
