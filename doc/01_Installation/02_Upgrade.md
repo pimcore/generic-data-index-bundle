@@ -197,6 +197,20 @@ description: Version-specific upgrade instructions and breaking changes for the 
 - [Indexing] `SettingsStoreServiceInterface` has two new methods, `getWorkflowPlacesMappingChecksum()` and
   `storeWorkflowPlacesMappingChecksum()`: custom implementations must add them.
 
+## Upgrade to 2026.3.6
+- [Indexing] Indexing an object no longer loads the elements its relation fields point to (`manyToManyObjectRelation`,
+  `manyToManyRelation`, `reverseObjectRelation`): their type and id, the only values the index stores, are read from
+  the relation table with a few bulk queries. Measured with 5,000 relations, building the index document took 0.1 s
+  and 8 queries instead of 11.5 s and 20,003 queries. The index documents stay the same, so no reindex is needed.
+  **This needs `pimcore/pimcore` 2026.3.3 or later** (`LightweightRelationLoadingInterface`). With an older version,
+  relation fields are indexed as before, by loading the related elements.
+  The related elements are still loaded when the relation value is already in memory (unsaved changes), when the
+  project overrides the getter or `get()` of the class or implements `PreGetValueHookInterface`, for relations inside
+  localized fields, object bricks, field collections and blocks, and for advanced many-to-many relations. A listener of
+  `UpdateIndexDataEvent` that reads the relation (for example to add the names of the related elements to the custom
+  fields) loads them as well. `DataObjectNormalizer` takes a `RelationSummaryServiceInterface` as its last
+  constructor argument.
+
 ## Upgrade to 2026.3.5
 - [Messenger] A copy that runs out of its budget (`reindex_settings.max_polls` × `poll_interval`) is no longer
   retried with the same budget: the class mapping and language messages report it as unrecoverable, so the message
