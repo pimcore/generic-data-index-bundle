@@ -1037,6 +1037,78 @@ final class ClassificationStoreAdapterTest extends Unit
      * value type declares either as a field. If core ever widens this list, this is the line that says
      * the premise has to be re-checked rather than the mapping silently differing per group.
      */
+    /**
+     * The entry map and the mapping are two implementations of one rule, in two classes: both answer
+     * what the group DECLARES. A caller outside this bundle addresses the index through the map, so a
+     * declared entry the map does not answer is a value that caller silently reads as absent - the
+     * defect this map exists to prevent. Pin them against each other over one fixture rather than each
+     * against its own expectation.
+     */
+    public function testTheEntryMapAnswersTheSameSegmentsAsTheMapping(): void
+    {
+        $this->registerGroup(self::GROUP_ID, self::GROUP_NAME, self::GROUP_IDENTIFIER);
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [
+            $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER),
+            // no identifier, so both sides fall back to the normalized name
+            $this->createRelation(self::OTHER_KEY_ID, self::GROUP_ID, 'Rim material', null, null),
+        ];
+
+        $mapping = $this->getMappingForRelations($fieldDefinition, [], $relations);
+
+        $this->assertSame(
+            array_keys($mapping[self::DEFAULT_LANGUAGE][self::PROPERTIES]),
+            array_keys($this->createAgreeingIndexSegmentService()->getGroupEntries(self::GROUP_ID)),
+            'every declared segment is answered by the entry map, and no other'
+        );
+    }
+
+    /**
+     * A `multiValue` key is the case the two could most easily disagree on: it declares one sibling per
+     * declared variant, and the bare entry only when it permits a value without one.
+     */
+    public function testTheEntryMapAndTheMappingAgreeOnVariantSiblings(): void
+    {
+        $this->registerGroup(self::GROUP_ID, self::GROUP_NAME, self::GROUP_IDENTIFIER);
+        $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL]);
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER)];
+
+        $mapping = $this->getMappingForRelations($fieldDefinition, [], $relations, null, $definition);
+
+        $this->assertSame(
+            array_keys($mapping[self::DEFAULT_LANGUAGE][self::PROPERTIES]),
+            array_keys($this->createAgreeingIndexSegmentService($definition)->getGroupEntries(self::GROUP_ID)),
+            'the variant siblings and the bare entry match the mapping on both sides'
+        );
+    }
+
+    /**
+     * The document is value-level, not declaration-level: it holds an entry only where the object has a
+     * value. So it is a SUBSET of what the map answers, and the direction that matters is this one - a
+     * document segment the map cannot answer is the silent loss. The reverse is harmless: the caller
+     * asks for an entry and finds no value.
+     */
+    public function testTheDocumentHoldsNoSegmentTheEntryMapCannotAnswer(): void
+    {
+        $this->registerGroup(self::GROUP_ID, self::GROUP_NAME, self::GROUP_IDENTIFIER);
+        $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL]);
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [
+            $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER),
+            $this->createRelation(self::OTHER_KEY_ID, self::GROUP_ID, 'Rim material', null, null),
+        ];
+
+        $document = $this->getDocumentValues($fieldDefinition, [], $relations, keyDefinition: $definition);
+        $answered = array_keys($this->createAgreeingIndexSegmentService($definition)->getGroupEntries(self::GROUP_ID));
+
+        $this->assertSame(
+            [],
+            array_values(array_diff(array_keys($document[self::DEFAULT_LANGUAGE] ?? []), $answered)),
+            'no segment is written to the document that the entry map leaves unanswered'
+        );
+    }
+
     public function testOnlyValueDomainsCanBeOverriddenPerAssignment(): void
     {
         $this->assertSame(
@@ -2617,6 +2689,35 @@ final class ClassificationStoreAdapterTest extends Unit
      * answer would replace with the test's own. Only its lookups are stubbed, and they answer from
      * the same registries the fixture puts the group and key configurations in.
      */
+    /**
+     * The segment service wired to the SAME fixture and key definition the adapter reads, so what
+     * getGroupEntries() answers can be compared with what the document holds.
+     * {@see self::createIndexSegmentService()} stubs these four because the adapter asks it nothing
+     * that reads them.
+     */
+    private function createAgreeingIndexSegmentService(mixed $keyDefinition = null): IndexSegmentServiceInterface
+    {
+        return new IndexSegmentService(
+            $this->makeEmpty(GroupConfigResolverInterface::class, [
+                'getById' => fn (int $id): ?GroupConfig => $this->groups[$id] ?? null,
+            ]),
+            $this->makeEmpty(KeyConfigResolverInterface::class, [
+                'getById' => static fn (int $id): ?KeyConfig => DefinitionCache::get($id),
+            ]),
+            $this->createStoreConfigReader(),
+            $this->makeEmpty(ServiceResolverInterface::class, [
+                'getFieldDefinitionFromKeyConfig' => $keyDefinition ?? new Input(),
+            ]),
+            $this->makeEmpty(FieldDefinitionServiceInterface::class, [
+                'getFieldDefinitionAdapter' => $this->makeEmpty(AdapterInterface::class, [
+                    'getIndexMapping' => self::KEY_MAPPING,
+                ]),
+                'normalizeValue' => static fn (?Data $definition, mixed $value): mixed => $value,
+            ]),
+            $this->createEngineCapabilityService()
+        );
+    }
+
     private function createIndexSegmentService(): IndexSegmentServiceInterface
     {
         return new IndexSegmentService(
