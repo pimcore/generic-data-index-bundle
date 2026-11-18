@@ -67,6 +67,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
 - [Indexing] `SettingsStoreServiceInterface` has two new methods, `getWorkflowPlacesMappingChecksum()` and
   `storeWorkflowPlacesMappingChecksum()`: custom implementations must add them.
 
+## Upgrade to 2026.3.7
+- [Indexing] `deployment:reindex` and a class save create the index of a class that has a stored mapping checksum but no
+  index (before, the run skipped the class and failed on the missing index). `ClassDefinitionReindexService` takes a
+  `SearchIndexServiceInterface` as an additional constructor argument.
+
 ## Upgrade to 2026.3.6
 - [Indexing] Indexing an object no longer loads the elements its relation fields point to (`manyToManyObjectRelation`,
   `manyToManyRelation`, `reverseObjectRelation`): their type and id, the only values the index stores, are read from

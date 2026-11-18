@@ -36,7 +36,7 @@ depends on the trigger:
 
 | Trigger | Copy runs in | Rebuild from the database |
 | --- | --- | --- |
-| Class saved in the admin UI or Studio, mapping checksum changed | A messenger worker (`UpdateClassMappingMessage`) | All objects of the class |
+| Class saved in the admin UI or Studio, mapping checksum changed or index missing | A messenger worker (`UpdateClassMappingMessage`) | All objects of the class |
 | Object brick added to or removed from a class | A messenger worker (Pimcore saves the class) | All objects of the class |
 | `pimcore:deployment:classes-rebuild` | A messenger worker, one message per changed class (every class with `-f`) | All objects of each changed class |
 | Valid languages changed in the system settings | One messenger worker: one message copies every class, asset and document index, one after the other | Every element |
@@ -46,7 +46,7 @@ depends on the trigger:
 | `generic-data-index:reindex` | The console process, every class, asset and document index | See [Commands](../03_Reindexing/README.md#commands) |
 | Class definition deleted | No copy: the index is deleted during the request. A running copy of that index is waited for first, so that it cannot bring the index back | None |
 
-A class save copies only if the class's mapping differs from the checksum stored after the last successful update.
+A class save copies only if the class's mapping differs from the checksum stored after the last successful update or the class has no index (it is then created again).
 Some changes alter the mapping without a class save: a bundle upgrade with a mapping change, changes to field
 collections, object bricks or the classification store, valid languages in config files, or `ExtractMappingEvent`
 code. They leave the stored checksum outdated. If `deployment:reindex` doesn't run after such a change, the next save

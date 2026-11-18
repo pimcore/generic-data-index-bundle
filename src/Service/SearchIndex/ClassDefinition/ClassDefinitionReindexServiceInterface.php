@@ -46,7 +46,9 @@ interface ClassDefinitionReindexServiceInterface
     ): ?MappingUpdateResult;
 
     /**
-     * Whether {@see reindexClassDefinition()} with $skipIfClassNotChanged would reindex the class.
+     * Whether the mapping checksum of the class differs from the stored one (or none is stored). A missing index is not
+     * part of this check: {@see reindexClassDefinition()} with $skipIfClassNotChanged also reindexes a class whose
+     * index is gone.
      */
     public function isMappingChanged(ClassDefinition $classDefinition): bool;
 }
