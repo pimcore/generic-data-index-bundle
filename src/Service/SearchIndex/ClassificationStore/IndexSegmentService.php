@@ -129,9 +129,10 @@ final readonly class IndexSegmentService implements IndexSegmentServiceInterface
      * {@see \Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\ClassificationStoreAdapter::getDocumentEntryNames()}
      * writes them, so what this answers is what the document has and not what a key might deserve.
      *
-     * $reserved is wider than $entries on purpose: a segment the document declares but never fills -
-     * the bare segment of a key that declines the unqualified value - still costs a later key of the
-     * same normalized name its entry there, which is the collision the document resolves the same way.
+     * $reserved is wider than $entries on purpose: the bare segment of a key that declines the
+     * unqualified value is an entry neither the mapping nor the document has, but it is still RESERVED
+     * there, so a later key of the same normalized name loses its entry to it either way. The two
+     * arrays are what keeps the collision rule independent of which segments are filled.
      *
      * @param array<string, ClassificationStoreEntry> $entries
      * @param array<string, true> $reserved the segments the earlier keys of this group took
@@ -249,6 +250,12 @@ final readonly class IndexSegmentService implements IndexSegmentServiceInterface
     /**
      * Whether the key writes its bare entry: the unqualified slot, which every key but a `multiValue`
      * declining it holds. A declining key is addressed only through its variant siblings.
+     *
+     * The same rule, read off the same property, as
+     * {@see \Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\ClassificationStoreAdapter::declaresBareEntry()},
+     * so this is not a narrowing of what the index holds but the second implementation of one rule -
+     * which is what the agreement tests pin, and why removing it here would make this map answer an
+     * entry the mapping does not declare.
      */
     private function writesBareEntry(?Data $definition): bool
     {

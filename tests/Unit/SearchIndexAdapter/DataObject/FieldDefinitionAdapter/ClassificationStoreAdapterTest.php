@@ -1109,6 +1109,32 @@ final class ClassificationStoreAdapterTest extends Unit
         );
     }
 
+    /**
+     * The case the map was written NARROWER than the mapping for: a key declining the unqualified
+     * value. Now that the mapping declines the bare node too, the two answer the same segments, which
+     * is what makes the narrowing one implementation of one rule rather than a second rule.
+     */
+    public function testTheEntryMapAndTheMappingAgreeOnAKeyDecliningTheUnqualifiedValue(): void
+    {
+        $this->registerGroup(self::GROUP_ID, self::GROUP_NAME, self::GROUP_IDENTIFIER);
+        $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL], false);
+        $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER)];
+
+        $mapping = $this->getMappingForRelations($this->createFieldDefinition(false), [], $relations, null, $definition);
+        $segments = array_keys($mapping[self::DEFAULT_LANGUAGE][self::PROPERTIES]);
+
+        $this->assertSame(
+            [self::KEY_IDENTIFIER . '_' . self::METRIC, self::KEY_IDENTIFIER . '_' . self::IMPERIAL],
+            $segments,
+            'the mapping declares the variant siblings and no bare node'
+        );
+        $this->assertSame(
+            $segments,
+            array_keys($this->createAgreeingIndexSegmentService($definition)->getGroupEntries(self::GROUP_ID)),
+            'the entry map answers exactly the segments the mapping declares'
+        );
+    }
+
     public function testOnlyValueDomainsCanBeOverriddenPerAssignment(): void
     {
         $this->assertSame(
@@ -2001,6 +2027,174 @@ final class ClassificationStoreAdapterTest extends Unit
         }
     }
 
+    /**
+     * A `multiValue` key can decline the value without a variant - the Studio toggle "Allow values
+     * without a variant" - and core then refuses the unqualified slot on the read and the write side
+     * alike: {@see \Pimcore\Model\DataObject\Classificationstore::getKeyValues()} answers nothing for
+     * the default variant of such a key and a save of it is an InvalidConfigException. So no value can
+     * ever reach the bare node, and declaring it is a mapped field per language and per key that is
+     * always empty - on a store at ETIM proportions that is what the field count limit is spent on.
+     */
+    public function testAKeyDecliningTheUnqualifiedValueDeclaresOnlyItsVariantSiblings(): void
+    {
+        $siblings = [
+            self::KEY_NAME . '_' . self::METRIC => self::KEY_MAPPING,
+            self::KEY_NAME . '_' . self::IMPERIAL => self::KEY_MAPPING,
+        ];
+
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => [self::PROPERTIES => $siblings]],
+            $this->getMappingForRelations(
+                $this->createFieldDefinition(false),
+                self::LANGUAGES,
+                [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, false)],
+                null,
+                $this->createMultiValue([self::METRIC, self::IMPERIAL], false)
+            )
+        );
+    }
+
+    /**
+     * The degenerate shape of the same configuration: declining the unqualified value and declaring no
+     * variant leaves the key with no slot at all, so it contributes no node and no language node - not
+     * a language node carrying an empty property list, which is not a mapping the engine would accept.
+     */
+    public function testAKeyDecliningTheUnqualifiedValueWithoutVariantsDeclaresNothing(): void
+    {
+        $this->assertSame(
+            [],
+            $this->getMappingForRelations(
+                $this->createFieldDefinition(false),
+                self::LANGUAGES,
+                [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, false)],
+                null,
+                $this->createMultiValue([], false)
+            )
+        );
+    }
+
+    /**
+     * The document side of the same rule. The bare slot is not merely left valueless, it is not read
+     * at all: core answers it with nothing on every element of the index, so asking is a read per
+     * element and per locale for an answer that is known in advance.
+     */
+    public function testAKeyDecliningTheUnqualifiedValueWritesNoBareDocumentEntry(): void
+    {
+        $bareReads = 0;
+        // a store that WOULD answer the bare slot, so the entry is left out by the rule and not by an empty read
+        $store = $this->makeEmpty(ClassificationstoreModel::class, [
+            'getLocalizedKeyValue' => static function () use (&$bareReads): string {
+                $bareReads++;
+
+                return 'bare value';
+            },
+            'getKeyValues' => static fn (
+                int $group,
+                int $keyId,
+                ?string $language,
+                ?string $variant
+            ): array => [0 => $variant . ' value'],
+        ]);
+
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => [self::KEY_NAME . '_' . self::METRIC => 'metric value']],
+            $this->getDocumentValues(
+                $this->createFieldDefinition(false),
+                self::LANGUAGES,
+                [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)],
+                keyDefinition: $this->createMultiValue([self::METRIC], false),
+                store: $store
+            )
+        );
+        $this->assertSame(0, $bareReads, 'the bare slot of a declining key is not read at all');
+    }
+
+    /**
+     * The inheritance side of the same rule: an inherited field path is built per entry, so a bare
+     * entry enumerated here would name a path neither the mapping nor the document has.
+     */
+    public function testAKeyDecliningTheUnqualifiedValueEmitsNoInheritedPathForItsBareEntry(): void
+    {
+        $adapter = $this->createConfiguredAdapter(
+            [],
+            keyDefinition: $this->createMultiValue([self::METRIC, self::IMPERIAL], false)
+        );
+        $keyMapping = (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyMappingForInheritance'))
+            ->invoke($adapter, [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)]);
+
+        $this->assertSame(
+            [
+                self::KEY_NAME . '_' . self::METRIC => self::METRIC,
+                self::KEY_NAME . '_' . self::IMPERIAL => self::IMPERIAL,
+            ],
+            (new ReflectionMethod(ClassificationStoreAdapter::class, 'getEntryVariants'))
+                ->invoke($adapter, $keyMapping[self::KEY_ID])
+        );
+    }
+
+    /**
+     * The collision rule is about the SEGMENT, not about the entry: a declining key declares nothing
+     * at its bare segment and still reserves it, so the later key named "Size." - which normalizes to
+     * the same "Size" - loses its entry there exactly as it would to a key that filled the segment.
+     * Reserving and declaring are two answers, and only the second one changed.
+     */
+    public function testADecliningKeyStillReservesItsBareSegmentAgainstALaterCollidingKey(): void
+    {
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [
+            $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, null),
+            $this->createRelation(self::OTHER_KEY_ID, self::GROUP_ID, self::KEY_NAME . '.', null, null),
+        ];
+        $keyDefinition = fn (object $config): Data => (
+            $config instanceof KeyGroupRelation ? $config->getKeyId() : $config->getId()
+        ) === self::KEY_ID
+            ? $this->createMultiValue([self::METRIC], false)
+            : new Input();
+
+        $this->assertSame(
+            [self::KEY_NAME . '_' . self::METRIC],
+            array_keys(
+                $this->getMappingForRelations(
+                    $fieldDefinition,
+                    self::LANGUAGES,
+                    $relations,
+                    null,
+                    $keyDefinition
+                )[self::DEFAULT_LANGUAGE][self::PROPERTIES]
+            )
+        );
+
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => [self::KEY_NAME . '_' . self::METRIC => self::METRIC]],
+            $this->getDocumentValues(
+                $fieldDefinition,
+                self::LANGUAGES,
+                $relations,
+                keyDefinition: $keyDefinition,
+                store: $this->makeEmpty(ClassificationstoreModel::class, [
+                    'getKeyValues' => static fn (
+                        int $group,
+                        int $keyId,
+                        ?string $language,
+                        ?string $variant
+                    ): array => [0 => $variant],
+                ])
+            )
+        );
+
+        $adapter = $this->createConfiguredAdapter([], $fieldDefinition, keyDefinition: $keyDefinition);
+        $keyMapping = (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyMappingForInheritance'))
+            ->invoke($adapter, $relations);
+
+        // the later key is dropped from the walk entirely: the declining key reserved "Size" first
+        $this->assertSame([self::KEY_ID], array_keys($keyMapping));
+        $this->assertSame(
+            [self::KEY_NAME . '_' . self::METRIC => self::METRIC],
+            (new ReflectionMethod(ClassificationStoreAdapter::class, 'getEntryVariants'))
+                ->invoke($adapter, $keyMapping[self::KEY_ID])
+        );
+    }
+
     public function testASiblingNameAnotherKeyAlreadyHoldsIsSkippedWithAWarningAndTheEarlierOneWins(): void
     {
         $logger = $this->createCollectingLogger();
@@ -2284,11 +2478,13 @@ final class ClassificationStoreAdapterTest extends Unit
 
     /**
      * @param string[] $variants
+     * @param bool $unqualifiedValue the Studio toggle "Allow values without a variant", default true
      */
-    private function createMultiValue(array $variants = []): MultiValue
+    private function createMultiValue(array $variants = [], bool $unqualifiedValue = true): MultiValue
     {
         $definition = new MultiValue();
         $definition->setVariants($variants);
+        $definition->setUnqualifiedValue($unqualifiedValue);
         $definition->setDelegate(new Input());
 
         return $definition;

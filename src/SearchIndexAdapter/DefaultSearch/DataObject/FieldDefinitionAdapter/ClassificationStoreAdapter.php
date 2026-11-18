@@ -85,7 +85,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * assignment of the key. Reset at the start of every build, so a definition edited between two
      * builds is read again.
      *
-     * @var array<int, array{keyName: string, variants: array<string, string>, node: array}|null>
+     * @var array<int, array{keyName: string, bare: bool, variants: array<string, string>, node: array}|null>
      */
     private array $keyDeclarations = [];
 
@@ -244,9 +244,11 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
-     * The entries one key owns in the document and the shape they are written in - the bare entry plus
-     * a sibling per declared variant - or null for a key that writes none, which is also a key that
-     * reserves no name segment.
+     * The entries one key owns in the document and the shape they are written in - a sibling per
+     * declared variant, plus the bare entry unless the key declines the unqualified value
+     * {@see self::declaresBareEntry()} - or null for a key that writes none, which is also a key that
+     * reserves no name segment. The bare SEGMENT is answered either way, because the caller reserves
+     * it either way: a declining key still costs a later key of the same normalized name its entry.
      *
      * A key the index cannot type is refused here before its name segment is reserved, not merely left
      * valueless by {@see self::normalizeKeyValue()}: the value would be dropped either way, but a
@@ -259,7 +261,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      *
      * @param array<string, bool> $usedKeyNames the segments the earlier keys of this group reserved
      *
-     * @return array{name: string, variants: array<string, string>}|null
+     * @return array{name: string, bare: bool, variants: array<string, string>}|null
      *
      * @throws InvalidArgumentException
      */
@@ -285,15 +287,17 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
         return [
             'name' => $keyName,
+            'bare' => $this->declaresBareEntry($definition),
             'variants' => $this->getVariantSiblingNames($usedKeyNames, $definition, $key),
         ];
     }
 
     /**
      * The bare entry keeps the default variant, each declared variant gets a sibling entry holding
-     * that variant's one value.
+     * that variant's one value. A key declining the unqualified value holds no default variant, so its
+     * bare slot is not even read: core answers it with nothing on every element.
      *
-     * @param array{name: string, variants: array<string, string>} $entryNames
+     * @param array{name: string, bare: bool, variants: array<string, string>} $entryNames
      */
     private function getEntriesForKey(
         ClassificationstoreModel $value,
@@ -304,7 +308,9 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     ): array {
         $entries = [];
 
-        $bareValue = $this->getNormalizedValue($value, $groupId, $key, $language);
+        $bareValue = $entryNames['bare']
+            ? $this->getNormalizedValue($value, $groupId, $key, $language)
+            : null;
         if ($bareValue !== null) {
             $entries[$entryNames['name']] = $bareValue;
         }
@@ -388,15 +394,17 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
     /**
      * Every document entry of one key, as entry name => the variant it holds: the bare entry holds
-     * the default variant and answers null for it, each sibling the variant it was declared for.
+     * the default variant and answers null for it, each sibling the variant it was declared for. A key
+     * declining the unqualified value has no bare entry {@see self::declaresBareEntry()}, so no
+     * inherited path is built for a slot neither the mapping nor the document has.
      *
-     * @param array{name: string, variants: array<string, string>} $groupKey
+     * @param array{name: string, bare: bool, variants: array<string, string>} $groupKey
      *
      * @return array<string, string|null>
      */
     private function getEntryVariants(array $groupKey): array
     {
-        $entries = [$groupKey['name'] => null];
+        $entries = $groupKey['bare'] ? [$groupKey['name'] => null] : [];
 
         foreach ($groupKey['variants'] as $variantName => $siblingName) {
             $entries[$siblingName] = (string) $variantName;
@@ -822,7 +830,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
     /**
      * The entries a key owns in the document, which is what the inheritance side has to enumerate:
-     * the bare one plus a sibling per declared variant, named and de-duplicated by the same rules
+     * a sibling per declared variant plus the bare one, named and de-duplicated by the same rules
      * {@see self::getMappingForGroupConfig()} and {@see self::normalizeGroupValues()} apply, so a
      * sibling the mapping and the document agree on is the sibling an inherited path is built for.
      *
@@ -834,7 +842,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      *
      * @param KeyGroupRelation[] $keys
      *
-     * @return array<int, array{name: string, definition: Data, variants: array<string, string>}>
+     * @return array<int, array{name: string, bare: bool, definition: Data, variants: array<string, string>}>
      */
     private function getKeyMappingForInheritance(array $keys): array
     {
@@ -871,6 +879,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
             $keyMapping[$keyId] = [
                 'name' => $keyName,
+                'bare' => $this->declaresBareEntry($definition),
                 'definition' => $definition,
                 'variants' => $variantNames,
             ];
@@ -914,11 +923,9 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
         foreach ($groupConfigs as $key) {
             $keyMappings = $this->getMappingNodesForKey($usedKeyNames, $key);
-            if ($keyMappings === null) {
+            if ($keyMappings === []) {
                 continue;
             }
-
-            $usedKeyNames += array_fill_keys(array_keys($keyMappings), true);
 
             foreach ($this->getLanguagesForKey($key->getKeyId(), $validLanguages) as $language) {
                 $groupMapping[$language]['properties'] = ($groupMapping[$language]['properties'] ?? []) + $keyMappings;
@@ -930,40 +937,52 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
     /**
      * The mapping nodes one key declares, as the name segment each is declared under => the mapping of
-     * the key's value type, or null for a key that declares none, which is also a key that reserves no
-     * name segment. The nodes of a key are the same under every language node it is declared under, so
-     * the value adapter is asked once per key rather than once per language.
+     * the key's value type, empty for a key that declares none. The nodes of a key are the same under
+     * every language node it is declared under, so the value adapter is asked once per key rather than
+     * once per language.
+     *
+     * $usedKeyNames is taken by reference because what the key RESERVES is wider than what it declares:
+     * the bare segment of a key declining the unqualified value is reserved without a node being
+     * declared for it, so a later key of the same normalized name still loses its entry there. The
+     * reservation can therefore not be read back off the return value the way it used to be, and the
+     * caller does not have to know which of the two it is looking at.
      *
      * This is the only one of the three key-enumerating paths that reports diagnostics, because it is
      * the only one that runs once per index update rather than once per element and locale.
      *
      * @param array<string, bool> $usedKeyNames the segments the earlier keys of this group reserved
      *
-     * @return array<string, array>|null
+     * @return array<string, array>
      *
      * @throws InvalidArgumentException
      */
-    private function getMappingNodesForKey(array $usedKeyNames, KeyGroupRelation $key): ?array
+    private function getMappingNodesForKey(array &$usedKeyNames, KeyGroupRelation $key): array
     {
         if (!$this->isIndexedKey($key)) {
-            return null;
+            return [];
         }
 
         $declaration = $this->getKeyDeclaration($key);
         if ($declaration === null) {
-            return null;
+            return [];
         }
 
         $keyName = $declaration['keyName'];
         if ($this->isTakenNameSegment($usedKeyNames, $keyName, $key->getName(), 'key', $key->getKeyId(), true)) {
-            return null;
+            return [];
         }
 
         // the bare name is reserved before the siblings are named, so no sibling can take it
         $usedKeyNames[$keyName] = true;
         $variantNames = $this->filterTakenSiblings($usedKeyNames, $declaration['variants'], $key, true);
+        $usedKeyNames += array_fill_keys(array_values($variantNames), true);
 
-        return array_fill_keys([$keyName, ...array_values($variantNames)], $declaration['node']);
+        $segments = array_values($variantNames);
+        if ($declaration['bare']) {
+            array_unshift($segments, $keyName);
+        }
+
+        return array_fill_keys($segments, $declaration['node']);
     }
 
     /**
@@ -987,7 +1006,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      * raised on its first assignment, which is where they were raised before: the three reports they
      * go through deduplicate by key id anyway.
      *
-     * @return array{keyName: string, variants: array<string, string>, node: array}|null
+     * @return array{keyName: string, bare: bool, variants: array<string, string>, node: array}|null
      *
      * @throws InvalidArgumentException
      */
@@ -1004,7 +1023,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
     }
 
     /**
-     * @return array{keyName: string, variants: array<string, string>, node: array}|null
+     * @return array{keyName: string, bare: bool, variants: array<string, string>, node: array}|null
      *
      * @throws InvalidArgumentException
      */
@@ -1041,9 +1060,29 @@ final class ClassificationStoreAdapter extends AbstractAdapter
 
         return [
             'keyName' => $keyName,
+            'bare' => $this->declaresBareEntry($definition),
             'variants' => $this->getVariantSiblingCandidates($definition, $key, true),
             'node' => $adapter->getIndexMapping(),
         ];
+    }
+
+    /**
+     * Whether the key holds its unqualified slot, which is the slot the bare segment addresses: every
+     * key but a `multiValue` declining the value without a variant
+     * {@see MultiValue::permitsUnqualifiedValue()}. A declining key is addressed only through its
+     * variant siblings, so declaring the bare node for it would declare a node no value can reach -
+     * core refuses the slot on the read and the write side alike, so nothing can ever be written there.
+     *
+     * The third condition of "this entry is indexed" all three paths ask, after the value adapter and
+     * the engine capability, and the one the segment service answers with
+     * {@see IndexSegmentServiceInterface::getGroupEntries()}, so the mapping, the document, the
+     * inheritance walk and the entry map agree on which slots exist. It does NOT drop the bare
+     * SEGMENT: that stays reserved, so a later key of the same normalized name still loses its entry
+     * there, and the collision rule is the same whether the earlier key filled the segment or not.
+     */
+    private function declaresBareEntry(?Data $definition): bool
+    {
+        return !$definition instanceof MultiValue || $definition->permitsUnqualifiedValue();
     }
 
     /**
