@@ -2,6 +2,11 @@
 
 Following steps are necessary during updating to newer versions.
 
+## Upgrade to 2.5.20
+- [Indexing] `deployment:reindex` and a class save create the index of a class that has a stored mapping checksum but no
+  index (before, the run skipped the class and failed on the missing index). `ClassDefinitionReindexService` takes a
+  `SearchIndexServiceInterface` as an additional constructor argument.
+
 ## Upgrade to 2.5.18
 - [Messenger] A copy that runs out of its budget (`reindex_settings.max_polls` × `poll_interval`) is no longer
   retried with the same budget: the class mapping and language messages report it as unrecoverable, so the message
