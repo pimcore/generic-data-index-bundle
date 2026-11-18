@@ -16,8 +16,11 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Helper;
 // all public methods declared in helper class will be available in $I
 
 use Codeception\Lib\ModuleContainer;
+use Doctrine\DBAL\ArrayParameterType;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\ElementType;
 use Pimcore\Bundle\GenericDataIndexBundle\Installer;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\Search\Modifier\Sort\TreeSortHandlers;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\QueueMessagesDispatcher;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingRelatedIdsServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\SynchronousProcessingServiceInterface;
@@ -269,5 +272,74 @@ class GenericDataIndex extends \Codeception\Module
             ['--limit' => 2, '--time-limit' => 20],
             ['pimcore_generic_data_index_queue'],
         );
+    }
+
+    /**
+     * Number of documents in an index (or behind an alias), after a refresh so that documents
+     * written by a _reindex are visible.
+     */
+    public function countIndexDocuments(string $indexName): int
+    {
+        /** @var SearchClientInterface $client */
+        $client = $this->getIndexSearchClient();
+        $client->refreshIndex(['index' => $indexName]);
+
+        return (int) ($client->count(['index' => $indexName])['count'] ?? 0);
+    }
+
+    /**
+     * Concrete indices the alias points to.
+     *
+     * @return string[]
+     */
+    public function getIndexAliasTargets(string $aliasName): array
+    {
+        /** @var SearchClientInterface $client */
+        $client = $this->getIndexSearchClient();
+
+        return array_keys($client->getIndexAlias(['name' => $aliasName]));
+    }
+
+    /**
+     * Number of the given data objects waiting in the index queue (generic_data_index_queue).
+     *
+     * @param int[] $ids
+     */
+    public function countQueuedDataObjects(array $ids): int
+    {
+        if ($ids === []) {
+            return 0;
+        }
+
+        return (int) Db::get()->fetchOne(
+            'select count(*) from generic_data_index_queue where elementType = :type and elementId in (:ids)',
+            ['type' => ElementType::DATA_OBJECT->value, 'ids' => $ids],
+            ['ids' => ArrayParameterType::INTEGER]
+        );
+    }
+
+    /**
+     * Processes the index queue like the messenger workers do: the queue entries are dispatched
+     * as messages, and exactly the messages waiting in the transport are consumed, so the worker
+     * neither stops early nor waits for messages that never come.
+     */
+    public function processIndexQueue(): void
+    {
+        $this->grabService(QueueMessagesDispatcher::class)->clearPendingState();
+        $this->grabService(EnqueueServiceInterface::class)->dispatchQueueMessages(true);
+
+        $pendingMessages = (int) Db::get()->fetchOne(
+            'select count(*) from messenger_messages where queue_name = ? and delivered_at is null',
+            ['pimcore_generic_data_index_queue']
+        );
+        if ($pendingMessages > 0) {
+            $this->runConsoleCommand(
+                'messenger:consume',
+                ['--limit' => $pendingMessages, '--time-limit' => 30],
+                ['pimcore_generic_data_index_queue'],
+            );
+        }
+
+        $this->flushIndex();
     }
 }

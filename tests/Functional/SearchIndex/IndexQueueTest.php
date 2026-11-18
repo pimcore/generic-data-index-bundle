@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexName;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\IndexQueueOperation;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\DataObject\DataObjectSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\HitData;
 use Pimcore\Bundle\GenericDataIndexBundle\Repository\IndexQueueRepository;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\DataObject\DataObjectSearchServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchProviderInterface;
@@ -220,6 +221,42 @@ class IndexQueueTest extends Unit
     }
 
     /**
+     * PEES-1991: a new relation to an asset reindexes the asset (its isReferenced flag), but must not enqueue the
+     * elements that already depend on it. Before the fix every new relation enqueued all existing dependents.
+     *
+     * @throws Exception
+     */
+    public function testNewRelationToAnAssetDoesNotEnqueueItsExistingDependents(): void
+    {
+        $asset = TestHelper::createImageAsset();
+        $existingDependent = TestHelper::createEmptyObject();
+        $existingDependent->setImage($asset);
+        $existingDependent->save();
+        $this->tester->consume();
+        $this->tester->flushIndex();
+        $this->tester->checkIndexEntry(
+            $existingDependent->getId(),
+            $this->searchIndexConfigService->getIndexName($existingDependent->getClassName(), true)
+        );
+
+        $this->tester->clearQueue();
+        $newDependent = TestHelper::createEmptyObject();
+        $newDependent->setImage($asset);
+        $newDependent->save();
+
+        $this->checkQueueEntry((string) $asset->getId(), ElementType::ASSET->value);
+        $this->checkQueueEntry((string) $newDependent->getId(), ElementType::DATA_OBJECT->value);
+        $this->assertSame(
+            0,
+            (int) Db::get()->fetchOne(
+                'select count(elementId) from generic_data_index_queue where elementId = ? and elementType = ?',
+                [$existingDependent->getId(), ElementType::DATA_OBJECT->value]
+            ),
+            'The existing dependent of the asset must not be enqueued'
+        );
+    }
+
+    /**
      * Regression test: when a queue entry exists with a full ES index name (e.g. stored by enqueueByItemList
      * from HitData), a subsequent enqueue for the same element must overwrite elementIndexName so the
      * DELETE handler receives the short class name and not the already-prefixed full index name.
@@ -276,6 +313,42 @@ class IndexQueueTest extends Unit
                 [$elementId, $elementType]
             ),
             'elementIndexName must be overwritten when an existing queue entry is updated via the INSERT IGNORE + UPDATE fallback path'
+        );
+    }
+
+    public function testEnqueueByItemListKeepsQueuedDelete(): void
+    {
+        /** @var IndexQueueRepository $repo */
+        $repo = $this->tester->grabService(IndexQueueRepository::class);
+
+        $object = TestHelper::createEmptyObject();
+        $hit = new HitData((string) $object->getId(), ElementType::DATA_OBJECT->value, $object->getClassName());
+        $db = Db::get();
+        $db->executeStatement(
+            'UPDATE generic_data_index_queue SET operation = ?, operationTime = 1, dispatched = 0 ' .
+            'WHERE elementId = ? AND elementType = ?',
+            [IndexQueueOperation::DELETE->value, $object->getId(), ElementType::DATA_OBJECT->value]
+        );
+        $select = 'SELECT operation, operationTime FROM generic_data_index_queue WHERE elementId = ? AND elementType = ?';
+        $params = [$object->getId(), ElementType::DATA_OBJECT->value];
+        // the driver returns ints or numeric strings depending on PHP/PDO version
+        $fetch = static function () use ($db, $select, $params): array {
+            $row = $db->fetchAssociative($select, $params);
+            $row['operationTime'] = (int) $row['operationTime'];
+
+            return $row;
+        };
+
+        $repo->enqueueByItemList([$hit], IndexQueueOperation::UPDATE, 5, true);
+        $this->assertSame(
+            ['operation' => IndexQueueOperation::DELETE->value, 'operationTime' => 1],
+            $fetch()
+        );
+
+        $repo->enqueueByItemList([$hit], IndexQueueOperation::UPDATE, 5);
+        $this->assertSame(
+            ['operation' => IndexQueueOperation::UPDATE->value, 'operationTime' => 5],
+            $fetch()
         );
     }
 

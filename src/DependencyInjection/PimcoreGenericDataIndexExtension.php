@@ -18,12 +18,16 @@ use InvalidArgumentException;
 use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\DispatchQueueMessagesHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\DeploymentReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment\IndexStateServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkChunkWriter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\BulkDispatcherFactory;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotExporterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Snapshot\SnapshotStorageInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusService;
 use Pimcore\SearchClient\SearchClientInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -127,6 +131,9 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
 
         $this->registerSearchClient($container, $indexSettings['client_params']);
 
+        $container->getDefinition(IndexQueueStatusService::class)
+            ->setArgument('$clientName', $indexSettings['client_params']['client_name']);
+
         $container->setParameter(
             'generic-data-index.index-prefix',
             $indexSettings['client_params']['index_prefix']
@@ -143,6 +150,16 @@ class PimcoreGenericDataIndexExtension extends Extension implements PrependExten
                 $indexSettings['reindex_settings']['poll_interval'],
             );
         }
+
+        $definition = $container->getDefinition(IndexLockInterface::class);
+        $definition->setArgument('$reindexMaxPolls', $indexSettings['reindex_settings']['max_polls']);
+        $definition->setArgument('$reindexPollIntervalSeconds', $indexSettings['reindex_settings']['poll_interval']);
+
+        $mappingChangeStrategy = $indexSettings['reindex_settings']['mapping_change_strategy'];
+        $container->getDefinition(IndexCopyServiceInterface::class)
+            ->setArgument('$mappingChangeStrategy', $mappingChangeStrategy);
+        $container->getDefinition(DeploymentReindexServiceInterface::class)
+            ->setArgument('$mappingChangeStrategy', $mappingChangeStrategy);
     }
 
     private function registerSnapshotParams(ContainerBuilder $container, array $snapshotSettings): void

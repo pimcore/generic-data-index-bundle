@@ -50,6 +50,7 @@ final class AssetLazyLoadingHandler implements AssetLazyLoadingHandlerInterface
     public function apply(AssetSearchResultItem $item, ?User $user): AssetSearchResultItem
     {
         $handler = new AssetLazyLoadingHandler($this->assetSearchService, $user);
+        $handler->setLogger($this->logger);
 
         return $item->withLazyLoadingHandler($handler);
     }

@@ -82,10 +82,11 @@ afterwards. A 16 MiB page decodes to roughly 100–200 MB of PHP memory at its p
 with a small `memory_limit`; raising them buys little, because the number of requests is rarely
 the bottleneck. Both commands log every page and every bulk flush at debug level.
 
-Export and import share one lock, so they never run at the same time. The lock is taken from
-Symfony's lock component (`framework.lock`), whose default store is a host-local file lock. On an
-installation with several application nodes, configure a shared lock store (for example Redis or
-the database) so that an export on one node also excludes an import on another.
+Export and import share one lock, so they never run at the same time. The lock is taken from the
+lock store of the application (`Symfony\Component\Lock\LockFactory`; Pimcore configures the database
+store, so all application nodes share it): an export on one node also excludes an import on another,
+without further configuration. Only an application that replaces the lock store with a host-local one
+(for example a file lock) limits the exclusion to one node.
 
 Run both commands in the `prod` environment, or at least with `--no-debug`. In debug mode the
 bundle keeps a history of executed searches, including their full responses, for the profiler; on
@@ -133,6 +134,11 @@ window — right after the database dump, with idle messenger consumers — to k
 small as possible, and treat the manifest's `queue_entries_before` and `queue_entries_after` counts
 as the indicator of how clean the resulting baseline is: the closer both are to zero, the less
 concurrent activity the export could have raced.
+
+Don't export while a rebuild after a field type change is pending. The odd/even copy leaves the changed fields out
+of the documents until the index queue has refilled them, but the manifest already carries the new mapping checksum,
+so the import accepts the snapshot, replays the documents without those fields and queues nothing. Wait until
+`generic-data-index:status` shows an empty queue.
 
 ## Import
 
@@ -223,6 +229,10 @@ PaaS), but a bundle can be turned into a native snapshot once and restored nativ
 
 The bundle stays the portable, engine-independent format. The native snapshot is tied to one
 engine and version, which is what makes the restore fast.
+
+A snapshot is also the way back before a risky change on a large production index, because the
+bundle keeps no previous index after a copy; see
+[Backups and Rollback](./07_Operations_Guide.md#backups-and-rollback).
 
 ### The installation that imports the bundle
 

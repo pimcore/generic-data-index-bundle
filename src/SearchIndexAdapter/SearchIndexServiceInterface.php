@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\DocumentCountF
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\DefaultSearch\DefaultSearchInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Interfaces\AdapterSearchInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Reindex\ReindexOutcome;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
 
 /**
@@ -26,6 +27,12 @@ use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\SearchResult;
  */
 interface SearchIndexServiceInterface
 {
+    /**
+     * Status polls after a reindex task was told to stop, until it is observed gone or completed. One copy attempt
+     * cancels at most two tasks: a leftover of an aborted attempt before it starts, and its own one on a timeout.
+     */
+    public const REINDEX_CANCEL_POLLS = 3;
+
     public function refreshIndex(string $indexName): array;
 
     public function deleteIndex($indexName, bool $silent = false): void;
@@ -41,6 +48,18 @@ interface SearchIndexServiceInterface
      * @throws Exception
      */
     public function reindex(string $indexName, array $mapping): ReindexResult;
+
+    /**
+     * Like {@see reindex()}, but removes the given fields from every document while copying, so
+     * that values which do not fit the new mapping never reach the new index. An empty list sends
+     * exactly the request of {@see reindex()}. On MAPPING_INCOMPATIBLE the outcome names the
+     * fields of the parsing failures.
+     *
+     * @param string[][] $stripPaths path segments per field, e.g. [['standard_fields', 'price']]
+     *
+     * @throws Exception
+     */
+    public function reindexWithoutFields(string $indexName, array $mapping, array $stripPaths): ReindexOutcome;
 
     public function createIndex(string $indexName, ?array $mappings = null): self;
 

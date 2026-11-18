@@ -92,6 +92,16 @@ class Configuration implements ConfigurationInterface
                                 ->scalarNode('list_max_filter_options')
                                     ->defaultValue(500)
                                 ->end()
+                                ->arrayNode('full_text_search_fields')
+                                    ->info(
+                                        'Fields a full-text search is run against when it does not name fields '
+                                        . 'itself. Empty (default): the search engine expands it over all fields '
+                                        . 'of the index. A short list keeps searches on large indices fast and '
+                                        . 'below the field expansion limit.'
+                                    )
+                                    ->scalarPrototype()->end()
+                                    ->defaultValue([])
+                                ->end()
                                 ->arrayNode('search_analyzer_attributes')
                                     ->useAttributeAsKey('type')
                                         ->prototype('scalar')
@@ -120,6 +130,19 @@ class Configuration implements ConfigurationInterface
                                     ->min(1)
                                     ->defaultValue(5)
                                     ->info('Seconds to wait between reindex task status polls.')
+                                ->end()
+                                ->enumNode('mapping_change_strategy')
+                                    ->values(['recreate', 'copy'])
+                                    ->defaultValue('recreate')
+                                    ->info(
+                                        'How a mapping change is applied to an index with documents written under '
+                                        . 'the old mapping. "recreate" (default): the documents are copied as they '
+                                        . 'are; if their old values do not fit the new mapping, the index is '
+                                        . 'recreated empty and rebuilt from the database. "copy": fields whose old '
+                                        . 'values do not fit are left out of the copy, so the documents stay '
+                                        . 'searchable while the rebuild refills them; the index is recreated only as '
+                                        . 'a last resort.'
+                                    )
                                 ->end()
                             ->end()
                         ->end()

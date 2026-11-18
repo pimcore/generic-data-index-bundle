@@ -1,0 +1,9 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        public: false
+
+    # Internal: read-only status of the index queue and the search client configuration, used by the diagnostic
+    # checks in config/services/diagnostics.yaml.
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Status\IndexQueueStatusService: ~

@@ -57,6 +57,19 @@ final class FieldExpansionFallbackTest extends Unit
         $this->assertNull(FieldExpansionFallback::restrictFullTextFields($body));
     }
 
+    public function testAggregationNamedSimpleQueryStringIsKept(): void
+    {
+        $body = [
+            'query' => ['simple_query_string' => ['query' => 'pro']],
+            'aggs' => ['simple_query_string' => ['sum' => ['field' => 'system_fields.fileSize']]],
+        ];
+
+        $restricted = FieldExpansionFallback::restrictFullTextFields($body, ['custom.field']);
+
+        $this->assertSame(['custom.field'], $restricted['query']['simple_query_string']['fields']);
+        $this->assertSame($body['aggs'], $restricted['aggs']);
+    }
+
     public function testNothingToRestrictWithoutSimpleQueryString(): void
     {
         $this->assertNull(FieldExpansionFallback::restrictFullTextFields(['query' => ['match_all' => []]]));

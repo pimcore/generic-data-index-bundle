@@ -92,10 +92,15 @@ final readonly class DataObjectSearchResultDenormalizer implements DenormalizerI
             );
         }
 
-        return $searchResultItem
+        $searchResultItem
             ->setHasWorkflowWithPermissions(SystemField::HAS_WORKFLOW_WITH_PERMISSIONS->getData($data))
-            ->setHasChildren(SystemField::HAS_CHILDREN->getData($data))
-            ->setSearchIndexData($data);
+            ->setHasChildren(SystemField::HAS_CHILDREN->getData($data));
+
+        if (SerializerContext::SKIP_SEARCH_INDEX_DATA->containedInContext($context)) {
+            return $searchResultItem;
+        }
+
+        return $searchResultItem->setSearchIndexData($data);
 
     }
 

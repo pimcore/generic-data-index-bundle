@@ -7,6 +7,12 @@ description: Version-specific upgrade instructions and breaking changes for the 
 
 ## Upgrade to 2026.4.0
 
+### Requires Pimcore 2026.4
+
+- [Diagnostics] The bundle now requires `pimcore/pimcore` `^2026.4`, because its diagnostic checks implement the core
+  diagnostics contract (`Pimcore\Contracts\Diagnostics`). Generic Data Index 2026.4 is released together with
+  Pimcore 2026.4; upgrade both together. See [Diagnostics](../06_Diagnostics/README.md).
+
 ### Re-indexing recommended
 
 - [Indexing] Fixed: localized fields inside object bricks, field collections and blocks were normalized with the
@@ -43,6 +49,136 @@ description: Version-specific upgrade instructions and breaking changes for the 
   until the re-index. The index format of class-level localized fields is unchanged.
 - [Indexing] Snapshots exported before the update are refused for these classes, and `--force` skips them: export
   them again after the re-index.
+
+### Workflow places: run `update:index` right after the deployment
+
+- [Indexing] Places of workflows using the `state_table` marking store are indexed in the new system field
+  `workflowPlaces` (keyword per workflow name), see
+  [Workflow Places](../04_Searching_For_Data_In_Index/README.md#workflow-places).
+  Run `bin/console generic-data-index:update:index` to update the mapping and fill the field for existing elements.
+  Run it right after the deployment: elements indexed before the mapping is updated get a dynamic `text` mapping for
+  the new field, and the later update to `keyword` then needs a full re-index.
+  The `workflowPlaces` mapping depends on the configured `state_table` workflows. It is not part of the class mapping
+  checksum, so `generic-data-index:deployment:reindex` does not reindex every class because of it: run
+  `generic-data-index:update:index` after adding or removing a `state_table` workflow.
+- [Indexing] Snapshots exported before the update are still accepted, but importing one writes its documents as they
+  were exported, without `workflowPlaces`. Export snapshots again after the update, or run
+  `generic-data-index:update:index` again after importing an older snapshot.
+- [Indexing] `SettingsStoreServiceInterface` has two new methods, `getWorkflowPlacesMappingChecksum()` and
+  `storeWorkflowPlacesMappingChecksum()`: custom implementations must add them.
+
+## Upgrade to 2026.3.7
+- [Indexing] `deployment:reindex` and a class save create the index of a class that has a stored mapping checksum but no
+  index (before, the run skipped the class and failed on the missing index). `ClassDefinitionReindexService` takes a
+  `SearchIndexServiceInterface` as an additional constructor argument.
+
+## Upgrade to 2026.3.6
+- [Indexing] Indexing an object no longer loads the elements its relation fields point to (`manyToManyObjectRelation`,
+  `manyToManyRelation`, `reverseObjectRelation`): their type and id, the only values the index stores, are read from
+  the relation table with a few bulk queries. Measured with 5,000 relations, building the index document took 0.1 s
+  and 8 queries instead of 11.5 s and 20,003 queries. The index documents stay the same, so no reindex is needed.
+  **This needs `pimcore/pimcore` 2026.3.3 or later** (`LightweightRelationLoadingInterface`). With an older version,
+  relation fields are indexed as before, by loading the related elements.
+  The related elements are still loaded when the relation value is already in memory (unsaved changes), when the
+  project overrides the getter or `get()` of the class or implements `PreGetValueHookInterface`, for relations inside
+  localized fields, object bricks, field collections and blocks, and for advanced many-to-many relations. A listener of
+  `UpdateIndexDataEvent` that reads the relation (for example to add the names of the related elements to the custom
+  fields) loads them as well. `DataObjectNormalizer` takes a `RelationSummaryServiceInterface` as its last
+  constructor argument.
+
+## Upgrade to 2026.3.5
+- [Messenger] A copy that runs out of its budget (`reindex_settings.max_polls` × `poll_interval`) is no longer
+  retried with the same budget: the class mapping and language messages report it as unrecoverable, so the message
+  goes to the failed transport right away. Raise `max_polls`, then retry it with `messenger:failed:retry`. The
+  timeout is a `ReindexTimeoutException`, a subclass of `ReindexFailedException`, which is no longer final.
+- [Messenger] A class mapping message that is handled twice (redelivered after `redeliver_timeout`, or a second save
+  of the class within the copy time) no longer copies the index twice: the second handling waits for the lock of the
+  index and skips the copy when the first one stored the checksum meanwhile. `ClassDefinitionReindexService` takes
+  the `IndexLockInterface` and the `SearchIndexConfigServiceInterface` as additional constructor arguments.
+- [Messenger] A failed language update (`UpdateLanguageSettingsMessage`) is no longer only logged as
+  `Updating languages failed`: the exception reaches Messenger, so the message is retried and ends in
+  `pimcore_generic_data_index_failed`, where it can be retried once the cause is fixed. A retried message of a
+  settings save that a later save has replaced is skipped, so it cannot reinstall the language list of its own
+  save: the languages of the latest save are recorded in the settings store (`LatestLanguageChangeInterface`).
+  Language updates never overlap: the whole update runs under a lock shared by all language messages, which the
+  updates of the single indices inside it renew, so a second one waits, then checks for a later save.
+  `IndexLockInterface::refresh()` renews every lock the process holds, and a nested `run()` renews the locks
+  already held once it has the new one. During a rolling deployment, a language change saved on a node that still
+  runs the previous version is not recorded; if a node on the new version recorded a change before, the workers
+  skip the older node's message (notice `Skipping a language change that a later settings save has replaced`).
+  Change the languages after the deployment, or run `deployment:reindex --all` afterwards.
+  `UpdateClassMappingHandler` and `UpdateLanguageSettingsHandler` take a `MappingUpdateRetryPolicyInterface` as a
+  further constructor argument, the language handler and `AdminSettingsSubscriber` also the
+  `LatestLanguageChangeInterface`.
+- [Indexing] Mapping updates of the same index no longer overlap: every copy or recreation of an index runs under a
+  lock on the index alias, and a second update of the same index waits until the first one has finished. The lock is
+  taken from the lock store of the application (`Symfony\Component\Lock\LockFactory`; Pimcore configures the
+  database store, so all workers and nodes share it) and expires, if its process dies, after the longest copy attempt
+  (the wait of `reindex_settings.max_polls` × `poll_interval` plus the cancellation of a stuck task before and after
+  it) and a quarter of that. `AbstractIndexHandler` and the three index handlers take an `IndexLockInterface` as
+  their last constructor argument; constructing them without it is deprecated and leaves the mapping updates of
+  that handler unlocked.
+- [Indexing] Fixed: deleting a class definition no longer leaves the delete queue entries of its objects behind.
+  They were dispatched again every 24 hours and failed each time with `index_not_found_exception`, blocking the
+  other elements of their batch. The entries are now removed together with the class index, and a bulk deletion
+  from an index that no longer exists counts as done instead of failing the batch. Messages that already failed
+  for this reason succeed on `messenger:failed:retry`.
+- [Commands] `generic-data-index:deployment:reindex` without options no longer stops at the first class whose index
+  update fails: it continues with the remaining classes, reports every failed class and exits with a non-zero status,
+  like a run with index options.
+- [Indexing] Two concurrent mapping updates of the same index (for example two class saves handled by two messenger
+  workers) could delete the live index: both copied into the same target, the first to finish switched the alias to
+  it, and the failing second one cleaned its target up. A copy now never deletes an index the alias points to. When
+  it finds the alias on its target, it logs that another copy finished first and applies its mapping with a second
+  copy from that index ([#641](https://github.com/pimcore/platform-version/issues/641)).
+- [Indexing] New option `index_service.reindex_settings.mapping_change_strategy` (`recreate`, the default, or `copy`)
+  decides what happens to the documents of an index when its mapping changes. The default keeps the behaviour of
+  previous versions: the documents are copied as they are, and the index is recreated empty when their old values
+  don't fit the new mapping (for example after a field type change). One thing is new in that case: a rebuild of the
+  recreated index from the database is always queued, also by `generic-data-index:reindex` and by a settings-only
+  `deployment:reindex`, so the index fills again without a manual `update:index`.
+  With `copy`, the odd/even copy leaves out the changed fields whose old values don't fit the new type and keeps the
+  others (for example a number copied into a text field). The index is only recreated as a last resort, when the copy
+  fails and no further field can be left out (after at most 3 attempts). System fields are never left out: if their
+  old values don't fit, the index is recreated. The documents stay searchable; the left-out fields are empty, so
+  filters and sorting on them find nothing, until the messenger workers have rebuilt all objects of the class from the
+  database. The copy blocks the messenger worker that handles the class mapping message for about 1.5 ms per document
+  (measured: 100,000 documents of about 6 KB in about 2.5 minutes on a development machine with OpenSearch 2); the
+  rebuild runs at the usual indexing rate. See the [Reindexing Guide](../03_Reindexing/README.md#field-type-changes).
+- [Indexing] Upgrading from a version before 2026.2.8: the numeric mapping change of 2026.2.8 (`float` to `double`, or
+  `long` for integer fields) is applied by the odd/even copy as well. Both keep their values, so the indices stay
+  complete. Typed `CalculatedValue` fields of 2026.2.9 (text to a number, boolean or date) are left out of the copy
+  and filled again by the rebuild.
+- [Commands] Behavior change: `generic-data-index:reindex` now adds all elements of an index to the index queue if its
+  copy left out fields, the index had to be created empty, or a custom index handler applied the mapping, and prints a
+  notice per index. Before, it never filled the index queue. Operators who relied on that need messenger workers running
+  after the command.
+- [Indexing] A mapping update that changed an index but failed before its rebuild was queued (for example the
+  database became unavailable after the copy) leaves a mark in the settings store; the next class save,
+  `deployment:reindex` or `generic-data-index:reindex` of that index queues the rebuild, although its own copy
+  changes nothing.
+- [Commands] `generic-data-index:deployment:reindex` and its `--dry-run` list per index the changed fields: with
+  `copy` the fields stripped, the fields kept and the fields outside class and custom fields that are copied as they
+  are; with `recreate` the changed fields copied as they are, and which of them `copy` would leave out.
+- [Indexing] New methods on `@internal` interfaces, relevant only for custom implementations of them:
+  `IndexHandlerInterface::reindexMappingWithResult()` and `getMappingDiff()`,
+  `SearchIndexServiceInterface::reindexWithoutFields()`, `ReindexServiceInterface::reindexAllIndicesWithReport()`,
+  `ClassDefinitionReindexServiceInterface::reindexClassDefinitionMapping()`.
+- [Deprecation] `AbstractIndexHandler` has a new optional constructor argument `IndexCopyServiceInterface`. Subclasses
+  that call the parent constructor without it keep working and trigger a deprecation; the argument will be required in
+  the next major version. `reindexMapping()` keeps its signature. A subclass that overrides it is still called by the
+  bundle; because the bundle cannot tell what the override did, it then queues a rebuild of the index from the database.
+  Project code that calls `reindexMapping()` directly gets the copy with stripped fields too, but nothing is queued:
+  after a field type change, queue the elements of the index (for example with
+  `generic-data-index:update:index -c <class id>`), or the stripped fields stay empty.
+
+## Upgrade to 2026.3.4
+- [Searching] New optional setting `search_settings.full_text_search_fields`: the fields a full-text search runs
+  against when it does not name fields itself. Use it on indices with many fields, where the expansion over all fields
+  makes searches slow or exceeds the field expansion limit. Without it nothing changes. See
+  [Full-text search fields](../02_Configuration/03_Index_Management.md#full-text-search-fields).
+- [Searching] Search and count requests where some shards failed are logged as a warning on the
+  `pimcore_generic_data_index` log channel. The response itself is unchanged.
 
 ## Upgrade to 2026.3.3
 - [Commands] `generic-data-index:deployment:reindex` has new opt-in options (`--all`, `--assets`, `--dry-run`, …) that
@@ -115,8 +251,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
   (`strict_date_time_no_millis`). The text-based element types (`input`, `textarea`, `html` — including the
   default) keep the existing text/keyword mapping. This makes term filters, aggregations and the Studio grid
   filters work on typed calculated fields.
-- The mapping change is applied by `bin/console generic-data-index:update:index`, which recreates the
-  affected data object indices and queues all elements for re-indexing.
+- The mapping change is applied by `bin/console generic-data-index:update:index`: the search engine rejects the
+  in-place mapping update, so the command copies the affected data object indices (odd/even copy; see the
+  [Reindexing Guide](../03_Reindexing/README.md) for when an index is recreated instead) and queues all elements for
+  re-indexing. On large indices, see the
+  [Operations Guide](../02_Configuration/07_Operations_Guide.md#bundle-upgrades-that-change-mappings).
 
 ## Upgrade to 2026.2.8
 
@@ -126,8 +265,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
   Fields configured as integer are now mapped as `long`, all other ones (including `Slider`) as `double`. This prevents
   exact-match filters on large integers (for example customer or account IDs above 2^24) from returning
   neighbouring values that shared the same rounded `float` representation.
-- The mapping change is applied by `bin/console generic-data-index:update:index`, which recreates the
-  affected data object indices and queues all elements for re-indexing.
+- The mapping change is applied by `bin/console generic-data-index:update:index`: the search engine rejects the
+  in-place mapping update, so the command copies the affected data object indices (odd/even copy; see the
+  [Reindexing Guide](../03_Reindexing/README.md) for when an index is recreated instead) and queues all elements for
+  re-indexing. On large indices, see the
+  [Operations Guide](../02_Configuration/07_Operations_Guide.md#bundle-upgrades-that-change-mappings).
 
 ## Upgrade to 2026.1.0
 

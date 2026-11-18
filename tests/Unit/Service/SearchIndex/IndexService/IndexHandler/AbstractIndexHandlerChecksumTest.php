@@ -17,6 +17,7 @@ use Codeception\Test\Unit;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AbstractIndexHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
@@ -25,6 +26,24 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
  */
 final class AbstractIndexHandlerChecksumTest extends Unit
 {
+    public function testGetClassMappingCheckSumIgnoresWorkflowPlaces(): void
+    {
+        $indexHandler = $this->getIndexHandler();
+
+        $mapping = ['system_fields' => ['properties' => ['id' => ['type' => 'long']]]];
+        $withWorkflowPlaces = $mapping;
+        $withWorkflowPlaces['system_fields']['properties']['workflowPlaces'] = [
+            'type' => 'object',
+            'dynamic' => false,
+            'properties' => ['product_workflow' => ['type' => 'keyword']],
+        ];
+
+        $this->assertSame(
+            $indexHandler->getClassMappingCheckSum($mapping),
+            $indexHandler->getClassMappingCheckSum($withWorkflowPlaces)
+        );
+    }
+
     /**
      * Numeric-ish keys (e.g. classification store ids) are cast to integers by PHP,
      * and ksort()'s default SORT_REGULAR compares those numerically — so distinct
@@ -99,7 +118,13 @@ final class AbstractIndexHandlerChecksumTest extends Unit
 
     private function getIndexHandler(): AbstractIndexHandler
     {
-        return new class($this->makeEmpty(SearchIndexServiceInterface::class), $this->makeEmpty(SearchIndexConfigServiceInterface::class), $this->makeEmpty(EventDispatcherInterface::class), $this->makeEmpty(IndexMappingServiceInterface::class), ) extends AbstractIndexHandler {
+        $search = $this->makeEmpty(SearchIndexServiceInterface::class);
+        $config = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
+        $events = $this->makeEmpty(EventDispatcherInterface::class);
+        $mapping = $this->makeEmpty(IndexMappingServiceInterface::class);
+        $copy = $this->makeEmpty(IndexCopyServiceInterface::class);
+
+        return new class($search, $config, $events, $mapping, $copy) extends AbstractIndexHandler {
             protected function extractMappingProperties(mixed $context = null): array
             {
                 return [];

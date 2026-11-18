@@ -25,6 +25,8 @@ use Psr\Log\NullLogger;
  */
 final class BulkOperationServiceTest extends Unit
 {
+    private const GENERIC_MESSAGE = 'Bulk operation produced errors: {"errors":true';
+
     /**
      * Regression test for pimcore/platform-version#504: the raw bulk response did not tell what to do
      * about an exceeded total fields limit.
@@ -105,17 +107,74 @@ final class BulkOperationServiceTest extends Unit
             ],
         ]);
 
-        $this->assertStringStartsWith('Bulk operation produced errors: {"errors":true', $message);
+        $this->assertStringStartsWith(self::GENERIC_MESSAGE, $message);
         $this->assertStringNotContainsString('total_fields', $message);
+    }
+
+    /**
+     * Regression test for pimcore/platform-version#647: the queued deletes of a deleted class target an index
+     * that is already gone. There is nothing left to delete, so the request is done, not failed.
+     */
+    public function testDeletionsFromAMissingIndexAreDone(): void
+    {
+        $service = $this->createService([
+            'errors' => true,
+            'items' => [
+                $this->missingIndexItem('delete', 1),
+                ['delete' => ['_index' => 'pimcore_asset', '_id' => 2, 'status' => 200, 'result' => 'deleted']],
+                ['index' => ['_index' => 'pimcore_asset', '_id' => 3, 'status' => 201]],
+            ],
+        ]);
+        $service->addDeletion('pimcore_class_deleted', 1);
+        $service->addDeletion('pimcore_asset', 2);
+        $service->add('pimcore_asset', 3, ['id' => 3]);
+
+        $service->commit();
+
+        $this->assertTrue(true, 'A deletion from a missing index does not fail the bulk request');
+    }
+
+    public function testAMissingIndexStillFailsAnyOtherOperation(): void
+    {
+        $message = $this->commitAndGetExceptionMessage([
+            'errors' => true,
+            'items' => [
+                $this->missingIndexItem('delete', 1),
+                $this->missingIndexItem('update', 2),
+            ],
+        ]);
+
+        $this->assertStringStartsWith(self::GENERIC_MESSAGE, $message);
+    }
+
+    public function testADeletionWithAnotherErrorStillFails(): void
+    {
+        $message = $this->commitAndGetExceptionMessage([
+            'errors' => true,
+            'items' => [
+                $this->missingIndexItem('delete', 1),
+                ['delete' => [
+                    '_index' => 'pimcore_asset',
+                    '_id' => 2,
+                    'status' => 409,
+                    'error' => ['type' => 'version_conflict_engine_exception', 'reason' => 'version conflict'],
+                ]],
+            ],
+        ]);
+
+        $this->assertStringStartsWith(self::GENERIC_MESSAGE, $message);
+    }
+
+    public function testAnErrorFlagWithoutItemErrorsStillFails(): void
+    {
+        $message = $this->commitAndGetExceptionMessage(['errors' => true, 'items' => []]);
+
+        $this->assertStringStartsWith(self::GENERIC_MESSAGE, $message);
     }
 
     private function commitAndGetExceptionMessage(array $response): string
     {
-        $service = new BulkOperationService(
-            $this->makeEmpty(SearchClientInterface::class, ['bulk' => $response]),
-            $this->makeEmpty(SynchronousProcessingServiceInterface::class)
-        );
-        $service->setLogger(new NullLogger());
+        $service = $this->createService($response);
         $service->add('pimcore_data_object_car', 2, ['id' => 2]);
 
         try {
@@ -125,5 +184,26 @@ final class BulkOperationServiceTest extends Unit
         }
 
         $this->fail('Expected a ' . BulkOperationException::class);
+    }
+
+    private function missingIndexItem(string $action, int $id): array
+    {
+        return [$action => [
+            '_index' => 'pimcore_class_deleted',
+            '_id' => $id,
+            'status' => 404,
+            'error' => ['type' => 'index_not_found_exception', 'reason' => 'no such index [pimcore_class_deleted]'],
+        ]];
+    }
+
+    private function createService(array $response): BulkOperationService
+    {
+        $service = new BulkOperationService(
+            $this->makeEmpty(SearchClientInterface::class, ['bulk' => $response]),
+            $this->makeEmpty(SynchronousProcessingServiceInterface::class)
+        );
+        $service->setLogger(new NullLogger());
+
+        return $service;
     }
 }

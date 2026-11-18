@@ -13,12 +13,17 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment;
 
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexPlan;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexState;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 
 /**
@@ -26,6 +31,11 @@ use Pimcore\Model\DataObject\ClassDefinition;
  */
 final readonly class DeploymentReindexService implements DeploymentReindexServiceInterface
 {
+    private MappingChangeStrategy $mappingChangeStrategy;
+
+    /**
+     * @param string $mappingChangeStrategy the configured `reindex_settings.mapping_change_strategy`
+     */
     public function __construct(
         private IndexStateServiceInterface $indexStateService,
         private ClassDefinitionReindexServiceInterface $classDefinitionReindexService,
@@ -33,7 +43,10 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
         private IndexHandlerInterface $assetIndexHandler,
         private IndexHandlerInterface $documentIndexHandler,
         private IndexHandlerInterface $dataObjectIndexHandler,
+        private IndexRebuildObligationServiceInterface $rebuildObligationService,
+        string $mappingChangeStrategy = MappingChangeStrategy::RECREATE->value,
     ) {
+        $this->mappingChangeStrategy = MappingChangeStrategy::from($mappingChangeStrategy);
     }
 
     public function getTargets(array $scopes): array
@@ -78,9 +91,7 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
                 && $stored->getMappingChecksum() !== $current->getMappingChecksum();
         }
         if ($mappingChanged) {
-            $reasons[] = $stored->getMappingChecksum() === IndexStateServiceInterface::INVALIDATED
-                ? 'previous snapshot import did not finish'
-                : 'mapping changed';
+            array_push($reasons, ...$this->describeMappingChange($target, $stored, $indexMissing));
         }
 
         $settingsChanged = $stored->getSettingsHash() !== null
@@ -106,6 +117,11 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
             $reasons[] = 'no stored state yet';
         }
 
+        $rebuildOwed = $this->rebuildObligationService->isOwed($target);
+        if ($rebuildOwed) {
+            $reasons[] = 'rebuild owed: an earlier run changed the index and failed before queuing it';
+        }
+
         return new IndexPlan(
             $target,
             $current,
@@ -114,7 +130,8 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
             $settingsChanged,
             $dataVersionChanged,
             $baselineMissing,
-            $reasons
+            $reasons,
+            $rebuildOwed
         );
     }
 
@@ -139,54 +156,156 @@ final readonly class DeploymentReindexService implements DeploymentReindexServic
         return $enqueued;
     }
 
+    public function getMappingChangeStrategy(): MappingChangeStrategy
+    {
+        return $this->mappingChangeStrategy;
+    }
+
     private function executeForClassDefinition(IndexPlan $plan, ClassDefinition $classDefinition): bool
     {
         // Keeps the checksum handling of the run without options: legacy checksums, icon update,
-        // reindex and enqueue of changed classes.
-        $reindexed = $this->classDefinitionReindexService->reindexClassDefinition(
+        // reindex and enqueue of changed classes. With the enqueue requested, a result means the
+        // objects were queued.
+        $result = $this->classDefinitionReindexService->reindexClassDefinitionMapping(
             $classDefinition,
             !$plan->isIndexMissing(),
             true
         );
-        if ($reindexed) {
+        if ($result?->isMappingApplied() === true) {
             return true;
         }
+        // Nothing applied, or only the rebuild an earlier run owed was queued: index settings that are
+        // still pending must be applied all the same, or their stored hash would hide them for good.
+        $enqueued = $result !== null;
 
         if ($plan->isSettingsChanged()) {
-            $this->dataObjectIndexHandler->reindexMapping($classDefinition);
+            // The mapping was current, but fields could still be left out of the copy (e.g. values
+            // written under an older mapping); only the rebuild restores them.
+            if ($this->reindexMappingOwingRebuild($plan->getTarget(), $classDefinition)->requiresRebuild()
+                && !$enqueued
+            ) {
+                $this->enqueueService->enqueueByClassDefinition($classDefinition);
+                $enqueued = true;
+            }
+            $this->rebuildObligationService->settle($plan->getTarget());
         }
 
-        if ($plan->isDataVersionChanged()) {
+        if ($plan->isDataVersionChanged() && !$enqueued) {
             $this->enqueueService->enqueueByClassDefinition($classDefinition);
-
-            return true;
+            $enqueued = true;
         }
 
-        return false;
+        return $enqueued;
     }
 
     private function executeForIndex(IndexPlan $plan): bool
     {
-        $handler = $this->getHandler($plan->getTarget());
+        $target = $plan->getTarget();
+        $handler = $this->getHandler($target);
 
+        $copyRequiresRebuild = false;
         if ($plan->isIndexMissing()) {
             $handler->updateMapping();
         } elseif ($plan->needsNativeReindex()) {
-            $handler->reindexMapping();
+            $copyRequiresRebuild = $this->reindexMappingOwingRebuild($target)->requiresRebuild();
         }
 
-        if (!$plan->needsRebuild()) {
+        if (!$plan->needsRebuild() && !$copyRequiresRebuild) {
+            $this->rebuildObligationService->settle($target);
+
             return false;
         }
 
-        match ($plan->getTarget()->getScope()) {
+        match ($target->getScope()) {
             DeploymentReindexScope::ASSETS => $this->enqueueService->enqueueAssets(),
             DeploymentReindexScope::DOCUMENTS => $this->enqueueService->enqueueDocuments(),
             DeploymentReindexScope::FOLDERS => $this->enqueueService->enqueueDataObjectFolders(),
             DeploymentReindexScope::CLASSES => throw new \LogicException('Class indices are handled separately'),
         };
+        $this->rebuildObligationService->settle($target);
 
         return true;
+    }
+
+    /**
+     * Applies the mapping with an obligation recorded before the live index changes: a run that fails between
+     * the copy and the enqueue leaves it, and the next run queues the rebuild although its copy changes nothing.
+     *
+     * @throws Exception
+     */
+    private function reindexMappingOwingRebuild(
+        IndexStateTarget $target,
+        ?ClassDefinition $classDefinition = null
+    ): MappingUpdateResult {
+        $rebuildOwed = $this->rebuildObligationService->isOwed($target);
+        $this->rebuildObligationService->owe($target);
+        $result = $this->getHandler($target)->reindexMappingWithResult($classDefinition);
+
+        return $rebuildOwed ? $result->withRebuildOwed() : $result;
+    }
+
+    /**
+     * @return string[]
+     */
+    private function describeMappingChange(IndexStateTarget $target, IndexState $stored, bool $indexMissing): array
+    {
+        $reasons = [
+            $stored->getMappingChecksum() === IndexStateServiceInterface::INVALIDATED
+                ? 'previous snapshot import did not finish'
+                : 'mapping changed',
+        ];
+        if ($indexMissing) {
+            return $reasons;
+        }
+
+        return [...$reasons, ...$this->describeFieldChanges($target)];
+    }
+
+    /**
+     * The fields the copy will keep or leave out, for the plan output (also shown by --dry-run). With the
+     * "recreate" strategy nothing is left out: the changed fields are named so that the reader knows which
+     * old values have to fit the new mapping, or the index is recreated empty.
+     *
+     * @return string[]
+     */
+    private function describeFieldChanges(IndexStateTarget $target): array
+    {
+        $diff = $this->getHandler($target)->getMappingDiff($target->getClassDefinition());
+        $reasons = [];
+        if ($this->mappingChangeStrategy === MappingChangeStrategy::RECREATE) {
+            $changed = [...$diff->getStripPaths(), ...$diff->getKeptPaths(), ...$diff->getProtectedPaths()];
+            if ($changed !== []) {
+                $reasons[] = sprintf(
+                    'changed fields copied as they are (mapping_change_strategy "%s"), the index is recreated '
+                    . 'empty and rebuilt from the database if their values do not fit: %s',
+                    $this->mappingChangeStrategy->value,
+                    implode(', ', $changed)
+                );
+            }
+            if ($diff->getStripPaths() !== []) {
+                $reasons[] = sprintf(
+                    'fields the "%s" strategy would leave out of the copy instead: %s',
+                    MappingChangeStrategy::COPY->value,
+                    implode(', ', $diff->getStripPaths())
+                );
+            }
+
+            return $reasons;
+        }
+
+        if ($diff->getStripPaths() !== []) {
+            $reasons[] = 'fields stripped in the copy: ' . implode(', ', $diff->getStripPaths());
+        }
+        if ($diff->getKeptPaths() !== []) {
+            $reasons[] = 'fields kept in the copy: ' . implode(', ', $diff->getKeptPaths());
+        }
+        if ($diff->getProtectedPaths() !== []) {
+            $reasons[] = 'fields outside class and custom fields copied as they are, '
+                . 'the index is recreated if their values do not fit: '
+                . implode(', ', $diff->getProtectedPaths());
+        }
+
+        return $reasons;
     }
 
     private function getHandler(IndexStateTarget $target): IndexHandlerInterface

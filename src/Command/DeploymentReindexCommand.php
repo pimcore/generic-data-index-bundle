@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Command;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\CommandAlreadyRunningException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexPlan;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
@@ -123,30 +124,50 @@ final class DeploymentReindexCommand extends AbstractCommand
             );
         }
 
-        if ($scopes !== []) {
-            try {
+        try {
+            if ($scopes !== []) {
                 return $this->executeForScopes($scopes, (bool) $input->getOption(self::OPTION_DRY_RUN), $output);
-            } finally {
-                $this->release();
             }
-        }
 
+            return $this->executeForClassDefinitions($output);
+        } finally {
+            $this->release();
+        }
+    }
+
+    private function executeForClassDefinitions(OutputInterface $output): int
+    {
         try {
             $updatedIds = [];
+            $failed = false;
             $classesList = new ClassDefinition\Listing();
             $classes = $classesList->load();
 
             foreach ($classes as $classDefinition) {
-                $updated = $this->classDefinitionReindexService
-                    ->reindexClassDefinition($classDefinition, true, true)
-                ;
+                try {
+                    $updated = $this->classDefinitionReindexService
+                        ->reindexClassDefinition($classDefinition, true, true)
+                    ;
+                } catch (Exception $e) {
+                    // Like the run with index options: report the class and go on with the
+                    // remaining ones.
+                    $failed = true;
+                    $output->writeln(sprintf(
+                        '<error>Updating class %s (%s) failed: %s</error>',
+                        $classDefinition->getName(),
+                        $classDefinition->getId(),
+                        $e->getMessage()
+                    ));
+
+                    continue;
+                }
 
                 if ($updated) {
                     $updatedIds[] = $classDefinition->getId();
                 }
             }
 
-            if (!empty($updatedIds)) {
+            if ($updatedIds !== []) {
                 $output->writeln(
                     sprintf(
                         '<info>Updated following ClassDefinitions: [%s]</info>',
@@ -161,18 +182,22 @@ final class DeploymentReindexCommand extends AbstractCommand
                 );
 
                 $this->enqueueService->dispatchQueueMessages(true);
-            } else {
+            } elseif (!$failed) {
                 $output->writeln('<info>No updates needed - everything is up to date</info>', OutputInterface::VERBOSITY_NORMAL);
             }
-
-            $output->writeln('<info>Finished</info>', OutputInterface::VERBOSITY_NORMAL);
         } catch (Exception $e) {
             $output->writeln('<error>' . $e->getMessage() . '</error>');
 
             return self::FAILURE;
-        } finally {
-            $this->release();
         }
+
+        if ($failed) {
+            $output->writeln('<error>Finished with errors - see the failed classes above</error>');
+
+            return self::FAILURE;
+        }
+
+        $output->writeln('<info>Finished</info>', OutputInterface::VERBOSITY_NORMAL);
 
         return self::SUCCESS;
     }
@@ -223,9 +248,7 @@ final class DeploymentReindexCommand extends AbstractCommand
         $this->writePlans($plans, $output);
 
         if ($dryRun) {
-            $output->writeln('<info>Dry run - nothing changed</info>');
-
-            return $failed ? self::FAILURE : self::SUCCESS;
+            return $this->finishDryRun($plans, $failed, $output);
         }
 
         $enqueued = false;
@@ -267,6 +290,40 @@ final class DeploymentReindexCommand extends AbstractCommand
         $output->writeln('<info>Finished</info>');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * @param IndexPlan[] $plans
+     */
+    private function finishDryRun(array $plans, bool $failed, OutputInterface $output): int
+    {
+        if ($this->plansACopyWithChangedMapping($plans)) {
+            $output->writeln(
+                $this->deploymentReindexService->getMappingChangeStrategy() === MappingChangeStrategy::COPY
+                    ? '<comment>Fields whose old values fail only during the copy are stripped as well; '
+                        . 'the log names them.</comment>'
+                    : '<comment>With mapping_change_strategy "recreate" the documents are copied as they are: '
+                        . 'if their old values do not fit the new mapping, the index is recreated empty and '
+                        . 'rebuilt from the database.</comment>'
+            );
+        }
+        $output->writeln('<info>Dry run - nothing changed</info>');
+
+        return $failed ? self::FAILURE : self::SUCCESS;
+    }
+
+    /**
+     * @param IndexPlan[] $plans
+     */
+    private function plansACopyWithChangedMapping(array $plans): bool
+    {
+        foreach ($plans as $plan) {
+            if ($plan->isMappingChanged() && !$plan->isIndexMissing()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

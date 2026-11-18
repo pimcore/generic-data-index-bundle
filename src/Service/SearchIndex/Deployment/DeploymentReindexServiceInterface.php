@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Deployment;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DeploymentReindexScope;
+use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\MappingChangeStrategy;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexPlan;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
 
@@ -44,4 +45,9 @@ interface DeploymentReindexServiceInterface
      * @throws Exception
      */
     public function execute(IndexPlan $plan): bool;
+
+    /**
+     * The configured `reindex_settings.mapping_change_strategy`, which decides what a planned copy does.
+     */
+    public function getMappingChangeStrategy(): MappingChangeStrategy;
 }

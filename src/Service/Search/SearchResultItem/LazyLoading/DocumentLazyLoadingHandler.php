@@ -49,6 +49,7 @@ final class DocumentLazyLoadingHandler implements DocumentLazyLoadingHandlerInte
     public function apply(DocumentSearchResultItem $item, ?User $user): DocumentSearchResultItem
     {
         $handler = new DocumentLazyLoadingHandler($this->documentSearchService, $user);
+        $handler->setLogger($this->logger);
 
         return $item->withLazyLoadingHandler($handler);
     }

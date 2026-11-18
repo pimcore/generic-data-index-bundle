@@ -16,6 +16,9 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\Command;
 use Codeception\Test\Unit;
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Command\ReindexItemsCommand;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexRebuild;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\IndexRebuildReport;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -28,12 +31,11 @@ final class ReindexItemsCommandTest extends Unit
     public function testReturnsSuccessWhenReindexingSucceeds(): void
     {
         $reindexCalls = 0;
-        $reindexService = null;
         $reindexService = $this->makeEmpty(ReindexServiceInterface::class, [
-            'reindexAllIndices' => function () use (&$reindexCalls, &$reindexService): ReindexServiceInterface {
+            'reindexAllIndicesWithReport' => function () use (&$reindexCalls): IndexRebuildReport {
                 $reindexCalls++;
 
-                return $reindexService;
+                return new IndexRebuildReport();
             },
         ]);
 
@@ -42,6 +44,33 @@ final class ReindexItemsCommandTest extends Unit
 
         $this->assertSame(Command::SUCCESS, $commandTester->getStatusCode());
         $this->assertSame(1, $reindexCalls);
+    }
+
+    public function testPrintsANoticeForIndicesQueuedForARebuild(): void
+    {
+        $reindexService = $this->makeEmpty(ReindexServiceInterface::class, [
+            'reindexAllIndicesWithReport' => new IndexRebuildReport([
+                new IndexRebuild(
+                    'Car',
+                    new MappingUpdateResult(['standard_fields.price', 'standard_fields.l_text.en'])
+                ),
+                new IndexRebuild('assets', new MappingUpdateResult(recreated: true)),
+                new IndexRebuild('documents', new MappingUpdateResult(outcomeUnknown: true)),
+            ]),
+        ]);
+
+        $commandTester = new CommandTester(new ReindexItemsCommand($reindexService));
+        $commandTester->execute([]);
+
+        $display = $commandTester->getDisplay();
+        $this->assertSame(Command::SUCCESS, $commandTester->getStatusCode());
+        $this->assertStringContainsString(
+            'Car: fields left out of the copy: standard_fields.price, standard_fields.l_text.en',
+            $display
+        );
+        $this->assertStringContainsString('assets: the index had to be created empty', $display);
+        $this->assertStringContainsString('documents: the mapping was applied by a custom index handler', $display);
+        $this->assertStringContainsString('Run the messenger workers', $display);
     }
 
     /**
@@ -53,7 +82,7 @@ final class ReindexItemsCommandTest extends Unit
     public function testReturnsFailureWhenReindexingThrows(): void
     {
         $reindexService = $this->makeEmpty(ReindexServiceInterface::class, [
-            'reindexAllIndices' => static function (): void {
+            'reindexAllIndicesWithReport' => static function (): void {
                 throw new Exception('OpenSearch reindex failed (simulated)');
             },
         ]);

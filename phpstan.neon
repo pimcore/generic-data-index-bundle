@@ -9,6 +9,12 @@ parameters:
         - src/Tests/*
          #ToDo remove in version 2.0
         - src/Model/OpenSearch/*
+    ignoreErrors:
+        # LightweightRelationLoadingInterface exists since pimcore/pimcore 2026.3.3; with older versions
+        # (lowest dependencies) the service falls back to the getter, the interface is only checked at runtime
+        -
+            message: '#LightweightRelationLoadingInterface#'
+            path: src/Service/SearchIndex/RelationSummaryService.php
 
 includes:
     - phpstan-baseline.neon

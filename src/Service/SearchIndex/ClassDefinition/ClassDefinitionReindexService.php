@@ -16,9 +16,15 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinit
 use Exception;
 use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Deployment\IndexStateTarget;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\IndexIconUpdateServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\IndexHandlerInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebuildObligationServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SettingsStoreServiceInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
 use Psr\Log\LoggerInterface;
@@ -34,6 +40,10 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         private SettingsStoreServiceInterface $settingsStoreService,
         private IndexIconUpdateServiceInterface $indexIconUpdateService,
         private LoggerInterface $pimcoreGenericDataIndexLogger,
+        private IndexRebuildObligationServiceInterface $rebuildObligationService,
+        private IndexLockInterface $indexLock,
+        private SearchIndexConfigServiceInterface $searchIndexConfigService,
+        private SearchIndexServiceInterface $searchIndexService,
     ) {
     }
 
@@ -42,21 +52,66 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         bool $skipIfClassNotChanged = false,
         bool $enqueueItems = false,
     ): bool {
+        return $this->reindexClassDefinitionMapping($classDefinition, $skipIfClassNotChanged, $enqueueItems) !== null;
+    }
+
+    public function reindexClassDefinitionMapping(
+        ClassDefinition $classDefinition,
+        bool $skipIfClassNotChanged = false,
+        bool $enqueueItems = false,
+    ): ?MappingUpdateResult {
         try {
-            $mappingChanged = $this->reindexMapping($classDefinition, $skipIfClassNotChanged);
-            $this->changeIcon($classDefinition);
-
-            if ($mappingChanged && $enqueueItems) {
-                $this->enqueueService->enqueueByClassDefinition($classDefinition);
-            }
-
-            return $mappingChanged;
+            // The checksum is compared and stored under the lock of the index. A second update of the same class
+            // (a redelivered message, or a second save within the copy time) waits for the first one and then finds
+            // the mapping current, so it skips the copy instead of copying the index again.
+            return $this->indexLock->run(
+                $this->getAliasIndexName($classDefinition),
+                fn () => $this->updateMapping($classDefinition, $skipIfClassNotChanged, $enqueueItems)
+            );
         } catch (Exception $exception) {
             throw new ClassDefinitionIndexUpdateFailedException(
                 message: $exception->getMessage(),
                 previous: $exception
             );
         }
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function updateMapping(
+        ClassDefinition $classDefinition,
+        bool $skipIfClassNotChanged,
+        bool $enqueueItems
+    ): ?MappingUpdateResult {
+        $target = IndexStateTarget::forClassDefinition($classDefinition);
+        $rebuildOwed = $this->rebuildObligationService->isOwed($target);
+        $result = $this->reindexMapping($classDefinition, $skipIfClassNotChanged);
+        if ($rebuildOwed) {
+            // An earlier run changed the index and failed before queuing its rebuild. The mapping is
+            // current now, so this run's copy (if any) reports nothing that would queue it again.
+            $result = $result === null ? MappingUpdateResult::forOwedRebuildOnly() : $result->withRebuildOwed();
+        }
+        if ($result !== null) {
+            // Queuing the objects of a large class takes a while; the lock is renewed first, so that the checksum
+            // is still stored under it.
+            $this->indexLock->refresh($this->getAliasIndexName($classDefinition));
+            // Fields left out of the copy (or an index created empty) are only restored by the
+            // rebuild from the database, so the objects are queued even if the caller did not ask.
+            // Queued before the checksum is stored and before the icon update: if either fails, the
+            // stored checksum would let every retry skip the class, and nothing would queue it again.
+            if ($enqueueItems || $result->requiresRebuild()) {
+                $this->enqueueService->enqueueByClassDefinition($classDefinition);
+            }
+            // Renewed again before the state is written: a lock lost while queuing (another update took it over)
+            // stops here, so the newer update's checksum and obligation are not overwritten.
+            $this->indexLock->refresh($this->getAliasIndexName($classDefinition));
+            $this->rebuildObligationService->settle($target);
+            $this->storeMappingCheckSum($classDefinition);
+        }
+        $this->changeIcon($classDefinition);
+
+        return $result;
     }
 
     /**
@@ -70,7 +125,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         return $storedCheckSum === null
             || (
                 $storedCheckSum !== $this->dataObjectIndexHandler->getClassMappingCheckSum($mappingProperties)
-                && $storedCheckSum !== $this->getLegacyClassMappingCheckSum($mappingProperties)
+                && $storedCheckSum !== LegacyClassMappingCheckSum::calculate($mappingProperties)
             );
     }
 
@@ -88,12 +143,14 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
     private function reindexMapping(
         ClassDefinition $classDefinition,
         bool $skipIfClassNotChanged
-    ): bool {
+    ): ?MappingUpdateResult {
         $mappingProperties = $this->dataObjectIndexHandler->getMappingProperties($classDefinition);
         $currentCheckSum = $this->dataObjectIndexHandler->getClassMappingCheckSum($mappingProperties);
         $storedCheckSum = $this->settingsStoreService->getClassMappingCheckSum($classDefinition->getId());
 
-        if ($skipIfClassNotChanged && $storedCheckSum !== null) {
+        // A stored checksum says nothing about an index that is gone (deleted by hand, lost with the cluster, or never
+        // created for a class whose checksum was stamped): such a class is not skipped, its index is created again.
+        if ($skipIfClassNotChanged && $storedCheckSum !== null && $this->indexExists($classDefinition)) {
             if ($storedCheckSum === $currentCheckSum) {
                 // Same structured keys as the reindex branch below (here they are equal by
                 // definition), so a log query on storedChecksum/currentChecksum includes skipped
@@ -105,10 +162,10 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
                     'currentChecksum' => $currentCheckSum,
                 ]);
 
-                return false;
+                return null;
             }
 
-            if ($storedCheckSum === $this->getLegacyClassMappingCheckSum($mappingProperties)) {
+            if ($storedCheckSum === LegacyClassMappingCheckSum::calculate($mappingProperties)) {
                 // The mapping is unchanged, only the checksum algorithm is: checksums
                 // stored before the key normalization was introduced depend on the key
                 // order. Re-stamp the entry instead of reindexing the class definition.
@@ -124,7 +181,7 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
                     data: $currentCheckSum
                 );
 
-                return false;
+                return null;
             }
         }
 
@@ -138,32 +195,36 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
             'currentChecksum' => $currentCheckSum,
         ]);
 
-        $this->dataObjectIndexHandler
-            ->reindexMapping(
+        // Recorded before the live index changes; settled once the rebuild the update may need is queued.
+        $this->rebuildObligationService->owe(IndexStateTarget::forClassDefinition($classDefinition));
+
+        return $this->dataObjectIndexHandler
+            ->reindexMappingWithResult(
                 context: $classDefinition,
                 mappingProperties: $mappingProperties
             );
+    }
 
-        $this->settingsStoreService->storeClassMapping(
-            classDefinitionId: $classDefinition->getId(),
-            data: $this->dataObjectIndexHandler->getClassMappingCheckSum(
-                $mappingProperties
-            )
-        );
+    private function indexExists(ClassDefinition $classDefinition): bool
+    {
+        return $this->searchIndexService->existsAlias($this->getAliasIndexName($classDefinition));
+    }
 
-        return true;
+    private function getAliasIndexName(ClassDefinition $classDefinition): string
+    {
+        return $this->searchIndexConfigService->getIndexName($classDefinition->getName(), true);
     }
 
     /**
-     * Checksum as it was calculated before the mapping properties were normalized,
-     * i.e. depending on the array key order. Only used to recognise entries stored
-     * by an older bundle version; can be dropped once upgrades from those versions
-     * are no longer supported.
-     *
      * @throws JsonException
      */
-    private function getLegacyClassMappingCheckSum(array $mappingProperties): int
+    private function storeMappingCheckSum(ClassDefinition $classDefinition): void
     {
-        return crc32(json_encode($mappingProperties, JSON_THROW_ON_ERROR));
+        $this->settingsStoreService->storeClassMapping(
+            classDefinitionId: $classDefinition->getId(),
+            data: $this->dataObjectIndexHandler->getClassMappingCheckSum(
+                $this->dataObjectIndexHandler->getMappingProperties($classDefinition)
+            )
+        );
     }
 }

@@ -1,0 +1,16 @@
+# Diagnostic checks for the Pimcore diagnostics contract (Pimcore\Contracts\Diagnostics).
+# The topic attribute groups the checks for the diagnostics consumer.
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: false
+        public: false
+
+    Pimcore\Bundle\GenericDataIndexBundle\Diagnostics\IndexQueueBacklogCheck:
+        tags: [{ name: 'pimcore.diagnostics.check', topic: 'search' }]
+
+    # The search client is registered only under its id, there is no alias for SearchClientInterface.
+    Pimcore\Bundle\GenericDataIndexBundle\Diagnostics\IndexHealthCheck:
+        arguments:
+            $client: '@generic-data-index.search-client'
+        tags: [{ name: 'pimcore.diagnostics.check', topic: 'search' }]

@@ -15,12 +15,17 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Tests\Unit\MessageHandler;
 
 use Codeception\Stub\Expected;
 use Codeception\Test\Unit;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\ClassDefinitionIndexUpdateFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexTimeoutException;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateClassMappingMessage;
 use Pimcore\Bundle\GenericDataIndexBundle\MessageHandler\UpdateClassMappingHandler;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\MappingUpdateRetryPolicy;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassDefinitionResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition;
+use RuntimeException;
+use Symfony\Component\Messenger\Exception\UnrecoverableMessageHandlingException;
 
 /**
  * @internal
@@ -52,7 +57,8 @@ final class UpdateClassMappingHandlerTest extends Unit
 
                     return $freshDefinition;
                 }),
-            ])
+            ]),
+            new MappingUpdateRetryPolicy()
         );
 
         $handler(new UpdateClassMappingMessage($staleDefinition, true));
@@ -69,9 +75,63 @@ final class UpdateClassMappingHandlerTest extends Unit
             ]),
             $this->makeEmpty(ClassDefinitionResolverInterface::class, [
                 'getById' => null,
-            ])
+            ]),
+            new MappingUpdateRetryPolicy()
         );
 
         $handler(new UpdateClassMappingMessage((new ClassDefinition())->setId('car'), true));
+    }
+
+    public function testACopyThatRanOutOfItsBudgetIsNotRetried(): void
+    {
+        $handler = new UpdateClassMappingHandler(
+            $this->makeEmpty(EnqueueServiceInterface::class, ['dispatchQueueMessages' => Expected::never()]),
+            $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, [
+                'reindexClassDefinition' => Expected::once(static function (): never {
+                    throw new ClassDefinitionIndexUpdateFailedException(
+                        message: 'did not complete within 3600 seconds',
+                        previous: new ReindexTimeoutException('Reindex task 1 did not complete within 3600 seconds')
+                    );
+                }),
+            ]),
+            $this->makeEmpty(ClassDefinitionResolverInterface::class, [
+                'getById' => (new ClassDefinition())->setId('car'),
+            ]),
+            new MappingUpdateRetryPolicy()
+        );
+
+        $this->expectException(UnrecoverableMessageHandlingException::class);
+
+        $handler(new UpdateClassMappingMessage((new ClassDefinition())->setId('car'), true));
+    }
+
+    public function testEveryOtherFailureIsRetriedByMessenger(): void
+    {
+        $failure = new ClassDefinitionIndexUpdateFailedException(
+            message: 'cURL error 7: connection refused',
+            previous: new RuntimeException('cURL error 7: connection refused')
+        );
+        $handler = new UpdateClassMappingHandler(
+            $this->makeEmpty(EnqueueServiceInterface::class, ['dispatchQueueMessages' => Expected::never()]),
+            $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, [
+                'reindexClassDefinition' => Expected::once(static function () use ($failure): never {
+                    throw $failure;
+                }),
+            ]),
+            $this->makeEmpty(ClassDefinitionResolverInterface::class, [
+                'getById' => (new ClassDefinition())->setId('car'),
+            ]),
+            new MappingUpdateRetryPolicy()
+        );
+
+        try {
+            $handler(new UpdateClassMappingMessage((new ClassDefinition())->setId('car'), true));
+        } catch (ClassDefinitionIndexUpdateFailedException $e) {
+            $this->assertSame($failure, $e);
+
+            return;
+        }
+
+        $this->fail('A transient failure reaches Messenger unchanged, which retries the message');
     }
 }

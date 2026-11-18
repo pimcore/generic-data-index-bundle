@@ -80,13 +80,14 @@ final class FieldExpansionFallback
 
     /**
      * @param array<string, mixed> $body
+     * @param string[] $fields
      *
      * @return array<string, mixed>|null null if there is no simple query string without fields to restrict
      */
-    public static function restrictFullTextFields(array $body): ?array
+    public static function restrictFullTextFields(array $body, array $fields = self::FIELDS): ?array
     {
         $changed = false;
-        $restricted = self::restrict($body, $changed);
+        $restricted = self::restrict($body, $fields, $changed);
 
         return $changed ? $restricted : null;
     }
@@ -130,22 +131,24 @@ final class FieldExpansionFallback
 
     /**
      * @param array<mixed> $node
+     * @param string[] $fields
      *
      * @return array<mixed>
      */
-    private static function restrict(array $node, bool &$changed): array
+    private static function restrict(array $node, array $fields, bool &$changed): array
     {
         foreach ($node as $key => $value) {
             if (!is_array($value)) {
                 continue;
             }
 
-            if ($key === 'simple_query_string' && empty($value['fields'])) {
-                $value['fields'] = self::FIELDS;
+            // the required string `query` tells the clause apart from e.g. an aggregation of the same name
+            if ($key === 'simple_query_string' && is_string($value['query'] ?? null) && empty($value['fields'])) {
+                $value['fields'] = $fields;
                 $changed = true;
             }
 
-            $node[$key] = self::restrict($value, $changed);
+            $node[$key] = self::restrict($value, $fields, $changed);
         }
 
         return $node;

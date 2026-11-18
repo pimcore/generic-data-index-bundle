@@ -15,10 +15,14 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\MessageHandler;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateLanguageSettingsMessage;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\MappingUpdateRetryPolicyInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LatestLanguageChangeInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
+use Psr\Log\NullLogger;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
@@ -29,39 +33,66 @@ final class UpdateLanguageSettingsHandler
 {
     use LoggerAwareTrait;
 
+    /** The lock all language updates share, next to the locks of the single indices they copy. */
+    private const LANGUAGES_LOCK = 'languages';
+
     public function __construct(
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly LanguageServiceInterface $languageService,
-        private readonly ReindexServiceInterface $reindexService
+        private readonly ReindexServiceInterface $reindexService,
+        private readonly MappingUpdateRetryPolicyInterface $retryPolicy,
+        private readonly LatestLanguageChangeInterface $latestLanguageChange,
+        private readonly IndexLockInterface $indexLock,
     ) {
+        if (!isset($this->logger)) {
+            $this->logger = new NullLogger();
+        }
     }
 
+    /**
+     * Language updates never overlap: the whole update runs under a lock shared by all language messages, which
+     * the updates of the single indices inside it renew, so a second message waits until the first one has copied
+     * every index. It then checks
+     * whether a later settings save has replaced its own and skips in that case: it would reinstall the language
+     * list of its save. A failed update is reported to Messenger instead of being logged only: the message is
+     * retried, or goes to the failed transport when a copy ran out of its budget.
+     *
+     * @throws Exception
+     */
     public function __invoke(UpdateLanguageSettingsMessage $message): void
     {
-        try {
-            $currentLanguages = $message->getCurrentLanguages();
-            $newLanguages = $this->languageService->getNewLanguages(
-                $message->getValidLanguages()
-            );
-
-            if ((empty($currentLanguages) && !empty($newLanguages)) ||
-                ($currentLanguages !== $newLanguages)
-            ) {
-                $this->languageService->setValidLanguages($newLanguages);
-                $this->handleIndexUpdate();
-            }
-
-        } catch (Exception $exception) {
-            $this->logger->error('Updating languages failed: ' . $exception);
-        }
+        $this->indexLock->run(self::LANGUAGES_LOCK, fn () => $this->update($message));
     }
 
     /**
      * @throws Exception
      */
-    private function handleIndexUpdate(
-    ): void {
-        $this->reindexService->reindexAll();
-        $this->enqueueService->dispatchQueueMessages(true);
+    private function update(UpdateLanguageSettingsMessage $message): void
+    {
+        if (!$this->latestLanguageChange->isLatest($message->getValidLanguages())) {
+            $this->logger->notice('Skipping a language change that a later settings save has replaced', [
+                'languages' => $message->getValidLanguages(),
+            ]);
+
+            return;
+        }
+
+        $currentLanguages = $message->getCurrentLanguages();
+        $newLanguages = $this->languageService->getNewLanguages(
+            $message->getValidLanguages()
+        );
+
+        if ($currentLanguages === $newLanguages) {
+            return;
+        }
+
+        $this->languageService->setValidLanguages($newLanguages);
+
+        try {
+            $this->reindexService->reindexAll();
+            $this->enqueueService->dispatchQueueMessages(true);
+        } catch (Exception $exception) {
+            $this->retryPolicy->rethrow($exception);
+        }
     }
 }

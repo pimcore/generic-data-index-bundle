@@ -243,6 +243,31 @@ class DeploymentReindexScopeTest extends Unit
         $this->assertTrue($searchIndexService->existsAlias($alias));
     }
 
+    /**
+     * The checksum of a class is stored but its index is gone (lost, or stamped without an index): the run without
+     * options creates the index again instead of failing on the icon update of the missing index.
+     *
+     * @see https://github.com/pimcore/platform-version/issues/782
+     */
+    public function testWithoutOptionsAClassWithStoredChecksumButNoIndexIsCreated(): void
+    {
+        $this->tester->runConsoleCommand(self::COMMAND);
+        $classDefinition = ClassDefinition::getByName('simple');
+        $this->assertNotNull(
+            $this->getSettingsStore()->getClassMappingCheckSum($classDefinition->getId()),
+            'The run stores the checksum of the class'
+        );
+        /** @var SearchIndexServiceInterface $searchIndexService */
+        $searchIndexService = $this->tester->grabService(SearchIndexServiceInterface::class);
+        $searchIndexService->deleteIndex($this->tester->getIndexName('simple', true));
+        $alias = $this->tester->grabService(DataObjectTypeAdapter::class)->getAliasIndexName($classDefinition);
+        $this->assertFalse($searchIndexService->existsAlias($alias));
+
+        $this->tester->runConsoleCommand(self::COMMAND);
+
+        $this->assertTrue($searchIndexService->existsAlias($alias));
+    }
+
     public function testUpdateIndexRefreshesTheMappingButNotTheSettingsWithoutRecreation(): void
     {
         $this->tester->runConsoleCommand(self::COMMAND, ['--assets' => true]);

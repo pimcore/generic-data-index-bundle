@@ -168,7 +168,10 @@ final class IndexStatusTest extends Unit
         try {
             $this->assertTrue($this->statusService->getStatusForClassDefinition($classDefinition)->isMappingCurrent());
 
-            $settingsStore->storeClassMapping($classDefinition->getId(), crc32(json_encode($mappingProperties)));
+            // An older bundle version knew no workflowPlaces field, its checksum does not contain it
+            $legacyProperties = $mappingProperties;
+            unset($legacyProperties['system_fields']['properties']['workflowPlaces']);
+            $settingsStore->storeClassMapping($classDefinition->getId(), crc32(json_encode($legacyProperties)));
             $this->assertTrue(
                 $this->statusService->getStatusForClassDefinition($classDefinition)->isMappingCurrent(),
                 'The legacy checksum of an unchanged mapping is current'

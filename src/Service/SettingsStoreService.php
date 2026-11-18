@@ -25,6 +25,8 @@ final class SettingsStoreService implements SettingsStoreServiceInterface
 {
     private const SETTINGS_STORE_PREFIX = 'reindex_class_id_';
 
+    private const WORKFLOW_PLACES_MAPPING_PREFIX = 'workflow_places_mapping_';
+
     private const INDEX_STATE_PREFIX = 'index_state_';
 
     private const SETTINGS_STORE_SCOPE = 'generic_data_index';
@@ -71,6 +73,14 @@ final class SettingsStoreService implements SettingsStoreServiceInterface
         );
     }
 
+    public function getWorkflowPlacesMappingChecksum(string $indexName): ?int
+    {
+        return $this->settingsStoreResolver->get(
+            self::WORKFLOW_PLACES_MAPPING_PREFIX . $indexName,
+            self::SETTINGS_STORE_SCOPE
+        )?->getData();
+    }
+
     public function getIndexState(string $key): ?string
     {
         $data = $this->settingsStoreResolver->get(
@@ -79,6 +89,19 @@ final class SettingsStoreService implements SettingsStoreServiceInterface
         )?->getData();
 
         return $data === null ? null : (string) $data;
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function storeWorkflowPlacesMappingChecksum(string $indexName, int $data): void
+    {
+        $this->settingsStoreResolver->set(
+            self::WORKFLOW_PLACES_MAPPING_PREFIX . $indexName,
+            $data,
+            SettingsStore::TYPE_INTEGER,
+            self::SETTINGS_STORE_SCOPE
+        );
     }
 
     /**

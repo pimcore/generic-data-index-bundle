@@ -30,6 +30,10 @@ final class CalculatedValueQueryStoreService implements CalculatedValueQueryStor
 
     private const CACHE_LIMIT = 200;
 
+    private const QUERY_TABLE_ID_COLUMN = 'oo_id';
+
+    private const LOCALIZED_QUERY_TABLE_ID_COLUMN = 'ooo_id';
+
     /**
      * Query rows per "classId:objectId(:language)". Elements are processed one at a
      * time, so one fetch per element (and language) serves all its calculated fields.
@@ -47,6 +51,7 @@ final class CalculatedValueQueryStoreService implements CalculatedValueQueryStor
     {
         $row = $this->getRow(
             'object_query_' . $dataObject->getClassId(),
+            self::QUERY_TABLE_ID_COLUMN,
             $this->getCalculatedFieldNames($dataObject, localized: false),
             $dataObject,
             $dataObject->getClassId() . ':' . $dataObject->getId() . ':' . (int) $dataObject->getModificationDate()
@@ -62,6 +67,7 @@ final class CalculatedValueQueryStoreService implements CalculatedValueQueryStor
     ): ?string {
         $row = $this->getRow(
             'object_localized_query_' . $dataObject->getClassId() . '_' . $language,
+            self::LOCALIZED_QUERY_TABLE_ID_COLUMN,
             $this->getCalculatedFieldNames($dataObject, localized: true),
             $dataObject,
             $dataObject->getClassId() . ':' . $dataObject->getId() . ':' . $language
@@ -76,8 +82,13 @@ final class CalculatedValueQueryStoreService implements CalculatedValueQueryStor
      *
      * @return array<string, mixed>
      */
-    private function getRow(string $table, array $fieldNames, Concrete $dataObject, string $cacheKey): array
-    {
+    private function getRow(
+        string $table,
+        string $idColumn,
+        array $fieldNames,
+        Concrete $dataObject,
+        string $cacheKey
+    ): array {
         if (isset($this->rowCache[$cacheKey])) {
             return $this->rowCache[$cacheKey];
         }
@@ -102,7 +113,7 @@ final class CalculatedValueQueryStoreService implements CalculatedValueQueryStor
                         'SELECT %s FROM %s WHERE %s = ?',
                         $columns,
                         $this->connection->quoteIdentifier($table),
-                        $this->connection->quoteIdentifier('oo_id')
+                        $this->connection->quoteIdentifier($idColumn)
                     ),
                     [$dataObject->getId()]
                 );

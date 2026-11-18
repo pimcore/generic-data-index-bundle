@@ -15,6 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\MessageHandler;
 
 use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Message\UpdateClassMappingMessage;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\MappingUpdateRetryPolicyInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassDefinition\ClassDefinitionReindexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexQueue\EnqueueServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
@@ -33,6 +34,7 @@ final class UpdateClassMappingHandler
         private readonly EnqueueServiceInterface $enqueueService,
         private readonly ClassDefinitionReindexServiceInterface $classDefinitionReindexService,
         private readonly ClassDefinitionResolverInterface $classDefinitionResolver,
+        private readonly MappingUpdateRetryPolicyInterface $retryPolicy,
     ) {
     }
 
@@ -53,11 +55,15 @@ final class UpdateClassMappingHandler
 
         $dispatch = $message->isDispatchQueueMessages();
 
-        $changed = $this->classDefinitionReindexService->reindexClassDefinition(
-            $classDefinition,
-            true,
-            $dispatch
-        );
+        try {
+            $changed = $this->classDefinitionReindexService->reindexClassDefinition(
+                $classDefinition,
+                true,
+                $dispatch
+            );
+        } catch (Exception $exception) {
+            $this->retryPolicy->rethrow($exception);
+        }
 
         if (!$changed) {
             return;

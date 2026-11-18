@@ -5,3 +5,6 @@ services:
         public: false
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\Middleware\CollectGarbageMiddleware: ~
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\MappingUpdateRetryPolicyInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\Messenger\MappingUpdateRetryPolicy
