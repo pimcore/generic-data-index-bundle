@@ -22,6 +22,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigS
 use Pimcore\Bundle\StaticResolverBundle\Models\DataObject\ClassificationStore\ServiceResolverInterface;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Classificationstore;
+use Pimcore\Model\DataObject\Classificationstore\GroupConfig;
 use Pimcore\Model\DataObject\Classificationstore\KeyGroupRelation;
 use Psr\Log\AbstractLogger;
 use ReflectionMethod;
@@ -80,6 +81,113 @@ final class ClassificationStoreAdapterTest extends Unit
         $this->assertSame(
             'Could not get field definition for type input for key 42 in group 9: unknown implementation for type input',
             $logger->records[0]['message']
+        );
+    }
+
+    /**
+     * Regression test for pimcore/platform-version#703: a classification store group that holds no
+     * key produced an inheritance entry without a "keys" list, while getInheritedData() reads
+     * $group['keys'] for every entry. The resulting "Undefined array key" is thrown as an
+     * ErrorException while debug is on, which DataObjectNormalizer turns into a
+     * DataObjectNormalizerException - the data object then fails to normalize at all, reported as
+     * "Error transforming data object to search result item" on the Studio data object endpoint.
+     */
+    public function testInheritanceEntryOfAGroupWithoutKeysStillCarriesAKeyList(): void
+    {
+        $adapter = $this->createAdapter();
+        $adapter->setLogger($this->createCollectingLogger());
+
+        $entry = $this->createInheritanceGroupEntry($adapter, $this->group(255, 'T-Shirt'), []);
+
+        $this->assertSame(['name' => 'T-Shirt', 'keys' => []], $entry);
+    }
+
+    /**
+     * Same shape, reached the other way: the group has keys, but none of them resolves to a field
+     * definition, so every key is skipped and the entry is built from no key at all.
+     */
+    public function testInheritanceEntryCarriesAKeyListWhenNoKeyDefinitionResolves(): void
+    {
+        $adapter = $this->createAdapter();
+        $adapter->setLogger($this->createCollectingLogger());
+        $adapter->setClassificationService($this->makeEmpty(ServiceResolverInterface::class, [
+            'getFieldDefinitionFromKeyConfig' => static function (): never {
+                throw new Exception('unknown implementation for type input');
+            },
+        ]));
+
+        $entry = $this->createInheritanceGroupEntry(
+            $adapter,
+            $this->group(255, 'T-Shirt'),
+            [$this->key(42, 255, 'Size')]
+        );
+
+        $this->assertSame(['name' => 'T-Shirt', 'keys' => []], $entry);
+    }
+
+    public function testInheritanceEntryIndexesResolvedKeysByKeyId(): void
+    {
+        $definition = new Checkbox();
+
+        $adapter = $this->createAdapter();
+        $adapter->setLogger($this->createCollectingLogger());
+        $adapter->setClassificationService($this->makeEmpty(ServiceResolverInterface::class, [
+            'getFieldDefinitionFromKeyConfig' => $definition,
+        ]));
+
+        $entry = $this->createInheritanceGroupEntry(
+            $adapter,
+            $this->group(255, 'T-Shirt'),
+            [$this->key(42, 255, 'Size')]
+        );
+
+        $this->assertSame(
+            [
+                'name' => 'T-Shirt',
+                'keys' => [42 => ['name' => 'Size', 'definition' => $definition]],
+            ],
+            $entry
+        );
+    }
+
+    /**
+     * @param KeyGroupRelation[] $keys
+     */
+    private function createInheritanceGroupEntry(
+        ClassificationStoreAdapter $adapter,
+        GroupConfig $group,
+        array $keys
+    ): array {
+        $method = new ReflectionMethod(ClassificationStoreAdapter::class, 'createInheritanceGroupEntry');
+
+        return $method->invoke($adapter, $group, $keys);
+    }
+
+    private function group(int $id, string $name): GroupConfig
+    {
+        $group = new GroupConfig();
+        $group->setId($id);
+        $group->setName($name);
+
+        return $group;
+    }
+
+    private function key(int $keyId, int $groupId, string $name): KeyGroupRelation
+    {
+        $key = new KeyGroupRelation();
+        $key->setKeyId($keyId);
+        $key->setGroupId($groupId);
+        $key->setName($name);
+        $key->setType('input');
+
+        return $key;
+    }
+
+    private function createAdapter(): ClassificationStoreAdapter
+    {
+        return new ClassificationStoreAdapter(
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
+            $this->makeEmpty(FieldDefinitionServiceInterface::class)
         );
     }
 

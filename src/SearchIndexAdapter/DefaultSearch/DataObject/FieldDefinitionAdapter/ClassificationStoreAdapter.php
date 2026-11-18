@@ -232,23 +232,50 @@ final class ClassificationStoreAdapter extends AbstractAdapter
                 continue;
             }
 
-            $mapping[$group->getId()] = [
-                'name' => $group->getName(),
-            ];
-            $keys = $this->getClassificationStoreKeysFromGroup($group);
-            foreach ($keys as $groupKey) {
-                $definition = $this->getFieldDefinitionForKey($groupKey);
-                if ($definition === null) {
-                    continue;
-                }
-                $mapping[$groupKey->getGroupId()]['keys'][$groupKey->getKeyId()] = [
-                    'name' => $groupKey->getName(),
-                    'definition' => $definition,
-                ];
-            }
+            $mapping[$group->getId()] = $this->createInheritanceGroupEntry(
+                $group,
+                $this->getClassificationStoreKeysFromGroup($group)
+            );
         }
 
         return $mapping;
+    }
+
+    /**
+     * The entry always carries a key list, even when it stays empty: getInheritedData() reads
+     * $group['keys'] for every entry it walks. A classification store group that holds no key - or
+     * whose keys all fail to resolve to a field definition - used to produce an entry without that
+     * list, and reading the missing key raises "Undefined array key" plus "foreach() argument must
+     * be of type array|object". With debug on both are thrown as an ErrorException, which
+     * DataObjectNormalizer reports as a failed normalization, so the whole data object could no
+     * longer be normalized - the Studio data object endpoint answered 500 "Error transforming data
+     * object to search result item". With debug off they are only logged, and the group silently
+     * contributes no inheritance information at all.
+     *
+     * @param KeyGroupRelation[] $keys
+     *
+     * @return array{name: string, keys: array<int, array{name: string, definition: Data}>}
+     */
+    private function createInheritanceGroupEntry(GroupConfig $group, array $keys): array
+    {
+        $entry = [
+            'name' => $group->getName(),
+            'keys' => [],
+        ];
+
+        foreach ($keys as $groupKey) {
+            $definition = $this->getFieldDefinitionForKey($groupKey);
+            if ($definition === null) {
+                continue;
+            }
+
+            $entry['keys'][$groupKey->getKeyId()] = [
+                'name' => $groupKey->getName(),
+                'definition' => $definition,
+            ];
+        }
+
+        return $entry;
     }
 
     /**
