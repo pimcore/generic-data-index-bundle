@@ -44,4 +44,12 @@ final class ObservableIndexLock implements IndexLockInterface
     {
         ($this->onRefresh)($aliasName);
     }
+
+    public function runIfFree(string $name, Closure $operation): bool
+    {
+        ($this->onAcquire)($name);
+        $operation();
+
+        return true;
+    }
 }

@@ -47,4 +47,11 @@ interface IndexUpdateServiceInterface
     public function updateDocuments(): self;
 
     public function setReCreateIndex(bool $reCreateIndex): self;
+
+    /**
+     * The listener is called right before and right after every single index is updated (data object folders,
+     * each class definition, assets, documents), so callers can keep a lock alive during long running updates.
+     * An exception thrown by the listener aborts the update.
+     */
+    public function setIndexUpdateListener(?callable $listener): self;
 }
