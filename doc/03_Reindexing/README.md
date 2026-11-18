@@ -191,8 +191,8 @@ flowchart TB
 
 | Trigger | In-place | Odd/even copy | Index recreation | Rebuild from the database | Applies new `index_settings`? |
 | --- | --- | --- | --- | --- | --- |
-| Class save (admin UI, Studio, `classes-rebuild`) | — | If the mapping checksum changed | Last resort | That class | Only if reindexed |
-| `deployment:reindex` without options | — | Classes with a changed or missing checksum | Last resort | Those classes | Only for those classes |
+| Class save (admin UI, Studio, `classes-rebuild`) | — | If the mapping checksum changed or the index is missing | Last resort | That class | Only if reindexed |
+| `deployment:reindex` without options | — | Classes with a changed or missing checksum, or a missing index | Last resort | Those classes | Only for those classes |
 | `deployment:reindex --all` (or an index option) | — | Indices with a changed mapping or changed settings | Last resort | Indices with a changed mapping or data version | Yes |
 | `update:index` (`-c`, `-a`) | Always | If `PUT _mapping` is rejected | Last resort | Everything in scope | No |
 | `update:index -r` | — | — | Always | Everything in scope | Yes |
@@ -221,7 +221,7 @@ messenger workers to fill them. Other indices are not queued.
 
 ## Class Definition Changes
 
-Saving a class definition reindexes only when the class's **mapping checksum** changes. The bundle then runs an odd/even
+Saving a class definition reindexes only when the class's **mapping checksum** changes or its index is missing. The bundle then runs an odd/even
 copy of the class index, followed by a rebuild from the database of all its objects. With `mapping_change_strategy: copy`, a field type
 change doesn't recreate the index: fields whose old values still fit are kept, all other changed fields are stripped from
 the copy, and the index is only recreated as a last resort; with the default `recreate`, the index is recreated empty
@@ -274,7 +274,7 @@ while `deployment:reindex` copies it too, and start them again afterwards for th
 [Deployment Procedure](../02_Configuration/07_Operations_Guide.md#deployment-procedure).
 
 Run `deployment:reindex` after every deployment as a safety net. It recalculates every class checksum and reindexes
-only classes that differ or have no stored checksum yet. See [Deployment and Index
+only classes that differ, have no stored checksum yet or have no index. See [Deployment and Index
 Management](../02_Configuration/03_Index_Management.md#deployment-and-index-management).
 
 ## Field Type Changes
@@ -543,7 +543,7 @@ bin/console generic-data-index:deployment:reindex [--all] [--classes] [--folders
 ```
 
 Without options the command compares the mapping checksum of every class definition and runs an odd/even copy plus
-a rebuild from the database for the classes whose checksum changed or is missing. With an index option it also
+a rebuild from the database for the classes whose checksum changed or is missing, and creates the index of a class that has none. With an index option it also
 compares the `index_settings` hash and the data version (bundle version plus the `index_versions` configuration)
 of the selected indices:
 
