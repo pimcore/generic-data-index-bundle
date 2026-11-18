@@ -13,13 +13,17 @@ declare(strict_types=1);
 
 namespace Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter;
 
+use Exception;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\AttributeType;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\RelationSummaries;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\RelationSummaryAdapterInterface;
+use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Normalizer\NormalizerInterface;
 
 /**
  * @internal
  */
-final class RelationAdapter extends AbstractAdapter
+final class RelationAdapter extends AbstractAdapter implements RelationSummaryAdapterInterface
 {
     public function getIndexMapping(): array
     {
@@ -40,6 +44,10 @@ final class RelationAdapter extends AbstractAdapter
 
     public function normalize(mixed $value): ?array
     {
+        if ($value instanceof RelationSummaries) {
+            return $this->normalizeRelationSummaries($value);
+        }
+
         $fieldDefinition = $this->getFieldDefinition();
         if (!$fieldDefinition instanceof NormalizerInterface) {
             return null;
@@ -63,6 +71,40 @@ final class RelationAdapter extends AbstractAdapter
                     $returnValue[$normalizedValue['type']][] = $normalizedValue['id'];
                 }
             }
+        }
+
+        return $returnValue;
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function getInheritedData(
+        Concrete $dataObject,
+        int $objectId,
+        mixed $value,
+        string $key,
+        ?string $language = null,
+        ?callable $callback = null
+    ): array {
+        if (!$value instanceof RelationSummaries) {
+            return parent::getInheritedData($dataObject, $objectId, $value, $key, $language, $callback);
+        }
+
+        // the summaries already come from the nearest ancestor with relations
+        return $value->getOwnerId() === $objectId ? [] : [$key => ['originId' => $value->getOwnerId()]];
+    }
+
+    private function normalizeRelationSummaries(RelationSummaries $relationSummaries): array
+    {
+        $returnValue = [
+            'object' => [],
+            'asset' => [],
+            'document' => [],
+        ];
+
+        foreach ($relationSummaries->getSummaries() as $summary) {
+            $returnValue[$summary['type']][] = $summary['id'];
         }
 
         return $returnValue;

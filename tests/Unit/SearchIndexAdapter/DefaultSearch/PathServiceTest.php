@@ -54,6 +54,40 @@ final class PathServiceTest extends Unit
         );
     }
 
+    /**
+     * PEES-2039: thumbnails can be indexed with any configured frontend prefix, so the rewrite
+     * script tries the longest prefix first and the plain path (empty prefix) last.
+     */
+    public function testThumbnailPathPrefixesAreUniqueLongestFirstAndEndWithEmptyPrefix(): void
+    {
+        $service = new PathService(
+            $this->makeEmpty(SearchClientInterface::class),
+            $this->makeEmpty(AdapterServiceInterface::class),
+            [
+                'source' => '/dam',
+                'thumbnail' => 'https://cdn.example.com/dam',
+                'thumbnail_deferred' => '/dam',
+                'unrelated' => null,
+            ],
+        );
+
+        $method = new ReflectionMethod(PathService::class, 'getThumbnailPathPrefixes');
+
+        $this->assertSame(['https://cdn.example.com/dam', '/dam', ''], $method->invoke($service));
+    }
+
+    public function testThumbnailPathPrefixesWithoutConfiguredPrefixes(): void
+    {
+        $service = new PathService(
+            $this->makeEmpty(SearchClientInterface::class),
+            $this->makeEmpty(AdapterServiceInterface::class),
+        );
+
+        $method = new ReflectionMethod(PathService::class, 'getThumbnailPathPrefixes');
+
+        $this->assertSame([''], $method->invoke($service));
+    }
+
     private function encodePathSegments(string $path): string
     {
         $service = new PathService(

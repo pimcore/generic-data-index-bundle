@@ -71,6 +71,8 @@ more CPU and heap speed it up, larger documents, replicas and concurrent load sl
 system with production-like data, for example by timing `deployment:reindex` after deploying a new field in a large
 class (with the workers stopped, see [Deployment Procedure](#deployment-procedure)), or by reading
 `running_time_in_nanos` of the task (see [Monitoring a Running Copy](#monitoring-a-running-copy)).
+The shard count of the index has the largest effect on the copy time (see
+[Shards, Replicas and Index Settings](#shards-replicas-and-index-settings)).
 
 Each copy attempt of an index has to fit into the budget of `reindex_settings` (see
 [Copy Time Budget](#copy-time-budget)). How a field type change is copied, and whether it can need more than one
@@ -109,6 +111,14 @@ allocation settings of your engine.
 The default index settings (`config/pimcore/default_index_settings.yaml`) use `number_of_shards: 1` and
 `number_of_replicas: 0`: each index lives in one shard on one node, without a copy on another node. Follow your
 engine's shard sizing guidance for large indices.
+
+The shard count also sets how fast a copy runs: the `_reindex` writes into every shard of the new index in parallel.
+On a development machine with OpenSearch 2 and 50,000 documents of about 6 KB, copying a one-shard index took about
+10 seconds and copying the same documents from a four-shard index into a four-shard index about 3.7 seconds. The gain
+is bounded by the CPU cores of the data nodes, since every shard needs a core to write, and shards should stay within
+the size your engine recommends (tens of gigabytes each). More shards also mean that every search fans out to more
+shards, which costs latency on small indices. Measure the copy with the shard count you plan on a staging system
+before changing it in production (see [Copy Time](#copy-time)).
 
 `index_settings` apply to every index the bundle creates; there is no setting per index. Raising the number of shards
 for one large class raises it for every class, asset and document index, and the shard count of the cluster is the
