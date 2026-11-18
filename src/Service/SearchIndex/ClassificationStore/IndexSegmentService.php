@@ -34,9 +34,10 @@ use function str_contains;
  * The only place the bundle turns a group or a key into a path segment. The mapping and the
  * document do not restate the rule, they ask here, so the three cannot drift apart.
  *
- * @internal the contract is {@see IndexSegmentServiceInterface}, which is not internal; this class is
+ * @internal the contracts are {@see IndexSegmentServiceInterface} and
+ * {@see DocumentEntryServiceInterface}, which are not internal; this class is
  */
-final readonly class IndexSegmentService implements IndexSegmentServiceInterface
+final readonly class IndexSegmentService implements IndexSegmentServiceInterface, DocumentEntryServiceInterface
 {
     private const PATH_SEPARATOR = '.';
 
@@ -81,7 +82,8 @@ final readonly class IndexSegmentService implements IndexSegmentServiceInterface
     public function getGroupEntries(int $groupId): array
     {
         $group = $this->groupConfigResolver->getById($groupId);
-        if ($group === null) {
+        // the group-segment guard the document applies before it writes the group node at all
+        if ($group === null || $this->getSegment($group->getIdentifier(), $group->getName()) === null) {
             return [];
         }
 
@@ -125,9 +127,9 @@ final readonly class IndexSegmentService implements IndexSegmentServiceInterface
     }
 
     /**
-     * The entries one key assignment adds to the group, in the order and under the exclusions
-     * {@see \Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\ClassificationStoreAdapter::getDocumentEntryNames()}
-     * writes them, so what this answers is what the document has and not what a key might deserve.
+     * The entries one key assignment adds to the group, in the order and under the exclusions the
+     * default-search `ClassificationStoreAdapter::getDocumentEntryNames()` writes them, so what this
+     * answers is what the document has and not what a key might deserve.
      *
      * $reserved is wider than $entries on purpose: the bare segment of a key that declines the
      * unqualified value is an entry neither the mapping nor the document has, but it is still RESERVED
@@ -251,11 +253,10 @@ final readonly class IndexSegmentService implements IndexSegmentServiceInterface
      * Whether the key writes its bare entry: the unqualified slot, which every key but a `multiValue`
      * declining it holds. A declining key is addressed only through its variant siblings.
      *
-     * The same rule, read off the same property, as
-     * {@see \Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\ClassificationStoreAdapter::declaresBareEntry()},
-     * so this is not a narrowing of what the index holds but the second implementation of one rule -
-     * which is what the agreement tests pin, and why removing it here would make this map answer an
-     * entry the mapping does not declare.
+     * The same rule, read off the same property, as the default-search
+     * `ClassificationStoreAdapter::declaresBareEntry()`, so this is not a narrowing of what the index
+     * holds but the second implementation of one rule - which is what the agreement tests pin, and why
+     * removing it here would make this map answer an entry the mapping does not declare.
      */
     private function writesBareEntry(?Data $definition): bool
     {

@@ -95,6 +95,9 @@ final class ClassificationStoreAdapterTest extends Unit
 
     private const OTHER_GROUP_ID = 10;
 
+    /** A group whose name leaves no segment, so neither the mapping nor the document has a node for it. */
+    private const UNADDRESSABLE_GROUP_ID = 11;
+
     private const FIELD_NAME = 'csstore';
 
     private const GROUP_NAME = 'Specifications';
@@ -1037,6 +1040,14 @@ final class ClassificationStoreAdapterTest extends Unit
      * value type declares either as a field. If core ever widens this list, this is the line that says
      * the premise has to be re-checked rather than the mapping silently differing per group.
      */
+    public function testOnlyValueDomainsCanBeOverriddenPerAssignment(): void
+    {
+        $this->assertSame(
+            ['options', 'defaultUnit', 'validUnits'],
+            (new ReflectionClass(KeyGroupRelation::class))->getConstant('OVERRIDABLE_PROPERTIES')
+        );
+    }
+
     /**
      * The entry map and the mapping are two implementations of one rule, in two classes: both answer
      * what the group DECLARES. A caller outside this bundle addresses the index through the map, so a
@@ -1120,7 +1131,8 @@ final class ClassificationStoreAdapterTest extends Unit
         $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL], false);
         $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER)];
 
-        $mapping = $this->getMappingForRelations($this->createFieldDefinition(false), [], $relations, null, $definition);
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $mapping = $this->getMappingForRelations($fieldDefinition, [], $relations, null, $definition);
         $segments = array_keys($mapping[self::DEFAULT_LANGUAGE][self::PROPERTIES]);
 
         $this->assertSame(
@@ -1135,11 +1147,81 @@ final class ClassificationStoreAdapterTest extends Unit
         );
     }
 
-    public function testOnlyValueDomainsCanBeOverriddenPerAssignment(): void
+    /**
+     * The GROUP level of the same agreement, which every case above is inside of: all four work within
+     * one group that has a valid identifier, so none of them can see the level that decides whether the
+     * group is in the document at all. A group the mapping declares no node for is a group the caller
+     * has nowhere to read an entry from, so an entry answered for it is one it can never reach.
+     *
+     * Asserted in the direction that matters, as for the document: no unreachable group answers
+     * entries. The reverse is not an equivalence - a group with a valid segment whose keys are all
+     * excluded declares a node and answers nothing, which is the next case down.
+     */
+    public function testNoGroupTheMappingDeclaresNoNodeForAnswersEntries(): void
     {
+        $this->registerGroup(self::GROUP_ID, self::GROUP_NAME, self::GROUP_IDENTIFIER);
+        $this->registerGroup(self::OTHER_GROUP_ID, 'Rims', null);
+        // no identifier and a name of nothing but dots: no segment is left to address the group by
+        $this->registerGroup(self::UNADDRESSABLE_GROUP_ID, '..', null);
+        foreach ([self::GROUP_ID, self::OTHER_GROUP_ID, self::UNADDRESSABLE_GROUP_ID] as $index => $groupId) {
+            $this->createRelation(self::KEY_ID + $index, $groupId, self::KEY_NAME, null, self::KEY_IDENTIFIER);
+        }
+
+        $service = $this->createAgreeingIndexSegmentService();
+        $declared = $this->createConfiguredAdapter(
+            self::LANGUAGES,
+            $this->createFieldDefinition(false)
+        )->getIndexMapping()[self::PROPERTIES];
+
         $this->assertSame(
-            ['options', 'defaultUnit', 'validUnits'],
-            (new ReflectionClass(KeyGroupRelation::class))->getConstant('OVERRIDABLE_PROPERTIES')
+            [self::GROUP_IDENTIFIER, 'Rims'],
+            array_keys($declared),
+            'the dotted group is the one the mapping declares no node for'
+        );
+        foreach ([self::GROUP_ID, self::OTHER_GROUP_ID, self::UNADDRESSABLE_GROUP_ID] as $groupId) {
+            $segment = $service->getGroupSegment($groupId);
+            if ($segment !== null && isset($declared[$segment])) {
+                $this->assertNotSame([], $service->getGroupEntries($groupId), 'a declared group has entries');
+
+                continue;
+            }
+
+            $this->assertSame(
+                [],
+                $service->getGroupEntries($groupId),
+                'a group the mapping declares no node for answers no entry'
+            );
+        }
+    }
+
+    /**
+     * The half of the group-level asymmetry that cannot be answered at this signature, pinned so it
+     * stays a known limitation rather than a surprise. The mapping also drops a group whose segment a
+     * SIBLING group of the same store took first, and which group that is depends on the listing, not
+     * on the group: a call about one group id cannot see the siblings, so the map answers the dropped
+     * group's entries. A caller enumerating a store rather than a group has the listing and drops the
+     * repeated segment itself, which is what the contract says.
+     */
+    public function testTheEntryMapCannotSeeASiblingGroupTakingItsSegmentFirst(): void
+    {
+        $this->registerGroup(self::GROUP_ID, 'Rims', null);
+        // normalizes to "Rims" as well, so the mapping keeps the first group and drops this one
+        $this->registerGroup(self::OTHER_GROUP_ID, 'Rims.', null);
+        $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER);
+        $this->createRelation(self::OTHER_KEY_ID, self::OTHER_GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER);
+
+        $service = $this->createAgreeingIndexSegmentService();
+        $declared = $this->createConfiguredAdapter(
+            self::LANGUAGES,
+            $this->createFieldDefinition(false)
+        )->getIndexMapping()[self::PROPERTIES];
+
+        $this->assertSame(['Rims'], array_keys($declared), 'the second group loses the segment to the first');
+        $this->assertSame('Rims', $service->getGroupSegment(self::OTHER_GROUP_ID));
+        $this->assertSame(
+            [self::KEY_IDENTIFIER],
+            array_keys($service->getGroupEntries(self::OTHER_GROUP_ID)),
+            'the dropped group still answers its entries: one group id does not carry its siblings'
         );
     }
 
@@ -2891,7 +2973,7 @@ final class ClassificationStoreAdapterTest extends Unit
      * {@see self::createIndexSegmentService()} stubs these four because the adapter asks it nothing
      * that reads them.
      */
-    private function createAgreeingIndexSegmentService(mixed $keyDefinition = null): IndexSegmentServiceInterface
+    private function createAgreeingIndexSegmentService(mixed $keyDefinition = null): IndexSegmentService
     {
         return new IndexSegmentService(
             $this->makeEmpty(GroupConfigResolverInterface::class, [

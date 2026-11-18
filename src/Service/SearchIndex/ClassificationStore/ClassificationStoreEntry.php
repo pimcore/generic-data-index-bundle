@@ -15,7 +15,7 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Classificati
 
 /**
  * What stands behind one entry of a classification store group in the document, as
- * {@see IndexSegmentServiceInterface::getGroupEntries()} answers it.
+ * {@see DocumentEntryServiceInterface::getGroupEntries()} answers it.
  *
  * The segment an entry is addressed by is the array key it is answered under, not a property here: an
  * entry is only ever handed out together with the segment that reaches it, so a caller cannot hold one

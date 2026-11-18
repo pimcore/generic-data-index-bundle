@@ -20,6 +20,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\Attribu
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\ClassificationStore\KeyEntrySlot;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndexAdapter\MappingProperty;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\AdapterInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\DocumentEntryServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\EngineCapabilityServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface;
@@ -1075,7 +1076,7 @@ final class ClassificationStoreAdapter extends AbstractAdapter
      *
      * The third condition of "this entry is indexed" all three paths ask, after the value adapter and
      * the engine capability, and the one the segment service answers with
-     * {@see IndexSegmentServiceInterface::getGroupEntries()}, so the mapping, the document, the
+     * {@see DocumentEntryServiceInterface::getGroupEntries()}, so the mapping, the document, the
      * inheritance walk and the entry map agree on which slots exist. It does NOT drop the bare
      * SEGMENT: that stays reserved, so a later key of the same normalized name still loses its entry
      * there, and the collision rule is the same whether the earlier key filled the segment or not.

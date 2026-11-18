@@ -233,11 +233,25 @@ final class IndexSegmentServiceTest extends Unit
      * A group this installation does not have holds no document entry, which is the same answer as a
      * group whose keys are all excluded: neither is addressable, and the key listing is not even read.
      */
-    public function testAGroupThisInstallationDoesNotHaveHasNoEntries(): void
+    public function testAnUnknownGroupHasNoEntries(): void
     {
         $this->registerKey(self::KEY_ID, 'Rim material', self::IDENTIFIER, new Input());
 
         $this->assertSame([], $this->createEntriesService(false)->getGroupEntries(self::GROUP_ID));
+    }
+
+    /**
+     * A group with no identifier whose name normalizes to nothing is a group the document has no node
+     * for at all, so an entry answered for it is one the caller can never read: the group it would be
+     * read under is not in the document. The same fixture under a nameable group does answer, which is
+     * what keeps this from passing on an empty key listing.
+     */
+    public function testAGroupWhoseNameLeavesNoSegmentHasNoEntries(): void
+    {
+        $this->registerKey(self::KEY_ID, 'Rim material', self::IDENTIFIER, new Input());
+
+        $this->assertNotSame([], $this->createEntriesService()->getGroupEntries(self::GROUP_ID));
+        $this->assertSame([], $this->createEntriesService(groupName: '..')->getGroupEntries(self::GROUP_ID));
     }
 
     private function createService(?GroupConfig $group, ?KeyConfig $key): IndexSegmentService
@@ -257,9 +271,9 @@ final class IndexSegmentServiceTest extends Unit
      * relation listing of one group, every value type typed by the index and an engine that holds
      * what the keys declare, so the only thing a test varies is the key itself.
      */
-    private function createEntriesService(bool $groupExists = true): IndexSegmentService
+    private function createEntriesService(bool $groupExists = true, string $groupName = 'Rims'): IndexSegmentService
     {
-        $group = (new GroupConfig())->setId(self::GROUP_ID)->setName('Rims');
+        $group = (new GroupConfig())->setId(self::GROUP_ID)->setName($groupName);
 
         return new IndexSegmentService(
             $this->makeEmpty(GroupConfigResolverInterface::class, [

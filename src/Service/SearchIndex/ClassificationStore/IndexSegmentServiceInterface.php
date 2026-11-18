@@ -30,10 +30,6 @@ namespace Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Classificati
  * cannot arise between identifiers, and the position is not the same on the mapping and the
  * document path, so it is not an answer a read-side caller can be given.
  *
- * This interface is deliberately NOT `@internal`, unlike the implementation behind it: addressing a
- * classification store path is exactly the thing a bundle outside this one cannot be left to work out
- * for itself, so the contract is public and the class that answers it is not.
- *
  * @see KeyLocaleServiceInterface for the language node the same key is indexed under
  */
 interface IndexSegmentServiceInterface
@@ -50,28 +46,6 @@ interface IndexSegmentServiceInterface
      * {@see self::getGroupSegment()} answers null, and for a variant name that leaves no segment.
      */
     public function getKeySegment(int $keyId, ?string $variant = null): ?string;
-
-    /**
-     * Every entry the keys of one group are written under in the document, as the segment that
-     * addresses the entry => what stands behind it. The answer to "what does this group's document
-     * actually contain", for a caller that has to read or type those entries: enumerating the group's
-     * keys and naming them itself is the same rule implemented a second time, and a second
-     * implementation reads a renamed, a legacy or a `multiValue` key as an absent value.
-     *
-     * The entries are the ones {@see self::getKeySegment()} answers for, in the order and with the
-     * exclusions the document applies: a key the index does not write contributes nothing - one marked
-     * as not indexed, one whose value type the index cannot type, one the store's engine cannot hold,
-     * and one whose name leaves no segment. A `multiValue` key contributes one `<key>_<variant>`
-     * sibling per declared variant, plus its bare entry unless it declines the unqualified value. Two
-     * keys of one group whose names normalize to the same segment own one entry between them, the
-     * first in the listing, exactly as the document writes it.
-     *
-     * An empty array is the honest answer for a group this installation does not have and for one
-     * whose keys are all excluded; the two are not distinguished, because neither is addressable.
-     *
-     * @return array<string, ClassificationStoreEntry> keyed by the document segment
-     */
-    public function getGroupEntries(int $groupId): array;
 
     /**
      * A name as the index uses it for a path segment: empty components dropped, null for a name
