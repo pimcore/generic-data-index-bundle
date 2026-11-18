@@ -137,7 +137,8 @@ description: Version-specific upgrade instructions and breaking changes for the 
   identifier returns an empty result.
   `Service\SearchIndex\ClassificationStore\IndexSegmentServiceInterface` answers the segment of a group id and of a
   key id - with the `<key>_<variant>` sibling of a declared variant - with the resolution the mapping and the document
-  use themselves, for callers that would otherwise derive it.
+  use themselves, for callers that would otherwise derive it, and the new `DocumentEntryServiceInterface` beside it
+  answers every entry one group holds in the document.
 - [Indexing] A class mapping update that removes a class field (a variant, key or group, or a field of the class
   definition) now copies the index into the other `-odd`/`-even` index, because an in-place update would leave the
   removed field mapped; an additive change is applied in place, whatever undeclared fields the live index has picked

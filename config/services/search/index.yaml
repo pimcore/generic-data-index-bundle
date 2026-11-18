@@ -19,6 +19,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentService
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\DocumentEntryServiceInterface:
+        alias: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentServiceInterface
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\StoreConfigListingFactoryInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\StoreConfigListingFactory
 

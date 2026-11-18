@@ -95,6 +95,9 @@ final class ClassificationStoreAdapterTest extends Unit
 
     private const OTHER_GROUP_ID = 10;
 
+    /** A group whose name leaves no segment, so neither the mapping nor the document has a node for it. */
+    private const UNADDRESSABLE_GROUP_ID = 11;
+
     private const FIELD_NAME = 'csstore';
 
     private const GROUP_NAME = 'Specifications';
@@ -1046,6 +1049,183 @@ final class ClassificationStoreAdapterTest extends Unit
     }
 
     /**
+     * The entry map and the mapping are two implementations of one rule, in two classes: both answer
+     * what the group DECLARES. A caller outside this bundle addresses the index through the map, so a
+     * declared entry the map does not answer is a value that caller silently reads as absent - the
+     * defect this map exists to prevent. Pin them against each other over one fixture rather than each
+     * against its own expectation.
+     */
+    public function testTheEntryMapAnswersTheSameSegmentsAsTheMapping(): void
+    {
+        $this->registerGroup(self::GROUP_ID, self::GROUP_NAME, self::GROUP_IDENTIFIER);
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [
+            $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER),
+            // no identifier, so both sides fall back to the normalized name
+            $this->createRelation(self::OTHER_KEY_ID, self::GROUP_ID, 'Rim material', null, null),
+        ];
+
+        $mapping = $this->getMappingForRelations($fieldDefinition, [], $relations);
+
+        $this->assertSame(
+            array_keys($mapping[self::DEFAULT_LANGUAGE][self::PROPERTIES]),
+            array_keys($this->createAgreeingIndexSegmentService()->getGroupEntries(self::GROUP_ID)),
+            'every declared segment is answered by the entry map, and no other'
+        );
+    }
+
+    /**
+     * A `multiValue` key is the case the two could most easily disagree on: it declares one sibling per
+     * declared variant, and the bare entry only when it permits a value without one.
+     */
+    public function testTheEntryMapAndTheMappingAgreeOnVariantSiblings(): void
+    {
+        $this->registerGroup(self::GROUP_ID, self::GROUP_NAME, self::GROUP_IDENTIFIER);
+        $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL]);
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER)];
+
+        $mapping = $this->getMappingForRelations($fieldDefinition, [], $relations, null, $definition);
+
+        $this->assertSame(
+            array_keys($mapping[self::DEFAULT_LANGUAGE][self::PROPERTIES]),
+            array_keys($this->createAgreeingIndexSegmentService($definition)->getGroupEntries(self::GROUP_ID)),
+            'the variant siblings and the bare entry match the mapping on both sides'
+        );
+    }
+
+    /**
+     * The document is value-level, not declaration-level: it holds an entry only where the object has a
+     * value. So it is a SUBSET of what the map answers, and the direction that matters is this one - a
+     * document segment the map cannot answer is the silent loss. The reverse is harmless: the caller
+     * asks for an entry and finds no value.
+     */
+    public function testTheDocumentHoldsNoSegmentTheEntryMapCannotAnswer(): void
+    {
+        $this->registerGroup(self::GROUP_ID, self::GROUP_NAME, self::GROUP_IDENTIFIER);
+        $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL]);
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [
+            $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER),
+            $this->createRelation(self::OTHER_KEY_ID, self::GROUP_ID, 'Rim material', null, null),
+        ];
+
+        $document = $this->getDocumentValues($fieldDefinition, [], $relations, keyDefinition: $definition);
+        $answered = array_keys($this->createAgreeingIndexSegmentService($definition)->getGroupEntries(self::GROUP_ID));
+
+        $this->assertSame(
+            [],
+            array_values(array_diff(array_keys($document[self::DEFAULT_LANGUAGE] ?? []), $answered)),
+            'no segment is written to the document that the entry map leaves unanswered'
+        );
+    }
+
+    /**
+     * The case the map was written NARROWER than the mapping for: a key declining the unqualified
+     * value. Now that the mapping declines the bare node too, the two answer the same segments, which
+     * is what makes the narrowing one implementation of one rule rather than a second rule.
+     */
+    public function testTheEntryMapAndTheMappingAgreeOnAKeyDecliningTheUnqualifiedValue(): void
+    {
+        $this->registerGroup(self::GROUP_ID, self::GROUP_NAME, self::GROUP_IDENTIFIER);
+        $definition = $this->createMultiValue([self::METRIC, self::IMPERIAL], false);
+        $relations = [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER)];
+
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $mapping = $this->getMappingForRelations($fieldDefinition, [], $relations, null, $definition);
+        $segments = array_keys($mapping[self::DEFAULT_LANGUAGE][self::PROPERTIES]);
+
+        $this->assertSame(
+            [self::KEY_IDENTIFIER . '_' . self::METRIC, self::KEY_IDENTIFIER . '_' . self::IMPERIAL],
+            $segments,
+            'the mapping declares the variant siblings and no bare node'
+        );
+        $this->assertSame(
+            $segments,
+            array_keys($this->createAgreeingIndexSegmentService($definition)->getGroupEntries(self::GROUP_ID)),
+            'the entry map answers exactly the segments the mapping declares'
+        );
+    }
+
+    /**
+     * The GROUP level of the same agreement, which every case above is inside of: all four work within
+     * one group that has a valid identifier, so none of them can see the level that decides whether the
+     * group is in the document at all. A group the mapping declares no node for is a group the caller
+     * has nowhere to read an entry from, so an entry answered for it is one it can never reach.
+     *
+     * Asserted in the direction that matters, as for the document: no unreachable group answers
+     * entries. The reverse is not an equivalence - a group with a valid segment whose keys are all
+     * excluded declares a node and answers nothing, which is the next case down.
+     */
+    public function testNoGroupTheMappingDeclaresNoNodeForAnswersEntries(): void
+    {
+        $this->registerGroup(self::GROUP_ID, self::GROUP_NAME, self::GROUP_IDENTIFIER);
+        $this->registerGroup(self::OTHER_GROUP_ID, 'Rims', null);
+        // no identifier and a name of nothing but dots: no segment is left to address the group by
+        $this->registerGroup(self::UNADDRESSABLE_GROUP_ID, '..', null);
+        foreach ([self::GROUP_ID, self::OTHER_GROUP_ID, self::UNADDRESSABLE_GROUP_ID] as $index => $groupId) {
+            $this->createRelation(self::KEY_ID + $index, $groupId, self::KEY_NAME, null, self::KEY_IDENTIFIER);
+        }
+
+        $service = $this->createAgreeingIndexSegmentService();
+        $declared = $this->createConfiguredAdapter(
+            self::LANGUAGES,
+            $this->createFieldDefinition(false)
+        )->getIndexMapping()[self::PROPERTIES];
+
+        $this->assertSame(
+            [self::GROUP_IDENTIFIER, 'Rims'],
+            array_keys($declared),
+            'the dotted group is the one the mapping declares no node for'
+        );
+        foreach ([self::GROUP_ID, self::OTHER_GROUP_ID, self::UNADDRESSABLE_GROUP_ID] as $groupId) {
+            $segment = $service->getGroupSegment($groupId);
+            if ($segment !== null && isset($declared[$segment])) {
+                $this->assertNotSame([], $service->getGroupEntries($groupId), 'a declared group has entries');
+
+                continue;
+            }
+
+            $this->assertSame(
+                [],
+                $service->getGroupEntries($groupId),
+                'a group the mapping declares no node for answers no entry'
+            );
+        }
+    }
+
+    /**
+     * The half of the group-level asymmetry that cannot be answered at this signature, pinned so it
+     * stays a known limitation rather than a surprise. The mapping also drops a group whose segment a
+     * SIBLING group of the same store took first, and which group that is depends on the listing, not
+     * on the group: a call about one group id cannot see the siblings, so the map answers the dropped
+     * group's entries. A caller enumerating a store rather than a group has the listing and drops the
+     * repeated segment itself, which is what the contract says.
+     */
+    public function testTheEntryMapCannotSeeASiblingGroupTakingItsSegmentFirst(): void
+    {
+        $this->registerGroup(self::GROUP_ID, 'Rims', null);
+        // normalizes to "Rims" as well, so the mapping keeps the first group and drops this one
+        $this->registerGroup(self::OTHER_GROUP_ID, 'Rims.', null);
+        $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER);
+        $this->createRelation(self::OTHER_KEY_ID, self::OTHER_GROUP_ID, self::KEY_NAME, null, self::KEY_IDENTIFIER);
+
+        $service = $this->createAgreeingIndexSegmentService();
+        $declared = $this->createConfiguredAdapter(
+            self::LANGUAGES,
+            $this->createFieldDefinition(false)
+        )->getIndexMapping()[self::PROPERTIES];
+
+        $this->assertSame(['Rims'], array_keys($declared), 'the second group loses the segment to the first');
+        $this->assertSame('Rims', $service->getGroupSegment(self::OTHER_GROUP_ID));
+        $this->assertSame(
+            [self::KEY_IDENTIFIER],
+            array_keys($service->getGroupEntries(self::OTHER_GROUP_ID)),
+            'the dropped group still answers its entries: one group id does not carry its siblings'
+        );
+    }
+
+    /**
      * The excluded key is dropped before its name is normalized, so it does not reserve the segment
      * "Size" that the key named "Size." normalizes to - on the mapping and on the document path alike.
      */
@@ -1929,6 +2109,174 @@ final class ClassificationStoreAdapterTest extends Unit
         }
     }
 
+    /**
+     * A `multiValue` key can decline the value without a variant - the Studio toggle "Allow values
+     * without a variant" - and core then refuses the unqualified slot on the read and the write side
+     * alike: {@see \Pimcore\Model\DataObject\Classificationstore::getKeyValues()} answers nothing for
+     * the default variant of such a key and a save of it is an InvalidConfigException. So no value can
+     * ever reach the bare node, and declaring it is a mapped field per language and per key that is
+     * always empty - on a store at ETIM proportions that is what the field count limit is spent on.
+     */
+    public function testAKeyDecliningTheUnqualifiedValueDeclaresOnlyItsVariantSiblings(): void
+    {
+        $siblings = [
+            self::KEY_NAME . '_' . self::METRIC => self::KEY_MAPPING,
+            self::KEY_NAME . '_' . self::IMPERIAL => self::KEY_MAPPING,
+        ];
+
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => [self::PROPERTIES => $siblings]],
+            $this->getMappingForRelations(
+                $this->createFieldDefinition(false),
+                self::LANGUAGES,
+                [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, false)],
+                null,
+                $this->createMultiValue([self::METRIC, self::IMPERIAL], false)
+            )
+        );
+    }
+
+    /**
+     * The degenerate shape of the same configuration: declining the unqualified value and declaring no
+     * variant leaves the key with no slot at all, so it contributes no node and no language node - not
+     * a language node carrying an empty property list, which is not a mapping the engine would accept.
+     */
+    public function testAKeyDecliningTheUnqualifiedValueWithoutVariantsDeclaresNothing(): void
+    {
+        $this->assertSame(
+            [],
+            $this->getMappingForRelations(
+                $this->createFieldDefinition(false),
+                self::LANGUAGES,
+                [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, false)],
+                null,
+                $this->createMultiValue([], false)
+            )
+        );
+    }
+
+    /**
+     * The document side of the same rule. The bare slot is not merely left valueless, it is not read
+     * at all: core answers it with nothing on every element of the index, so asking is a read per
+     * element and per locale for an answer that is known in advance.
+     */
+    public function testAKeyDecliningTheUnqualifiedValueWritesNoBareDocumentEntry(): void
+    {
+        $bareReads = 0;
+        // a store that WOULD answer the bare slot, so the entry is left out by the rule and not by an empty read
+        $store = $this->makeEmpty(ClassificationstoreModel::class, [
+            'getLocalizedKeyValue' => static function () use (&$bareReads): string {
+                $bareReads++;
+
+                return 'bare value';
+            },
+            'getKeyValues' => static fn (
+                int $group,
+                int $keyId,
+                ?string $language,
+                ?string $variant
+            ): array => [0 => $variant . ' value'],
+        ]);
+
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => [self::KEY_NAME . '_' . self::METRIC => 'metric value']],
+            $this->getDocumentValues(
+                $this->createFieldDefinition(false),
+                self::LANGUAGES,
+                [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)],
+                keyDefinition: $this->createMultiValue([self::METRIC], false),
+                store: $store
+            )
+        );
+        $this->assertSame(0, $bareReads, 'the bare slot of a declining key is not read at all');
+    }
+
+    /**
+     * The inheritance side of the same rule: an inherited field path is built per entry, so a bare
+     * entry enumerated here would name a path neither the mapping nor the document has.
+     */
+    public function testAKeyDecliningTheUnqualifiedValueEmitsNoInheritedPathForItsBareEntry(): void
+    {
+        $adapter = $this->createConfiguredAdapter(
+            [],
+            keyDefinition: $this->createMultiValue([self::METRIC, self::IMPERIAL], false)
+        );
+        $keyMapping = (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyMappingForInheritance'))
+            ->invoke($adapter, [$this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME)]);
+
+        $this->assertSame(
+            [
+                self::KEY_NAME . '_' . self::METRIC => self::METRIC,
+                self::KEY_NAME . '_' . self::IMPERIAL => self::IMPERIAL,
+            ],
+            (new ReflectionMethod(ClassificationStoreAdapter::class, 'getEntryVariants'))
+                ->invoke($adapter, $keyMapping[self::KEY_ID])
+        );
+    }
+
+    /**
+     * The collision rule is about the SEGMENT, not about the entry: a declining key declares nothing
+     * at its bare segment and still reserves it, so the later key named "Size." - which normalizes to
+     * the same "Size" - loses its entry there exactly as it would to a key that filled the segment.
+     * Reserving and declaring are two answers, and only the second one changed.
+     */
+    public function testADecliningKeyStillReservesItsBareSegmentAgainstALaterCollidingKey(): void
+    {
+        $fieldDefinition = $this->createFieldDefinition(false);
+        $relations = [
+            $this->createRelation(self::KEY_ID, self::GROUP_ID, self::KEY_NAME, null, null),
+            $this->createRelation(self::OTHER_KEY_ID, self::GROUP_ID, self::KEY_NAME . '.', null, null),
+        ];
+        $keyDefinition = fn (object $config): Data => (
+            $config instanceof KeyGroupRelation ? $config->getKeyId() : $config->getId()
+        ) === self::KEY_ID
+            ? $this->createMultiValue([self::METRIC], false)
+            : new Input();
+
+        $this->assertSame(
+            [self::KEY_NAME . '_' . self::METRIC],
+            array_keys(
+                $this->getMappingForRelations(
+                    $fieldDefinition,
+                    self::LANGUAGES,
+                    $relations,
+                    null,
+                    $keyDefinition
+                )[self::DEFAULT_LANGUAGE][self::PROPERTIES]
+            )
+        );
+
+        $this->assertSame(
+            [self::DEFAULT_LANGUAGE => [self::KEY_NAME . '_' . self::METRIC => self::METRIC]],
+            $this->getDocumentValues(
+                $fieldDefinition,
+                self::LANGUAGES,
+                $relations,
+                keyDefinition: $keyDefinition,
+                store: $this->makeEmpty(ClassificationstoreModel::class, [
+                    'getKeyValues' => static fn (
+                        int $group,
+                        int $keyId,
+                        ?string $language,
+                        ?string $variant
+                    ): array => [0 => $variant],
+                ])
+            )
+        );
+
+        $adapter = $this->createConfiguredAdapter([], $fieldDefinition, keyDefinition: $keyDefinition);
+        $keyMapping = (new ReflectionMethod(ClassificationStoreAdapter::class, 'getKeyMappingForInheritance'))
+            ->invoke($adapter, $relations);
+
+        // the later key is dropped from the walk entirely: the declining key reserved "Size" first
+        $this->assertSame([self::KEY_ID], array_keys($keyMapping));
+        $this->assertSame(
+            [self::KEY_NAME . '_' . self::METRIC => self::METRIC],
+            (new ReflectionMethod(ClassificationStoreAdapter::class, 'getEntryVariants'))
+                ->invoke($adapter, $keyMapping[self::KEY_ID])
+        );
+    }
+
     public function testASiblingNameAnotherKeyAlreadyHoldsIsSkippedWithAWarningAndTheEarlierOneWins(): void
     {
         $logger = $this->createCollectingLogger();
@@ -2212,11 +2560,13 @@ final class ClassificationStoreAdapterTest extends Unit
 
     /**
      * @param string[] $variants
+     * @param bool $unqualifiedValue the Studio toggle "Allow values without a variant", default true
      */
-    private function createMultiValue(array $variants = []): MultiValue
+    private function createMultiValue(array $variants = [], bool $unqualifiedValue = true): MultiValue
     {
         $definition = new MultiValue();
         $definition->setVariants($variants);
+        $definition->setUnqualifiedValue($unqualifiedValue);
         $definition->setDelegate(new Input());
 
         return $definition;
@@ -2617,6 +2967,35 @@ final class ClassificationStoreAdapterTest extends Unit
      * answer would replace with the test's own. Only its lookups are stubbed, and they answer from
      * the same registries the fixture puts the group and key configurations in.
      */
+    /**
+     * The segment service wired to the SAME fixture and key definition the adapter reads, so what
+     * getGroupEntries() answers can be compared with what the document holds.
+     * {@see self::createIndexSegmentService()} stubs these four because the adapter asks it nothing
+     * that reads them.
+     */
+    private function createAgreeingIndexSegmentService(mixed $keyDefinition = null): IndexSegmentService
+    {
+        return new IndexSegmentService(
+            $this->makeEmpty(GroupConfigResolverInterface::class, [
+                'getById' => fn (int $id): ?GroupConfig => $this->groups[$id] ?? null,
+            ]),
+            $this->makeEmpty(KeyConfigResolverInterface::class, [
+                'getById' => static fn (int $id): ?KeyConfig => DefinitionCache::get($id),
+            ]),
+            $this->createStoreConfigReader(),
+            $this->makeEmpty(ServiceResolverInterface::class, [
+                'getFieldDefinitionFromKeyConfig' => $keyDefinition ?? new Input(),
+            ]),
+            $this->makeEmpty(FieldDefinitionServiceInterface::class, [
+                'getFieldDefinitionAdapter' => $this->makeEmpty(AdapterInterface::class, [
+                    'getIndexMapping' => self::KEY_MAPPING,
+                ]),
+                'normalizeValue' => static fn (?Data $definition, mixed $value): mixed => $value,
+            ]),
+            $this->createEngineCapabilityService()
+        );
+    }
+
     private function createIndexSegmentService(): IndexSegmentServiceInterface
     {
         return new IndexSegmentService(
@@ -2625,7 +3004,12 @@ final class ClassificationStoreAdapterTest extends Unit
             ]),
             $this->makeEmpty(KeyConfigResolverInterface::class, [
                 'getById' => static fn (int $id): ?KeyConfig => DefinitionCache::get($id),
-            ])
+            ]),
+            // only getGroupEntries() reads these, and the adapter does not ask it anything
+            $this->makeEmpty(StoreConfigReaderInterface::class),
+            $this->makeEmpty(ServiceResolverInterface::class),
+            $this->makeEmpty(FieldDefinitionServiceInterface::class),
+            $this->makeEmpty(EngineCapabilityServiceInterface::class)
         );
     }
 

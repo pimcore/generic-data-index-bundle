@@ -24,6 +24,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceI
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\EngineCapabilityServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\IndexSegmentService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\KeyLocaleService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ClassificationStore\StoreConfigReaderInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexHandler\AbstractIndexHandler;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\LanguageServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
@@ -217,7 +218,12 @@ final class ClassificationStoreCheckSumTest extends Unit
             $this->makeEmpty(GroupConfigResolverInterface::class),
             $this->makeEmpty(KeyConfigResolverInterface::class, [
                 'getById' => static fn (int $id): ?KeyConfig => DefinitionCache::get($id),
-            ])
+            ]),
+            // only getGroupEntries() reads these, and the adapter does not ask it anything
+            $this->makeEmpty(StoreConfigReaderInterface::class),
+            $this->makeEmpty(ServiceResolverInterface::class),
+            $this->makeEmpty(FieldDefinitionServiceInterface::class),
+            $this->makeEmpty(EngineCapabilityServiceInterface::class)
         ));
         // nothing memoized, so each build resolves the index flag of the key from its definition again
         $adapter->setRuntimeCacheResolver($this->makeEmpty(RuntimeCacheResolverInterface::class, [
