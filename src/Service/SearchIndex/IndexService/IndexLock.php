@@ -83,6 +83,39 @@ final class IndexLock implements IndexLockInterface
         }
     }
 
+    public function runIfFree(string $name, Closure $operation): bool
+    {
+        if (isset($this->held[$name])) {
+            return false;
+        }
+
+        $lock = $this->createLock($name);
+
+        try {
+            if (!$lock->acquire()) {
+                return false;
+            }
+        } catch (LockAcquiringException $e) {
+            throw new IndexLockException(
+                sprintf('Taking the lock of "%s" failed: %s', $name, $e->getMessage()),
+                0,
+                $e
+            );
+        }
+
+        $this->held[$name] = $lock;
+
+        try {
+            $this->refreshHeld(except: $name);
+            $operation();
+
+            return true;
+        } finally {
+            unset($this->held[$name]);
+            $this->release($name, $lock);
+        }
+    }
+
     public function refresh(string $aliasName): void
     {
         // Every lock this process holds is renewed, not only the given one: the attempts of a single index renew
@@ -184,7 +217,7 @@ final class IndexLock implements IndexLockInterface
      */
     private function acquire(string $aliasName): LockInterface
     {
-        $lock = $this->lockFactory->createLock(self::RESOURCE_PREFIX . $aliasName, $this->ttl());
+        $lock = $this->createLock($aliasName);
 
         try {
             if ($lock->acquire()) {
@@ -202,6 +235,11 @@ final class IndexLock implements IndexLockInterface
         }
 
         return $lock;
+    }
+
+    private function createLock(string $name): LockInterface
+    {
+        return $this->lockFactory->createLock(self::RESOURCE_PREFIX . $name, $this->ttl());
     }
 
     private function release(string $aliasName, LockInterface $lock): void

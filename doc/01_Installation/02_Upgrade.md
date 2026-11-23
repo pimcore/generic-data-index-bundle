@@ -198,6 +198,31 @@ description: Version-specific upgrade instructions and breaking changes for the 
 - [Indexing] `SettingsStoreServiceInterface` has two new methods, `getWorkflowPlacesMappingChecksum()` and
   `storeWorkflowPlacesMappingChecksum()`: custom implementations must add them.
 
+### Synchronizing all indices without the console
+
+- [Indexing] New service `Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexSyncServiceInterface`:
+  `syncAll()` does what `generic-data-index:update:index` does without `-r`. It updates the mappings of all class
+  definitions, assets and documents, adds every element to the index queue, dispatches the queue messages and
+  refreshes the global aliases, so an application can start a synchronization without console access. Studio uses it
+  for **System > Synchronize Search Index** (permission `system_settings`); that needs Studio Backend and Studio UI
+  2026.4, which are released together with this version.
+- [Indexing] Existing indices are kept and updated in place and keep serving searches while the workers re-index. As
+  with the command, an index whose changed mapping cannot be applied to the documents it already holds is recreated
+  and refilled; `index_service.reindex_settings.mapping_change_strategy` decides how, see
+  [Field Type Changes](../03_Reindexing/README.md#field-type-changes).
+- [Indexing] `syncAll()` returns once everything is queued, not once the queue is processed: follow the progress with
+  `generic-data-index:status` (indices are `rebuilding` until the workers have processed the queue, see
+  [Index Status](../02_Configuration/03_Index_Management.md#index-status)). A synchronization queues every element
+  again, so run it when needed, not on a schedule.
+- [Indexing] Only one synchronization runs at a time: while one is running, `syncAll()` throws the new
+  `IndexSyncAlreadyRunningException` instead of waiting. It is also thrown when another update took the lock of a
+  running synchronization over. The lock is an index lock: it lives as long as the longest copy attempt of the
+  `reindex_settings` and is renewed before and after every index and by every further copy attempt.
+- [Indexing] No action is required, nothing existing changes. The `@internal` interfaces
+  `IndexUpdateServiceInterface` (new method `setIndexUpdateListener()`, which is called before and after every index
+  update) and `IndexLockInterface` (new method `runIfFree()`, a variant of `run()` that does not wait for a lock
+  another process holds) have a new method each: custom implementations or decorators of them must add them.
+
 ## Upgrade to 2026.3.7
 - [Indexing] `deployment:reindex` and a class save create the index of a class that has a stored mapping checksum but no
   index (before, the run skipped the class and failed on the missing index). `ClassDefinitionReindexService` takes a
