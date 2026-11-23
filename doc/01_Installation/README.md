@@ -9,8 +9,9 @@ description: Install and configure the Generic Data Index bundle with OpenSearch
 
 This bundle requires OpenSearch >= 2.7 (2.x or 3.x) or Elasticsearch >= 8.12.2 (8.x or 9.x).
 OpenSearch 3 needs `pimcore/opensearch-client` >= 2026.4 (`opensearch-project/opensearch-php` >= 2.4.6).
-Elasticsearch 9 needs `pimcore/elasticsearch-client` >= 2026.4 with the 9.x `elasticsearch/elasticsearch`
-client: the Elasticsearch client major must match the server major.
+Elasticsearch 9 works with the 9.x `elasticsearch/elasticsearch` client (needs `pimcore/elasticsearch-client`
+>= 2026.4) or with the 8.x client through Elastic's REST API compatibility mode; a 9.x client is rejected by an
+Elasticsearch 8 cluster.
 
 :::
 
