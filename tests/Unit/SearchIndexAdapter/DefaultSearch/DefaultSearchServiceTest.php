@@ -117,6 +117,28 @@ final class DefaultSearchServiceTest extends Unit
     }
 
     /**
+     * Regression: the `client.ignore => [404]` option made opensearch-php >= 2.4 (legacy transport)
+     * report a missing index as present. The client maps a 404 to `false` itself; the option must
+     * not be sent.
+     */
+    public function testExistsIndexSendsNoClientIgnoreOption(): void
+    {
+        $captured = null;
+        $service = $this->createService(
+            client: $this->makeEmpty(SearchClientInterface::class, [
+                'existsIndex' => Expected::once(function (array $params) use (&$captured): bool {
+                    $captured = $params;
+
+                    return false;
+                }),
+            ])
+        );
+
+        $this->assertFalse($service->existsIndex('test_index'));
+        $this->assertSame(['index' => 'test_index'], $captured);
+    }
+
+    /**
      * When createIndex() receives a mappings array whose only field has an empty-array value,
      * normalization removes all fields, leaving an empty properties array. The entire
      * "mappings" key must then be omitted from the body so OpenSearch never receives

@@ -13,6 +13,39 @@ description: Version-specific upgrade instructions and breaking changes for the 
   diagnostics contract (`Pimcore\Contracts\Diagnostics`). Generic Data Index 2026.4 is released together with
   Pimcore 2026.4; upgrade both together. See [Diagnostics](../06_Diagnostics/README.md).
 
+### OpenSearch 3 and Elasticsearch 9
+
+- [Search] The functional test suites now run against OpenSearch 3 and Elasticsearch 9 in the highest-dependencies
+  CI job; OpenSearch 2 and Elasticsearch 8.12.2 stay covered by the lowest-dependencies job. The bundle now
+  requires `pimcore/opensearch-client` `^2026.4` (lifts the `opensearch-php` `< 2.4` pin) and
+  `pimcore/elasticsearch-client` `^2026.4` (allows the 9.x `elasticsearch/elasticsearch` client). Elasticsearch 9
+  works with either client major: the 9.x client natively, or the 8.x client through Elastic's REST API
+  compatibility mode (one major back). A 9.x client is rejected by an Elasticsearch 8 cluster; see the client
+  bundles' upgrade notes.
+- **Staying on Elasticsearch 8 or OpenSearch 2:** the client bundles widen their constraints instead of raising
+  them, but a plain `composer update` resolves the newest allowed client. A 9.x `elasticsearch/elasticsearch`
+  client is rejected by an Elasticsearch 8 cluster, so pin it in the project's root `composer.json` before the
+  next update. The OpenSearch client needs no pin: every opensearch-php 2.x release supports OpenSearch 2.
+
+  ```json
+  {
+      "require": {
+          "elasticsearch/elasticsearch": "^8.12"
+      }
+  }
+  ```
+
+- [OpenSearch 3] Indices created on OpenSearch 3 default to derived source for `knn_vector` fields
+  (`index.knn.derived_source.enabled: true`). OpenSearch documents nested fields as unsupported for derived
+  source; set `index.knn.derived_source.enabled: false` in the bundle's index settings if reads of nested
+  vectors fail.
+- [Elasticsearch 9] Indices created on Elasticsearch 9.1.7 / 9.2 and later exclude `dense_vector` values from
+  `_source` (`index.mapping.exclude_source_vectors`); request vectors through `fields` or
+  `_source.exclude_vectors: false`.
+- Local test harness: `tests/bin/docker-compose.yaml` reads `OPENSEARCH_VERSION` (default `2`) and
+  `ELASTICSEARCH_VERSION` (default `8.12.2`), for example
+  `OPENSEARCH_VERSION=3 ./init-functional-tests.sh <token>`.
+
 ### Re-indexing recommended
 
 - [Indexing] Fixed: localized fields inside object bricks, field collections and blocks were normalized with the
