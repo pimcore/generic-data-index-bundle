@@ -44,7 +44,7 @@ only that field until the rebuild depends on `index_service.reindex_settings.map
 | Field collection definition changed | Yes: mapping of every class using it | No | `deployment:reindex` |
 | Object brick fields changed | Yes: mapping of every class using it | No | `deployment:reindex` |
 | Object brick assigned to or removed from a class | Yes: mapping | Yes (Pimcore saves the class) | None |
-| Classification store group or key added, renamed, retyped or removed | Yes: mapping of every class with that store | No | `deployment:reindex` |
+| Classification store group or key added, renamed, retyped or removed, or the store's engine changed | Yes: mapping of every class with that store | No | `deployment:reindex` |
 | Valid languages added or removed in the system settings (admin UI or Studio) | Yes: every index, every element | Yes | None |
 | Only the language order changed in the system settings | Not needed, but a full reindex runs anyway | Yes | None (avoid on large installations) |
 | Valid languages changed in config files (usual in production) | Yes: classes with localized fields and the asset index | No | `deployment:reindex --all` |
@@ -82,10 +82,15 @@ and the retries described below apply to `copy`.
 
 | Mechanism | What happens in the search engine | Data source | Search during the run |
 | --- | --- | --- | --- |
-| In-place mapping update | `PUT _mapping` on the live index. Adds new fields only: removed fields stay mapped, a type change is rejected and triggers an odd/even copy instead. Index settings are not applied. | Existing documents, unchanged | Unaffected |
+| In-place mapping update | `PUT _mapping` on the live index. Adds new fields only: removed fields stay mapped, a type change is rejected and triggers an odd/even copy instead. A class-definition index is the exception for the removal of a class field (anything under `standard_fields`): it takes the odd/even copy, the other indices are unchanged. Index settings are not applied. | Existing documents, unchanged | Unaffected |
 | Odd/even copy | The engine copies all documents into the other `-odd`/`-even` index, created with the current mapping and the current `index_settings` (`_reindex`), then the alias is switched and the old index deleted. With `copy`, fields whose old values don't fit the new type are left out of the copy and the other changed fields are kept, so the documents are never emptied; with `recreate`, the documents are copied as they are. [Index Management](../02_Configuration/03_Index_Management.md#why--odd-and--even-suffixes) and the `generic-data-index:reindex` command call this *native reindexing*. | Existing documents, copied | Unaffected: reads go to the old index until the switch |
-| Index recreation | The live index is deleted and created again empty with the new mapping. With `recreate`, runs whenever the odd/even copy fails on old values that don't fit; with `copy`, only as the last resort when the copy still fails after the retries. `update:index -r` always recreates. | None: the index is empty until the rebuild has filled it | Empty or incomplete until the rebuild has finished |
+| Index recreation | The other `-odd`/`-even` index is created empty with the new mapping, the alias is moved onto it, and the index it left is deleted. A mapping the engine refuses therefore leaves the live index and its documents untouched, and the recreation fails with the refusal. With `recreate`, runs whenever the odd/even copy fails on old values that don't fit; with `copy`, only as the last resort when the copy still fails after the retries. `update:index -r` always recreates. | None: the index is empty until the rebuild has filled it | Empty or incomplete until the rebuild has finished |
 | Rebuild from the database | The affected elements are added to the index queue; messenger workers load each one from the database and replace its document. | Database | Values update as the index queue is processed |
+
+The bundle creates indices with the engine defaults for `dynamic`, `coerce` and `ignore_malformed`, except for two
+nodes of a class-definition index, both declared with `dynamic: false` since 2026.4.0: the `standard_fields` root and
+the nested root of a classification store field. A class field, group, language or key that is not declared stays in
+`_source` and is not indexed. During an odd/even copy this means:
 
 With `copy`, the bundle compares the live mapping with the new mapping before the copy and sorts every changed field:
 
@@ -125,8 +130,12 @@ copy this means:
 - Text copied into a number, date or boolean field doesn't fit: with `copy`, a class or custom field is stripped;
   with `recreate`, the copy fails and the index is recreated.
 - Fields that are no longer in the mapping are re-mapped dynamically and stay in the mapping until the index is
-  recreated with `update:index -r`. If their values don't fit the re-mapped type (for example "2026-01-01" in one
-  document and "abc" in the next), all removed class and custom fields are left out of the copy.
+  recreated with `update:index -r` — except under the `standard_fields` root of a class-definition index and below a
+  classification store's nested root, where `dynamic: false` keeps them out of the mapping and out of the index
+  altogether. A class field removed from the definition is therefore gone from the mapping after the copy its removal
+  triggered, rather than being re-created from the copied documents. If the values of a field that is re-mapped
+  don't fit the re-mapped type (for example "2026-01-01" in one document and "abc" in the next), all removed class
+  and custom fields are left out of the copy.
 
 Whenever fields were stripped, or the index had to be created empty, the bundle adds all elements of that index to the
 index queue, even if the trigger doesn't rebuild otherwise. After a copy that stripped fields, search keeps working during this and
@@ -191,10 +200,10 @@ flowchart TB
 
 | Trigger | In-place | Odd/even copy | Index recreation | Rebuild from the database | Applies new `index_settings`? |
 | --- | --- | --- | --- | --- | --- |
-| Class save (admin UI, Studio, `classes-rebuild`) | — | If the mapping checksum changed or the index is missing | Last resort | That class | Only if reindexed |
-| `deployment:reindex` without options | — | Classes with a changed or missing checksum, or a missing index | Last resort | Those classes | Only for those classes |
+| Class save (admin UI, Studio, `classes-rebuild`) | If the mapping checksum changed and no class field was removed | If the mapping checksum changed and a class field was removed, or the index is missing | Last resort | That class | Only if reindexed |
+| `deployment:reindex` without options | Classes with a changed or missing checksum, unless a class field was removed or settings changed | Classes with a removed class field or changed settings, or a missing index | Last resort | Those classes | Only for those classes |
 | `deployment:reindex --all` (or an index option) | — | Indices with a changed mapping or changed settings | Last resort | Indices with a changed mapping or data version | Yes |
-| `update:index` (`-c`, `-a`) | Always | If `PUT _mapping` is rejected | Last resort | Everything in scope | No |
+| `update:index` (`-c`, `-a`) | Always, except a class index that lost a class field | If `PUT _mapping` is rejected, or a class index lost a class field | Last resort | Everything in scope | No |
 | `update:index -r` | — | — | Always | Everything in scope | Yes |
 | `generic-data-index:reindex` | — | Every class, asset and document index, forced | Last resort (`copy`) | Only for indices with stripped fields or a recreated index | Yes; search keeps working, writes during the copy are lost (see [Other Index Changes](../02_Configuration/03_Index_Management.md#other-index-changes)) |
 
@@ -388,13 +397,14 @@ checksum and therefore finds the classes affected indirectly.
 | Field collection | Any field change (add, remove, rename, type, nested table or block config) | Manual | Every class with a field collections field allowing it |
 | Object brick | Field change (add, remove, rename, type, localized fields inside the brick) | Manual | Every class with an object bricks field allowing it |
 | Object brick | Brick added to or removed from a class's allowed types, or brick deleted | Automatic (Pimcore saves the class) | The classes whose assignment changed |
-| Classification store | Group added, renamed or removed; key added, renamed, removed or type changed; key moved between groups | Manual | Every class with a classification store field using that store |
+| Classification store | Group added, renamed or removed; key added, renamed, removed or type changed; key moved between groups; a key's localization flag or index-exclusion flag changed; the store's engine changed | Manual | Every class with a classification store field using that store |
 
 Why these changes are not detected: a field collection save only fires `FieldcollectionDefinitionEvents` and
 updates the database tables of the classes using it; an object brick save saves a class only when its class
 assignment changes; classification store groups, keys and stores fire their own
 `DataObjectClassificationStoreEvents`, and key–group relations fire no event at all. The bundle listens to none of
-them. This applies to the admin UI, Studio and `classes-rebuild` alike.
+them — including the key save that carries the localization and index-exclusion flags, both of which change the
+mapping. This applies to the admin UI, Studio and `classes-rebuild` alike.
 
 Until `deployment:reindex` has run, the class indices keep the old mapping, so new or retyped fields in these
 definitions are not searchable or filterable as intended.
@@ -423,9 +433,13 @@ and predefined asset metadata is mapped per language as well.
 
 :::info
 
-A class whose only language-dependent data is a **localized classification store** keeps its checksum, because the
-store's localized values are mapped dynamically. `deployment:reindex` therefore skips it. Raise its entry in
-`index_versions.classes` before the deployment, or run `update:index -c <id>`.
+A class whose only language-dependent data is a **classification store with at least one localized key** is detected
+too: since 2026.4.0 the store declares one node per valid language for such a key, so the class mapping and its
+checksum change with the language list. Before that release those values were mapped dynamically, the checksum stayed
+the same and `deployment:reindex` skipped the class, so it had to be raised in `index_versions.classes` or reindexed
+with `update:index -c <id>`. A store whose keys are all non-localized declares no language node at all, so its
+checksum does not change with the language list and `deployment:reindex` skips it — its mapping genuinely does not
+change.
 
 :::
 
@@ -631,6 +645,7 @@ The import doesn't add anything to the index queue. See [Index Snapshots](../02_
 | Element copied | The copy's tags are missing from the index until it is saved again | Re-save the copy, or `update:index` |
 | Reverse object relations | Saving the referenced object doesn't update objects that point to it | Re-save them, or `update:index -c <id>` |
 | Deletes during an odd/even copy | Deleted elements stay in the index | Reindex in a quiet period; `update:index -r` removes them |
+| `generic-data-index:reindex` with values that don't fit the mapping | The index is recreated empty and nothing refills it | `update:index -c <id>`, `-a` or `-d` |
 | Languages changed in config files, class with only a localized classification store | Not detected by `deployment:reindex` | `index_versions.classes.<id>` or `update:index -c <id>` |
 | Removed fields and removed languages | Stay in the mapping after an odd/even copy or an in-place update | `update:index -r` |
 | Stripped fields after a type change | Empty (and kept fields hold the old value) until the rebuild has run | Run the messenger workers; see [Field Type Changes](#field-type-changes) |
@@ -651,4 +666,4 @@ The import doesn't add anything to the index queue. See [Index Snapshots](../02_
 | Index queue | The database table of elements waiting to be indexed, processed by the messenger workers. |
 | Rebuild from the database | Elements are added to the index queue, loaded from the database and their documents replaced. |
 | Odd/even copy | The engine copies all documents of an index into the other `-odd`/`-even` index with the current mapping and settings, then switches the alias; no database read, nothing is emptied. Fields whose old values don't fit a changed type are left out of the copy. Called *native reindexing* in Index Management and by the `generic-data-index:reindex` command. |
-| Index recreation | The live index is deleted and created again empty; search is incomplete until the rebuild has finished. The last resort when the odd/even copy still fails after the retries, and what `update:index -r` does. |
+| Index recreation | The other `-odd`/`-even` index is created empty with the new mapping and the alias is moved onto it, so a refused mapping leaves the live index standing; search is incomplete until the rebuild has finished. The last resort when the odd/even copy still fails after the retries, and what `update:index -r` does. |

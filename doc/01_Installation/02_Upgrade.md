@@ -49,6 +49,32 @@ description: Version-specific upgrade instructions and breaking changes for the 
   until the re-index. The index format of class-level localized fields is unchanged.
 - [Indexing] Snapshots exported before the update are refused for these classes, and `--force` skips them: export
   them again after the re-index.
+- [Indexing] The mapping of a localized classification store declared only the `default` node under each group,
+  while the documents are written per language. It now declares `default` plus every valid language — `default`
+  carrying every indexed key of the group, a language node the localized ones.
+- [Indexing] The classification store's nested root is now declared with `dynamic: false`: a group, language or key
+  that is not declared is kept in `_source` but is not indexed. The consequence to plan for is that a newly
+  configured key is **not filterable until the next mapping update**.
+- [Indexing] Four actions rebuild the mapping *and* re-queue the class, so values entered in the meantime become
+  filterable without a manual re-index: saving the class definition, `generic-data-index:deployment:reindex`,
+  `generic-data-index:update:index`, and a change of the valid languages. `generic-data-index:reindex` is not one of
+  them — it copies the documents natively and queues nothing, so run `update:index` instead of it, or after it.
+- [Indexing] New: a classification store key whose own definition carries the JSON boolean `"indexed": false` is no
+  longer mapped and no longer written to the document, in every group it is assigned to. The `indexed` entry of a
+  key–group relation's metadata is not read.
+- [Indexing] Values of a group that is active on an object but not among the field's allowed groups are no longer
+  filterable, from the first mapping built from scratch. They are still written and stay readable in `_source`. Add
+  the group to the field's allowed groups and re-index to restore filtering.
+- [Indexing] Flipping a key's localization or index flag changes the class mapping but fires no event this bundle
+  listens to: apply it with `generic-data-index:deployment:reindex` or `generic-data-index:update:index`. Language
+  nodes an earlier mapping declared are dropped only when the mapping is rebuilt from scratch (`update:index -r`).
+- [Indexing] A localized key is declared once per valid language, so a large store can hit
+  `index.mapping.total_fields.limit` when the index is created or the mapping is updated. Restrict the field's
+  allowed groups, mark keys that need no language as not localized, or raise the limit — see
+  [Total Fields Limit](../02_Configuration/03_Index_Management.md#total-fields-limit).
+- [Indexing] A class whose only language-dependent data is a classification store with at least one localized key
+  now changes its checksum when the valid languages change, so `deployment:reindex` picks it up by itself where it
+  used to skip it. A language change can therefore reindex more classes than before.
 
 ### Workflow places: run `update:index` right after the deployment
 

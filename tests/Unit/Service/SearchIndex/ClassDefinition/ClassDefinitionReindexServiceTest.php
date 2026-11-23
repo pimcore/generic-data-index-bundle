@@ -103,7 +103,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMappingWithResult' => Expected::never(),
+            'updateMappingWithResult' => Expected::never(),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => $legacyCheckSum,
@@ -128,7 +128,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult()),
+            'updateMappingWithResult' => Expected::once(new MappingUpdateResult()),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => 999, // neither the current nor the legacy checksum
@@ -140,12 +140,48 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $this->assertTrue($updated);
     }
 
+    public function testAForcedCopyBypassesTheInPlaceUpdate(): void
+    {
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'updateMappingWithResult' => Expected::never(),
+            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult()),
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'storeClassMapping' => Expected::once(),
+        ]);
+
+        $result = $this->createService($handler, $settingsStore)
+            ->reindexClassDefinitionMapping($this->createClassDefinition(), false, false, true);
+
+        $this->assertNotNull($result);
+    }
+
+    public function testAnInPlaceUpdateStoresTheNewCheckSum(): void
+    {
+        $handler = $this->makeEmpty(IndexHandlerInterface::class, [
+            'getMappingProperties' => self::MAPPING_PROPERTIES,
+            'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
+            'updateMappingWithResult' => new MappingUpdateResult(),
+            'reindexMappingWithResult' => Expected::never(),
+        ]);
+        $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
+            'getClassMappingCheckSum' => 999,
+            'storeClassMapping' => Expected::once(),
+        ]);
+
+        $this->createService($handler, $settingsStore)
+            ->reindexClassDefinitionMapping($this->createClassDefinition(), true, false);
+    }
+
     public function testUnchangedCurrentCheckSumSkipsReindex(): void
     {
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMappingWithResult' => Expected::never(),
+            'updateMappingWithResult' => Expected::never(),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
@@ -217,7 +253,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult()),
+            'updateMappingWithResult' => Expected::once(new MappingUpdateResult()),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => null,
@@ -240,7 +276,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMappingWithResult' => Expected::once(new MappingUpdateResult()),
+            'updateMappingWithResult' => Expected::once(new MappingUpdateResult()),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => $legacyCheckSum,
@@ -288,7 +324,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
+            'updateMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
         ]);
         $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
             'enqueueByClassDefinition' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),
@@ -306,7 +342,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMappingWithResult' => new MappingUpdateResult(),
+            'updateMappingWithResult' => new MappingUpdateResult(),
         ]);
         $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
             'enqueueByClassDefinition' => Expected::never(),
@@ -328,7 +364,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
+            'updateMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
         ]);
         $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
             'enqueueByClassDefinition' => Expected::once(fn () => $this->makeEmpty(EnqueueServiceInterface::class)),
@@ -354,7 +390,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
+            'updateMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
         ]);
         $enqueueService = $this->makeEmpty(EnqueueServiceInterface::class, [
             'enqueueByClassDefinition' => static fn () => throw new Exception('Connection lost'),
@@ -382,7 +418,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
             $this->makeEmpty(IndexHandlerInterface::class, [
                 'getMappingProperties' => self::MAPPING_PROPERTIES,
                 'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-                'reindexMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
+                'updateMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
             ]),
             $settingsStore,
             $this->makeEmpty(EnqueueServiceInterface::class, [
@@ -402,7 +438,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
             $this->makeEmpty(IndexHandlerInterface::class, [
                 'getMappingProperties' => self::MAPPING_PROPERTIES,
                 'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-                'reindexMappingWithResult' => new MappingUpdateResult(),
+                'updateMappingWithResult' => new MappingUpdateResult(),
             ]),
             $settingsStore,
             $this->makeEmpty(EnqueueServiceInterface::class, [
@@ -429,7 +465,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
             $this->makeEmpty(IndexHandlerInterface::class, [
                 'getMappingProperties' => self::MAPPING_PROPERTIES,
                 'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-                'reindexMappingWithResult' => Expected::never(),
+                'updateMappingWithResult' => Expected::never(),
             ]),
             $this->makeEmpty(SettingsStoreServiceInterface::class, [
                 'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
@@ -460,7 +496,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMappingWithResult' => Expected::never(),
+            'updateMappingWithResult' => Expected::never(),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => static function () use (&$stored): int {
@@ -484,7 +520,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMappingWithResult' => static function () use (&$events): MappingUpdateResult {
+            'updateMappingWithResult' => static function () use (&$events): MappingUpdateResult {
                 $events[] = 'copy';
 
                 return new MappingUpdateResult();
@@ -524,7 +560,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
+            'updateMappingWithResult' => new MappingUpdateResult(['standard_fields.price']),
         ]);
         $settingsStore = $this->makeEmpty(SettingsStoreServiceInterface::class, [
             'getClassMappingCheckSum' => 999,
@@ -561,7 +597,7 @@ final class ClassDefinitionReindexServiceTest extends Unit
         $handler = $this->makeEmpty(IndexHandlerInterface::class, [
             'getMappingProperties' => self::MAPPING_PROPERTIES,
             'getClassMappingCheckSum' => self::CURRENT_CHECK_SUM,
-            'reindexMappingWithResult' => static function () use ($failure): never {
+            'updateMappingWithResult' => static function () use ($failure): never {
                 throw $failure;
             },
         ]);

@@ -51,3 +51,6 @@ services:
 
   Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationServiceInterface:
     class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\SearchPqlFieldNameTransformationService
+
+  Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\MappedFieldPathServiceInterface:
+    class: Pimcore\Bundle\GenericDataIndexBundle\Service\Search\SearchService\MappedFieldPathService

@@ -195,6 +195,34 @@ final class DataObjectNormalizerTest extends Unit
     }
 
     /**
+     * Without the cause attached, an index write that fails here is logged as a bare message and the
+     * site of the failure is unrecoverable.
+     */
+    public function testNormalizerExceptionKeepsTheCauseAsPrevious(): void
+    {
+        $cause = new Exception('Something went wrong');
+
+        $classDefinition = $this->createClassDefinition([
+            'broken_field' => new ClassDefinition\Data\Input(),
+        ]);
+
+        $fieldDefinitionService = $this->makeEmpty(FieldDefinitionServiceInterface::class, [
+            'normalizeValue' => static function () use ($cause): void {
+                throw $cause;
+            },
+        ]);
+
+        $normalizer = $this->createNormalizer(fieldDefinitionService: $fieldDefinitionService);
+
+        try {
+            $normalizer->normalize($this->createConcreteObjectMock($classDefinition));
+            $this->fail('Expected DataObjectNormalizerException was not thrown');
+        } catch (DataObjectNormalizerException $exception) {
+            $this->assertSame($cause, $exception->getPrevious());
+        }
+    }
+
+    /**
      * Object bricks, field collections and blocks keep their localized fields below "localizedfields" in
      * normalizeValue(); the index document gets them flattened by the container adapter.
      */

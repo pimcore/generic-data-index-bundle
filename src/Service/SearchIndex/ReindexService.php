@@ -154,7 +154,8 @@ final readonly class ReindexService implements ReindexServiceInterface
         $result = $this->classDefinitionReindexService->reindexClassDefinitionMapping(
             $classDefinition,
             false,
-            $enqueueElements
+            $enqueueElements,
+            true
         );
         $rebuilt = $enqueueElements || $result?->requiresRebuild() === true;
 

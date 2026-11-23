@@ -19,32 +19,27 @@ use JsonException;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DefaultSearch\ReindexFailedException;
+use Pimcore\Bundle\GenericDataIndexBundle\Exception\TotalFieldsLimitException;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingDiff;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\Mapping\MappingUpdateResult;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DefaultSearchService;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\IndexMappingServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\SearchIndexServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
-use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\MappingDiffService;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitGuardInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Traits\LegacyIndexHandlerSupportTrait;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\LoggerAwareTrait;
 use Pimcore\Model\DataObject\ClassDefinition;
-use Psr\Log\NullLogger;
-use ReflectionMethod;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 abstract class AbstractIndexHandler implements IndexHandlerInterface
 {
+    use LegacyIndexHandlerSupportTrait;
     use LoggerAwareTrait;
 
     private const MAX_REINDEX_ATTEMPTS = 3;
-
-    /** Created on first use for subclasses that call the constructor with the four arguments of 2026.3.2. */
-    private ?IndexCopyServiceInterface $defaultIndexCopyService = null;
-
-    private ?bool $reindexMappingOverridden = null;
 
     private bool $runningReindexMappingOverride = false;
 
@@ -55,6 +50,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         protected readonly IndexMappingServiceInterface $indexMappingService,
         private readonly ?IndexCopyServiceInterface $indexCopyService = null,
         private readonly ?IndexLockInterface $indexLock = null,
+        private readonly ?TotalFieldsLimitGuardInterface $totalFieldsLimitGuard = null,
     ) {
         if ($indexCopyService === null) {
             trigger_deprecation(
@@ -86,6 +82,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         bool $forceCreateIndex = false,
         ?array $mappingProperties = null
     ): void {
+        $mappingProperties = $this->assertFieldCountWithinLimit($context, $mappingProperties);
+
         $this->underIndexLock(
             $this->getAliasIndexName($context),
             fn () => $this->doUpdateMappingFull($context, $forceCreateIndex, $mappingProperties, 0)
@@ -104,6 +102,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         int $reindexDepth
     ): void {
         $aliasName = $this->getAliasIndexName($context);
+        $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
 
         if ($forceCreateIndex || !$this->searchIndexService->existsAlias($aliasName)) {
             // Recover from corrupted state: both -even and -odd may exist without an alias
@@ -126,17 +125,121 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
                 }
             }
 
-            $this->createIndex($context, $aliasName);
+            // The index carries its mapping from the create request on, so a mapping the engine refuses leaves
+            // no index - and no alias - behind. The putMapping below then applies it to an index that already
+            // has it, which is what keeps the retry and escalation of a refused in-place update unchanged.
+            $this->createIndex($context, $aliasName, $mappingProperties);
+        }
+
+        // A class-definition mapping that drops a live property cannot go in place: putMapping keeps the property.
+        if (!$forceCreateIndex && $this->mappingRemovesLiveProperty($context, $mappingProperties)) {
+            $this->doReindexMapping($context, $mappingProperties, $reindexDepth + 1);
+
+            return;
         }
 
         //updating mapping without recreating index
         try {
-            $this->doUpdateMapping($context);
+            $this->doUpdateMapping($context, $mappingProperties);
         } catch (Exception $e) {
             $this->logger->info($e);
             //try recreating index — ReindexFailedException propagates to the caller.
             $this->doReindexMapping($context, $mappingProperties, $reindexDepth + 1, $e);
         }
+    }
+
+    /**
+     * The mapping is applied in place unless a class-definition mapping drops a property of the live index, which
+     * takes the copy; other indices and a handler overriding reindexMapping() keep their behaviour.
+     *
+     * @internal returns a model that is not part of the public API
+     *
+     * @throws Exception
+     */
+    public function updateMappingWithResult(
+        ?ClassDefinition $context = null,
+        ?array $mappingProperties = null
+    ): MappingUpdateResult {
+        $mappingProperties = $this->assertFieldCountWithinLimit($context, $mappingProperties);
+
+        return $this->underIndexLock(
+            $this->getAliasIndexName($context),
+            fn () => $this->doUpdateMappingWithResult($context, $mappingProperties)
+        );
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function doUpdateMappingWithResult(
+        ?ClassDefinition $context,
+        ?array $mappingProperties
+    ): MappingUpdateResult {
+        if ($this->isReindexMappingOverridden(self::class)
+            || !$this->searchIndexService->existsAlias($this->getAliasIndexName($context))
+            || $this->mappingRemovesLiveProperty($context, $mappingProperties)
+        ) {
+            return $this->doReindexMappingWithResult($context, $mappingProperties);
+        }
+
+        try {
+            $this->doUpdateMapping($context, $mappingProperties);
+        } catch (Exception $e) {
+            $this->logger->info($e);
+
+            // putMapping refused the change (a type change, say): the copy handles it as it always did.
+            return $this->doReindexMapping($context, $mappingProperties, 1, $e);
+        }
+
+        return new MappingUpdateResult();
+    }
+
+    /**
+     * Whether the live index holds a class field the new mapping of a class definition no longer has. Only
+     * standard_fields is the class's own surface: system_fields belongs to the bundle, custom_fields to
+     * whichever bundle declared it, and neither category carries a dynamic key, so a field written into the
+     * documents but declared by no config — the checksum, or the lock state once an object is locked — reads
+     * as a removal forever and would otherwise take the copy on every mapping change. The inherited field
+     * values are written into the documents of an inheriting class without the mapping declaring them, so
+     * they are left out the same way.
+     *
+     * @throws JsonException
+     */
+    private function mappingRemovesLiveProperty(mixed $context, ?array $mappingProperties): bool
+    {
+        $alias = $this->getAliasIndexName($context);
+        if (!$context instanceof ClassDefinition || !$this->searchIndexService->existsAlias($alias)) {
+            return false;
+        }
+
+        $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
+        $diff = $this->getIndexCopyService()->diff($alias, $mappingProperties);
+        if ($diff->isLiveMappingUnreadable()) {
+            // Nothing was compared: fail closed, so a removal cannot slip through an in-place update.
+            $this->logger->debug(sprintf(
+                'Copying index "%s": the live mapping of class "%s" could not be read',
+                $alias,
+                $context->getName()
+            ));
+
+            return true;
+        }
+        foreach ($diff->getRemovedPathSegments() as $segments) {
+            if ($segments[0] !== FieldCategory::STANDARD_FIELDS->value
+                || ($segments[1] ?? null) === FieldCategory::INHERITED_FIELDS->value) {
+                continue;
+            }
+            $this->logger->debug(sprintf(
+                'Copying index "%s": the new mapping of class "%s" no longer has %s',
+                $alias,
+                $context->getName(),
+                implode('.', $segments)
+            ));
+
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -147,6 +250,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): void {
+        $mappingProperties = $this->assertFieldCountWithinLimit($context, $mappingProperties);
+
         $this->underIndexLock(
             $this->getAliasIndexName($context),
             fn () => $this->doReindexMapping($context, $mappingProperties, 0)
@@ -165,6 +270,8 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?ClassDefinition $context = null,
         ?array $mappingProperties = null
     ): MappingUpdateResult {
+        $mappingProperties = $this->assertFieldCountWithinLimit($context, $mappingProperties);
+
         return $this->underIndexLock(
             $this->getAliasIndexName($context),
             fn () => $this->doReindexMappingWithResult($context, $mappingProperties)
@@ -179,7 +286,7 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         ?array $mappingProperties
     ): MappingUpdateResult {
         // An override that delegates back to this method runs the copy itself instead of calling the override again.
-        if ($this->isReindexMappingOverridden() && !$this->runningReindexMappingOverride) {
+        if ($this->isReindexMappingOverridden(self::class) && !$this->runningReindexMappingOverride) {
             $this->runningReindexMappingOverride = true;
 
             try {
@@ -318,16 +425,6 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         return $normalizedValue;
     }
 
-    private function isReindexMappingOverridden(): bool
-    {
-        if ($this->reindexMappingOverridden === null) {
-            $declaringClass = (new ReflectionMethod($this, 'reindexMapping'))->getDeclaringClass()->getName();
-            $this->reindexMappingOverridden = $declaringClass !== self::class;
-        }
-
-        return $this->reindexMappingOverridden;
-    }
-
     /**
      * Every mapping update of an index runs under the lock of its alias, so two processes never copy or recreate
      * the same index at the same time; the second one waits. The retries of an update and the recreation as the
@@ -349,21 +446,43 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         $this->indexLock?->refresh($aliasName);
     }
 
+    /**
+     * Refuses a mapping the index cannot hold before the engine is asked for it, see
+     * {@see TotalFieldsLimitGuardInterface}, and returns the mapping properties the refusal was decided on so
+     * that they are extracted once and the engine is sent the very mapping that was counted.
+     *
+     * @param array<string, mixed>|null $mappingProperties
+     *
+     * @return array<string, mixed>
+     *
+     * @throws TotalFieldsLimitException
+     */
+    private function assertFieldCountWithinLimit(mixed $context, ?array $mappingProperties): array
+    {
+        $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
+
+        $this->getTotalFieldsLimitGuard()->assertWithinLimit(
+            $this->getAliasIndexName($context),
+            $mappingProperties
+        );
+
+        return $mappingProperties;
+    }
+
+    private function getTotalFieldsLimitGuard(): TotalFieldsLimitGuardInterface
+    {
+        return $this->totalFieldsLimitGuard
+            ?? $this->legacyTotalFieldsLimitGuard($this->searchIndexConfigService);
+    }
+
     private function getIndexCopyService(): IndexCopyServiceInterface
     {
-        if ($this->indexCopyService !== null) {
-            return $this->indexCopyService;
-        }
-        if ($this->defaultIndexCopyService === null) {
-            $this->defaultIndexCopyService = new IndexCopyService(
-                searchIndexService: $this->searchIndexService,
-                mappingDiffService: new MappingDiffService(),
-                pimcoreGenericDataIndexLogger: $this->logger ?? new NullLogger(),
-                indexLock: $this->indexLock
+        return $this->indexCopyService
+            ?? $this->legacyIndexCopyService(
+                $this->searchIndexService,
+                $this->indexLock,
+                $this->logger ?? null
             );
-        }
-
-        return $this->defaultIndexCopyService;
     }
 
     abstract protected function extractMappingProperties(mixed $context = null): array;
@@ -371,11 +490,16 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
     abstract protected function getAliasIndexName(mixed $context = null): string;
 
     /**
+     * The mapping the field count was decided on is the mapping the engine is sent; re-extracting it here would
+     * send one nobody counted, and would drop a mapping the caller handed in.
+     *
+     * @param array<string, mixed>|null $mappingProperties
+     *
      * @throws JsonException
      */
-    private function doUpdateMapping(mixed $context): void
+    private function doUpdateMapping(mixed $context, ?array $mappingProperties = null): void
     {
-        $mappingProperties = $this->extractMappingProperties($context);
+        $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
         $body = [
             '_source' => ['enabled' => true],
         ];
@@ -391,17 +515,44 @@ abstract class AbstractIndexHandler implements IndexHandlerInterface
         $this->logger->debug(json_encode($response, JSON_THROW_ON_ERROR));
     }
 
-    protected function createIndex(mixed $context, string $aliasName): void
+    /**
+     * Creates the index of the alias with the given mapping.
+     *
+     * A live index behind the alias is not touched until the replacement stands: it is built under the other
+     * version name and the alias is moved onto it in one engine request. Deleting first is what turned a
+     * refused mapping into the reported cascade - the live index was emptied, kept its aliases, and the
+     * objects written into it afterwards got a dynamic mapping without "system_fields.fullPath.sort", so the
+     * tree sort dropped them from an otherwise successful search.
+     *
+     * @param array<string, mixed>|null $mappingProperties
+     */
+    protected function createIndex(mixed $context, string $aliasName, ?array $mappingProperties = null): void
     {
-        $fullIndexName = $this->getCurrentFullIndexName($context);
+        $mappingProperties = $mappingProperties ?: $this->extractMappingProperties($context);
+        $liveIndexName = $this->getCurrentFullIndexName($context);
+        $replacesLiveIndex = $this->searchIndexService->existsAlias($aliasName, $liveIndexName);
 
-        $this
-            ->searchIndexService
-            ->createIndex($fullIndexName)
-            ->addAlias($aliasName, $fullIndexName)
-        ;
+        $newIndexName = $replacesLiveIndex ? $this->getStandbyFullIndexName($liveIndexName) : $liveIndexName;
+
+        $this->searchIndexService->createIndex($newIndexName, $mappingProperties);
+
+        if ($replacesLiveIndex) {
+            $this->searchIndexService->switchIndexAlias($aliasName, $newIndexName);
+        } else {
+            $this->searchIndexService->addAlias($aliasName, $newIndexName);
+        }
 
         $this->createGlobalIndexAliases($context);
+    }
+
+    /** The other index of the odd/even family, the one the alias does not point at. */
+    private function getStandbyFullIndexName(string $liveIndexName): string
+    {
+        return str_ends_with($liveIndexName, '-' . DefaultSearchService::INDEX_VERSION_EVEN)
+            ? substr($liveIndexName, 0, -strlen(DefaultSearchService::INDEX_VERSION_EVEN))
+                . DefaultSearchService::INDEX_VERSION_ODD
+            : substr($liveIndexName, 0, -strlen(DefaultSearchService::INDEX_VERSION_ODD))
+                . DefaultSearchService::INDEX_VERSION_EVEN;
     }
 
     protected function createGlobalIndexAliases(mixed $context = null): void

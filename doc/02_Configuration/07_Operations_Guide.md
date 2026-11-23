@@ -42,7 +42,7 @@ depends on the trigger:
 | Valid languages changed in the system settings | One messenger worker: one message copies every class, asset and document index, one after the other | Every element |
 | `deployment:reindex`, with or without options | The console process | See [Which Trigger Does What](../03_Reindexing/README.md#which-trigger-does-what) |
 | `update:index` | The console process, only if the in-place mapping update is rejected | Everything in scope |
-| `update:index -r` | No copy: the indices in scope are deleted and created empty | Everything in scope |
+| `update:index -r` | No copy: the indices in scope are rebuilt empty, under the other `-odd`/`-even` name, and the alias is moved once the new mapping is accepted | Everything in scope |
 | `generic-data-index:reindex` | The console process, every class, asset and document index | See [Commands](../03_Reindexing/README.md#commands) |
 | Class definition deleted | No copy: the index is deleted during the request. A running copy of that index is waited for first, so that it cannot bring the index back | None |
 

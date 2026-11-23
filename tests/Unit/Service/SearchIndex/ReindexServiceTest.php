@@ -36,6 +36,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexRebui
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
+use Pimcore\Model\DataObject\ClassDefinition;
 use Psr\Log\NullLogger;
 use ReflectionClass;
 use Symfony\Component\Lock\LockFactory;
@@ -127,6 +128,34 @@ final class ReindexServiceTest extends Unit
     }
 
     /**
+     * The command documents that it applies new index settings, which only a copy does.
+     */
+    public function testAClassIndexIsAlwaysCopiedByTheReindexCommand(): void
+    {
+        $refreshed = [];
+        $classDefinition = new ClassDefinition();
+        $classDefinition->setId('TEST');
+        $classDefinition->setName('Test');
+        $classes = $this->makeEmpty(ClassDefinitionReindexServiceInterface::class, [
+            'reindexClassDefinitionMapping' => Expected::once(
+                function (ClassDefinition $class, bool $skip, bool $enqueue, bool $forceCopy): null {
+                    $this->assertTrue($forceCopy);
+
+                    return null;
+                }
+            ),
+        ]);
+        $service = $this->createService(
+            new IndexCopyResult(ReindexResult::SUCCESS),
+            [],
+            $refreshed,
+            classDefinitionReindexService: $classes
+        );
+
+        $service->reindexClassDefinition($classDefinition, false);
+    }
+
+    /**
      * @param array<string, mixed> $enqueueExpectations
      * @param array<int, array{DeploymentReindexScope, bool, bool, bool}> $refreshed
      */
@@ -134,7 +163,8 @@ final class ReindexServiceTest extends Unit
         IndexCopyResult $copyResult,
         array $enqueueExpectations,
         array &$refreshed,
-        ?IndexRebuildObligationServiceInterface $obligations = null
+        ?IndexRebuildObligationServiceInterface $obligations = null,
+        ?ClassDefinitionReindexServiceInterface $classDefinitionReindexService = null
     ): ReindexService {
         $search = $this->makeEmpty(SearchIndexServiceInterface::class, [
             'existsAlias' => true,
@@ -198,7 +228,7 @@ final class ReindexServiceTest extends Unit
             $assetHandler,
             $documentHandler,
             $this->makeEmpty(EnqueueServiceInterface::class, $enqueueExpectations),
-            $this->makeEmpty(ClassDefinitionReindexServiceInterface::class),
+            $classDefinitionReindexService ?? $this->makeEmpty(ClassDefinitionReindexServiceInterface::class),
             $stateService,
             $obligations ?? $this->makeEmpty(IndexRebuildObligationServiceInterface::class)
         );

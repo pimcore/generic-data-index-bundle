@@ -221,6 +221,59 @@ final class FieldTypeChangeTest extends Unit
     }
 
     /**
+     * A purely additive class change is applied in place by every entry point: the alias stays where it is.
+     *
+     * @dataProvider entryPointProvider
+     */
+    public function testAnAdditiveClassChangeIsAppliedInPlace(string $entryPoint): void
+    {
+        $class = $this->createClass('GdiFtcAdditive' . $entryPoint, [$this->input(self::FIELD)]);
+        $this->createObjects($class, static function (Concrete $object, int $seed): void {
+            $object->set(self::FIELD, 'abc-' . $seed);
+        });
+        $liveIndex = $this->tester->getIndexName($class->getName(), true);
+
+        $this->changeClassFields($class, [$this->input(self::FIELD), $this->input(self::KEEP_FIELD)]);
+        $this->runEntryPoint($entryPoint, $class);
+
+        $this->assertSame($liveIndex, $this->tester->getIndexName($class->getName(), true));
+        $this->assertArrayHasKey(self::KEEP_FIELD, $this->getStandardFieldMapping($class));
+    }
+
+    /**
+     * A property the live mapping has and the new one lacks cannot be removed by putMapping, so every entry point
+     * copies, and the removed field is gone from the mapping of the new index.
+     *
+     * @dataProvider entryPointProvider
+     */
+    public function testARemovedClassFieldTakesTheCopy(string $entryPoint): void
+    {
+        $class = $this->createClass(
+            'GdiFtcRemoved' . $entryPoint,
+            [$this->input(self::FIELD), $this->input(self::KEEP_FIELD)]
+        );
+        $this->createObjects($class, static function (Concrete $object, int $seed): void {
+            $object->set(self::FIELD, 'abc-' . $seed);
+            $object->set(self::KEEP_FIELD, 'keep-' . $seed);
+        });
+        $liveIndex = $this->tester->getIndexName($class->getName(), true);
+
+        $this->changeClassFields($class, [$this->input(self::KEEP_FIELD)]);
+        $this->runEntryPoint($entryPoint, $class);
+
+        $this->assertCopiedIntoOtherIndex($class, $liveIndex);
+        $this->assertArrayNotHasKey(self::FIELD, $this->getStandardFieldMapping($class));
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function entryPointProvider(): array
+    {
+        return ['class save' => ['save'], 'deployment:reindex' => ['deployment'], 'update:index' => ['update']];
+    }
+
+    /**
      * The default strategy of a bugfix release: the copy leaves nothing out, so values that don't fit the new mapping
      * make it fail, and the caller recreates the index. The functional environment runs with the copy strategy (see
      * .github/ci/files/config/pimcore/config.yaml), so the recreate strategy is exercised on the copy service itself.
@@ -941,6 +994,27 @@ final class FieldTypeChangeTest extends Unit
         $this->classDefinition = $reloaded;
 
         return $reloaded;
+    }
+
+    private function runEntryPoint(string $entryPoint, ClassDefinition $class): void
+    {
+        if ($entryPoint === 'save') {
+            $this->applyClassMapping($class);
+
+            return;
+        }
+
+        $class = $this->reloadClass($class);
+        if ($entryPoint === 'deployment') {
+            $this->tester->runConsoleCommand(self::DEPLOYMENT_COMMAND, ['--classes' => true]);
+            $this->indexStateTouched = true;
+
+            return;
+        }
+
+        /** @var IndexUpdateServiceInterface $indexUpdateService */
+        $indexUpdateService = $this->tester->grabService(IndexUpdateServiceInterface::class);
+        $indexUpdateService->setReCreateIndex(false)->updateClassDefinition($class);
     }
 
     /**

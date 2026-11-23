@@ -23,6 +23,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\GlobalIndexAliasSe
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\ElementTypeAdapter\DataObjectTypeAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexService\IndexLockInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\IndexCopyServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\Mapping\TotalFieldsLimitGuardInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
@@ -44,6 +45,7 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
         private readonly WorkflowPlaceServiceInterface $workflowPlaceService,
         IndexCopyServiceInterface $indexCopyService,
         ?IndexLockInterface $indexLock = null,
+        ?TotalFieldsLimitGuardInterface $totalFieldsLimitGuard = null,
     ) {
         parent::__construct(
             $searchIndexService,
@@ -51,7 +53,8 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
             $eventDispatcher,
             $indexMappingService,
             $indexCopyService,
-            $indexLock
+            $indexLock,
+            $totalFieldsLimitGuard
         );
     }
 
@@ -97,15 +100,25 @@ final class DataObjectIndexHandler extends AbstractIndexHandler
         return $mappingProperties;
     }
 
+    /**
+     * The class definition's own fields, declared with "dynamic: false": a field removed from the
+     * definition is still held by the copied documents, and the engine would map it again from
+     * them - so the field would survive the very copy its removal triggered, keep matching
+     * searches, and read as a removal on every later mapping change. Undeclared values stay in
+     * _source, which is where the inherited field origins are read from.
+     */
     private function getStandardFieldsMapping(?ClassDefinition $classDefinition): array
     {
         if ($classDefinition === null) {
             return [];
         }
 
-        return $this->indexMappingService->getMappingForFieldDefinitions(
-            $classDefinition->getFieldDefinitions()
-        );
+        return [
+            'dynamic' => false,
+            ...$this->indexMappingService->getMappingForFieldDefinitions(
+                $classDefinition->getFieldDefinitions()
+            ),
+        ];
     }
 
     private function fireEventAndGetCustomFieldsMapping(?ClassDefinition $classDefinition, array $customFields): array

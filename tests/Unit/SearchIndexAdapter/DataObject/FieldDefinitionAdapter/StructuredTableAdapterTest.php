@@ -19,6 +19,7 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\DefaultSearch\Attribu
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DefaultSearch\DataObject\FieldDefinitionAdapter\StructuredTableAdapter;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface;
+use Pimcore\Model\DataObject;
 use Pimcore\Model\DataObject\ClassDefinition\Data\Checkbox;
 use Pimcore\Model\DataObject\ClassDefinition\Data\StructuredTable;
 
@@ -100,6 +101,47 @@ final class StructuredTableAdapterTest extends Unit
         ], $adapter->getIndexMapping());
     }
 
+    public function testNormalizeStructuredTable(): void
+    {
+        $adapter = $this->createAdapter();
+
+        $value = new DataObject\Data\StructuredTable([
+            'row1' => [
+                'col1' => 1.5,
+                'col2' => 'text',
+            ],
+        ]);
+
+        $this->assertSame([
+            'row1' => [
+                'col1' => 1.5,
+                'col2' => 'text',
+            ],
+        ], $adapter->normalize($value));
+    }
+
+    /**
+     * A classification store key of type structuredTable that holds no value hands the adapter null.
+     * StructuredTable::normalize() answers null for anything that is not a StructuredTable instance,
+     * which used to be iterated directly.
+     */
+    public function testNormalizeEmptyValue(): void
+    {
+        $adapter = $this->createAdapter();
+
+        $this->assertNull($adapter->normalize(null));
+    }
+
+    public function testNormalizeRowThatIsNotATable(): void
+    {
+        $adapter = $this->createAdapter();
+
+        $value = new DataObject\Data\StructuredTable();
+        $value->setData(['row1' => 'not-a-column-list']);
+
+        $this->assertSame([], $adapter->normalize($value));
+    }
+
     public function testGetSearchIndexMappingException(): void
     {
         $searchIndexConfigServiceInterfaceMock = $this->makeEmpty(SearchIndexConfigServiceInterface::class);
@@ -115,5 +157,16 @@ final class StructuredTableAdapterTest extends Unit
             'FieldDefinition must be of type StructuredTable'
         );
         $adapter->getIndexMapping();
+    }
+
+    private function createAdapter(): StructuredTableAdapter
+    {
+        $adapter = new StructuredTableAdapter(
+            $this->makeEmpty(SearchIndexConfigServiceInterface::class),
+            $this->makeEmpty(FieldDefinitionServiceInterface::class)
+        );
+        $adapter->setFieldDefinition(new StructuredTable());
+
+        return $adapter;
     }
 }

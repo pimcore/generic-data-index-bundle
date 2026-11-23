@@ -347,9 +347,15 @@ pimcore_generic_data_index:
 
 The bundle sets the field limit per index to 100,000 by default
 (`config/pimcore/default_index_settings.yaml`). Classification stores are a common reason to exceed it:
-each group is mapped with each of its keys, and the values of a localized store add fields per language.
+each group is mapped with each of its keys, and a localized key adds a field per valid language.
 Restricting the allowed groups of the classification store field in the class definition maps only those
-groups and reduces the field count. Otherwise, increase the limit with:
+groups and reduces the field count, and so does marking the keys that do not need a language as not
+localized. The two are not equivalent in what they keep. A group that is not allowed stays in `_source` and
+remains readable. A key that is not localized has no per-language value written to the document at all, so
+those values become unrecoverable *from the index*: they are still in the database, but nothing reads them
+back out of a search result, and an object indexed before the change keeps them in `_source` only until its
+document is next rewritten. Localizing the key again and re-indexing its objects is what brings them back.
+Otherwise, increase the limit with:
 
 ```yaml
 pimcore_generic_data_index:
@@ -366,13 +372,30 @@ so only the same nested path replaces the default value.
 
 :::info
 
-If the index already exists, recreate it after changing this setting:
+The configured value is sent in the create request of an index, so an index that already exists keeps
+the limit it was created with until it is recreated:
 
 ```bash
 bin/console generic-data-index:update:index -r
 ```
 
+The engine setting itself is dynamic, so the limit of a standing index can also be raised directly
+(`PUT /<index>/_settings` with `index.mapping.total_fields.limit`) without a reindex. The bundle never
+does that on its own.
+
 :::
+
+What counts against the limit is not only the leaf fields: the engine counts the leaves **plus** the
+object and nested nodes **plus** the sub-fields of a multi-field.
+
+Raising the limit is supported, and it is not free: the mapping of every index lives in the cluster
+state, which every node holds and which is read on each mapping lookup, so a larger mapping makes that
+state bigger and its lookups slower.
+
+A mapping over the configured limit is refused by this bundle before the engine is asked for it, naming
+the field count and the column it comes from. The engine's own check runs only after it has parsed the
+mapping, so a mapping far enough over the limit exhausts the heap of the cluster manager instead of
+answering with an error.
 
 ### Full-text search fields
 
