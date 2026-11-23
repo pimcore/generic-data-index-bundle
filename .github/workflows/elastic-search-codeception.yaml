@@ -85,7 +85,10 @@ jobs:
             PIMCORE_VERSION: ${{ matrix.matrix.pimcore_version }}
             REQUIRE_ADMIN_BUNDLE: "false"
             PIMCORE_ELASTIC_SEARCH_HOST: "39201"
-            PIMCORE_ELASTIC_SEARCH_VERSION: "8.12.2"
+            # Highest dependencies resolve the 9.x elasticsearch/elasticsearch client once
+            # pimcore/elasticsearch-client >= 2026.4 is installed; a 9.x client is rejected by an 8.x
+            # server, so that job runs against Elasticsearch 9. Lowest keeps client and server on 8.x.
+            PIMCORE_ELASTIC_SEARCH_VERSION: ${{ matrix.matrix.dependencies == 'highest' && '9.5.5' || '8.12.2' }}
             ENABLE_ELASTICSEARCH: true
             COVERAGE: "xdebug"
         secrets:

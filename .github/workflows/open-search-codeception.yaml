@@ -86,7 +86,9 @@ jobs:
             PIMCORE_VERSION: ${{ matrix.matrix.pimcore_version }}
             REQUIRE_ADMIN_BUNDLE: "false"
             PIMCORE_OPEN_SEARCH_HOST: "39200"
-            PIMCORE_OPENSEARCH_VERSION: "2"
+            # Highest dependencies resolve the newest opensearch-php client, which is the one tested
+            # upstream against OpenSearch 3; lowest keeps opensearch-php 2.2 against OpenSearch 2.
+            PIMCORE_OPENSEARCH_VERSION: ${{ matrix.matrix.dependencies == 'highest' && '3' || '2' }}
             ENABLE_ELASTICSEARCH: false
             COVERAGE: "xdebug"
         secrets:
