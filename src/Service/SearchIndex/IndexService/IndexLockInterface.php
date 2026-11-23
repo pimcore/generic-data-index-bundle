@@ -48,4 +48,18 @@ interface IndexLockInterface
      * @throws IndexLockException when another process took a lock over, or the lock store fails twice in a row
      */
     public function refresh(string $aliasName): void;
+
+    /**
+     * Like run(), but without waiting: when another process (or an outer call of this process) holds the lock of
+     * the given name, nothing runs and false is returned. For operations that must not queue up behind each other,
+     * such as a synchronization of all indices. While it runs, the lock is renewed like every other held lock, by
+     * each refresh() of a mapping update inside it.
+     *
+     * @param Closure(): void $operation
+     *
+     * @return bool whether the operation ran
+     *
+     * @throws IndexLockException when the lock store fails
+     */
+    public function runIfFree(string $name, Closure $operation): bool;
 }

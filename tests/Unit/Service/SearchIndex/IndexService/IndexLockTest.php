@@ -151,6 +151,104 @@ final class IndexLockTest extends Unit
         $this->assertSame('done', $result);
     }
 
+    public function testRunIfFreeRunsUnderTheLockAndReleasesIt(): void
+    {
+        $store = new RecordingLockStore();
+        $lock = $this->createIndexLock($store);
+        $heldDuringOperation = null;
+
+        $ran = $lock->runIfFree('index-synchronization', static function () use ($store, &$heldDuringOperation): void {
+            $heldDuringOperation = $store->getHeldResources();
+        });
+
+        $this->assertTrue($ran);
+        $this->assertSame([self::RESOURCE_PREFIX . 'index-synchronization'], $heldDuringOperation);
+        $this->assertSame([], $store->getHeldResources());
+    }
+
+    public function testRunIfFreeDoesNotWaitForALockAnotherProcessHolds(): void
+    {
+        $store = new RecordingLockStore();
+        $store->conflictOnNextSaves(1);
+        $lock = $this->createIndexLock($store);
+        $runs = 0;
+
+        $ran = $lock->runIfFree('index-synchronization', static function () use (&$runs): void {
+            ++$runs;
+        });
+
+        $this->assertFalse($ran);
+        $this->assertSame(0, $runs);
+        $this->assertSame(1, $store->getSaves(), 'the lock is tried once, not waited for');
+        $this->assertSame([], $store->getHeldResources());
+    }
+
+    public function testRunIfFreeDoesNotRunInsideTheSameLockOfThisProcess(): void
+    {
+        $store = new RecordingLockStore();
+        $lock = $this->createIndexLock($store);
+        $nestedRan = null;
+
+        $lock->runIfFree('index-synchronization', function () use ($lock, &$nestedRan): void {
+            $nestedRan = $lock->runIfFree('index-synchronization', static function (): void {
+                throw new RuntimeException('must not run');
+            });
+        });
+
+        $this->assertFalse($nestedRan);
+    }
+
+    public function testRunIfFreeReleasesTheLockWhenTheOperationThrows(): void
+    {
+        $store = new RecordingLockStore();
+        $lock = $this->createIndexLock($store);
+
+        try {
+            $lock->runIfFree('index-synchronization', static function (): void {
+                throw new RuntimeException('update failed');
+            });
+            $this->fail('the exception of the operation must propagate');
+        } catch (RuntimeException $e) {
+            $this->assertSame('update failed', $e->getMessage());
+        }
+
+        $this->assertSame([], $store->getHeldResources());
+    }
+
+    public function testAFailingLockStoreThrowsAnIndexLockExceptionFromRunIfFree(): void
+    {
+        $store = new RecordingLockStore();
+        $store->failSavesWith(new RuntimeException('MySQL server has gone away'));
+        $lock = $this->createIndexLock($store);
+
+        $this->expectException(IndexLockException::class);
+        $this->expectExceptionMessage('Taking the lock of "index-synchronization" failed');
+
+        $lock->runIfFree('index-synchronization', static fn () => null);
+    }
+
+    /**
+     * The lock of a synchronization of all indices is renewed by every copy attempt inside a single index: the
+     * refresh of that index renews every lock this process holds, and so does taking the lock of a further index.
+     */
+    public function testALockTakenWithRunIfFreeIsRenewedLikeTheOthersHeld(): void
+    {
+        $store = new RecordingLockStore();
+        $lock = $this->createIndexLock($store);
+        $resource = self::RESOURCE_PREFIX . 'index-synchronization';
+
+        $lock->runIfFree('index-synchronization', function () use ($lock, $store, $resource): void {
+            // Taking a lock with a lifetime renews it once itself.
+            $this->assertSame(1, $store->getRefreshesOf($resource));
+
+            $lock->run('pimcore_class', static fn () => null);
+            $this->assertSame(2, $store->getRefreshesOf($resource), 'taking the lock of an index renews it');
+
+            $lock->run('pimcore_class', static fn () => $lock->refresh('pimcore_class'));
+            $this->assertSame(4, $store->getRefreshesOf($resource), 'taking it again and a copy attempt renew it');
+        });
+    }
+
     public function testRefreshExtendsTheHeldLock(): void
     {
         $store = new RecordingLockStore();
