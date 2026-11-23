@@ -202,7 +202,10 @@ final readonly class ClassDefinitionReindexService implements ClassDefinitionRei
         $this->rebuildObligationService->owe(IndexStateTarget::forClassDefinition($classDefinition));
 
         // The copy is forced where new index settings have to be applied; otherwise an additive change goes in place.
-        return $forceCopy
+        // An index that is not there is the other case that cannot go in place: there is no mapping to add to, so it
+        // is created, which is what the copy path does. A class reaches this with a stored checksum and no index when
+        // the index was deleted by hand, lost with the cluster, or never created for a class already stamped.
+        return $forceCopy || !$this->indexExists($classDefinition)
             ? $this->dataObjectIndexHandler->reindexMappingWithResult(
                 context: $classDefinition,
                 mappingProperties: $mappingProperties
