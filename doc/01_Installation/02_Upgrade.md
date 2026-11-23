@@ -16,10 +16,11 @@ description: Version-specific upgrade instructions and breaking changes for the 
 ### OpenSearch 3 and Elasticsearch 9
 
 - [Search] The functional test suites now run against OpenSearch 3 and Elasticsearch 9 in the highest-dependencies
-  CI job; OpenSearch 2 and Elasticsearch 8.12.2 stay covered by the lowest-dependencies job. Running on those
-  servers needs `pimcore/opensearch-client` >= 2026.4 (lifts the `opensearch-php` `< 2.4` pin) and, for
-  Elasticsearch 9, `pimcore/elasticsearch-client` >= 2026.4 with the 9.x `elasticsearch/elasticsearch` client.
-  The Elasticsearch client major must match the server major; see the client bundles' upgrade notes.
+  CI job; OpenSearch 2 and Elasticsearch 8.12.2 stay covered by the lowest-dependencies job. The bundle now
+  requires `pimcore/opensearch-client` `^2026.4` (lifts the `opensearch-php` `< 2.4` pin) and
+  `pimcore/elasticsearch-client` `^2026.4` (allows the 9.x `elasticsearch/elasticsearch` client, needed for
+  Elasticsearch 9). The Elasticsearch client major must match the server major; see the client bundles' upgrade
+  notes.
 - **Staying on Elasticsearch 8 or OpenSearch 2:** the client bundles widen their constraints instead of raising
   them, but a plain `composer update` resolves the newest allowed client. A 9.x `elasticsearch/elasticsearch`
   client is rejected by an Elasticsearch 8 cluster, so pin it in the project's root `composer.json` before the
