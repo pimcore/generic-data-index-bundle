@@ -99,6 +99,50 @@ description: Version-specific upgrade instructions and breaking changes for the 
 - [Indexing] `SettingsStoreServiceInterface` has two new methods, `getWorkflowPlacesMappingChecksum()` and
   `storeWorkflowPlacesMappingChecksum()`: custom implementations must add them.
 
+### Synchronizing all indices without the console
+
+- [Indexing] New service `Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexSyncServiceInterface`:
+  `syncAll()` does what `generic-data-index:update:index` does without `-r`. It updates the mappings of all class
+  definitions, assets and documents, adds every element to the index queue, dispatches the queue messages and
+  refreshes the global aliases, so an application can start a synchronization without console access. Studio uses it
+  for **System > Synchronize Search Index** (permission `system_settings`); that needs Studio Backend and Studio UI
+  2026.4, which are released together with this version.
+- [Indexing] Existing indices are kept and updated in place and keep serving searches while the workers re-index. As
+  with the command, an index whose changed mapping cannot be applied to the documents it already holds is recreated
+  and refilled; `index_service.reindex_settings.mapping_change_strategy` decides how, see
+  [Field Type Changes](../03_Reindexing/README.md#field-type-changes).
+- [Indexing] `syncAll()` returns once everything is queued, not once the queue is processed: follow the progress with
+  `generic-data-index:status` (indices are `rebuilding` until the workers have processed the queue, see
+  [Index Status](../02_Configuration/03_Index_Management.md#index-status)). A synchronization queues every element
+  again, so run it when needed, not on a schedule.
+- [Indexing] Only one synchronization runs at a time: while one is running, `syncAll()` throws the new
+  `IndexSyncAlreadyRunningException` instead of waiting. It is also thrown when another update took the lock of a
+  running synchronization over. The lock is an index lock: it lives as long as the longest copy attempt of the
+  `reindex_settings` and is renewed before and after every index and by every further copy attempt.
+- [Indexing] No action is required, nothing existing changes. The `@internal` interfaces
+  `IndexUpdateServiceInterface` (new method `setIndexUpdateListener()`, which is called before and after every index
+  update) and `IndexLockInterface` (new method `runIfFree()`, a variant of `run()` that does not wait for a lock
+  another process holds) have a new method each: custom implementations or decorators of them must add them.
+
+## Upgrade to 2026.3.7
+- [Indexing] `deployment:reindex` and a class save create the index of a class that has a stored mapping checksum but no
+  index (before, the run skipped the class and failed on the missing index). `ClassDefinitionReindexService` takes a
+  `SearchIndexServiceInterface` as an additional constructor argument.
+
+## Upgrade to 2026.3.6
+- [Indexing] Indexing an object no longer loads the elements its relation fields point to (`manyToManyObjectRelation`,
+  `manyToManyRelation`, `reverseObjectRelation`): their type and id, the only values the index stores, are read from
+  the relation table with a few bulk queries. Measured with 5,000 relations, building the index document took 0.1 s
+  and 8 queries instead of 11.5 s and 20,003 queries. The index documents stay the same, so no reindex is needed.
+  **This needs `pimcore/pimcore` 2026.3.3 or later** (`LightweightRelationLoadingInterface`). With an older version,
+  relation fields are indexed as before, by loading the related elements.
+  The related elements are still loaded when the relation value is already in memory (unsaved changes), when the
+  project overrides the getter or `get()` of the class or implements `PreGetValueHookInterface`, for relations inside
+  localized fields, object bricks, field collections and blocks, and for advanced many-to-many relations. A listener of
+  `UpdateIndexDataEvent` that reads the relation (for example to add the names of the related elements to the custom
+  fields) loads them as well. `DataObjectNormalizer` takes a `RelationSummaryServiceInterface` as its last
+  constructor argument.
+
 ## Upgrade to 2026.3.5
 - [Messenger] A copy that runs out of its budget (`reindex_settings.max_polls` × `poll_interval`) is no longer
   retried with the same budget: the class mapping and language messages report it as unrecoverable, so the message

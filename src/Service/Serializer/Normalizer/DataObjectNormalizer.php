@@ -21,15 +21,19 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\Standar
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\SerializerContext;
 use Pimcore\Bundle\GenericDataIndexBundle\Exception\DataObjectNormalizerException;
+use Pimcore\Bundle\GenericDataIndexBundle\Model\SearchIndex\RelationSummaries;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\ContainerAdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\FieldDefinitionServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\SearchIndexAdapter\DataObject\RelationSummaryAdapterInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Dependency\DependencyServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedFieldsIndexModeResolverInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedValueQueryStoreServiceInterface;
+use Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\RelationSummaryServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowPlaceServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Workflow\WorkflowServiceInterface;
 use Pimcore\Bundle\GenericDataIndexBundle\Traits\ElementNormalizerTrait;
 use Pimcore\Model\DataObject\AbstractObject;
+use Pimcore\Model\DataObject\ClassDefinition\Data;
 use Pimcore\Model\DataObject\ClassDefinition\Data\CalculatedValue;
 use Pimcore\Model\DataObject\Concrete;
 use Pimcore\Model\DataObject\Folder;
@@ -50,6 +54,7 @@ final class DataObjectNormalizer implements NormalizerInterface
         private readonly CalculatedFieldsIndexModeResolverInterface $calculatedFieldsIndexModeResolver,
         private readonly CalculatedValueQueryStoreServiceInterface $calculatedValueQueryStoreService,
         private readonly WorkflowPlaceServiceInterface $workflowPlaceService,
+        private readonly RelationSummaryServiceInterface $relationSummaryService,
     ) {
     }
 
@@ -180,11 +185,13 @@ final class DataObjectNormalizer implements NormalizerInterface
             $class = $dataObject->getClass();
             $fieldDefinitions = $class->getFieldDefinitions();
             $result[FieldCategory::INHERITED_FIELDS->value] = [];
+            // relation summaries read for the inheritance origin, already resolved along the inheritance chain
+            $relationSummaries = [];
             Localizedfield::setGetFallbackValues(true);
             AbstractObject::setHideUnpublished(false);
             if ($class->getAllowInherit()) {
                 AbstractObject::setGetInheritedValues(false);
-                $result = $this->getInheritedFields($fieldDefinitions, $dataObject, $result);
+                $result = $this->getInheritedFields($fieldDefinitions, $dataObject, $result, $relationSummaries);
                 AbstractObject::setGetInheritedValues(true);
             }
 
@@ -196,7 +203,12 @@ final class DataObjectNormalizer implements NormalizerInterface
                 ) {
                     $value = $this->calculatedValueQueryStoreService->getValue($dataObject, $fieldDefinition);
                 } else {
-                    $value = $dataObject->get($key);
+                    $value = $relationSummaries[$key] ?? $this->getFieldValue(
+                        $dataObject,
+                        $fieldDefinition,
+                        $key,
+                        $fieldDefinition->supportsInheritance() && AbstractObject::doGetInheritedValues($dataObject)
+                    );
                 }
 
                 $normalizedValue = $this->fieldDefinitionService->normalizeValue(
@@ -228,20 +240,31 @@ final class DataObjectNormalizer implements NormalizerInterface
     }
 
     /**
+     * @param array<RelationSummaries> $relationSummaries receives the relation summaries that were read
+     *
      * @throws Exception
      */
-    private function getInheritedFields(array $fields, Concrete $dataObject, array $result): array
-    {
+    private function getInheritedFields(
+        array $fields,
+        Concrete $dataObject,
+        array $result,
+        array &$relationSummaries
+    ): array {
         foreach ($fields as $key => $fieldDefinition) {
             if (!$fieldDefinition->supportsInheritance()) {
                 continue;
+            }
+
+            $value = $this->getFieldValue($dataObject, $fieldDefinition, $key, true);
+            if ($value instanceof RelationSummaries) {
+                $relationSummaries[$key] = $value;
             }
 
             $inheritedData = $this->fieldDefinitionService->getInheritedFieldData(
                 $fieldDefinition,
                 $dataObject,
                 $key,
-                $dataObject->get($key)
+                $value
             );
 
             foreach ($inheritedData as $itemKey => $item) {
@@ -250,5 +273,29 @@ final class DataObjectNormalizer implements NormalizerInterface
         }
 
         return $result;
+    }
+
+    /**
+     * Only type and id of related elements are indexed, so relation fields are read from the relation rows
+     * when their adapter supports it, instead of loading every related element through the getter.
+     *
+     * @throws Exception
+     */
+    private function getFieldValue(Concrete $dataObject, Data $fieldDefinition, string $key, bool $walkParents): mixed
+    {
+        $adapter = $this->fieldDefinitionService->getFieldDefinitionAdapter($fieldDefinition);
+        if ($adapter instanceof RelationSummaryAdapterInterface) {
+            $relationSummaries = $this->relationSummaryService->getRelationSummaries(
+                $dataObject,
+                $fieldDefinition,
+                $key,
+                $walkParents
+            );
+            if ($relationSummaries !== null) {
+                return $relationSummaries;
+            }
+        }
+
+        return $dataObject->get($key);
     }
 }

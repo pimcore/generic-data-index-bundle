@@ -36,7 +36,7 @@ depends on the trigger:
 
 | Trigger | Copy runs in | Rebuild from the database |
 | --- | --- | --- |
-| Class saved in the admin UI or Studio, mapping checksum changed | A messenger worker (`UpdateClassMappingMessage`) | All objects of the class |
+| Class saved in the admin UI or Studio, mapping checksum changed or index missing | A messenger worker (`UpdateClassMappingMessage`) | All objects of the class |
 | Object brick added to or removed from a class | A messenger worker (Pimcore saves the class) | All objects of the class |
 | `pimcore:deployment:classes-rebuild` | A messenger worker, one message per changed class (every class with `-f`) | All objects of each changed class |
 | Valid languages changed in the system settings | One messenger worker: one message copies every class, asset and document index, one after the other | Every element |
@@ -46,7 +46,7 @@ depends on the trigger:
 | `generic-data-index:reindex` | The console process, every class, asset and document index | See [Commands](../03_Reindexing/README.md#commands) |
 | Class definition deleted | No copy: the index is deleted during the request. A running copy of that index is waited for first, so that it cannot bring the index back | None |
 
-A class save copies only if the class's mapping differs from the checksum stored after the last successful update.
+A class save copies only if the class's mapping differs from the checksum stored after the last successful update or the class has no index (it is then created again).
 Some changes alter the mapping without a class save: a bundle upgrade with a mapping change, changes to field
 collections, object bricks or the classification store, valid languages in config files, or `ExtractMappingEvent`
 code. They leave the stored checksum outdated. If `deployment:reindex` doesn't run after such a change, the next save
@@ -71,6 +71,8 @@ more CPU and heap speed it up, larger documents, replicas and concurrent load sl
 system with production-like data, for example by timing `deployment:reindex` after deploying a new field in a large
 class (with the workers stopped, see [Deployment Procedure](#deployment-procedure)), or by reading
 `running_time_in_nanos` of the task (see [Monitoring a Running Copy](#monitoring-a-running-copy)).
+The shard count of the index has the largest effect on the copy time (see
+[Shards, Replicas and Index Settings](#shards-replicas-and-index-settings)).
 
 Each copy attempt of an index has to fit into the budget of `reindex_settings` (see
 [Copy Time Budget](#copy-time-budget)). How a field type change is copied, and whether it can need more than one
@@ -109,6 +111,14 @@ allocation settings of your engine.
 The default index settings (`config/pimcore/default_index_settings.yaml`) use `number_of_shards: 1` and
 `number_of_replicas: 0`: each index lives in one shard on one node, without a copy on another node. Follow your
 engine's shard sizing guidance for large indices.
+
+The shard count also sets how fast a copy runs: the `_reindex` writes into every shard of the new index in parallel.
+On a development machine with OpenSearch 2 and 50,000 documents of about 6 KB, copying a one-shard index took about
+10 seconds and copying the same documents from a four-shard index into a four-shard index about 3.7 seconds. The gain
+is bounded by the CPU cores of the data nodes, since every shard needs a core to write, and shards should stay within
+the size your engine recommends (tens of gigabytes each). More shards also mean that every search fans out to more
+shards, which costs latency on small indices. Measure the copy with the shard count you plan on a staging system
+before changing it in production (see [Copy Time](#copy-time)).
 
 `index_settings` apply to every index the bundle creates; there is no setting per index. Raising the number of shards
 for one large class raises it for every class, asset and document index, and the shard count of the cluster is the

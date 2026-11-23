@@ -28,6 +28,9 @@ services:
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexUpdateService
 
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexSyncServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\IndexSyncService
+
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\ReindexService
 
@@ -53,6 +56,9 @@ services:
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedValueQueryStoreServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\CalculatedValueQueryStoreService
+
+    Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\RelationSummaryServiceInterface:
+        class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\RelationSummaryService
 
     Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigServiceInterface:
         class: Pimcore\Bundle\GenericDataIndexBundle\Service\SearchIndex\SearchIndexConfigService

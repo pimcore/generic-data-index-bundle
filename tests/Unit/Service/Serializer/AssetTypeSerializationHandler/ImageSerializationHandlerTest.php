@@ -19,7 +19,9 @@ use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory;
 use Pimcore\Bundle\GenericDataIndexBundle\Enum\SearchIndex\FieldCategory\SystemField\Asset\ImageSystemField;
 use Pimcore\Bundle\GenericDataIndexBundle\Model\Search\Asset\SearchResult\SearchResultItem\Image as ImageSearchResultItem;
 use Pimcore\Bundle\GenericDataIndexBundle\Service\Serializer\AssetTypeSerializationHandler\ImageSerializationHandler;
+use Pimcore\Config;
 use Pimcore\Model\Asset\Image;
+use Pimcore\Model\Asset\Image\ThumbnailInterface;
 use Psr\Log\NullLogger;
 
 /**
@@ -32,6 +34,11 @@ use Psr\Log\NullLogger;
  */
 final class ImageSerializationHandlerTest extends Unit
 {
+    protected function _after(): void
+    {
+        Config::setSystemConfiguration(null);
+    }
+
     public function testFileBackedFieldFailuresAreIsolated(): void
     {
         $image = $this->makeEmpty(Image::class, [
@@ -79,6 +86,38 @@ final class ImageSerializationHandlerTest extends Unit
         $this->assertNull($item->getThumbnail());
         $this->assertSame(800, $item->getWidth());
         $this->assertSame(600, $item->getHeight());
+    }
+
+    /**
+     * Regression test for PEES-2039: Thumbnail::getPath() falls back to Tool::isFrontend() when
+     * no "frontend" argument is given, so indexing inside a frontend request stored the
+     * frontend URL (configured prefix + urlencoded path) instead of the plain thumbnail path.
+     * The indexed value must not depend on the request context.
+     */
+    public function testThumbnailIsIndexedWithoutFrontendPrefix(): void
+    {
+        // Config::getPreviewConfig() reads the system configuration
+        Config::setSystemConfiguration(['assets' => ['preview_image_thumbnail' => null]]);
+
+        $thumbnail = $this->makeEmpty(ThumbnailInterface::class, [
+            'getPath' => static fn (array $args = []): string => ($args['frontend'] ?? true)
+                ? '/dam/my%20folder/44/image-thumb__44__preview/foo.webp'
+                : '/my folder/44/image-thumb__44__preview/foo.webp',
+        ]);
+        $image = $this->makeEmpty(Image::class, [
+            'getId' => 44,
+            'getThumbnail' => $thumbnail,
+        ]);
+
+        $handler = new ImageSerializationHandler();
+        $handler->setLogger(new NullLogger());
+
+        $fields = $handler->getAdditionalSystemFields($image);
+
+        $this->assertSame(
+            '/my folder/44/image-thumb__44__preview/foo.webp',
+            $fields[ImageSystemField::THUMBNAIL->value]
+        );
     }
 
     public function testSearchResultWithThumbnailIsHydrated(): void
