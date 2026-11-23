@@ -178,21 +178,7 @@ final class AbstractIndexHandlerFieldLimitTest extends Unit
             'getIndexSettings' => ['index' => ['mapping' => ['total_fields' => ['limit' => $limit]]]],
         ]);
 
-        $handler = new class(
-            $search,
-            $config,
-            $this->makeEmpty(EventDispatcherInterface::class),
-            $this->makeEmpty(IndexMappingServiceInterface::class),
-            new IndexCopyService(
-                $search,
-                new MappingDiffService(),
-                new NullLogger(),
-                MappingChangeStrategy::COPY->value
-            ),
-            new IndexLock(new LockFactory(new InMemoryStore()), 1, 1),
-            new TotalFieldsLimitGuard($config),
-            $extractedProperties
-        ) extends AbstractIndexHandler {
+        $handler = new class($search, $config, $this->makeEmpty(EventDispatcherInterface::class), $this->makeEmpty(IndexMappingServiceInterface::class), new IndexCopyService($search, new MappingDiffService(), new NullLogger(), MappingChangeStrategy::COPY->value), new IndexLock(new LockFactory(new InMemoryStore()), 1, 1), new TotalFieldsLimitGuard($config), $extractedProperties) extends AbstractIndexHandler {
             public function __construct(
                 SearchIndexServiceInterface $searchIndexService,
                 SearchIndexConfigServiceInterface $searchIndexConfigService,
@@ -290,21 +276,7 @@ final class AbstractIndexHandlerFieldLimitTest extends Unit
             'getIndexSettings' => $indexSettings,
         ]);
 
-        $handler = new class(
-            $search,
-            $config,
-            $this->makeEmpty(EventDispatcherInterface::class),
-            $this->makeEmpty(IndexMappingServiceInterface::class),
-            new IndexCopyService(
-                $search,
-                new MappingDiffService(),
-                new NullLogger(),
-                MappingChangeStrategy::COPY->value
-            ),
-            new IndexLock(new LockFactory(new InMemoryStore()), 1, 1),
-            new TotalFieldsLimitGuard($config),
-            $mappingProperties
-        ) extends AbstractIndexHandler {
+        $handler = new class($search, $config, $this->makeEmpty(EventDispatcherInterface::class), $this->makeEmpty(IndexMappingServiceInterface::class), new IndexCopyService($search, new MappingDiffService(), new NullLogger(), MappingChangeStrategy::COPY->value), new IndexLock(new LockFactory(new InMemoryStore()), 1, 1), new TotalFieldsLimitGuard($config), $mappingProperties) extends AbstractIndexHandler {
             public function __construct(
                 SearchIndexServiceInterface $searchIndexService,
                 SearchIndexConfigServiceInterface $searchIndexConfigService,

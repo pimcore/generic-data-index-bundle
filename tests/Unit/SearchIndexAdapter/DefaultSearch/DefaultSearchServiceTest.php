@@ -39,7 +39,6 @@ final class DefaultSearchServiceTest extends Unit
 
     private const CREATE_INDEX = 'createIndex';
 
-
     public function testGetCountReturnsCountFromResult(): void
     {
         $service = $this->createService(

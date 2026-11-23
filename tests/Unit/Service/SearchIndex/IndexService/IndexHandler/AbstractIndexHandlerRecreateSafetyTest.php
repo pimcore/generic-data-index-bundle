@@ -261,20 +261,7 @@ final class AbstractIndexHandlerRecreateSafetyTest extends Unit
             'getIndexSettings' => ['index' => ['mapping' => ['total_fields' => ['limit' => 1000000]]]],
         ]);
 
-        $handler = new class(
-            $engine,
-            $config,
-            $this->makeEmpty(EventDispatcherInterface::class),
-            $this->makeEmpty(IndexMappingServiceInterface::class),
-            new IndexCopyService(
-                $engine,
-                new MappingDiffService(),
-                new NullLogger(),
-                MappingChangeStrategy::COPY->value
-            ),
-            new IndexLock(new LockFactory(new InMemoryStore()), 1, 1),
-            $mappingProperties
-        ) extends AbstractIndexHandler {
+        $handler = new class($engine, $config, $this->makeEmpty(EventDispatcherInterface::class), $this->makeEmpty(IndexMappingServiceInterface::class), new IndexCopyService($engine, new MappingDiffService(), new NullLogger(), MappingChangeStrategy::COPY->value), new IndexLock(new LockFactory(new InMemoryStore()), 1, 1), $mappingProperties) extends AbstractIndexHandler {
             public function __construct(
                 SearchIndexServiceInterface $searchIndexService,
                 SearchIndexConfigServiceInterface $searchIndexConfigService,
