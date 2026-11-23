@@ -23,14 +23,12 @@ description: Version-specific upgrade instructions and breaking changes for the 
 - **Staying on Elasticsearch 8 or OpenSearch 2:** the client bundles widen their constraints instead of raising
   them, but a plain `composer update` resolves the newest allowed client. A 9.x `elasticsearch/elasticsearch`
   client is rejected by an Elasticsearch 8 cluster, so pin it in the project's root `composer.json` before the
-  next update. The OpenSearch client needs no pin: opensearch-php 2.4 to 2.7 work on OpenSearch 2; add the second
-  line only to keep the 2.3 client.
+  next update. The OpenSearch client needs no pin: every opensearch-php 2.x release supports OpenSearch 2.
 
   ```json
   {
       "require": {
-          "elasticsearch/elasticsearch": "^8.12",
-          "opensearch-project/opensearch-php": "^2.2 <2.4"
+          "elasticsearch/elasticsearch": "^8.12"
       }
   }
   ```
