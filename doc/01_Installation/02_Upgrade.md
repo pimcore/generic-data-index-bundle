@@ -49,137 +49,32 @@ description: Version-specific upgrade instructions and breaking changes for the 
   until the re-index. The index format of class-level localized fields is unchanged.
 - [Indexing] Snapshots exported before the update are refused for these classes, and `--force` skips them: export
   them again after the re-index.
-- [Indexing] Fixed: the mapping of a localized classification store declared only the `default` node under each
-  group, while the documents are written as `<field>.<group>.<language>.<key>` for every valid language. The
-  language nodes were therefore only mapped dynamically. The mapping now declares one node per entry of the same
-  language set the documents use — `default` plus every valid language — the `default` node carrying every indexed
-  key of the group and a language node the localized ones.
-- [Indexing] The classification store's nested root is now declared with `dynamic: false`. This is not cosmetic: the
-  root ran on the engine default `dynamic: true`, so a key an editor filled in was auto-mapped from its first indexed
-  value, and that guess has the wrong shape. A text key (input, textarea, wysiwyg, select, multiselect, country, …) is
-  declared as `text` with a `keyword` sub-field that accepts values up to 1024 characters and a `sort` sub-field;
-  dynamic mapping gives it `text` with a `keyword` sub-field capped at 256 characters and no `sort` at all. Sorting by
-  such a key therefore does not work, and a value longer than 256 characters is silently missing from filters on it.
-  With `dynamic: false` a group, language or key that is not declared is kept in `_source`, is not indexed, and does
-  not fail the bulk request, so once the index carries only the declared mapping, every indexed path has the shape its
-  key definition asks for. Declaring the key levels is about that shape, not about avoiding an index recreation: for a
-  text key the declared mapping is applied over a guessed one in place, and where it is not — see the last note of
-  this section — the fallback is a native copy, not a recreation.
-- [Indexing] `dynamic: false` only keeps undeclared nodes from being **added** to the mapping; it does not remove what
-  dynamic mapping put there before. An in-place mapping update (`PUT _mapping`, what `update:index` tries first) merges
-  the new declaration into the existing mapping and leaves those group, language and key nodes in place, so on an
-  index that is upgraded in place they keep being indexed and stay filterable. Only a mapping built from scratch drops
-  them: a native reindex into the other odd/even index, or `update:index -r`. A group, language or key that dynamic
-  mapping had already created therefore keeps matching filters until that rebuild, and the declared field count of the
-  merged mapping is the sum of both.
-- [Indexing] The user-visible consequence: a newly configured classification store key is **not filterable until the
-  next mapping update**. Four paths rebuild the mapping *and* re-queue every object of the class, so values entered in
-  the meantime become filterable without a manual re-index and nothing is lost: saving the class definition in the
-  class editor, `generic-data-index:deployment:reindex`, `generic-data-index:update:index`, and a change of the valid
-  languages. They all end up enqueuing the whole `object_<classId>` table.
-- [Indexing] `generic-data-index:reindex` is the exception to the re-queue, not to the filtering: it forces a native
-  copy of every index and queues nothing. The copy is created with the new mapping and the documents are copied into
-  it, so a value that sat unindexed in `_source` under the old mapping is indexed through the new one and becomes
-  filterable — no database rebuild is needed for it. What the copy cannot bring in is what is *not* in `_source`: an
-  element that was never indexed, a change saved in the database since the last index write, or a document the engine
-  rejected. Those need a rebuild from the database, so run `generic-data-index:update:index` instead of it, or after
-  it, to rebuild the mapping and enqueue the objects in one step. And if the copy falls back to recreating an index —
-  the existing values don't fit the new mapping — that index is left empty and nothing refills it, because the command
-  queues nothing; see [Known Limitations](../03_Reindexing/README.md#known-limitations).
-- [Indexing] Only the groups allowed by the class field are mapped (unchanged), so under `dynamic: false` the values
-  of a group that is active on an object but not among the field's allowed groups are not filterable — on an index
-  that already mapped that group dynamically, from the first mapping built from scratch (see above), not from the
-  in-place update. They are still written to the document and stay readable in `_source`; only filters, PQL and grid
-  columns on them stop matching. Add the group to the field's allowed groups and re-index to restore filtering.
+- [Indexing] The mapping of a localized classification store declared only the `default` node under each group,
+  while the documents are written per language. It now declares `default` plus every valid language — `default`
+  carrying every indexed key of the group, a language node the localized ones.
+- [Indexing] The classification store's nested root is now declared with `dynamic: false`: a group, language or key
+  that is not declared is kept in `_source` but is not indexed. The consequence to plan for is that a newly
+  configured key is **not filterable until the next mapping update**.
+- [Indexing] Four actions rebuild the mapping *and* re-queue the class, so values entered in the meantime become
+  filterable without a manual re-index: saving the class definition, `generic-data-index:deployment:reindex`,
+  `generic-data-index:update:index`, and a change of the valid languages. `generic-data-index:reindex` is not one of
+  them — it copies the documents natively and queues nothing, so run `update:index` instead of it, or after it.
 - [Indexing] New: a classification store key whose own definition carries the JSON boolean `"indexed": false` is no
-  longer mapped and no longer written to the document, so it is not filterable, sortable or searchable — in every group
-  the key is assigned to. Only that boolean on a definition that reads as a JSON object excludes it: a definition
-  without the entry, an empty, unparsable or null definition, one that reads as a scalar, and any other value of the
-  entry all mean indexed, and the `indexed` entry of a key–group relation's metadata is not read. On an existing index
-  the two halves arrive separately: the value leaves `_source` only when an
-  object's document is rewritten, so it needs the re-queue that saving the class definition,
-  `generic-data-index:deployment:reindex` or `generic-data-index:update:index` performs — `generic-data-index:reindex`
-  copies the documents as they are and keeps it (see above) — while the node an earlier mapping already declared for the
-  key is dropped when that index is built from scratch, also as above.
-- [Indexing] The declared field count of a classification store multiplies by the number of valid languages for its
-  localized keys only: every indexed key is declared once under `default`, and a localized key once more per valid
-  language. A large store can therefore hit `index.mapping.total_fields.limit` when the index is created or the
-  mapping is updated, instead of later at write time. Restrict the allowed groups of the field, mark the keys that do
-  not need a language as not localized, or raise the limit — see
+  longer mapped and no longer written to the document, in every group it is assigned to. The `indexed` entry of a
+  key–group relation's metadata is not read.
+- [Indexing] Values of a group that is active on an object but not among the field's allowed groups are no longer
+  filterable, from the first mapping built from scratch. They are still written and stay readable in `_source`. Add
+  the group to the field's allowed groups and re-index to restore filtering.
+- [Indexing] Flipping a key's localization or index flag changes the class mapping but fires no event this bundle
+  listens to: apply it with `generic-data-index:deployment:reindex` or `generic-data-index:update:index`. Language
+  nodes an earlier mapping declared are dropped only when the mapping is rebuilt from scratch (`update:index -r`).
+- [Indexing] A localized key is declared once per valid language, so a large store can hit
+  `index.mapping.total_fields.limit` when the index is created or the mapping is updated. Restrict the field's
+  allowed groups, mark keys that need no language as not localized, or raise the limit — see
   [Total Fields Limit](../02_Configuration/03_Index_Management.md#total-fields-limit).
-- [Indexing] A class whose only language-dependent data is a classification store with at least one localized key now
-  changes its checksum when the valid languages change, because those languages are part of its mapping.
-  `deployment:reindex` picks such a class up by itself, where it used to skip it and the class had to be raised in
-  `index_versions.classes` or reindexed with `update:index -c <id>`. A language change can therefore reindex more
-  classes than before. A store whose keys are all non-localized does not depend on the language list at all, so its
-  mapping and its checksum do not change and `deployment:reindex` skips it.
-- [Indexing] Changed: a classification store key is mapped and written under the languages the key itself is kept in —
-  `default`, plus every valid language for a key that is localized — instead of under every valid language of the
-  field. For a store at ETIM proportions (76,625 key assignments, 17 valid languages, 23,222 of the assignments
-  localized) the field count the field declares drops from 1,379,250 to 471,399. Flipping a key's localization or
-  index flag changes the class mapping but fires no event this bundle listens to, so apply it with
-  `generic-data-index:deployment:reindex` or `generic-data-index:update:index`; add `-r` (or let the command copy the
-  index natively) to drop the language nodes an earlier mapping declared, and note that the language values already
-  written stay in `_source` until each object's document is rewritten.
-- [Indexing] Behavior change on the read side: `ClassificationStoreFilter` takes the language node from its `$locale`
-  argument and does not resolve it from the key, so a filter that passes a language for a key that is **not** localized
-  now finds nothing — that key is only indexed under `default`, which is the argument's default. The wrong node is an
-  empty result, not an error, so it reads like an absent value. The locale is per key, not per group: a group holding
-  one localized and one non-localized key needs the language for the first and `default` for the second.
-  `Service\SearchIndex\ClassificationStore\KeyLocaleServiceInterface::getLocaleForKey()` answers the node of a key id
-  with the resolution the mapping and the document use themselves, for callers that do not already know it.
-- [Indexing] Behavior change: classification store groups and keys are indexed under their identifiers instead of
-  their names, so renaming one no longer moves an indexed path and two same-named keys no longer collide. Run
-  `pimcore:classificationstore:backfill-identifiers` and then `generic-data-index:deployment:reindex` (one reindex,
-  mandatory); an entity still without an identifier stays indexed under its name. Update PQL queries, saved
-  filters, `UpdateIndexDataEvent` / `ExtractMappingEvent` listeners and `ClassificationStoreFilter` callers: its
-  `$group` argument and the field name of its sub-modifier are now identifiers, and the name of an entity that has an
-  identifier returns an empty result.
-  `Service\SearchIndex\ClassificationStore\IndexSegmentServiceInterface` answers the segment of a group id and of a
-  key id - with the `<key>_<variant>` sibling of a declared variant - with the resolution the mapping and the document
-  use themselves, for callers that would otherwise derive it, and the new `DocumentEntryServiceInterface` beside it
-  answers every entry one group holds in the document.
-- [Indexing] A class mapping update that removes a class field (a variant, key or group, or a field of the class
-  definition) now copies the index into the other `-odd`/`-even` index, because an in-place update would leave the
-  removed field mapped; an additive change is applied in place, whatever undeclared fields the live index has picked
-  up. Asset, document and folder indices are unchanged.
-- [Indexing] The `standard_fields` root of a class-definition index is now declared with `dynamic: false`, so a field
-  removed from the class definition is gone from the mapping after that copy instead of being re-created from the
-  copied documents and matching searches until someone recreates the index. The mapping checksum of every class
-  changes, so the mandatory reindex above copies every class index once.
-- [Indexing] Changed: a classification store key is now indexed exactly as a class field of its type is, and the
-  type is no longer silently skipped when the indexer does not recognise it — it is reported as an error naming the
-  store, group, key and type, and that key is not indexed. One type is exempt: an `encryptedField` key is still
-  skipped without the error, because an encrypted value is deliberately not indexed. A `multiValue` key publishes a
-  single value in its own field, and adds no field. A declared variant publishes a sibling field
-  named `<key>_<variant>`, filterable by passing that name to `ClassificationStoreFilter` like any key, and
-  multiplies the key's declared fields by one plus the number of variants per language node it is declared in. On a
-  store whose engine cannot hold what a key declares (`variants`), that key declares and
-  publishes nothing — neither its siblings nor its own field — and is reported once per key as a warning. A key of a relation type declares the fields its class-field
-  counterpart does: three per language node for a relation, and for an advanced relation eight plus one per
-  configured column. Declaring or removing a variant, or changing the store's engine, changes the class mapping, so apply it
-  with `generic-data-index:deployment:reindex` or `generic-data-index:update:index`.
-- [Indexing] Existing indices already contain language and key nodes that dynamic mapping created with a guessed type,
-  and the update declares the real types over them. For a text key this is accepted in place: the type stays `text`,
-  the declared sub-fields are added to the guessed one, and `ignore_above` is updatable. A numeric key can conflict: a
-  key whose first indexed value happened to be a whole number was guessed as `long`, while a non-integer numeric key
-  is declared as `double`, and that change is rejected in place. The bundle then copies the index natively into its
-  odd/even twin and swaps the alias — expensive on a large index, but not destructive, because the existing values
-  parse into the declared types. Apply the new mapping with `bin/console generic-data-index:update:index`; add `-r` to
-  build the affected indices from scratch instead, which is also what removes the nodes dynamic mapping created.
-
-### Index recreation no longer empties an index on a refused mapping
-
-- [Indexing] An index recreation (`update:index -r`, and the last resort of a failing copy) builds the other
-  `-odd`/`-even` index with the new mapping first and moves the alias onto it, instead of deleting the live index
-  before the mapping has been accepted. A mapping the engine refuses now fails the command and leaves the index with
-  its documents and its alias; before, it left an empty index behind the alias. The index name behind an alias
-  therefore flips between the `-odd` and `-even` suffix on every recreation.
-- [Indexing] A mapping declaring more fields than
-  `pimcore_generic_data_index.index_service.index_settings.index.mapping.total_fields.limit` allows is refused before
-  the engine is asked for it, naming the field count and the column it comes from. Raise the limit for a mapping that
-  is meant to be that large, see
-  [Total Fields Limit](../02_Configuration/03_Index_Management.md#total-fields-limit).
+- [Indexing] A class whose only language-dependent data is a classification store with at least one localized key
+  now changes its checksum when the valid languages change, so `deployment:reindex` picks it up by itself where it
+  used to skip it. A language change can therefore reindex more classes than before.
 
 ### Workflow places: run `update:index` right after the deployment
 
